@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
+  "_comment": "ТРЕКАЄТЬСЯ. Тут живе спільний намір: проводка хуків. Машинно-специфічне (permissions) — у settings.local.json, який у git не їде. Логіка хуків — у tools/hooks/, тут лише адаптери .claude/hooks/.",
+
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/inject-state.sh",
+            "timeout": 5,
+            "statusMessage": "state.md → контекст"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/role-posture.sh",
+            "timeout": 5,
+            "statusMessage": "рольова постава"
+          }
+        ]
+      }
+    ],
+
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Edit(//**/*.gd)",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/gd-quickcheck.sh",
+            "timeout": 30,
+            "statusMessage": "gd quickcheck"
+          },
+          {
+            "type": "command",
+            "if": "Write(//**/*.gd)",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/gd-quickcheck.sh",
+            "timeout": 30,
+            "statusMessage": "gd quickcheck"
+          }
+        ]
+      }
+    ]
+  }
+}

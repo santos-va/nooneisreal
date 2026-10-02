@@ -1,0 +1,51 @@
+# Карта рольових алясів → локальне тіло → client skill → людська мітка.
+#
+# Лежить у СПІЛЬНОМУ місці (tools/hooks/), а не в .claude/: мапа ролей однакова для всіх
+# клієнтів, і тримати її під адаптером одного з них означало б, що інші або читають чужу
+# площину, або заводять копію. Перейменування ролі — один рядок тут, хук не чіпається.
+#
+# Формат: <аляс>|<локальне тіло>|<Claude skill>|<Codex skill>|<Kimi skill>|<мітка>
+# Аляси в нижньому регістрі, порівняння регістронезалежне.
+# Порожні рядки і рядки з '#' ігноруються.
+#
+# Префікси skill-імен — захист namespace: codex-скіли глобальні, тому `nir-` відмежовує
+# дзеркала цього проєкту від чужих; `kimi-` — щоб ім'я скіла називало свого клієнта.
+
+t1|t1-dedal|t1-dedal|nir-t1-dedal|kimi-t1-dedal|Дедал (T1)
+дедал|t1-dedal|t1-dedal|nir-t1-dedal|kimi-t1-dedal|Дедал (T1)
+дєдал|t1-dedal|t1-dedal|nir-t1-dedal|kimi-t1-dedal|Дедал (T1)
+dedal|t1-dedal|t1-dedal|nir-t1-dedal|kimi-t1-dedal|Дедал (T1)
+
+t2|t2-hefest|t2-hefest|nir-t2-hefest|kimi-t2-hefest|Гефест (T2)
+гефест|t2-hefest|t2-hefest|nir-t2-hefest|kimi-t2-hefest|Гефест (T2)
+гефес|t2-hefest|t2-hefest|nir-t2-hefest|kimi-t2-hefest|Гефест (T2)
+hefest|t2-hefest|t2-hefest|nir-t2-hefest|kimi-t2-hefest|Гефест (T2)
+
+t3|t3-arhimed|t3-arhimed|nir-t3-arhimed|kimi-t3-arhimed|Архімед (T3)
+архімед|t3-arhimed|t3-arhimed|nir-t3-arhimed|kimi-t3-arhimed|Архімед (T3)
+архимед|t3-arhimed|t3-arhimed|nir-t3-arhimed|kimi-t3-arhimed|Архімед (T3)
+arhimed|t3-arhimed|t3-arhimed|nir-t3-arhimed|kimi-t3-arhimed|Архімед (T3)
+
+t4|t4-femida|t4-femida|nir-t4-femida|kimi-t4-femida|Феміда (T4)
+феміда|t4-femida|t4-femida|nir-t4-femida|kimi-t4-femida|Феміда (T4)
+фемида|t4-femida|t4-femida|nir-t4-femida|kimi-t4-femida|Феміда (T4)
+femida|t4-femida|t4-femida|nir-t4-femida|kimi-t4-femida|Феміда (T4)
+
+t5|t5-ares|t5-ares|nir-t5-ares|kimi-t5-ares|Арес (T5)
+арес|t5-ares|t5-ares|nir-t5-ares|kimi-t5-ares|Арес (T5)
+аріс|t5-ares|t5-ares|nir-t5-ares|kimi-t5-ares|Арес (T5)
+ares|t5-ares|t5-ares|nir-t5-ares|kimi-t5-ares|Арес (T5)
+
+t6|t6-apollon|t6-apollon|nir-t6-apollon|kimi-t6-apollon|Аполлон (T6)
+аполлон|t6-apollon|t6-apollon|nir-t6-apollon|kimi-t6-apollon|Аполлон (T6)
+аполон|t6-apollon|t6-apollon|nir-t6-apollon|kimi-t6-apollon|Аполлон (T6)
+apollon|t6-apollon|t6-apollon|nir-t6-apollon|kimi-t6-apollon|Аполлон (T6)
+
+t7|t7-klio|t7-klio|nir-t7-klio|kimi-t7-klio|Кліо (T7)
+кліо|t7-klio|t7-klio|nir-t7-klio|kimi-t7-klio|Кліо (T7)
+клио|t7-klio|t7-klio|nir-t7-klio|kimi-t7-klio|Кліо (T7)
+klio|t7-klio|t7-klio|nir-t7-klio|kimi-t7-klio|Кліо (T7)
+
+t8|t8-hermes|t8-hermes|nir-t8-hermes|kimi-t8-hermes|Гермес (T8)
+гермес|t8-hermes|t8-hermes|nir-t8-hermes|kimi-t8-hermes|Гермес (T8)
+hermes|t8-hermes|t8-hermes|nir-t8-hermes|kimi-t8-hermes|Гермес (T8)

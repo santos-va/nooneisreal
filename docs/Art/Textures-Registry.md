@@ -1,0 +1,43 @@
+# Реєстр текстур і ассетів
+
+Правило R1: кожен файл у `game/assets/` має рядок тут; кожен рядок тут існує на диску
+(гейт `tools/gates/texture_registry_check.py`). Шлях пишеться як `game/assets/...`.
+Ассети, які ще **не на диску**, живуть у таблиці «Заплановано» без префікса `game/assets/`.
+
+## На диску
+
+| id | файл | джерело | автор/модель | ліцензія | де використано |
+|---|---|---|---|---|---|
+| sfx-hit-light | `game/assets/audio/sfx/hit_light.wav` | синтез ffmpeg lavfi (pink noise + lowpass) | проєкт, 2026-10-02 | CC0 (наше) | `Sfx.play("hit_light")`, легкі удари |
+| sfx-hit-heavy | `game/assets/audio/sfx/hit_heavy.wav` | ffmpeg: brown noise + sine 62 Hz | проєкт | CC0 | важкі удари, скіли |
+| sfx-block | `game/assets/audio/sfx/block.wav` | ffmpeg: white noise highpass + 1.9/3.1 kHz | проєкт | CC0 | блок |
+| sfx-whoosh | `game/assets/audio/sfx/whoosh.wav` | ffmpeg: pink noise bandpass | проєкт | CC0 | старт активних кадрів, деш |
+| sfx-grapple-fire | `game/assets/audio/sfx/grapple_fire.wav` | ffmpeg: aevalsrc chirp 1400→… | проєкт | CC0 | постріл гарпуна |
+| sfx-grapple-hit | `game/assets/audio/sfx/grapple_hit.wav` | ffmpeg: 2.4 kHz + 640 Hz decay | проєкт | CC0 | підтягування ворога, TIME STOP |
+| sfx-grapple-release | `game/assets/audio/sfx/grapple_release.wav` | ffmpeg: pink noise bandpass 1.4 kHz | проєкт | CC0 | відпускання мотузки |
+| sfx-grapple-denied | `game/assets/audio/sfx/grapple_denied.wav` | ffmpeg: 140 Hz click | проєкт | CC0 | немає зарядів |
+| sfx-ko | `game/assets/audio/sfx/ko.wav` | ffmpeg: brown noise + 48/96 Hz | проєкт | CC0 | K.O. |
+| sfx-round-start | `game/assets/audio/sfx/round_start.wav` | ffmpeg: 660→990 Hz chime | проєкт | CC0 | старт раунду |
+| sfx-ui-move | `game/assets/audio/sfx/ui_move.wav` | ffmpeg: 880 Hz blip | проєкт | CC0 | меню, повернення заряду |
+| sfx-ui-confirm | `game/assets/audio/sfx/ui_confirm.wav` | ffmpeg: 660→1046 Hz | проєкт | CC0 | підтвердження в меню |
+| sfx-ultimate | `game/assets/audio/sfx/ultimate.wav` | ffmpeg: sweep 180→1080 Hz + 55 Hz | проєкт | CC0 | старт ультимейту |
+| sfx-land | `game/assets/audio/sfx/land.wav` | ffmpeg: brown noise lowpass 500 | проєкт | CC0 | приземлення |
+
+Іконка проєкту `game/icon.svg` — намальована в сесії (SVG, CC0), поза `game/assets/`.
+
+## Заплановано (завантажує `tools/fetch_assets.sh`; після цього перенести рядок угору з префіксом `game/assets/`)
+
+| id | файл (→ assets/) | джерело (Higgsfield, GPT Image 2.5, 2688×1520, `_min.webp` прев'ю) | промпт | ліцензія | використання |
+|---|---|---|---|---|---|
+| bg-market | → `backgrounds/bg_kronshift_market_street.webp` | `hf_20261002_131105_0b5c85b7-…_min.webp` | [[Prompts]] § Фони | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | stage `market_street` |
+| bg-alley | → `backgrounds/bg_kronshift_back_alley.webp` | `hf_20261002_131105_a479d377-…_min.webp` | [[Prompts]] § Фони | те саме | stage `back_alley` |
+| bg-main | → `backgrounds/bg_kronshift_main_street.webp` | `hf_20261002_131104_8510a1fc-…_min.webp` | [[Prompts]] § Фони | те саме | stage `main_street` |
+| bg-city-ref | → `backgrounds/bg_kronshift_city_reference.webp` | `hf_20261002_102352_6c5c895d-…_min.webp` | референс міста | те саме | stage `city_reference`, еталон стилю |
+| card-choko-v3 | → `characters/cards/card_choko_v3.png` | `hf_20261002_111512_bcddbbc6-…png` | [[Prompts]] § Choko v3 | те саме | портрет/картка Choko |
+| weapon-choko-main | → `characters/cards/weapon_choko_main_sword.png` | `hf_20261002_111511_9652a5b1-…png` | [[Prompts]] § Зброя | те саме | референс меча для 3D |
+| weapons-choko-ult | → `characters/cards/weapons_choko_ultimate.png` | `hf_20261002_102352_f00d0272-…png` | [[Prompts]] § Зброя | те саме | референс ульт-мечів |
+| hands-choko | → `characters/cards/hands_choko.png` | `hf_20261002_110646_b776f4f8-…png` | [[Prompts]] § Руки | те саме | референс рук/рукавичок |
+| card-skeasse | → `characters/cards/card_skeasse_v1.png` | **URL невідома** (у брифі продубльовано URL Choko) | — | — | портрет Skeasse |
+
+## Related
+- [[Style-Guide]] · [[Backgrounds]] · [[Prompts]] · [[07-Audio]] · [[constitution]]
