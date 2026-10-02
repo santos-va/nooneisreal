@@ -1,0 +1,67 @@
+extends Node3D
+## Stage root: spawns both fighters from GameState, wires camera, HUD, match flow and hit FX.
+## Debug keys: Tab = hitboxes, Backspace = reset round (training), Esc = pause.
+
+const FIGHTER_SCENE := preload("res://scenes/fighter/Fighter.tscn")
+
+@onready var fighters_root: Node3D = $Fighters
+@onready var fx_root: Node3D = $FX
+@onready var camera: FightCamera = $CameraRig
+@onready var hud: Hud = $HUD
+@onready var flow: MatchFlow = $MatchFlow
+@onready var backdrop: Backdrop = $Backdrop
+@onready var sun: DirectionalLight3D = $Sun
+@onready var world_env: WorldEnvironment = $WorldEnvironment
+
+var p1: Fighter
+var p2: Fighter
+
+
+func _ready() -> void:
+	var st := GameState.stage()
+	backdrop.apply(st)
+	sun.rotation_degrees = Vector3(-42.0, 35.0, 0.0)
+	sun.light_color = st.sun
+	if world_env.environment:
+		world_env.environment.ambient_light_color = st.ambient
+	p1 = _spawn(1, GameState.p1_character, -3.0, 1, false)
+	p2 = _spawn(2, GameState.p2_character, 3.0, -1, GameState.p2_is_cpu)
+	p1.opponent = p2
+	p2.opponent = p1
+	camera.setup(p1, p2)
+	for f in [p1, p2]:
+		(f as Fighter).hit_landed.connect(_on_hit)
+		(f as Fighter).knocked_out.connect(_on_ko)
+	hud.bind(p1, p2, flow)
+	flow.setup(p1, p2)
+
+
+func _spawn(idx: int, char_id: String, x: float, face: int, cpu: bool) -> Fighter:
+	var f := FIGHTER_SCENE.instantiate() as Fighter
+	f.player_index = idx
+	f.data = GameState.load_character(char_id)
+	f.is_cpu = cpu
+	fighters_root.add_child(f)
+	f.reset_for_round(x, face)
+	return f
+
+
+func _on_hit(attacker: Fighter, victim: Fighter, move: MoveData, blocked: bool) -> void:
+	camera.shake(0.06 if blocked else clampf(move.damage / 420.0, 0.1, 0.5))
+	var spark := HitSpark.new()
+	fx_root.add_child(spark)
+	spark.global_position = victim.global_position + Vector3(0.0, 1.15, 0.35)
+	spark.setup(blocked, attacker.data.accent_color, move.damage)
+
+
+func _on_ko(_f: Fighter) -> void:
+	camera.shake(0.7)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("debug_toggle_hitboxes"):
+		GameState.show_hitboxes = not GameState.show_hitboxes
+	elif event.is_action_pressed("debug_reset") and GameState.training_mode:
+		flow.reset_positions()
+	elif event.is_action_pressed("ui_pause"):
+		hud.toggle_pause()

@@ -1,0 +1,27 @@
+# Godot 4
+game/.godot/
+game/export/
+game/*.translation
+game/.import/
+*.import.tmp
+# Exports / builds
+build/
+dist/
+*.pck
+*.dmg
+*.apk
+*.aab
+*.ipa
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+# Local agent state
+.claude/settings.local.json
+.venv/
+__pycache__/
+*.pyc
+# Local-only memory (mirrors cookthesoup convention)
+data/local/

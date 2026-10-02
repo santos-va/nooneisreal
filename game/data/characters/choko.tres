@@ -1,0 +1,213 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighter/CharacterData.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/fighter/MoveData.gd" id="2"]
+
+[sub_resource type="Resource" id="light"]
+script = ExtResource("2")
+id = "light"
+display_name = "Shuka Jab"
+kind = 0
+anim = "light"
+startup = 5
+active = 3
+recovery = 9
+damage = 42.0
+hitstun = 14
+blockstun = 8
+hitstop = 4
+knockback = Vector2(3.5, 0)
+hitbox_offset = Vector3(1.0, 1.15, 0)
+hitbox_size = Vector3(1.2, 0.9, 1.0)
+meter_gain_hit = 8.0
+cancel_tier = 0
+sfx_hit = "hit_light"
+description = "PLACEHOLDER frame data. Quick sword poke; chains twice, cancels into heavy/skills."
+
+[sub_resource type="Resource" id="heavy"]
+script = ExtResource("2")
+id = "heavy"
+display_name = "Emerald Arc"
+kind = 0
+anim = "slash"
+startup = 11
+active = 4
+recovery = 17
+damage = 95.0
+chip_damage = 8.0
+hitstun = 20
+blockstun = 12
+hitstop = 7
+knockback = Vector2(6.5, 2.0)
+hitbox_offset = Vector3(1.2, 1.2, 0)
+hitbox_size = Vector3(1.8, 1.4, 1.0)
+meter_gain_hit = 12.0
+forward_step = 0.5
+cancel_tier = 1
+sfx_hit = "hit_heavy"
+description = "PLACEHOLDER. Wide overhead slash with a step-in; cancels into skills and ultimate."
+
+[sub_resource type="Resource" id="crouch_light"]
+script = ExtResource("2")
+id = "crouch_light"
+display_name = "Low Cut"
+kind = 0
+anim = "crouch_light"
+startup = 6
+active = 3
+recovery = 11
+damage = 36.0
+hitstun = 13
+blockstun = 8
+hitstop = 4
+knockback = Vector2(2.5, 0)
+hitbox_offset = Vector3(1.0, 0.6, 0)
+hitbox_size = Vector3(1.3, 0.7, 1.0)
+cancel_tier = 0
+sfx_hit = "hit_light"
+description = "PLACEHOLDER. Crouching poke (held S + light)."
+
+[sub_resource type="Resource" id="air_light"]
+script = ExtResource("2")
+id = "air_light"
+display_name = "Dive Kick"
+kind = 0
+anim = "air_light"
+startup = 7
+active = 5
+recovery = 12
+damage = 55.0
+hitstun = 16
+blockstun = 9
+hitstop = 5
+knockback = Vector2(4.0, -1.0)
+hitbox_offset = Vector3(0.9, 0.7, 0)
+hitbox_size = Vector3(1.2, 1.1, 1.0)
+cancel_tier = 1
+sfx_hit = "hit_light"
+description = "PLACEHOLDER. Jumping kick; also usable right after a grapple release."
+
+[sub_resource type="Resource" id="skill1"]
+script = ExtResource("2")
+id = "record"
+display_name = "RECORD"
+kind = 1
+anim = "cast"
+startup = 12
+active = 6
+recovery = 18
+damage = 70.0
+chip_damage = 10.0
+hitstun = 20
+blockstun = 14
+hitstop = 8
+knockback = Vector2(7.0, 7.0)
+launcher = true
+ragdoll_impulse = 1.1
+hitbox_offset = Vector3(1.9, 1.1, 0)
+hitbox_size = Vector3(2.4, 1.8, 1.0)
+meter_gain_hit = 15.0
+cooldown = 6.0
+cancel_tier = 2
+sfx_hit = "hit_heavy"
+description = "PLACEHOLDER mechanic. Card: a glowing glyph captures an enemy slash. Prototype: mid-range glyph burst that launches the opponent into a physics flight. Final design pending Santos's answer (counter-stance? copy the last enemy move?)."
+
+[sub_resource type="Resource" id="skill2"]
+script = ExtResource("2")
+id = "time_stop"
+display_name = "TIME STOP"
+kind = 1
+anim = "spin"
+startup = 10
+active = 4
+recovery = 16
+damage = 0.0
+hitstun = 48
+blockstun = 6
+hitstop = 2
+knockback = Vector2(0, 0)
+effect = "freeze"
+hitbox_offset = Vector3(1.4, 1.1, 0)
+hitbox_size = Vector3(3.0, 2.2, 1.0)
+meter_gain_hit = 5.0
+cooldown = 11.0
+cancel_tier = 2
+sfx_hit = "grapple_hit"
+description = "PLACEHOLDER. Card: grey-blue frozen scene, glowing wristwatch. Prototype: freezes an opponent within ~3 m for 48 frames (0.8 s); no damage. Follow-up is free."
+
+[sub_resource type="Resource" id="ultimate"]
+script = ExtResource("2")
+id = "ultimate"
+display_name = "ULTIMATE SWORD"
+kind = 2
+anim = "slam"
+startup = 16
+active = 6
+recovery = 26
+damage = 240.0
+chip_damage = 40.0
+hitstun = 30
+blockstun = 20
+hitstop = 11
+knockback = Vector2(9.0, 6.5)
+knockdown = true
+ragdoll_impulse = 1.3
+hitbox_offset = Vector3(1.4, 1.1, 0)
+hitbox_size = Vector3(2.6, 2.2, 1.0)
+meter_cost = 100.0
+forward_step = 0.8
+cancel_tier = 3
+sfx_hit = "hit_heavy"
+description = "PLACEHOLDER. Card: ONE Choko with ONE ultimate sword in an epic power pose, glowing aura. Prototype: big slam that ragdolls the opponent. Costs full meter."
+
+[sub_resource type="Resource" id="throw_move"]
+script = ExtResource("2")
+id = "hook_pull"
+display_name = "Hook Pull"
+kind = 3
+anim = "throw"
+startup = 8
+active = 2
+recovery = 14
+damage = 0.0
+hitstun = 22
+cancel_tier = 1
+sfx_hit = "grapple_hit"
+sfx_whiff = "grapple_fire"
+description = "Grapple verb 3: pull the enemy to you (crouch + grapple). Spends a grapple charge; no damage; opponent is stunned 22 f."
+
+[resource]
+script = ExtResource("1")
+id = "choko"
+display_name = "CHOKO"
+tagline = "Team leader. Chainmail jacket, emerald shuka sword, the wristwatch that stops time."
+max_hp = 1000.0
+walk_speed = 5.6
+back_walk_speed = 4.3
+dash_speed = 13.5
+dash_frames = 12
+jump_velocity = 11.0
+air_control = 0.6
+weight = 1.0
+primary_color = Color(0.74, 0.38, 0.2, 1)
+secondary_color = Color(0.3, 0.36, 0.46, 1)
+accent_color = Color(0.16, 0.78, 0.46, 1)
+skin_color = Color(0.86, 0.68, 0.55, 1)
+hair_color = Color(0.17, 0.11, 0.08, 1)
+weapon_kind = "sword"
+portrait_path = "res://assets/characters/cards/card_choko_v3.png"
+card_path = "res://assets/characters/cards/card_choko_v3.png"
+light = SubResource("light")
+heavy = SubResource("heavy")
+crouch_light = SubResource("crouch_light")
+air_light = SubResource("air_light")
+skill1 = SubResource("skill1")
+skill2 = SubResource("skill2")
+ultimate = SubResource("ultimate")
+throw_move = SubResource("throw_move")
+grapple_charges = 3
+grapple_cooldown = 3.0
+grapple_regen_all_at_once = false
+grapple_range = 14.0
+passive_id = "record_memory"
+passive_description = "PLACEHOLDER (asked in the character interview). Card hint: RECORD — a glyph that captures an enemy slash."
