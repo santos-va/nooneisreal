@@ -8,7 +8,7 @@ SHELL := /usr/bin/env bash
 GODOT ?= $(if $(GODOT_BIN),$(GODOT_BIN),godot)
 GAME  := game
 
-.PHONY: roles gates check run editor fetch-assets hooks-check
+.PHONY: roles gates check import run editor fetch-assets hooks-check
 
 # Таблиця ролей із tools/hooks/roles.map: аляс · тіло · Claude skill · мітка.
 roles:
@@ -34,12 +34,24 @@ check:
 	"$$G" --headless --path $(GAME) --quit-after 4000 -- --smoke 2>&1 | grep -E '^\[smoke\]|SCRIPT ERROR|ERROR:' ; \
 	rc=$${PIPESTATUS[0]}; [ $$rc -eq 0 ] && echo "SMOKE ЗЕЛЕНИЙ" || { echo "SMOKE ЧЕРВОНИЙ rc=$$rc"; exit $$rc; }
 
+# Свіжий клон не має game/.godot/ (у .gitignore), а з ним — реєстру class_name.
+# Без імпорту гра падає з «Could not find type CharacterData». Тому run/editor
+# спершу імпортують проєкт, якщо реєстру ще немає (одноразово, до хвилини).
+CLASS_CACHE := $(GAME)/.godot/global_script_class_cache.cfg
+
+import:
+	@echo "── імпорт проєкту ($(GODOT)) — перший раз до хвилини ──"
+	@$(GODOT) --headless --path $(GAME) --import >/dev/null 2>&1; \
+	if [ -f $(CLASS_CACHE) ]; then echo "імпорт готовий"; else echo "ІМПОРТ НЕ СТВОРИВ $(CLASS_CACHE): перевір, що GODOT_BIN вказує на Godot 4.7+"; exit 1; fi
+
 # Запустити гру (головна сцена з project.godot).
 run:
+	@[ -f $(CLASS_CACHE) ] || $(MAKE) --no-print-directory import
 	$(GODOT) --path $(GAME)
 
 # Відкрити проєкт у редакторі.
 editor:
+	@[ -f $(CLASS_CACHE) ] || $(MAKE) --no-print-directory import
 	$(GODOT) --editor --path $(GAME)
 
 # Підтягнути ассети за реєстром (скрипт пише лід).
