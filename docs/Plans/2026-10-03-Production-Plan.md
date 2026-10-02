@@ -1,0 +1,56 @@
+# План виробництва — арт, звук, керування, арена на воді
+
+**Автор:** T1 Дедал, 2026-10-02 (аудит Higgsfield і репо — у цій же сесії, R0). **Виконує:** нова сесія.
+**Issue:** none (робимо через PR у гілці `claude/…`).
+
+## Стартове повідомлення для нової сесії (скопіюй Santos)
+
+```
+T2 Гефест. Виконай план docs/Plans/2026-10-03-Production-Plan.md починаючи з фази 1.
+Спершу прочитай CLAUDE.md, docs/system/state.md і цей план. Правило R0: кожен факт перевіряй у джерелі.
+Higgsfield: нічого не генеруй без мого слова на конкретну партію — спершу balance і get_cost, число в чат.
+Після кожної фази: make check, make gates, журнал у docs/Meetings, оновити state.md, push у гілку, draft PR.
+```
+
+## Фаза 1 — керування, звук, арена на воді (код, 0 кредитів)
+
+| # | що змінюємо | файли | ризик | перевірка |
+|---|---|---|---|---|
+| 1.1 | Профіль SOLO (J K L U I O + A D W S Space LShift E) за замовчуванням, профіль SHARED — старий; перемикач у меню, збереження `user://settings.cfg` | `game/project.godot` `[input]`, `scripts/core/InputRouter.gd` (застосування профілю через `InputMap`), `scripts/ui/MainMenu.gd`, `Hud.gd` (підказки) | конфлікт K/L/I між профілями | smoke: у SOLO натиск `J` → легкий удар P1; у SHARED `K` → удар P2 |
+| 1.2 | `tools/audio/build_sfx.sh`: zip-и з `~/Downloads/nir-audio/` → нарізка → нормалізація → шари (свіст+транзієнт+тіло+саб) → `game/assets/audio/sfx/*.ogg` + рядки реєстру | новий скрипт, `scripts/core/Sfx.gd` (варіанти через `AudioStreamRandomizer`, шина SFX з компресором і лімітером) | ліцензії | `make gates` (РЕЄ), прослуховування Santos |
+| 1.3 | До завантаження бібліотек — перешарувати наявні синтетичні удари: різкіший транзієнт, тіло, саб, компресія | `game/assets/audio/sfx/` | все ще синтетика | порівняння до і після, peak ≤ −1 dBFS (`ffmpeg -af volumedetect`) |
+| 1.4 | Арена «Річка»: `WaveField` (детермінована висота від кадру), `water_toon.gdshader`, підлога = хвиля, гойдання, кільця тримання, вали + STUMBLE, `water_balance` у `CharacterData` | `scripts/arena/WaveField.gd`, `shaders/water_toon.gdshader`, `scenes/arena/` (стадія `river`), `Fighter.gd`, `RigAnimator.gd`, `GameState.gd` | детермінізм, провалювання | smoke-стадія `river` ([[Stage-River]] § Перевірка) |
+| 1.5 | Удари сильніші на вигляд: замах, перельот, крок 12 fps, смір, різні флінчі за зоною | `RigAnimator.gd`, `HitSpark.gd` | читабельність кадрів | кадри через `--shots`, огляд Santos |
+
+## Фаза 2 — арт у новому стилі (Higgsfield, кредити лише зі слова Santos)
+
+Порядок і бюджет — [[Asset-Manifest]]; промпти — [[Prompt-Library]]; конвеєр — [[Higgsfield-Pipeline]].
+
+| # | партія | кредитів (≈) | ворота |
+|---|---|---|---|
+| 2.0 | Імпорт старих карток (ідентичність) через `media_import_url` | 0 | — |
+| 2.1 | Лист поз **Choko** (4 варіанти) | 11 | Santos затверджує **стиль** |
+| 2.2 | Лист поз **Skea** (4 варіанти) | 11 | Santos затверджує |
+| 2.3 | Turnaround + 4 T-pose на кожного | ≈ 27 | — |
+| 2.4 | Картки предметів (меч, годинник, кунаї, гримуар, рюкзак) | ≈ 14 | — |
+| 2.5 | Тайли тканин/матеріалів, тайли води | ≈ 20 | — |
+| 2.6 | Фон-річка 21:9 + outpaint + decompose | ≈ 15 | Santos підтверджує фон |
+| 2.7 | VFX: зірки влучання, дуги ударів, сплеск | ≈ 15 + autosprite (оцінити) | — |
+| 2.8 | Іконки скілів, портрети HUD | ≈ 20 | — |
+| — | на Mac: `tools/fetch_assets.sh` доповнити новими URL → `game/assets/` → реєстр | 0 | `make gates` |
+
+## Фаза 3 — 3D-персонажі й анімації
+
+`multi_image_to_3d` з ригом (≈ 35 на персонажа), кліпи з групи Fighting ([[Animation-Plan]]), імпорт GLB,
+`SkeletonProfileHumanoid`, заміна капсульного рига за тим самим інтерфейсом `RigAnimator`, активний регдол на
+скелеті, toon-шейдер з маджента-тінню й графітовим контуром ([[Style-Guide]]). Бюджет ≈ 150–250 кредитів.
+
+## Питання до Santos (блокують лише свої пункти)
+
+1. Чи справді річка — на фоні city reference? (2.6)
+2. Хто на воді тримається краще за лором? Поточні `water_balance`: Choko 0.8, Skea 0.55. (1.4)
+3. Затвердити стиль на першому листі Choko, перш ніж генерувати решту. (2.1)
+4. Бюджет кредитів на фазу 2 — до ~150? (2.x)
+
+## Related
+- [[Asset-Manifest]] · [[Prompt-Library]] · [[Higgsfield-Pipeline]] · [[Stage-River]] · [[05-Platforms-Input]] · [[07-Audio]] · [[Animation-Plan]] · [[state]]

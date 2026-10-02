@@ -5,7 +5,7 @@
 
 ## Що це
 
-3D cel-shaded аніме-файтинг на арені в стилі *Naruto Shippuden: Ultimate Ninja Storm*,
+3D cel-shaded файтинг на арені (динаміка як у *Naruto Storm*, малюнок — власний «Sketch-Cel», **не аніме**),
 з Euphoria-подібним active ragdoll і гарпуном на зарядах. Персонажі — з власного аніме
 Santos і товариша (лідер команди [[Choko]] — контроль часу, другий боєць [[Skea]] — Muay Thai і тіні), місто — [[Kronshift]].
 Движок — Godot 4.7, GDScript ([[ADR-001-Engine-Godot]]).
@@ -16,14 +16,15 @@ Santos і товариша (лідер команди [[Choko]] — контро
 |---|---|
 | Бачення | [[01-Vision]] · [[Roadmap]] · [[Glossary]] |
 | Бій | [[02-Combat-System]] · [[03-Skills-Framework]] · [[04-Grapple-System]] · [[08-Balance]] |
+| **План виробництва** | [[2026-10-03-Production-Plan]] — старт нової сесії |
 | Платформи та UI | [[05-Platforms-Input]] · [[06-UI-UX]] · [[07-Audio]] |
 | Персонажі | [[Choko]] · [[Skea]] · [[Roster]] |
-| Світ | [[Kronshift]] · [[Lore]] |
-| Арт | [[Style-Guide]] · [[Textures-Registry]] · [[Backgrounds]] · [[Pipeline-2D-to-3D]] · [[Prompts]] · [[VFX-Direction]] |
-| Техніка | [[Architecture]] · [[Active-Ragdoll]] · [[Cel-Shading]] · [[Build-and-Run]] · [[Export-Platforms]] · [[Testing]] |
-| Рішення | [[ADR-001-Engine-Godot]] · [[ADR-002-2.5D-First]] · [[ADR-003-Docs-As-Wiki]] · [[ADR-004-Physics-Is-Presentation]] · [[ADR-005-Grapple-Charges]] · [[ADR-006-Equal-Kit-Structure]] |
+| Світ | [[Kronshift]] · [[Stage-River]] · [[Lore]] |
+| Арт | [[Style-Guide]] · [[Textures-Registry]] · [[Backgrounds]] · [[Pipeline-2D-to-3D]] · [[Prompts]] · [[VFX-Direction]] · [[Higgsfield-Pipeline]] · [[Asset-Manifest]] · [[Prompt-Library]] |
+| Техніка | [[Architecture]] · [[Active-Ragdoll]] · [[Cel-Shading]] · [[Build-and-Run]] · [[Export-Platforms]] · [[Testing]] · [[Animation-Plan]] · [[Library]] |
+| Рішення | [[ADR-001-Engine-Godot]] · [[ADR-002-2.5D-First]] · [[ADR-003-Docs-As-Wiki]] · [[ADR-004-Physics-Is-Presentation]] · [[ADR-005-Grapple-Charges]] · [[ADR-006-Equal-Kit-Structure]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-008-Audio-Sourcing]] · [[ADR-009-Solo-Keyboard-Layout]] |
 | Ресерч | [[2026-10-02-Engine-Physics]] · [[2026-10-02-Animation-Assets-Pipeline]] · [[2026-10-02-Grapple-Input-UI]] |
-| Процес | [[constitution]] · [[state]] · [[recurring_class_register]] · [[2026-10-02-Kickoff]] · [[2026-10-02-Prototype-0.1]] · [[2026-10-02-Characters-Interview]] · [[2026-10-02-Skea-Kit-and-Balance]] |
+| Процес | [[constitution]] · [[state]] · [[recurring_class_register]] · [[2026-10-02-Kickoff]] · [[2026-10-02-Prototype-0.1]] · [[2026-10-02-Characters-Interview]] · [[2026-10-02-Skea-Kit-and-Balance]] · [[2026-10-02-Art-Direction-and-Pipeline]] |
 
 ## Ролі агентів
 

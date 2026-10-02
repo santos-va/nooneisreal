@@ -1,28 +1,28 @@
 # state — поточна правда
 
-**Оновлено:** 2026-10-02, друга сесія (кіти Skea і Choko, баланс, VFX).
-**Фаза:** Prototype 0.2 — обидва кіти реалізовано, `make check` зелений (smoke 20/20), гілка `claude/blissful-clarke-pj15rz`, draft PR #1.
+**Оновлено:** 2026-10-02, третя сесія (аудит Higgsfield, новий стиль, план виробництва).
+**Фаза:** Prototype 0.2 грається на Mac. Наступне — [[2026-10-03-Production-Plan]] у новій сесії.
 
 ## Зараз важливо
 
-1. Santos: блок B2 в [[2026-10-02-Characters-Interview]] (флеш, невидимість, пасивка Choko, варіант гримуара) + 12 лиходіїв ∞8.
-2. Santos на Mac: Godot 4.7, `bash tools/fetch_assets.sh`, `make run` — перший плейтест кітів ([[08-Balance]] § «що міряти»).
-3. Аполлон: T-pose листи Choko/Skea для Meshy — **без генерації** до слова Santos (баланс 2.55 кредиту).
-4. Гефест (фаза 2): замінити капсульний риг на GLB-скелет, зберігши інтерфейс `RigAnimator` ([[Architecture]]).
+1. **R0 — головне правило:** перед відповіддю перевір факт у джерелі (конституція, CLAUDE.md, хук).
+2. Нова сесія виконує фазу 1 плану: SOLO-розкладка, «соковитий» звук, арена на воді, сильніші удари (0 кредитів).
+3. Фаза 2 — арт у стилі «Sketch-Cel» ([[Style-Guide]]), кожна партія Higgsfield лише зі слова Santos.
+4. Santos: 4 питання в плані; завантажити звукові бібліотеки в `~/Downloads/nir-audio/`.
+5. PR #3 (автоімпорт `make run`) і цей план — у гілці `claude/blissful-clarke-pj15rz`.
 
-## Що працює (виміряно `make check` 2026-10-02)
+## Що виміряно в цій сесії
 
-- `find game -name '*.gd' | wc -l` → 31 скрипт, усі парсяться.
-- Smoke 20/20: удари, TIME STOP (заморозка + удар по замороженому), RECORD → перемотка, гарпун, Sword Storm KO,
-  Flash Step крізь суперника (привиди, −1 заряд), Kunai Rain (Armor Break), Shadow Veil (невидимість), крит + bleed з вуалі,
-  Grimoire → регдол, вставання, KO, раунд 3.
-- Рендер під Mesa/llvmpipe: `docs/assets/screenshots/2026-10-02-kits-a.png`, `-kits-b.png`.
+- Higgsfield: Ultra, **6010 кредитів**, workspace `bf32c161-…` вибрано, історія порожня (інший акаунт), імпорт URL працює.
+- Ціни `get_cost`: gpt_image_2_5 high 2k 2.75 · nano_banana_pro 2 · flux_3_image 3 · decompose 2 · 3D+риг 35 · 3D+кліп 38.
+- SFX/музика Higgsfield — заборонені для окремого аудіо; Texture Tile Factory — відсутній.
+- Гра: `make check` зелений на попередньому коміті (smoke 20/20); свіжий клон тепер імпортується автоматично (PR #3).
 
 ## Відкрите / ризики
 
-- Фони й картка Choko не в репо (CDN закритий для контейнера) — `tools/fetch_assets.sh` локально. Картка Skea — у репо.
-- Усі числа бою — PLACEHOLDER; регдол і риг — капсульні.
-- Консолі — W4 Consoles (~$2k/рік Starter) + статус розробника Sony/MS.
+- Усі числа бою — PLACEHOLDER; риг капсульний; арт ще в старому аніме-стилі.
+- Звукові сайти й CDN закриті для хмари — завантаження на Mac.
+- Консолі — W4 Consoles + статус розробника.
 
 ## Related
-- [[index]] · [[constitution]] · [[Roadmap]] · [[2026-10-02-Skea-Kit-and-Balance]] · [[2026-10-02-Kickoff]]
+- [[index]] · [[constitution]] · [[2026-10-03-Production-Plan]] · [[2026-10-02-Art-Direction-and-Pipeline]] · [[Roadmap]]
