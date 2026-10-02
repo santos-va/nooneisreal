@@ -6,6 +6,8 @@ var _buttons: Array[Button] = []
 var _p1_btn: Button
 var _p2_btn: Button
 var _stage_btn: Button
+var _card1: TextureRect
+var _card2: TextureRect
 
 
 func _ready() -> void:
@@ -58,6 +60,10 @@ func _ready() -> void:
 	_add(center, "QUIT", func(): get_tree().quit())
 	for b in [_p1_btn, _p2_btn, _stage_btn]:
 		b.gui_input.connect(_cycle_input.bind(b))
+	_card1 = _card_rect(Vector2(24, 470))
+	_card2 = _card_rect(Vector2(-504, 470))
+	_card2.anchor_left = 1.0
+	_card2.anchor_right = 1.0
 	_refresh()
 	_buttons[0].grab_focus()
 	var foot := Label.new()
@@ -109,6 +115,26 @@ func _refresh() -> void:
 	_p1_btn.text = "P1:  ◂ %s ▸" % (c1.display_name if c1 else GameState.p1_character)
 	_p2_btn.text = "P2:  ◂ %s ▸" % (c2.display_name if c2 else GameState.p2_character)
 	_stage_btn.text = "STAGE:  ◂ %s ▸" % GameState.stage().name
+	if _card1:
+		_card1.texture = _card_tex(c1)
+		_card2.texture = _card_tex(c2)
+
+
+func _card_rect(pos: Vector2) -> TextureRect:
+	var t := TextureRect.new()
+	t.position = pos
+	t.size = Vector2(480, 272)
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(t)
+	return t
+
+
+func _card_tex(c: CharacterData) -> Texture2D:
+	if c != null and c.card_path != "" and ResourceLoader.exists(c.card_path):
+		return load(c.card_path) as Texture2D
+	return null
 
 
 func _go() -> void:

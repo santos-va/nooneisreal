@@ -14,7 +14,7 @@
 
 - `docs/Meetings/YYYY-MM-DD-*.md` — журнал кожного обговорення.
 - `docs/World/` ([[Kronshift]], фракції, географія) і `docs/Characters/` ([[Choko]],
-  [[Skeasse]], далі).
+  [[Skea]], далі).
 - [[Glossary]] — терміни проєкту й лору; [[index]] — головна сторінка вікі.
 - `## Related` і навігація на **всіх** сторінках `docs/` — ти єдина, кому дозволено
   правити чужу сторінку заради посилань, і тільки заради них.
@@ -67,4 +67,4 @@ bash tools/gates/run_gates.sh             # повна батарея
 - Сторінка потребує числа або джерела → Архімед.
 
 ## Related
-- [[index]] · [[Glossary]] · [[Kronshift]] · [[Choko]] · [[Skeasse]] · [[constitution]]
+- [[index]] · [[Glossary]] · [[Kronshift]] · [[Choko]] · [[Skea]] · [[constitution]]

@@ -15,7 +15,7 @@ func _ready() -> void:
 			_dir = a.trim_prefix("--screenshot=")
 	GameState.p2_is_cpu = true
 	GameState.p1_character = "choko"
-	GameState.p2_character = "skeasse"
+	GameState.p2_character = "skea"
 	GameState.stage_index = 0
 	get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
 

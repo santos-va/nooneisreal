@@ -2,7 +2,7 @@
 
 ## Зараз (Prototype 0.1)
 
-14 WAV-плейсхолдерів синтезовано ffmpeg (lavfi: шум + синуси + огинаючі) у
+22 WAV-плейсхолдери (14 — кікоф, 8 — кіти 2026-10-02) синтезовано ffmpeg (lavfi: шум + синуси + огинаючі) у
 `game/assets/audio/sfx/`; авторство — проєкт, ліцензія CC0. Усі в [[Textures-Registry]].
 Відтворення — автолоад `Sfx` (пул 12 голосів, джитер pitch ±8 %). Відсутній файл = тиша, не краш.
 
@@ -13,6 +13,8 @@
 | whoosh | старт активних кадрів, деш |
 | grapple_fire / grapple_hit / grapple_release / grapple_denied | гарпун |
 | ko · round_start · ultimate · land · ui_move · ui_confirm | решта |
+| flash · kunai · smoke · book · crit | Skea |
+| rewind · time_stop · sword | Choko |
 
 ## Напрям
 

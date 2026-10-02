@@ -14,9 +14,10 @@ game/
   scripts/grapple/         GrappleHook
   scripts/arena/           Arena · FightCamera · Backdrop · MatchFlow
   scripts/ui/              Hud · MainMenu
-  scripts/fx/              HitSpark
+  scripts/fx/              HitSpark · Fx · Afterimage · SmearShards · SmokeCloud · WeakMarks
+  scripts/skills/          SkillHit · KunaiRain · TimeStopFx · RecordMarker · SwordStormFx · GrimoireFx
   shaders/                 toon · outline · backdrop · backdrop_fallback
-  data/characters/*.tres   Choko, Skeasse (MoveData як саб-ресурси)
+  data/characters/*.tres   Choko, Skea (MoveData як саб-ресурси)
   assets/                  audio/sfx (є) · backgrounds, characters/cards (fetch_assets.sh)
 ```
 

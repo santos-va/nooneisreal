@@ -22,6 +22,15 @@
 | sfx-ui-confirm | `game/assets/audio/sfx/ui_confirm.wav` | ffmpeg: 660→1046 Hz | проєкт | CC0 | підтвердження в меню |
 | sfx-ultimate | `game/assets/audio/sfx/ultimate.wav` | ffmpeg: sweep 180→1080 Hz + 55 Hz | проєкт | CC0 | старт ультимейту |
 | sfx-land | `game/assets/audio/sfx/land.wav` | ffmpeg: brown noise lowpass 500 | проєкт | CC0 | приземлення |
+| sfx-flash | `game/assets/audio/sfx/flash.wav` | ffmpeg: chirp 300→5500 Hz + white noise highpass | проєкт, 2026-10-02 | CC0 | Flash Step Skea |
+| sfx-kunai | `game/assets/audio/sfx/kunai.wav` | ffmpeg: 3.2/4.7/2.1 kHz metallic decay | проєкт | CC0 | Kunai Rain (кидок і тіки) |
+| sfx-smoke | `game/assets/audio/sfx/smoke.wav` | ffmpeg: pink noise bandpass 1.8 kHz, 0.9 s | проєкт | CC0 | Shadow Veil |
+| sfx-rewind | `game/assets/audio/sfx/rewind.wav` | ffmpeg: зворотні свіпи 1500→200 Hz | проєкт | CC0 | RECORD: маркер і перемотка |
+| sfx-time-stop | `game/assets/audio/sfx/time_stop.wav` | ffmpeg: 80 Hz удар + дзвін 1320/1980 Hz | проєкт | CC0 | TIME STOP, Chrono Guard |
+| sfx-crit | `game/assets/audio/sfx/crit.wav` | ffmpeg: 2.6/3.9/5.2 kHz дзвін | проєкт | CC0 | крит по слабкій точці |
+| sfx-sword | `game/assets/audio/sfx/sword.wav` | ffmpeg: свіп 4.2 kHz + 6.1 kHz «шінг» | проєкт | CC0 | Sword Storm |
+| sfx-book | `game/assets/audio/sfx/book.wav` | ffmpeg: 55/82.5/110 Hz дрон | проєкт | CC0 | Cursed Grimoire |
+| card-skea-v1 | `game/assets/characters/cards/card_skea_v1.jpg` | надіслав Santos у чаті 2026-10-02 (1500×848 JPEG; згенеровано в Higgsfield, оригінальна URL невідома) | Santos / Higgsfield | Higgsfield ToS (підтвердити, Архімед) | картка Skea в меню; референс для 3D |
 
 Іконка проєкту `game/icon.svg` — намальована в сесії (SVG, CC0), поза `game/assets/`.
 
@@ -37,7 +46,6 @@
 | weapon-choko-main | → `characters/cards/weapon_choko_main_sword.png` | `hf_20261002_111511_9652a5b1-…png` | [[Prompts]] § Зброя | те саме | референс меча для 3D |
 | weapons-choko-ult | → `characters/cards/weapons_choko_ultimate.png` | `hf_20261002_102352_f00d0272-…png` | [[Prompts]] § Зброя | те саме | референс ульт-мечів |
 | hands-choko | → `characters/cards/hands_choko.png` | `hf_20261002_110646_b776f4f8-…png` | [[Prompts]] § Руки | те саме | референс рук/рукавичок |
-| card-skeasse | → `characters/cards/card_skeasse_v1.png` | **URL невідома** (у брифі продубльовано URL Choko) | — | — | портрет Skeasse |
 
 ## Related
 - [[Style-Guide]] · [[Backgrounds]] · [[Prompts]] · [[07-Audio]] · [[constitution]]

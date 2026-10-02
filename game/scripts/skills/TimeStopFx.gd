@@ -1,0 +1,74 @@
+class_name TimeStopFx
+extends Node3D
+## Choko S2 «Стоп-час»: a chrono pulse. The opponent inside RADIUS is frozen (Fighter.freeze),
+## enemy skill effects inside it pause, the world goes grey-blue. Hits on a frozen fighter deal
+## 70 % and their knockback is stored and released when time resumes.
+
+const RADIUS := 4.2
+
+var owner_f: Fighter
+var duration: int = 72
+var _f: int = 0
+var _sphere_mat: StandardMaterial3D
+var _sphere: MeshInstance3D
+var _rect: ColorRect
+
+
+static func spawn(f: Fighter, frames: int) -> TimeStopFx:
+	var t := TimeStopFx.new()
+	t.owner_f = f
+	t.duration = frames
+	Fx.root(f).add_child(t)
+	t.global_position = f.global_position + Vector3(0, 1.0, 0)
+	return t
+
+
+## Is `pos` inside a time-stop field that was NOT cast by `caster`?
+static func freezes(pos: Vector3, caster: Node) -> bool:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		return false
+	for n in tree.get_nodes_in_group("time_stop_fields"):
+		var t := n as TimeStopFx
+		if t != null and t.owner_f != caster and t.global_position.distance_to(pos + Vector3(0, 1.0, 0)) <= RADIUS:
+			return true
+	return false
+
+
+func _ready() -> void:
+	add_to_group("time_stop_fields")
+	_sphere_mat = Fx.mat(Color(0.6, 0.75, 1.0, 0.16), true)
+	var sm := SphereMesh.new()
+	sm.radius = RADIUS
+	sm.height = RADIUS * 2.0
+	_sphere = Fx.mesh(sm, _sphere_mat)
+	_sphere.scale = Vector3.ONE * 0.1
+	add_child(_sphere)
+	var layer := CanvasLayer.new()
+	layer.layer = 2
+	add_child(layer)
+	_rect = ColorRect.new()
+	_rect.color = Color(0.5, 0.6, 0.8, 0.0)
+	_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(_rect)
+	Sfx.play("time_stop")
+	var v := owner_f.opponent
+	if v != null:
+		var d := v.global_position - owner_f.global_position
+		if absf(d.x) <= RADIUS and absf(d.y) < 3.0:
+			v.freeze(duration)
+
+
+func _physics_process(_delta: float) -> void:
+	if owner_f == null or not is_instance_valid(owner_f):
+		queue_free()
+		return
+	_f += 1
+	var grow := minf(1.0, float(_f) / 8.0)
+	_sphere.scale = Vector3.ONE * grow
+	var fade := 1.0 - clampf(float(_f - duration + 10) / 10.0, 0.0, 1.0)
+	_sphere_mat.albedo_color.a = 0.16 * fade
+	_rect.color.a = 0.22 * fade * grow
+	if _f >= duration:
+		queue_free()

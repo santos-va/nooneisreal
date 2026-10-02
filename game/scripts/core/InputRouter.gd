@@ -87,3 +87,10 @@ func v_set(player: int, action: String, down: bool) -> void:
 func v_clear(player: int) -> void:
 	for a in ACTIONS:
 		_virtual_held[action_name(player, a)] = false
+
+
+## Non-consuming: was the action pressed within the last `window` frames? (perfect block etc.)
+func pressed_within(player: int, action: String, window: int) -> bool:
+	var n := action_name(player, action)
+	var at: int = maxi(int(_pressed_at.get(n, -999)), int(_virtual_just.get(n, -999)))
+	return at >= 0 and _frame - at <= window

@@ -19,6 +19,8 @@ var _meter: Dictionary = {}
 var _pips: Dictionary = {}
 var _charges: Dictionary = {}
 var _cool: Dictionary = {}
+var _dash: Dictionary = {}
+var _status: Dictionary = {}
 var _names: Dictionary = {}
 var _timer: Label
 var _announce: Label
@@ -41,10 +43,13 @@ func bind(a: Fighter, b: Fighter, f: MatchFlow) -> void:
 		pl.meter_changed.connect(func(m: float, mx: float): _on_meter(idx, m, mx))
 		pl.grapple_changed.connect(func(c: int, cd: float, mc: int): _on_grapple(idx, c, cd, mc))
 		pl.cooldowns_changed.connect(func(cd: Dictionary): _on_cooldowns(idx, cd))
+		pl.dash_changed.connect(func(c: int, r: float, mc: int): _on_dash(idx, c, r, mc))
+		pl.status_changed.connect(func(t: String): (_status[idx] as Label).text = t)
 		_on_hp(idx, pl.hp, pl.data.max_hp)
 		_on_meter(idx, pl.meter, Fighter.MAX_METER)
 		_on_grapple(idx, pl.grapple.charges, pl.grapple.cooldown_left, pl.grapple.max_charges)
 		_on_cooldowns(idx, pl.cooldowns)
+		_on_dash(idx, pl.dash_charges_left, 0.0, pl.data.dash_charges)
 	flow.announce.connect(_on_announce)
 	flow.timer_changed.connect(_on_timer)
 	flow.round_won.connect(_on_round_won)
@@ -196,6 +201,29 @@ func _player_panel(f: Fighter, mirrored: bool) -> Control:
 		res.add_child(charges)
 		res.add_child(cool)
 	box.add_child(res)
+	# second resource row: signature-movement charges (Skea's flash) + status effects
+	var row2 := HBoxContainer.new()
+	row2.add_theme_constant_override("separation", 8)
+	var dash := HBoxContainer.new()
+	dash.add_theme_constant_override("separation", 3)
+	_dash[idx] = []
+	for i in f.data.dash_charges:
+		var d := ColorRect.new()
+		d.custom_minimum_size = Vector2(22, 7)
+		d.color = f.data.vfx_primary
+		dash.add_child(d)
+		_dash[idx].append(d)
+	var st := _label("", FONT_SMALL, HORIZONTAL_ALIGNMENT_RIGHT if mirrored else HORIZONTAL_ALIGNMENT_LEFT)
+	st.add_theme_color_override("font_color", f.data.vfx_primary.lightened(0.35))
+	st.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status[idx] = st
+	if mirrored:
+		row2.add_child(st)
+		row2.add_child(dash)
+	else:
+		row2.add_child(dash)
+		row2.add_child(st)
+	box.add_child(row2)
 	return box
 
 
@@ -254,7 +282,7 @@ func _overlay() -> PanelContainer:
 
 func _hint_text() -> String:
 	if GameState.p2_is_cpu:
-		return "P1  A/D move · W/Space jump · S crouch · F light · G heavy · LShift guard · Q/E skills · R grapple (S+R = pull enemy) · C dash · V ultimate   |   Tab hitboxes · Esc pause"
+		return "P1  A/D move · W/Space jump · S crouch · F light · G heavy · LShift guard · Q/E skills · R grapple (S+R pull) · C dash/flash · V ultimate   |   Tab hitboxes · Esc pause"
 	return "P1  A/D · W · F light · G heavy · LShift guard · Q/E · R grapple · C dash · V ult        P2  ←/→ · ↑ · K light · L heavy · RShift guard · ; ' · I grapple · . dash · , ult"
 
 
@@ -290,6 +318,13 @@ func _on_cooldowns(idx: int, cd: Dictionary) -> void:
 	var t1 := "✓" if s1 <= 0.0 else "%.1f" % s1
 	var t2 := "✓" if s2 <= 0.0 else "%.1f" % s2
 	(_cool[idx] as Label).text = "S1 %s  S2 %s" % [t1, t2]
+
+
+func _on_dash(idx: int, c: int, r: float, _mc: int) -> void:
+	var pips: Array = _dash[idx]
+	var col: Color = (p1 if idx == 1 else p2).data.vfx_primary
+	for i in pips.size():
+		(pips[i] as ColorRect).color = col if i < c else (col.darkened(0.6) if r > 0.0 else Color(0.22, 0.2, 0.26))
 
 
 func _on_timer(t: int) -> void:

@@ -37,6 +37,16 @@ extends Resource
 @export var ultimate: MoveData
 @export var throw_move: MoveData
 
+@export_group("Signature movement (dash slot)")
+@export var dash_style: String = "dash"           # dash | flash (Skea: short blink through the opponent)
+@export var dash_charges: int = 0                 # 0 = unlimited
+@export var dash_recharge: float = 4.5            # seconds after the last use until all charges return
+@export var flash_distance: float = 3.6
+
+@export_group("VFX palette")
+@export var vfx_primary: Color = Color(0.2, 0.9, 0.55)
+@export var vfx_secondary: Color = Color(0.55, 0.75, 1.0)
+
 @export_group("Grapple")
 @export var grapple_charges: int = 3
 @export var grapple_cooldown: float = 3.0

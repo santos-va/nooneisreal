@@ -7,7 +7,7 @@
 1. **Лист T-pose** з картки в Higgsfield (Nano Banana Pro / FLUX 3 Image, мультиреференс): одна
    фігура, білий фон, без тіні, T/A-pose, кінцівки окремо від тулуба, 3/4 ізометрія для 3D-референсу.
    Промпт за скілом `higgsfield-game-art` (slot-архітектура, anime-2d пресет).
-2. **VRoid Studio** (безкоштовно, Mac): зібрати Choko/Skeasse за листом, намалювати текстури
+2. **VRoid Studio** (безкоштовно, Mac): зібрати Choko/Skea за листом, намалювати текстури
    одягу з картки → VRM 1.0 (Reduce Polygons/Materials/Bones). Імпорт `godot-vrm` (MToon = cel
    одразу), outline з `godot4-cel-shader`.
 3. **Анімації (CC0/безкоштовно):** Quaternius Universal Animation Library (GLB), KayKit Adventurers

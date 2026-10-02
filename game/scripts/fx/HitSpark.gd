@@ -9,10 +9,14 @@ var _light: OmniLight3D
 var _base_scale: float = 1.0
 
 
-func setup(blocked: bool, color: Color, damage: float) -> void:
+func setup(blocked: bool, color: Color, damage: float, crit: bool = false) -> void:
 	_dur = 0.14 if blocked else clampf(0.14 + damage / 900.0, 0.16, 0.34)
 	_base_scale = 0.6 if blocked else clampf(0.9 + damage / 160.0, 0.9, 2.4)
 	var c := Color(0.75, 0.9, 1.0) if blocked else color.lightened(0.35)
+	if crit:
+		c = Color(0.85, 0.45, 1.0)
+		_base_scale *= 1.6
+		_dur *= 1.3
 	_quad = MeshInstance3D.new()
 	var qm := QuadMesh.new()
 	qm.size = Vector2(1.0, 1.0)
