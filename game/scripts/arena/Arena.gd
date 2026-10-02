@@ -47,11 +47,12 @@ func _spawn(idx: int, char_id: String, x: float, face: int, cpu: bool) -> Fighte
 
 
 func _on_hit(attacker: Fighter, victim: Fighter, move: MoveData, blocked: bool) -> void:
-	camera.shake(0.06 if blocked else clampf(move.damage / 420.0, 0.1, 0.5))
+	var crit := victim.last_hit_crit
+	camera.shake(0.06 if blocked else clampf(move.damage / 420.0 + (0.15 if crit else 0.0), 0.1, 0.6))
 	var spark := HitSpark.new()
 	fx_root.add_child(spark)
 	spark.global_position = victim.global_position + Vector3(0.0, 1.15, 0.35)
-	spark.setup(blocked, attacker.data.accent_color, move.damage)
+	spark.setup(blocked, attacker.data.accent_color, move.damage, crit)
 
 
 func _on_ko(_f: Fighter) -> void:

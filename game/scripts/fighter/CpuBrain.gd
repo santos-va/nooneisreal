@@ -15,6 +15,13 @@ func _ready() -> void:
 	_rng.seed = 1337 + (fighter.player_index if fighter else 0)
 
 
+func _in_smoke() -> bool:
+	for n in fighter.get_tree().get_nodes_in_group("smoke"):
+		if n is SmokeCloud and (n as SmokeCloud).covers(fighter.global_position):
+			return true
+	return false
+
+
 func _physics_process(_delta: float) -> void:
 	if fighter == null:
 		return
@@ -43,6 +50,10 @@ func _physics_process(_delta: float) -> void:
 	InputRouter.v_release(p, "right")
 	InputRouter.v_release(p, "crouch")
 	if not fighter.is_actionable() and fighter.state != Fighter.State.JUMP:
+		return
+	# Shadow Veil / smoke: the CPU loses track and wanders
+	if o.veil_frames > 0 or _in_smoke():
+		InputRouter.v_set(p, toward if _rng.randf() < 0.5 else away, true)
 		return
 	# defend when the opponent swings in range
 	if o.state == Fighter.State.ATTACK and dist < 2.8 and _rng.randf() < 0.5 * difficulty:

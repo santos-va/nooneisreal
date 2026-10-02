@@ -33,7 +33,7 @@
 
 ## Рамка бійця
 
-На кожного бійця (перші двоє — [[Choko]] і [[Skeasse]]) ти ведеш картку:
+На кожного бійця (перші двоє — [[Choko]] і [[Skea]]) ти ведеш картку:
 
 | поле | що там |
 |---|---|
@@ -70,4 +70,4 @@
   віддати.
 
 ## Related
-- [[02-Combat-System]] · [[03-Skills-Framework]] · [[05-Platforms-Input]] · [[Choko]] · [[Skeasse]] · [[constitution]]
+- [[02-Combat-System]] · [[03-Skills-Framework]] · [[05-Platforms-Input]] · [[Choko]] · [[Skea]] · [[constitution]]

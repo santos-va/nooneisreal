@@ -11,10 +11,14 @@ uniform vec4 shadow_tint : source_color = vec4(0.25, 0.3, 0.45, 1.0);
 uniform float rim_strength : hint_range(0.0, 1.0) = 0.3;
 uniform float rim_width : hint_range(0.0, 1.0) = 0.55;
 uniform float hit_flash : hint_range(0.0, 1.0) = 0.0;
+uniform float desat : hint_range(0.0, 1.0) = 0.0;   // TIME STOP: grey-blue frozen look
 
 void fragment() {
 	vec4 tex = texture(albedo_tex, UV);
-	ALBEDO = mix(albedo.rgb * tex.rgb, vec3(1.0), hit_flash);
+	vec3 base = albedo.rgb * tex.rgb;
+	float g = dot(base, vec3(0.3, 0.59, 0.11));
+	base = mix(base, vec3(g) * vec3(0.72, 0.84, 1.08), desat);
+	ALBEDO = mix(base, vec3(1.0), hit_flash);
 	ROUGHNESS = 1.0;
 	METALLIC = 0.0;
 }

@@ -81,6 +81,38 @@ func setup(data: CharacterData) -> void:
 			fan.position = Vector3(0.0, -0.4, 0)
 			fan.rotation = Vector3(0, 0, PI / 2)
 			(parts[side]["pivot"] as Node3D).add_child(fan)
+	elif data.weapon_kind == "kunai":
+		# three kunai in a knuckle grip on the right fist (card panel 2)
+		var steel := _mat(Color(0.2, 0.19, 0.24))
+		for k in 3:
+			var kn := MeshInstance3D.new()
+			var pm := PrismMesh.new()
+			pm.size = Vector3(0.07, 0.24, 0.03)
+			kn.mesh = pm
+			kn.material_override = steel
+			kn.position = Vector3(0.05, -0.36, -0.06 + 0.06 * k)
+			kn.rotation = Vector3(0, 0, PI * 0.5)
+			(parts["forearm_r"]["pivot"] as Node3D).add_child(kn)
+		# backpack with the glowing ∞8 sigil
+		var pack := MeshInstance3D.new()
+		var pb := BoxMesh.new()
+		pb.size = Vector3(0.16, 0.36, 0.3)
+		pack.mesh = pb
+		pack.material_override = _mat(Color(0.2, 0.14, 0.24))
+		pack.position = Vector3(-0.25, 0.28, 0)
+		(parts["torso"]["pivot"] as Node3D).add_child(pack)
+		var sig := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.04
+		tm.outer_radius = 0.065
+		sig.mesh = tm
+		var gm := StandardMaterial3D.new()
+		gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		gm.albedo_color = data.accent_color
+		sig.material_override = gm
+		sig.position = Vector3(-0.34, 0.3, 0)
+		sig.rotation = Vector3(0, 0, PI * 0.5)
+		(parts["torso"]["pivot"] as Node3D).add_child(sig)
 	for n in parts.keys():
 		pose[n] = Vector3.ZERO
 		target_pose[n] = Vector3.ZERO
@@ -136,6 +168,11 @@ func part_snapshot() -> Array:
 			"color": mat.get_shader_parameter("albedo") if mat else Color.WHITE,
 		})
 	return out
+
+
+func set_frozen_tint(v: float) -> void:
+	for m in materials:
+		m.set_shader_parameter("desat", v)
 
 
 func flash() -> void:
@@ -219,6 +256,15 @@ func _compute_target(f: Fighter, delta: float) -> void:
 			_pose_set("upper_arm_l", Vector3(0, 0, 2.3))
 			_pose_set("upper_arm_r", Vector3(0, 0, 1.0))
 			_pose_set("forearm_r", Vector3(0, 0, 0.8))
+		Fighter.State.DASH when f.flashing:
+			_pose_set("torso", Vector3(0, 0, 0.75))
+			_pose_set("head", Vector3(0, 0, -0.45))
+			_pose_set("upper_arm_l", Vector3(0, 0, -1.3))
+			_pose_set("upper_arm_r", Vector3(0, 0, -1.4))
+			_pose_set("thigh_l", Vector3(0, 0, 1.1))
+			_pose_set("thigh_r", Vector3(0, 0, -0.9))
+			_pose_set("shin_r", Vector3(0, 0, -1.2))
+			target_root_offset = Vector3(0, -0.15, 0)
 		Fighter.State.DASH:
 			_pose_set("torso", Vector3(0, 0, 0.45))
 			_pose_set("head", Vector3(0, 0, -0.25))
@@ -320,8 +366,8 @@ func _attack_pose(f: Fighter) -> void:
 		ext = 1.0 - clampf(phase - 2.0, 0.0, 1.0)
 	_guard(0.0)
 	var anim := m.anim
-	if anim == "light" and f.chain_index % 2 == 1:
-		anim = "light2"
+	if f.chain_index % 2 == 1 and m.anim_chain != "":
+		anim = m.anim_chain
 	match anim:
 		"light":
 			_pose_set("upper_arm_r", Vector3(0, 0, lerpf(0.95, 1.6, ext)))
@@ -376,6 +422,63 @@ func _attack_pose(f: Fighter) -> void:
 			_pose_set("shin_l", Vector3(0, 0, -0.8 * ext))
 			_pose_set("shin_r", Vector3(0, 0, -0.8 * ext))
 			target_root_offset = Vector3(0, -0.25 * ext, 0)
+		"elbow":
+			_pose_set("upper_arm_r", Vector3(0, lerpf(0.0, -0.6, ext), lerpf(0.95, 1.9, ext)))
+			_pose_set("forearm_r", Vector3(0, 0, lerpf(1.15, 2.4, ext)))
+			_pose_set("torso", Vector3(0, lerpf(0.0, -0.5, ext), 0.15 * ext))
+			_pose_set("thigh_l", Vector3(0, 0, 0.3 * ext))
+		"roundhouse":
+			spin = ext * 0.7
+			_pose_set("thigh_r", Vector3(0, 0, lerpf(-0.15, 1.7, ext)))
+			_pose_set("shin_r", Vector3(0, 0, lerpf(-0.3, -0.05, ext)))
+			_pose_set("torso", Vector3(0, 0, lerpf(0.06, -0.4, ext)))
+			_pose_set("upper_arm_l", Vector3(0, 0, lerpf(0.75, 2.0, ext)))
+			_pose_set("upper_arm_r", Vector3(0, 0, lerpf(0.95, -0.8, ext)))
+		"low_kick":
+			_crouch_t(0.3)
+			_pose_set("thigh_r", Vector3(0, 0, lerpf(-0.15, 0.85, ext)))
+			_pose_set("shin_r", Vector3(0, 0, lerpf(-0.3, -0.05, ext)))
+			_pose_set("torso", Vector3(0, 0, lerpf(0.2, -0.2, ext)))
+		"flying_knee":
+			_pose_set("thigh_r", Vector3(0, 0, lerpf(0.4, 1.9, ext)))
+			_pose_set("shin_r", Vector3(0, 0, lerpf(-0.8, -2.2, ext)))
+			_pose_set("thigh_l", Vector3(0, 0, -0.3))
+			_pose_set("upper_arm_l", Vector3(0, 0, 2.2 * ext))
+			_pose_set("upper_arm_r", Vector3(0, 0, 2.0 * ext))
+			_pose_set("forearm_l", Vector3(0, 0, 1.2))
+			_pose_set("forearm_r", Vector3(0, 0, 1.2))
+			_pose_set("torso", Vector3(0, 0, 0.25 * ext))
+		"toss":
+			_pose_set("upper_arm_r", Vector3(0, 0, lerpf(0.9, 3.0, ext)))
+			_pose_set("forearm_r", Vector3(0, 0, lerpf(1.2, 0.2, ext)))
+			_pose_set("torso", Vector3(0, 0, lerpf(0.06, -0.2, ext)))
+			_pose_set("head", Vector3(0, 0, -0.35 * ext))
+		"veil":
+			_crouch_t(0.6 * ext)
+			_pose_set("upper_arm_l", Vector3(0, 0, 1.8))
+			_pose_set("upper_arm_r", Vector3(0, 0, -0.4))
+			spin = ext * PI
+		"book":
+			_pose_set("upper_arm_l", Vector3(0, 0, lerpf(0.75, 1.35, ext)))
+			_pose_set("upper_arm_r", Vector3(0, 0, lerpf(0.95, 1.35, ext)))
+			_pose_set("forearm_l", Vector3(0, 0, 0.9))
+			_pose_set("forearm_r", Vector3(0, 0, 0.9))
+			_pose_set("torso", Vector3(0, 0, -0.15 * ext))
+			_pose_set("head", Vector3(0, 0, -0.35 * ext))
+			_pose_set("thigh_l", Vector3(0, 0, 0.3 * ext))
+			_pose_set("shin_l", Vector3(0, 0, -0.6 * ext))
+			target_root_offset = Vector3(0, 0.35 * ext, 0)
+		"watch":
+			_pose_set("upper_arm_l", Vector3(0, 0, lerpf(0.75, 1.55, ext)))
+			_pose_set("forearm_l", Vector3(0, 0, lerpf(1.35, 1.7, ext)))
+			_pose_set("head", Vector3(0, 0, -0.2 * ext))
+			_pose_set("upper_arm_r", Vector3(0, 0, lerpf(0.95, 0.3, ext)))
+		"sword_up":
+			_pose_set("upper_arm_r", Vector3(0, 0, lerpf(0.95, 3.0, ext)))
+			_pose_set("forearm_r", Vector3(0, 0, lerpf(1.15, 0.0, ext)))
+			_pose_set("upper_arm_l", Vector3(0, 0, -0.4 * ext))
+			_pose_set("torso", Vector3(0, 0, -0.25 * ext))
+			_pose_set("head", Vector3(0, 0, -0.3 * ext))
 		"throw":
 			_pose_set("upper_arm_l", Vector3(0, 0, 1.5))
 			_pose_set("upper_arm_r", Vector3(0, 0, 1.5))

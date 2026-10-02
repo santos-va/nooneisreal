@@ -9,6 +9,7 @@ enum Kind { NORMAL, SKILL, ULTIMATE, THROW }
 @export var display_name: String = "Light"
 @export var kind: Kind = Kind.NORMAL
 @export var anim: String = "light"            # pose family used by RigAnimator
+@export var anim_chain: String = ""           # alternate pose on odd chain hits (jab → elbow)
 @export var startup: int = 5
 @export var active: int = 3
 @export var recovery: int = 10
@@ -28,7 +29,12 @@ enum Kind { NORMAL, SKILL, ULTIMATE, THROW }
 @export var meter_cost: float = 0.0
 @export var cooldown: float = 0.0                     # seconds, skills only
 @export var forward_step: float = 0.0                 # metres moved forward during startup+active
-@export var effect: String = ""                       # "" | "freeze" (Choko TIME STOP) — see Fighter.receive_hit
+## Skill effect fired at the first active frame (damage = -1 → no hitbox of its own):
+##   record · time_stop · sword_storm · kunai_rain · shadow_veil · grimoire
+## On-hit effect for synthetic hits: armor_break · bleed · poison
+@export var effect: String = ""
+@export var can_crit: bool = true                     # Skea weak-point passive may crit this
+@export var ignore_scaling: bool = false              # ultimate hits skip combo scaling
 @export var cancel_tier: int = 0                      # 0 light, 1 heavy, 2 skill, 3 ultimate — can cancel into higher tier on hit
 @export var sfx_hit: String = "hit_light"
 @export var sfx_whiff: String = "whoosh"

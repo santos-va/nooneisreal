@@ -1,0 +1,194 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighter/CharacterData.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/fighter/MoveData.gd" id="2"]
+
+[sub_resource type="Resource" id="light"]
+script = ExtResource("2")
+id = "jab_elbow"
+display_name = "Jab → Elbow"
+kind = 0
+anim = "light"
+anim_chain = "elbow"
+startup = 4
+active = 3
+recovery = 8
+damage = 34.0
+hitstun = 13
+blockstun = 7
+hitstop = 3
+knockback = Vector2(2.8, 0)
+hitbox_offset = Vector3(0.9, 1.2, 0)
+hitbox_size = Vector3(1.1, 0.8, 1.0)
+meter_gain_hit = 7.0
+cancel_tier = 0
+sfx_hit = "hit_light"
+description = "PLACEHOLDER. Muay Thai string: jab, then a short elbow on the second press (high zone)."
+
+[sub_resource type="Resource" id="heavy"]
+script = ExtResource("2")
+id = "roundhouse"
+display_name = "Roundhouse"
+kind = 0
+anim = "roundhouse"
+startup = 11
+active = 4
+recovery = 18
+damage = 88.0
+chip_damage = 7.0
+hitstun = 20
+blockstun = 12
+hitstop = 7
+knockback = Vector2(6.0, 2.5)
+hitbox_offset = Vector3(1.15, 1.0, 0)
+hitbox_size = Vector3(1.7, 1.2, 1.0)
+meter_gain_hit = 11.0
+forward_step = 0.35
+cancel_tier = 1
+sfx_hit = "hit_heavy"
+description = "PLACEHOLDER. Muay Thai roundhouse with the shin (mid zone), hip twist."
+
+[sub_resource type="Resource" id="crouch_light"]
+script = ExtResource("2")
+id = "low_kick"
+display_name = "Low Kick"
+kind = 0
+anim = "low_kick"
+startup = 6
+active = 3
+recovery = 11
+damage = 32.0
+hitstun = 13
+blockstun = 8
+hitstop = 4
+knockback = Vector2(2.2, 0)
+hitbox_offset = Vector3(1.0, 0.45, 0)
+hitbox_size = Vector3(1.3, 0.6, 1.0)
+cancel_tier = 0
+sfx_hit = "hit_light"
+description = "PLACEHOLDER. Calf kick (low zone) — the dull shin-on-shin thud."
+
+[sub_resource type="Resource" id="air_light"]
+script = ExtResource("2")
+id = "flying_knee"
+display_name = "Flying Knee"
+kind = 0
+anim = "flying_knee"
+startup = 6
+active = 5
+recovery = 12
+damage = 58.0
+hitstun = 16
+blockstun = 9
+hitstop = 6
+knockback = Vector2(4.0, 1.0)
+hitbox_offset = Vector3(0.75, 1.3, 0)
+hitbox_size = Vector3(1.0, 1.0, 1.0)
+cancel_tier = 1
+sfx_hit = "hit_heavy"
+description = "PLACEHOLDER. Kao loi — jumping knee, best right out of a flash-step."
+
+[sub_resource type="Resource" id="skill1"]
+script = ExtResource("2")
+id = "kunai_rain"
+display_name = "KUNAI RAIN"
+kind = 1
+anim = "toss"
+startup = 10
+active = 4
+recovery = 16
+damage = -1.0
+effect = "kunai_rain"
+cooldown = 10.0
+cancel_tier = 2
+sfx_whiff = "kunai"
+description = "PLACEHOLDER. Tosses a bundle of kunai that rains on a 2.2 m circle at the opponent (max 7 m away): 8 ticks x 11, small hitstun, each tick applies Armor Break (4 s, exposes every weak point). Ticks never crit."
+
+[sub_resource type="Resource" id="skill2"]
+script = ExtResource("2")
+id = "shadow_veil"
+display_name = "SHADOW VEIL"
+kind = 1
+anim = "veil"
+startup = 6
+active = 4
+recovery = 6
+damage = -1.0
+effect = "shadow_veil"
+cooldown = 14.0
+cancel_tier = 2
+sfx_whiff = "smoke"
+description = "PLACEHOLDER. Smoke bomb: a 2 m cloud stays 3 s (blinds the CPU inside it); Skea is invisible for 3.5 s (only a faint shimmer) with +30 % speed. The first attack out of the veil is a guaranteed crit and applies Bleed (4 dmg / 20 f for 3 s)."
+
+[sub_resource type="Resource" id="ultimate"]
+script = ExtResource("2")
+id = "cursed_grimoire"
+display_name = "CURSED GRIMOIRE ∞8"
+kind = 2
+anim = "book"
+startup = 12
+active = 72
+recovery = 14
+damage = -1.0
+effect = "grimoire"
+meter_cost = 100.0
+cancel_tier = 3
+description = "PLACEHOLDER (variant B). The book opens, 12 pages orbit, three sealed villains strike within 3.6 m: page 3 Blood Grip 60, page 7 Cursed Burn 60, page 12 Shadow 90 (ragdoll + Poison). All weak points exposed during the ultimate, so every strike crits: 315 total."
+
+[sub_resource type="Resource" id="throw_move"]
+script = ExtResource("2")
+id = "hook_pull"
+display_name = "Hook Pull"
+kind = 3
+anim = "throw"
+startup = 8
+active = 2
+recovery = 14
+damage = 0.0
+hitstun = 22
+cancel_tier = 1
+sfx_hit = "grapple_hit"
+sfx_whiff = "grapple_fire"
+description = "Grapple verb 3: pull the enemy into clinch range (crouch + grapple)."
+
+[resource]
+script = ExtResource("1")
+id = "skea"
+display_name = "SKEA"
+tagline = "Manic grin, braces, kunai in a knuckle grip, the ∞8 grimoire on his back. Muay Thai + flash-steps. Glass cannon."
+max_hp = 900.0
+walk_speed = 6.2
+back_walk_speed = 4.8
+dash_speed = 15.0
+dash_frames = 11
+jump_velocity = 11.8
+air_control = 0.75
+weight = 0.9
+primary_color = Color(0.36, 0.18, 0.5, 1)
+secondary_color = Color(0.1, 0.09, 0.12, 1)
+accent_color = Color(0.74, 0.4, 1, 1)
+skin_color = Color(0.88, 0.72, 0.6, 1)
+hair_color = Color(0.3, 0.19, 0.12, 1)
+weapon_kind = "kunai"
+portrait_path = "res://assets/characters/cards/card_skea_v1.jpg"
+card_path = "res://assets/characters/cards/card_skea_v1.jpg"
+light = SubResource("light")
+heavy = SubResource("heavy")
+crouch_light = SubResource("crouch_light")
+air_light = SubResource("air_light")
+skill1 = SubResource("skill1")
+skill2 = SubResource("skill2")
+ultimate = SubResource("ultimate")
+throw_move = SubResource("throw_move")
+dash_style = "flash"
+dash_charges = 3
+dash_recharge = 4.5
+flash_distance = 3.6
+vfx_primary = Color(0.62, 0.3, 0.95, 1)
+vfx_secondary = Color(0.24, 0.48, 0.42, 1)
+grapple_charges = 3
+grapple_cooldown = 3.0
+grapple_regen_all_at_once = false
+grapple_range = 14.0
+passive_id = "weak_point"
+passive_description = "Weak Point Perception: every 2.5 s a pulsing mark appears on one of the opponent's zones (low/mid/high, max 2). A hit on a marked zone (or any zone under Armor Break) crits: x1.5 damage, x3 chip through block, +30 % speed for 1.5 s."

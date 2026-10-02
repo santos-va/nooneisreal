@@ -6,7 +6,7 @@ signal config_changed
 
 const CHARACTER_PATHS := {
 	"choko": "res://data/characters/choko.tres",
-	"skeasse": "res://data/characters/skeasse.tres",
+	"skea": "res://data/characters/skea.tres",
 }
 
 ## Stage registry. Textures are optional: when the file is missing (assets not fetched yet),
@@ -19,7 +19,7 @@ const STAGES := [
 ]
 
 var p1_character: String = "choko"
-var p2_character: String = "skeasse"
+var p2_character: String = "skea"
 var stage_index: int = 0
 var p2_is_cpu: bool = true
 var training_mode: bool = false

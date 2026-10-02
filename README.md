@@ -2,7 +2,7 @@
 
 3D cel-shaded аніме-файтинг на арені (візуал — Naruto Ultimate Ninja Storm, фізика — active ragdoll,
 мобільність — гарпун на зарядах) за мотивами власного аніме. Godot 4.7 · GDScript. Місто — Kronshift,
-перші бійці — Choko і Skeasse.
+перші бійці — Choko (контроль часу) і Skea (Muay Thai, флеш-ривки, тіні).
 
 **Вікі:** [docs/index.md](docs/index.md) · **поточна правда:** [docs/system/state.md](docs/system/state.md) ·
 **закон:** [docs/system/constitution.md](docs/system/constitution.md) · **ролі агентів:** `roles/` (`make roles`).
@@ -18,7 +18,7 @@ GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot make run
 ```
 
 P1: `A/D` рух · `W`/`Space` стрибок · `S` присід · `F` легкий · `G` важкий · `LShift` блок · `Q`/`E` скіли ·
-`R` гарпун (`S+R` — підтягнути ворога) · `C` деш · `V` ультимейт. P2: стрілки · `K`/`L` · `RShift` · `;`/`'` · `I` · `.` · `,`.
+`R` гарпун (`S+R` — підтягнути ворога) · `C` деш (у Skea — Flash Step ×3) · `V` ультимейт. P2: стрілки · `K`/`L` · `RShift` · `;`/`'` · `I` · `.` · `,`.
 Геймпади: device 0 → P1, device 1 → P2. `Tab` — хітбокси, `Esc` — пауза.
 
 ## Структура
@@ -32,7 +32,7 @@ P1: `A/D` рух · `W`/`Space` стрибок · `S` присід · `F` лег
 
 ## Перевірки
 
-`make check` — `godot --headless --import` → парс усіх `.gd` → smoke-тест (`-- --smoke`, 11 перевірок бою).
+`make check` — `godot --headless --import` → парс усіх `.gd` → smoke-тест (`-- --smoke`, 20 перевірок обох кітів; `--shots=DIR` знімає кадри під рендером).
 `make gates` — wikilinks, реєстр ассетів, парність ролей. Обидва зелені = «готово».
 
 ## Статус
