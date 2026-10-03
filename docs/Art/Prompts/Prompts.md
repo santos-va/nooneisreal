@@ -27,6 +27,8 @@
 
 ## Фони (Cronshift)
 
+**VFX-аркуші (спринт, смуга D):** 11 флипбуків 4×4 + стікер RECORD, тест одного кліпу Kling, кошторис — [[VFX-Sheets-Prompts]].
+
 **Арени 360° (спринт, смуга C):** три арени × 4 картки N/E/S/W × день/ніч, текстури підлоги, пропи, кошторис — [[Arenas-360-Prompts]].
 
 Формула: «muted dusk palette of terracotta, dusty orange, slate blue and deep teal shadows, worn

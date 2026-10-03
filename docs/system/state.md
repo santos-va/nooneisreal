@@ -13,7 +13,7 @@
 | **T2·A** (t2) | A — тверда арена | A1: фон у 3D не крутиться з камерою (`Backdrop.gd:56-58`), 360° оточення; A2: `river`/`bazaar`/`fountain` × день/ніч; A3: ліхтарі-якорі зі світлом | `game/scripts/arena/*`, `GameState.gd` `STAGES`, `game/shaders/backdrop*` |
 | **T2·B** (новий або T2·Mac) | B — VFX у грі | сліди руху, дим, ефекти Choko, електро — процедурно, потім флипбуки від D | нові `game/scripts/fx/*`, `game/shaders/*`, виклики в `skills/*Fx.gd` |
 | **T6·A** (t6) | C — арт арен | промпти + `get_cost`: 3 арени × день/ніч у Sketch-Cel, 360°, текстури підлоги, пропи; потім меню M2 | `game/assets/backgrounds/`, `game/assets/textures/`, реєстр |
-| **T6·B** (новий) | D — VFX-арт | промпти + `get_cost`: флипбуки диму, слідів, іскор, електро, гліфи Choko; тест 1 кліпу Kling | `game/assets/vfx/`, [[VFX-Direction]], реєстр |
+| **T6·B** (новий) | D — VFX-арт | **промпти + `get_cost` готові** ([[VFX-Sheets-Prompts]], [[2026-10-03-Apollon-Sprint-D-Prompts]]): 11 флипбуків 4×4 + стікер RECORD, тест Kling; пакет 76.25 кр. (D1 21.25 → «стиль так» → D2 55), 0 витрачено — **чекає слова Santos** | `game/assets/vfx/`, [[VFX-Direction]], реєстр |
 | **T3** (t3) | E — R11 | 360° фон у Godot 4.7, бібліотеки текстур під наш стиль (ліцензії), що вміє Higgsfield — ≤ 45 хв; потім R10 і частина A | `docs/Research/2026-10-03-Arena-360-Textures.md` |
 | **T5** Арес | F | **зроблено** ([[2026-10-03-Ares-Lane-F]]): RED п. 3 → 0.68; якорі/укриття `bazaar` 16 / `fountain` 17; В-1 втома — далі Гефест | [[02-Combat-System]], [[04-Grapple-System]] |
 | **T8** Гермес | G | вибір арени й DAY/NIGHT у меню; контраст HUD | [[06-UI-UX]] |
