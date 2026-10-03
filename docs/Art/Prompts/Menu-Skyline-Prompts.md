@@ -383,5 +383,114 @@ S-1 `dcdef91d`, N-5 `ab80973c`, N-6 `d2ac65b6`, S-5 `36ace5cf`. Чи модел�
 | X-2 | C4 `choko-tpose-back-v5` | `da24265e-c6d6-4dfd-8530-2bb49772b3ed` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_da24265e-c6d6-4dfd-8530-2bb49772b3ed.png | **переробити** — «полоски по центру не повинно бути» |
 | X-3 | C4 `choko-tpose-34-v5` | `5b045b7a-b48f-4014-a7e7-011d60f2d5e8` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_5b045b7a-b48f-4014-a7e7-011d60f2d5e8.png | **так** (Santos, дошка) |
 
+### Choko v5 — переробка T-поз (2026-10-03, #38)
+
+Слово Santos: «так, генеруй» на X-1 (бік, «стиснутий») і X-2 (спина, смуга по центру), по одній, 5.5 кр.; і **«прибери з 3D моделі меч, має бути
+чистий персонаж»**. Промпт — [[Prompt-Library]] § 15a + рядки переробки, IDENTITY **без меча**, «Clean character only: no sword, no scabbard…».
+Референси: X-0 `b529a3bd`, куртка N-2 `a2bf79a1`, кросівки V-1 `482bfc6d`. `get_cost` 3:4 → 2.75.
+X-0 і X-3 промптились ще з мечем в IDENTITY; Santos (дошка): **на обох меча немає**.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C4r бік + спина ×1 | 5771 | 5765.5 | 5.5 |
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| Y-0 | C4r `choko-tpose-side-v5` · 2 | `913c53bb-6e28-4e03-9250-bf01f4bc91c5` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_030544_913c53bb-6e28-4e03-9250-bf01f4bc91c5.png | **переробити** — бік у T-позі не заходить (і в Skea V-4); варіанти — у журналі зустрічі |
+| Y-1 | C4r `choko-tpose-back-v5` · 2 | `f5a3a1fb-d423-4773-90a2-cff460ea466c` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_030544_f5a3a1fb-d423-4773-90a2-cff460ea466c.png | **переробити** — «подивись на оригінал куртки й що на спині й це ретельно опиши моделі» |
+
+### Choko v5 — спина (2-га переробка) і монограма «C» (2026-10-03, #38)
+
+Слово Santos (через передачу T1, `claude/dreamy-turing-7rsxo9` → [[2026-10-03-Choko-Outfit-v5]] § Монограма): «так, до 11 кредитів»;
+**бік не робимо — варіант А** (3D з трьох видів). Промпти — [[Prompt-Library]] § 15b. `get_cost`: 3:4 з 3 референсами → 2.75; 16:9 без референсу → 2.75.
+Спина: референси X-0 `b529a3bd`, X-3 `5b045b7a`, V-1 `482bfc6d`; N-2 не брав — її спину я не бачу (CDN закритий: `curl` 403, WebFetch EGRESS_BLOCKED).
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C4r2 спина ×2 + гліф «C» ×2 | 5765.5 | 5754.5 | 11 (стеля 11) |
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| Z-0 | C4r2 `choko-tpose-back-v5` · 3 | `18eb4161-06ce-4ef5-b3d4-abfc482a5c2b` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031228_18eb4161-06ce-4ef5-b3d4-abfc482a5c2b.png | не обрано |
+| Z-1 | C4r2 `choko-tpose-back-v5` · 4 | `50734236-25b0-4062-8ea5-515483926f17` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031229_50734236-25b0-4062-8ea5-515483926f17.png | **переможець** (Santos) — «тоді й в курточці просто без полосок зроби» ; Santos (дошка, «взуття»): «ззаду не видно літер "C" на кросах» |
+| Z-2 | G1 `choko-monogram-c-v1` · v1 | `327a6ef9-d037-43d9-a115-3d50093f3165` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031228_327a6ef9-d037-43d9-a115-3d50093f3165.png | **переможець** (Santos) — «але кросівки не ті — пам'ятай це й не пропусти»: береться лише літера |
+| Z-3 | G1 `choko-monogram-c-v1` · v2 | `8e72fa1a-8e8b-4bcb-9466-9d78438fb749` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031227_8e72fa1a-8e8b-4bcb-9466-9d78438fb749.png | не обрано |
+
+### Choko v5.2 — кросівки v2 за P-6000 (2026-10-03, #38)
+
+Santos: V-1 «не ті» (варіант «б») → «так» на 11 кр.: картка ×2 зараз, T-пози front/¾ без смуг ×2 — після вибору. Промпт — [[Prompt-Library]] § 15c,
+референс — лише гліф Z-2 `327a6ef9`. `get_cost` 16:9 з 1 референсом → 2.75.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C2v2 картка кросівок ×2 | 5754.5 | 5749 | 5.5 (з 11) |
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| K-0 | C2v2 `choko-item-sneakers-v2` · v1 | `face408d-13b4-4255-91d1-a379df09049d` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031833_face408d-13b4-4255-91d1-a379df09049d.png | **переможець** (Santos) |
+| K-1 | C2v2 `choko-item-sneakers-v2` · v2 | `597d9600-7911-43cf-b5a8-8000dcc63e8e` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031832_597d9600-7911-43cf-b5a8-8000dcc63e8e.png | не обрано |
+
+T-пози front і ¾ (решта того самого «так» на 11): референси X-0 `b529a3bd` (обличчя, пропорції), K-0 `face408d` (кросівки), Z-1 `50734236` (спина);
+IDENTITY v5.2 без меча, куртка без смуг; у `{NEG}` «no logos» замінено на «no brand logos except the cursive C on the sneakers». `get_cost` 3:4 → 2.75.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C4v2 T-пози front + ¾ | 5749 | 5743.5 | 5.5 |
+| **Слово «так» на 11** | **5754.5** | **5743.5** | **11** |
+
+Z-1 малювався з кросівками V-1 — на спині видно п'яти; чи вони помітно інші, ніж K-0, **не перевірено** — питання Santos на дошці.
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| F-0 | C4v2 `choko-tpose-front-v5` · 2 | `600fa251-4ff7-4105-bcc4-3cda8dae5195` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_032101_600fa251-4ff7-4105-bcc4-3cda8dae5195.png | **так** (Santos, дошка) — канон front замість X-0 |
+| F-1 | C4v2 `choko-tpose-34-v5` · 2 | `9ea38aaf-fa2f-458e-880c-54bf599eff52` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_032101_9ea38aaf-fa2f-458e-880c-54bf599eff52.png | **переробити** (Santos) → G-0/G-1 |
+
+### ¾ T-поза Choko — переробка F-1 (2026-10-03, #38)
+
+Santos: F-1 — «перероби». Промпт F-1 (`job_display 9ea38aaf`) без змін, крім першого референса: канон front **F-0 `600fa251`**
+замість X-0 (`b529a3bd`), і речення «the first reference image is the same character in the same T-pose seen from the front…
+only turn him to a three-quarter front view». Референси 2–3 — K-0 `face408d` (кросівки), Z-1 `50734236` (спина).
+`get_cost` 3:4 з трьома референсами → 2.75.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C4v3 T-поза ¾ ×2 | 5743.5 | 5738 | 5.5 |
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| G-0 | C4v3 `choko-tpose-34-v5` · 3 | `73639409-a0e9-4718-9391-7366c426b783` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_033807_73639409-a0e9-4718-9391-7366c426b783.png | **переможець** (Santos: «вони однакові, бери любий») — канон ¾ |
+| G-1 | C4v3 `choko-tpose-34-v5` · 4 | `487bc563-e036-4d0c-8506-0728110fe3e8` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_033807_487bc563-e036-4d0c-8506-0728110fe3e8.png | не обрано (рівноцінний G-0, за словами Santos) |
+
+### C2 — 3D Choko і Skea з ригом (2026-10-03, #38, #33, [[2026-10-03-Picks-to-Game-and-Animation]] § C2)
+
+Слово Santos (сесія T6): «починай робити… всі потрібні модельки доробити… уперед» — C2, два герої, стеля 70 (план).
+Модель `multi_image_to_3d` (Meshy). Параметри — ті самі, що в заміру Х3a ([[Higgsfield-Pipeline]]): `should_texture:true`,
+`enable_pbr:false`, `enable_rigging:true`, `pose_mode:t-pose`, `topology:quad`, `target_polycount:20000`, `count:1`;
+`rigging_height_meters` не задано (дефолт 1.7 — зросту героїв у каноні нема, масштаб — у рушії).
+**Текстового промпту немає навмисно:** `texture_prompt` не ставили, щоб текстура йшла з канонічних карток, а не з тексту.
+Види — варіант А Santos (без боку), порядок front → ¾ → back:
+
+- Choko: F-0 `600fa251` · G-0 `73639409` · Z-1 `50734236` — без меча (канон Santos);
+- Skea: V-3 `c17c3449` · V-6 `82dfeb1b` · V-5 `e3b39f3c`; бік V-4 `be43c7b7` не брали.
+
+Звірка перед запуском (`show_generation_by_ids` на 6 job-ів): усі `completed`; промпти й референси збігаються з § 15a–15c і § 14b
+[[Prompt-Library]]. Розбіжності, які йдуть у модель як є (канон Santos, не перемальовували):
+1. Z-1 малювався з кросівками V-1 і з IDENTITY, де ще стоїть «thin cream stripe» (спереду — на спині її не видно). П'яти в 3D
+   можуть узяти форму V-1, а не K-0 — «C» і так ставиться декалем у рушії (Santos «б»).
+2. Skea: кунаї в кобурах на стегнах — частина одягу в IDENTITY v3, тож вони будуть у меші; у руках нічого.
+3. Знак ∞8 на рюкзаку Skea і «C» на кросівках Choko (F-0, G-0) запечуться в текстуру; план D6 ставить їх декалями — декаль кладеться
+   поверх (рішення Гефеста в D6).
+4. Самі картинки T-поз я не бачу: CDN закритий для хмари (`curl` → `CONNECT tunnel failed, response 403`). Відповідність карткам —
+   за вердиктами Santos у журналах, не за моїм оком.
+
+| партія | `get_cost` | `balance` до | після | різниця |
+|---|---|---|---|---|
+| C2 3D Choko + Skea | 35 + 35 | 5738 | 5668 | 70 = стеля |
+
+| мітка | герой | job-id | GLB (CDN) | результат |
+|---|---|---|---|---|
+| M-0 | Choko | `2488e146-f049-4469-9aad-4a512a810022` | https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_034701_2488e146-f049-4469-9aad-4a512a810022.glb | `completed`; чекає ока Santos |
+| M-1 | Skea | `f7f95324-7686-48af-8d0c-3f4d5010502c` | https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_034702_f7f95324-7686-48af-8d0c-3f4d5010502c.glb | `completed`; чекає ока Santos |
+
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
