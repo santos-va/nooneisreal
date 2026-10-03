@@ -21,6 +21,25 @@ var _old_arena: Node = null
 var _river_runs: Array = []
 var _river_min_gap: float = 99.0
 var _river3d_runs: Array = []
+const DUEL_FRAMES := 1110   # the last ultimate (t 820) must ragdoll, land and get up inside the trace
+var _duel_runs: Array = []
+var _splat_phase: int = 0
+
+## Design numbers as written in docs/GDD/02-Combat-System.md § «Поле → значення → джерело» (T5 Арес).
+## Literals on purpose (T4 Феміда, audit 0.3-7 п. 8): the smoke must not compare the code with its own
+## constants, or a number drifting away from the GDD would never turn it red.
+const GDD_ARENA_RADIUS := 12.5
+const GDD_YAW_CLAMP_DEG := 3.0
+const GDD_PULLBACK_LAG_DEG := 15.0
+const GDD_PULLBACK_MAX := 0.3
+const GDD_BLOCK_ARC_DEG := 70.0
+const GDD_CIRCLE_SPEED_MULT := 0.8
+const GDD_GRAPPLE_CONE_DEG := 30.0
+const GDD_WALL_SPLAT_FRAMES := 10
+## slot → [tracking_deg, backhit_hitstun_bonus]; skills follow 03 § Як у 3D and are not in this table
+const GDD_MOVES := {"light": [30.0, 2], "crouch_light": [20.0, 3], "heavy": [15.0, 3], "air_light": [10.0, 2], "ultimate": [45.0, 6], "throw": [0.0, 0]}
+var _duel_trace: Array = []
+var _duel_first_trace: Array = []
 var _zdiff: float = 0.0
 var _zmax: float = 0.0
 var _atk_frames: int = 0
@@ -54,6 +73,14 @@ func _ready() -> void:
 	GameState.p1_character = "choko"
 	GameState.p2_character = "skea"
 	GameState.stage_index = 2   # back_alley (river is index 0)
+	# free movement is the game's default now; the smoke starts with the 0.2 plane stages and switches
+	# to free movement itself at stage 40 (T4 audit 0.3-7 item 7)
+	GameState.set_free_move(false)
+	for a in OS.get_cmdline_user_args():
+		if a == "--smoke-only=duel":
+			# dev / negative controls: only the 0.3-6 duel replay (plane, then free movement)
+			GameState.set_free_move(false)
+			_stage = 70
 	get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
 
 
@@ -136,6 +163,72 @@ func _load_arena(stage_idx: int, next_stage: int) -> void:
 	_stage = next_stage
 	_f0 = _f
 	get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
+
+
+## 0.3-6: one scripted duel for both modes (t = frames from FIGHT): walk in, strings, heavy, skills,
+## dash/flash, jump-in, grapple, sidesteps (free movement only), and both ultimates (one ragdolls).
+func _duel_script(t: int) -> void:
+	InputRouter.v_set(1, "right", t < 45 or (t > 400 and t < 430))
+	InputRouter.v_set(2, "left", t < 25)
+	InputRouter.v_set(2, "block", (t > 120 and t < 150) or (t > 600 and t < 640))
+	if GameState.free_move:
+		InputRouter.v_set(1, "up", t > 300 and t < 340)
+		InputRouter.v_set(2, "down", t > 460 and t < 500)
+	for at in [50, 62, 74]:
+		if t == at:
+			InputRouter.v_press(1, "light")
+	if t in [100, 520]:
+		InputRouter.v_press(1, "heavy")
+	if t in [160, 172, 560]:
+		InputRouter.v_press(2, "light")
+	if t == 200:
+		InputRouter.v_press(2, "skill1")
+	if t == 260:
+		InputRouter.v_press(1, "skill2")
+	if t == 360:
+		InputRouter.v_press(2, "dash")
+	if t == 440:
+		InputRouter.v_press(1, "jump")
+	if t == 452:
+		InputRouter.v_press(1, "light")
+	if t == 600:
+		InputRouter.v_press(1, "grapple")
+	if t == 610:
+		InputRouter.v_release(1, "grapple")
+	if t >= 600 and t < 680:
+		_close_in(p2, p1, 1.4)
+	if t == 680:
+		p2.meter = Fighter.MAX_METER   # the script spends meter on skills; refill so the ultimate fires
+		InputRouter.v_clear(2)
+		InputRouter.v_press(2, "ultimate")
+	if t >= 730 and t < 820:
+		_close_in(p1, p2, 1.4)
+	if t == 820:
+		p1.meter = Fighter.MAX_METER
+		InputRouter.v_clear(1)
+		InputRouter.v_press(1, "ultimate")
+
+
+## Walk `who` toward `target` until `dist` m apart, by screen side (duel frame in free movement), so
+## the same call works in both modes. Pure function of the state → still deterministic.
+func _close_in(who: Fighter, target: Fighter, dist: float) -> void:
+	var d := target.global_position - who.global_position
+	var dx := d.x
+	var gap := absf(d.x)
+	if GameState.free_move:
+		dx = Vector3(d.x, 0.0, d.z).dot(GameState.duel.right)
+		gap = Vector3(d.x, 0.0, d.z).length()
+	var p := who.player_index
+	InputRouter.v_set(p, "right", dx > 0.0 and gap > dist)
+	InputRouter.v_set(p, "left", dx <= 0.0 and gap > dist)
+
+
+## Everything the fight decides, for both fighters: body, facing, HP, meter, state, combo, statuses.
+func _duel_state() -> String:
+	var parts: Array[String] = []
+	for f: Fighter in [p1, p2]:
+		parts.append("%.5f,%.5f,%.5f|%.4f,%.4f|%.3f|%.3f|%d|%d|%d|%d|%d" % [f.global_position.x, f.global_position.y, f.global_position.z, f.forward.x, f.forward.z, f.hp, f.meter, f.state, f.combo_count, f.dot_frames, f.armor_break_frames, f.stats.hits])
+	return "/".join(parts)
 
 
 ## 0.3-5: the same scripted inputs on every river run in free movement (t = frames from FIGHT).
@@ -256,6 +349,33 @@ func _river_script(t: int) -> void:
 		InputRouter.v_press(2, "jump")
 
 
+## "" when the code's design numbers equal the GDD literals above; else the first mismatch.
+func _gdd_mismatch() -> String:
+	var got := {"Fighter.ARENA_RADIUS": [Fighter.ARENA_RADIUS, GDD_ARENA_RADIUS], "DuelCamera.YAW_CLAMP_DEG": [DuelCamera.YAW_CLAMP_DEG, GDD_YAW_CLAMP_DEG], "DuelCamera.PULLBACK_LAG_DEG": [DuelCamera.PULLBACK_LAG_DEG, GDD_PULLBACK_LAG_DEG], "DuelCamera.PULLBACK_MAX": [DuelCamera.PULLBACK_MAX, GDD_PULLBACK_MAX], "Fighter.WALL_SPLAT_FRAMES": [float(Fighter.WALL_SPLAT_FRAMES), float(GDD_WALL_SPLAT_FRAMES)]}
+	for f: Fighter in [p1, p2]:
+		var d := f.data
+		got["%s.block_arc_deg" % d.id] = [d.block_arc_deg, GDD_BLOCK_ARC_DEG]
+		got["%s.circle_speed_mult" % d.id] = [d.circle_speed_mult, GDD_CIRCLE_SPEED_MULT]
+		got["%s.grapple_cone_deg" % d.id] = [d.grapple_cone_deg, GDD_GRAPPLE_CONE_DEG]
+		var mv := d.moves()
+		for slot in GDD_MOVES:
+			var m: MoveData = mv.get(slot)
+			if m == null:
+				return "%s has no move in slot %s" % [d.id, slot]
+			got["%s.%s.tracking_deg" % [d.id, slot]] = [m.tracking_deg, float(GDD_MOVES[slot][0])]
+			got["%s.%s.backhit_hitstun_bonus" % [d.id, slot]] = [float(m.backhit_hitstun_bonus), float(GDD_MOVES[slot][1])]
+	for k in got:
+		if absf(float(got[k][0]) - float(got[k][1])) > 0.0001:
+			return "%s = %s, GDD says %s" % [k, got[k][0], got[k][1]]
+	return ""
+
+
+## Jump to stage `st` (resets the stage clock and virtual input, like _next()).
+func _next_to(st: int) -> void:
+	_stage = st - 1
+	_next()
+
+
 func _next() -> void:
 	_stage += 1
 	_f0 = _f
@@ -291,6 +411,9 @@ func _physics_process(_delta: float) -> void:
 		p2 = arena.p2
 		flow = arena.flow
 		_ok("arena loaded: %s vs %s, stage %s" % [p1.data.display_name, p2.data.display_name, GameState.stage().id])
+		if _stage == 0 and GameState.free_move:
+			_fail("plane stages started under free_move — SmokeTest._ready must set_free_move(false)")
+			return
 		var bus := AudioServer.get_bus_index(Sfx.BUS)
 		var vh := Sfx.variant_count("hit_light")
 		if bus == -1 or AudioServer.get_bus_effect_count(bus) < 2 or vh < 3 or Sfx.variant_count("no_such_sfx") != 0:
@@ -662,6 +785,11 @@ func _physics_process(_delta: float) -> void:
 					_fail("free move: duel camera is not the current camera")
 					return
 				_ok("free move: duel camera current; SOLO W/S → sidestep (TODO #26), no key clashes in SOLO/SHARED")
+				var gdd := _gdd_mismatch()
+				if gdd != "":
+					_fail("design numbers drifted from docs/GDD/02: " + gdd)
+					return
+				_ok("design numbers = GDD 02 literals: radius 12.5, yaw clamp 3°, pull-back 15°/30 %, block arc 70°, circling 0.8, cone 30°, wall splat 10 f, tracking and back-hit per move class")
 				_ang0 = _bearing(p1, p2)
 				_d0 = _flat(p1.global_position - p2.global_position).length()
 				_swept = 0.0
@@ -679,15 +807,15 @@ func _physics_process(_delta: float) -> void:
 				var d := _flat(p1.global_position - p2.global_position).length()
 				# circling speed = circle_speed_mult × walk_speed (T5 Арес): a quarter circle of radius d takes
 				# (π/2 · d) / v seconds
-				var want_f := (PI * 0.5 * _d0) / (p1.data.circle_speed_mult * p1.data.walk_speed) * 60.0
+				var want_f := (PI * 0.5 * _d0) / (GDD_CIRCLE_SPEED_MULT * p1.data.walk_speed) * 60.0
 				if absf(float(_f - _f0) - want_f) > want_f * 0.05:
-					_fail("sidestep speed: 90° took %d frames, want %.0f ± 5 %% (circle_speed_mult %.2f × walk %.1f)" % [_f - _f0, want_f, p1.data.circle_speed_mult, p1.data.walk_speed])
+					_fail("sidestep speed: 90° took %d frames, want %.0f ± 5 %% (circle_speed_mult %.2f × walk %.1f)" % [_f - _f0, want_f, GDD_CIRCLE_SPEED_MULT, p1.data.walk_speed])
 					return
 				if off >= 5.0 or absf(d - _d0) > 0.01 or absf(p1.global_position.z) < 0.5:
 					_fail("sidestep 90°: forward off by %.2f° (want < 5), distance %.3f → %.3f (want ±0.01), z %.2f" % [off, _d0, d, p1.global_position.z])
 					return
 				_shot("11_free_sidestep_90")
-				_ok("sidestep 90° in %d frames (want %.0f at %.1f × walk): forward %.2f° off the opponent, distance %.3f → %.3f (arc, not spiral), p1 z %.2f" % [_f - _f0, want_f, p1.data.circle_speed_mult, off, _d0, d, p1.global_position.z])
+				_ok("sidestep 90° in %d frames (want %.0f at %.1f × walk): forward %.2f° off the opponent, distance %.3f → %.3f (arc, not spiral), p1 z %.2f" % [_f - _f0, want_f, GDD_CIRCLE_SPEED_MULT, off, _d0, d, p1.global_position.z])
 				_n0 = 0
 				_data0 = p1.data
 				_next()
@@ -716,7 +844,7 @@ func _physics_process(_delta: float) -> void:
 				var turned := _d0
 				var hit := p2.hp < _hp0
 				if _n0 == 0:
-					var budget := p1.data.light.tracking_deg
+					var budget: float = GDD_MOVES["light"][0]
 					if not hit or absf(turned - budget) > 0.5:
 						_fail("tracking: 60°-off light hit %s, turned %.1f° (want hit, %.1f° = tracking_deg)" % [hit, turned, budget])
 						return
@@ -743,14 +871,14 @@ func _physics_process(_delta: float) -> void:
 			InputRouter.v_set(1, "right", away_right)
 			InputRouter.v_set(1, "left", not away_right)
 			_rmax = maxf(_rmax, _flat(p1.global_position).length())
-			if _rmax > Fighter.ARENA_RADIUS + 0.001:
-				_fail("arena circle: p1 at radius %.3f > %.2f" % [_rmax, Fighter.ARENA_RADIUS])
+			if _rmax > GDD_ARENA_RADIUS + 0.001:
+				_fail("arena circle: p1 at radius %.3f > %.2f" % [_rmax, GDD_ARENA_RADIUS])
 				return
 			if _f > _f0 + 420:
-				if _rmax < Fighter.ARENA_RADIUS - 0.05:
+				if _rmax < GDD_ARENA_RADIUS - 0.05:
 					_fail("arena circle: never reached the edge (max radius %.2f)" % _rmax)
 					return
-				_ok("arena circle: walked into the edge, max radius %.3f ≤ %.2f" % [_rmax, Fighter.ARENA_RADIUS])
+				_ok("arena circle: walked into the edge, max radius %.3f ≤ %.2f" % [_rmax, GDD_ARENA_RADIUS])
 				_next()
 		45:
 			if _f == _f0 + 1:
@@ -775,10 +903,10 @@ func _physics_process(_delta: float) -> void:
 					_shot("12_free_duel_camera")
 				if absf(_swept) >= TAU:
 					InputRouter.v_clear(1)
-					if _turn_max > (DuelCamera.YAW_CLAMP_DEG + 0.001) or not _both_in_view() or _rmax > DuelCamera.MAX_SIDE_OFF_DEG or _pull_max >= 90.0:
-						_fail("duel camera on a 360° sidestep: max turn %.2f°/frame (bound %.1f), off side-on %.1f° (bound %.1f), both in view %s, backdrop at %.1f° (want < 90)" % [_turn_max, (DuelCamera.YAW_CLAMP_DEG + 0.001), _rmax, DuelCamera.MAX_SIDE_OFF_DEG, _both_in_view(), _pull_max])
+					if _turn_max > (GDD_YAW_CLAMP_DEG + 0.001) or not _both_in_view() or _rmax > DuelCamera.MAX_SIDE_OFF_DEG or _pull_max >= 90.0:
+						_fail("duel camera on a 360° sidestep: max turn %.2f°/frame (bound %.1f), off side-on %.1f° (bound %.1f), both in view %s, backdrop at %.1f° (want < 90)" % [_turn_max, (GDD_YAW_CLAMP_DEG + 0.001), _rmax, DuelCamera.MAX_SIDE_OFF_DEG, _both_in_view(), _pull_max])
 						return
-					_ok("duel camera: 360° sidestep in %d frames, max turn %.2f°/frame ≤ clamp %.3f, at most %.1f° off side-on ≤ %.1f, both fighters in view, backdrop at most %.1f° off the view (< 90)" % [_f - _f0 - 20, _turn_max, (DuelCamera.YAW_CLAMP_DEG + 0.001), _rmax, DuelCamera.MAX_SIDE_OFF_DEG, _pull_max])
+					_ok("duel camera: 360° sidestep in %d frames, max turn %.2f°/frame ≤ clamp %.3f, at most %.1f° off side-on ≤ %.1f, both fighters in view, backdrop at most %.1f° off the view (< 90)" % [_f - _f0 - 20, _turn_max, (GDD_YAW_CLAMP_DEG + 0.001), _rmax, DuelCamera.MAX_SIDE_OFF_DEG, _pull_max])
 					_next()
 				elif _f > _f0 + 900:
 					_fail("360° sidestep not finished (swept %.1f°)" % rad_to_deg(_swept))
@@ -797,7 +925,7 @@ func _physics_process(_delta: float) -> void:
 				var cam: Camera3D = arena.duel_camera.cam
 				var s1 := cam.unproject_position(p1.global_position + Vector3.UP).x
 				var s2 := cam.unproject_position(p2.global_position + Vector3.UP).x
-				if _turn_max > (DuelCamera.YAW_CLAMP_DEG + 0.001) or not _both_in_view():
+				if _turn_max > (GDD_YAW_CLAMP_DEG + 0.001) or not _both_in_view():
 					_fail("duel camera on a side swap: max turn %.2f°/frame, both in view %s" % [_turn_max, _both_in_view()])
 					return
 				_shot("13_free_side_swap")
@@ -812,10 +940,10 @@ func _physics_process(_delta: float) -> void:
 				_pull_max = maxf(_pull_max, arena.duel_camera.pullback())
 			if _f == _f0 + 120:
 				var lag := rad_to_deg(absf(angle_difference(arena.duel_camera.view_yaw(), arena.duel_camera._target_yaw())))
-				if _turn_max > DuelCamera.YAW_CLAMP_DEG + 0.001 or _pull_max < 0.2 or lag > 1.0 or not _both_in_view():
-					_fail("duel camera on a 90° jump: max turn %.2f°/tick (clamp %.1f), max pull-back %.2f (want > 0.2), lag after 80 ticks %.1f°, both in view %s" % [_turn_max, DuelCamera.YAW_CLAMP_DEG, _pull_max, lag, _both_in_view()])
+				if _turn_max > GDD_YAW_CLAMP_DEG + 0.001 or _pull_max < 0.2 or lag > 1.0 or not _both_in_view():
+					_fail("duel camera on a 90° jump: max turn %.2f°/tick (clamp %.1f), max pull-back %.2f (want > 0.2), lag after 80 ticks %.1f°, both in view %s" % [_turn_max, GDD_YAW_CLAMP_DEG, _pull_max, lag, _both_in_view()])
 					return
-				_ok("duel camera on a 90° jump: max turn %.2f°/tick ≤ %.1f, arm pulled back to +%.0f %%, caught up (lag %.2f°)" % [_turn_max, DuelCamera.YAW_CLAMP_DEG, _pull_max * 100.0, lag])
+				_ok("duel camera on a 90° jump: max turn %.2f°/tick ≤ %.1f, arm pulled back to +%.0f %%, caught up (lag %.2f°)" % [_turn_max, GDD_YAW_CLAMP_DEG, _pull_max * 100.0, lag])
 				_next()
 		47:
 			# 0.3-3: the anchor is chosen inside the aim cone — of the stick when deflected, else of the
@@ -908,7 +1036,7 @@ func _physics_process(_delta: float) -> void:
 			if not (p1.is_actionable() and p2.is_actionable()) and _f < _f0 + 300:
 				return
 			# fixed angles from the plan (T1 answer, item 4): 65° is blocked, 75° goes through (Ares: ±70°)
-			var arc: float = p2.data.block_arc_deg
+			var arc: float = GDD_BLOCK_ARC_DEG
 			var res := []
 			for deg in [65.0, 75.0]:
 				_place(p2, p1, 2.0, 0.0)
@@ -923,19 +1051,19 @@ func _physics_process(_delta: float) -> void:
 			p2.forward = _flat(p2.global_position - p1.global_position).normalized()   # back to the attacker
 			p2.receive_hit(p1, lm)
 			var back := p2.stun_frames
-			if back != lm.hitstun + lm.backhit_hitstun_bonus:
+			if back != lm.hitstun + int(GDD_MOVES["light"][1]):
 				_fail("backhit: stun %d, want %d + %d" % [back, lm.hitstun, lm.backhit_hitstun_bonus])
 				return
 			# soft wall: past the circle, the outward part of the velocity goes, the tangential part stays
 			var n := Vector3(cos(0.7), 0.0, sin(0.7))
 			var t := Vector3.UP.cross(n)
-			p1.global_position = n * (Fighter.ARENA_RADIUS + 0.2) + Vector3(0.0, p1.global_position.y, 0.0)
+			p1.global_position = n * (GDD_ARENA_RADIUS + 0.2) + Vector3(0.0, p1.global_position.y, 0.0)
 			p1.velocity = n * 5.0 + t * 3.0
 			p1._soft_wall()
 			var out := p1.velocity.dot(n)
 			var tan := p1.velocity.dot(t)
 			var rad := _flat(p1.global_position).length()
-			if absf(out) > 0.001 or absf(tan - 3.0) > 0.001 or absf(rad - Fighter.ARENA_RADIUS) > 0.001:
+			if absf(out) > 0.001 or absf(tan - 3.0) > 0.001 or absf(rad - GDD_ARENA_RADIUS) > 0.001:
 				_fail("soft wall: outward %.3f (want 0), tangential %.3f (want 3), radius %.3f" % [out, tan, rad])
 				return
 			p1.velocity = Vector3.ZERO
@@ -1176,4 +1304,109 @@ func _physics_process(_delta: float) -> void:
 					_fail("river 3D: two runs differ at frame 600 (hash %d vs %d)" % [_river3d_runs[0], _river3d_runs[1]])
 				else:
 					_ok("river 3D: deterministic — both runs hash %d at frame 600" % h)
-					_finish()
+					GameState.set_free_move(false)
+					_duel_runs.clear()
+					_load_arena(2, 70)   # 0.3-6: full duel replay, plane first
+		# ---------------- 0.3-6: same input twice → same hash, in both modes ----------------------
+		70:
+			if flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable():
+				_duel_trace = []
+				_f0 = _f
+				_next()
+			elif _f > _f0 + 600:
+				_fail("duel replay: fight never started")
+		71:
+			var t := _f - _f0
+			_duel_script(t)
+			if t % 30 == 0:
+				_duel_trace.append(_duel_state())
+			if t == DUEL_FRAMES:
+				var mode := "free" if GameState.free_move else "plane"
+				var h := ";".join(_duel_trace).hash()
+				_duel_runs.append(h)
+				var used := "hits %d/%d, ragdolls %d/%d, grapples %d/%d, hp %.0f/%.0f" % [p1.stats.hits, p2.stats.hits, p1.stats.ragdolls, p2.stats.ragdolls, p1.stats.grapples, p2.stats.grapples, p1.hp, p2.hp]
+				_ok("duel replay %s run %d: %d frames, hash %d (%s)" % [mode, _duel_runs.size() % 2 if _duel_runs.size() % 2 == 1 else 2, DUEL_FRAMES, h, used])
+				if p1.state == Fighter.State.LAUNCHED or p2.state == Fighter.State.LAUNCHED:
+					_fail("duel replay %s: a fighter is still in the ragdoll at the end — its outcome is not in the hash" % mode)
+					return
+				if p1.stats.hits + p2.stats.hits < 3 or p1.stats.ragdolls + p2.stats.ragdolls < 1:
+					_fail("duel replay %s: the script did not exercise combat (%s)" % [mode, used])
+					return
+				if _duel_runs.size() % 2 == 1:
+					_duel_first_trace = _duel_trace.duplicate()
+					_load_arena(2, 70)
+					return
+				if _duel_runs[-1] != _duel_runs[-2]:
+					var at := 0
+					while at < _duel_trace.size() and _duel_trace[at] == _duel_first_trace[at]:
+						at += 1
+					_fail("duel replay %s: runs differ, first at frame %d:\n  %s\n  %s" % [mode, at * 30, _duel_first_trace[at], _duel_trace[at]])
+					return
+				_ok("duel replay %s: deterministic — same input twice, same hash %d (%d checkpoints)" % [mode, h, _duel_trace.size()])
+				if not GameState.free_move:
+					GameState.set_free_move(true)
+					_load_arena(2, 70)
+				else:
+					_splat_phase = 0
+					_next_to(80)
+		# ---------------- wall splat (02 § Коло арени: 10 f, no damage, once per combo) -----------
+		80:
+			# phase 0: first combo → splat; phase 1: next combo → splat again, then a second launch in that
+			# same combo must not splat
+			if p1.is_actionable() and p2.is_actionable() and _f > _f0 + 20:
+				InputRouter.v_clear(1)
+				InputRouter.v_clear(2)
+				var n := Vector3(1.0, 0.0, 0.0)
+				p2.global_position = n * (12.5 - 1.0)
+				p1.global_position = n * (12.5 - 4.0)
+				p2.hp = p2.data.max_hp
+				_x0 = p2.hp
+				_n0 = int(p2.stats.get("splats", 0))
+				_run = 0
+				p2._enter_ragdoll(Vector3(16.0, 4.0, 0.0))
+				_next()
+			elif _f > _f0 + 600:
+				_fail("wall splat: fighters never actionable (p1 %d, p2 %d)" % [p1.state, p2.state])
+		81:
+			if p2.state == Fighter.State.WALL_SPLAT:
+				_run += 1
+				if _run == 1:
+					var r := _flat(p2.global_position).length()
+					var face := p2.forward.dot(-_flat(p2.global_position).normalized())
+					# the splat drawing is on screen from its first frame (no smoothing): arm thrown wide
+					var arm: Vector3 = p2.animator.pose["upper_arm_l"]
+					if absf(arm.z - (-1.9)) > 0.01:
+						_fail("wall splat pose not on screen at its first frame: upper_arm_l z %.2f (want -1.90)" % arm.z)
+						return
+					if p2.hp != _x0 or r < 12.5 - 0.05 or face < 0.9 or int(p2.stats.get("splats", 0)) != _n0 + 1:
+						_fail("wall splat: hp %.1f → %.1f (want no damage), radius %.2f (want 12.5), facing the centre %.2f, splats %d → %d" % [_x0, p2.hp, r, face, _n0, p2.stats.get("splats", 0)])
+						return
+				if _splat_phase == 0 and _run == 4:
+					_shot("15_free_wall_splat")
+				if _splat_phase == 1 and _run == 3:
+					# same combo, follow-up launcher into the same wall while splatted
+					p2._enter_ragdoll(Vector3(16.0, 4.0, 0.0))
+					_next_to(82)
+			elif _run > 0:
+				if _run != 10 or p2.state != Fighter.State.KNOCKDOWN:
+					_fail("wall splat lasted %d frames then state %d (want 10, then KNOCKDOWN)" % [_run, p2.state])
+					return
+				_ok("wall splat: ragdoll at the edge stuck to the wall for %d frames, no damage (hp %.0f), facing the centre, then knockdown" % [_run, p2.hp])
+				_splat_phase = 1
+				_next_to(80)
+			elif _f > _f0 + 200:
+				_fail("wall splat: the launched fighter never splatted (state %d, at radius %.2f)" % [p2.state, _flat(p2.global_position).length()])
+		82:
+			# the second launch of the same combo flies into the wall again but must not splat
+			if p2.state == Fighter.State.WALL_SPLAT:
+				_fail("wall splat twice in one combo (splats %d → %d)" % [_n0, p2.stats.get("splats", 0)])
+				return
+			if p2.state == Fighter.State.GETUP or p2.is_actionable():
+				var got := int(p2.stats.get("splats", 0)) - _n0
+				if got != 1:
+					_fail("wall splat: %d splats in the second combo (want 1)" % got)
+					return
+				_ok("wall splat once per combo: the next combo splatted again, a second launch into the wall in that combo did not (%d ragdoll frames, splats +%d)" % [_f - _f0, got])
+				_finish()
+			elif _f > _f0 + 400:
+				_fail("wall splat: second launch never settled (state %d)" % p2.state)

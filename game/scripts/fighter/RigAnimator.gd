@@ -33,9 +33,13 @@ const FLINCH_FREQ := 5.5
 const FLINCH_DAMP := 0.32
 
 var _data: CharacterData
+## The flinch pose feeds Ragdoll.build_from(), and the ragdoll's pelvis becomes the fighter's position
+## after a launch — so even this "visual" randomness must be seeded, or replays diverge (0.3-6).
+var _rng := RandomNumberGenerator.new()
 
 
 func setup(data: CharacterData) -> void:
+	_rng.seed = hash(data.id) if data != null else 1
 	_data = data
 	for c in get_children():
 		c.queue_free()
@@ -195,7 +199,7 @@ func flinch(dir: Vector3, strength: float, facing: int, zone: String = "mid") ->
 	var local_back := -dir.x * float(facing)   # >0 when pushed away from where we face
 	flinch_v.x += clampf(strength / 40.0, 0.4, 2.2) * (1.0 if local_back > 0.0 else -1.0) * 6.0
 	flinch_v.y -= clampf(strength / 60.0, 0.2, 1.5) * 2.0
-	flinch_v.z += randf_range(-1.0, 1.0) * 1.5
+	flinch_v.z += _rng.randf_range(-1.0, 1.0) * 1.5   # own seeded RNG: this pose seeds the ragdoll (0.3-6)
 
 
 func tick(delta: float, f: Fighter, frozen: bool) -> void:
@@ -214,6 +218,13 @@ func tick(delta: float, f: Fighter, frozen: bool) -> void:
 			for n in parts.keys():
 				pose[n] = target_pose[n]
 			root_offset = target_root_offset
+	elif f.state == Fighter.State.WALL_SPLAT:
+		# the splat lasts 10 frames — shorter than the smoothing (≈ 10–14) — so it snaps to its
+		# drawing on the first frame, or it never reads on screen
+		_step_frame = -1
+		for n in parts.keys():
+			pose[n] = target_pose[n]
+		root_offset = target_root_offset
 	else:
 		_step_frame = -1
 		var k := 1.0 - pow(0.0001, delta)  # fast exponential smoothing (≈ 10-14 frames to settle)
@@ -338,6 +349,18 @@ func _compute_target(f: Fighter, delta: float) -> void:
 			_pose_set("shin_l", Vector3(0, 0, -1.3))
 			_pose_set("shin_r", Vector3(0, 0, -1.0))
 			_pose_set("torso", Vector3(0, 0, 0.2))
+		Fighter.State.WALL_SPLAT:
+			# flattened against the wall: back arched into it, arms thrown wide, head snapped back
+			_pose_set("torso", Vector3(0, 0, -0.45))
+			_pose_set("head", Vector3(0, 0, -0.5))
+			_pose_set("upper_arm_l", Vector3(0, 0, -1.9))
+			_pose_set("upper_arm_r", Vector3(0, 0, -1.7))
+			_pose_set("forearm_l", Vector3(0, 0, 0.3))
+			_pose_set("forearm_r", Vector3(0, 0, 0.4))
+			_pose_set("thigh_l", Vector3(0, 0, 0.2))
+			_pose_set("thigh_r", Vector3(0, 0, -0.25))
+			_pose_set("shin_l", Vector3(0, 0, -0.5))
+			target_root_offset = Vector3(-0.15, -0.1, 0)
 		Fighter.State.KNOCKDOWN, Fighter.State.KO:
 			_pose_set("pelvis", Vector3(0, 0, -PI / 2.0))
 			target_root_offset = Vector3(0, -0.75, 0)

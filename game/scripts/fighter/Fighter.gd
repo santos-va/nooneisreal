@@ -16,7 +16,7 @@ signal move_started(fighter: Fighter, move: MoveData)
 signal dash_changed(charges: int, recharge_left: float, max_charges: int)
 signal status_changed(text: String)
 
-enum State { INTRO, IDLE, WALK, CROUCH, JUMP, DASH, ATTACK, BLOCK, HITSTUN, BLOCKSTUN, LAUNCHED, KNOCKDOWN, GETUP, GRAPPLE, KO, STUMBLE }
+enum State { INTRO, IDLE, WALK, CROUCH, JUMP, DASH, ATTACK, BLOCK, HITSTUN, BLOCKSTUN, LAUNCHED, KNOCKDOWN, GETUP, GRAPPLE, KO, STUMBLE, WALL_SPLAT }
 
 const GRAVITY := 24.0
 const ARENA_HALF_WIDTH := 12.5
@@ -47,6 +47,8 @@ const PERFECT_BLOCK_WINDOW := 8
 const PERFECT_FREEZE := 24
 const REWIND_HEAL_CAP := 0.15
 const TIME_STOP_FRAMES := 72
+## Wall splat (free movement): a ragdoll that reaches the arena edge sticks to the wall, then falls.
+const WALL_SPLAT_FRAMES := 10     # `wall_splat_frames`, ДИЗАЙН (T5 Арес, docs/GDD/02 § Коло арени): no damage, once per combo
 const WATER_GETUP_EXTRA := 6      # Stage-River: getting up out of the water is slower (PLACEHOLDER)
 # free movement, GameState.free_move — numbers: T5 Арес, docs/GDD/02-Combat-System.md § Вільний 3D-рух
 # (per-fighter ones live in CharacterData: block_arc_deg, circle_speed_mult, grapple_cone_deg)
@@ -100,6 +102,7 @@ var dash_charges_left: int = 0
 var dash_recharge_left: float = 0.0
 var flashing: bool = false
 var _water_grounded: bool = false
+var _splat_used: bool = false      # this combo already had its wall splat (reset when the fighter recovers)
 var _wish: Vector3 = Vector3.ZERO   # free_move: camera-relative stick in world space, this frame
 var _dash_vec: Vector3 = Vector3.RIGHT
 var _track_left: float = 0.0       # free_move: radians the current attack may still turn
@@ -283,6 +286,8 @@ func _physics_process(delta: float) -> void:
 			_tick_air(delta, intent)
 		State.STUMBLE:
 			_tick_stumble(delta, intent)
+		State.WALL_SPLAT:
+			_tick_wall_splat(delta)
 		_:
 			_tick_ground(delta, intent)
 	_post_move()
@@ -1146,6 +1151,9 @@ func _tick_launched() -> void:
 		_set_state(State.KNOCKDOWN)
 		return
 	var p := _ragdoll.pelvis_position()
+	if _free() and not _splat_used and _flat(p).length() >= ARENA_RADIUS:
+		_wall_splat(p)
+		return
 	global_position = _ground_spot(p)
 	if _ragdoll.settled() or frame_in_state > 170:
 		var g := global_position
@@ -1158,6 +1166,30 @@ func _tick_launched() -> void:
 		combo_count = 0
 		_update_facing()
 		_set_state(State.GETUP)
+
+
+## The flying ragdoll met the arena wall: end it, pin the body to the wall with its back to it,
+## facing the centre. No damage. Hurtbox stays on, so the attacker gets a follow-up window.
+func _wall_splat(p: Vector3) -> void:
+	var n := _flat(p).normalized()
+	_clear_ragdoll()
+	global_position = clamp_arena(Vector3(p.x, floor_y(), p.z))
+	velocity = Vector3.ZERO
+	_set_forward(-n)
+	animator.visible = veil_frames <= 0
+	hurt_shape.disabled = false
+	_splat_used = true
+	stats.splats = int(stats.get("splats", 0)) + 1
+	Sfx.play("hit_heavy", -4)
+	_set_state(State.WALL_SPLAT)
+
+
+func _tick_wall_splat(delta: float) -> void:
+	_ground_physics(delta, 0.0)
+	velocity.x = 0.0
+	velocity.z = 0.0
+	if frame_in_state >= WALL_SPLAT_FRAMES:
+		_set_state(State.KNOCKDOWN)
 
 
 func _tick_knockdown(delta: float) -> void:
@@ -1446,6 +1478,8 @@ func _set_state(s: State) -> void:
 		veil_strike = false
 	state = s
 	frame_in_state = 0
+	if s in [State.IDLE, State.WALK, State.CROUCH, State.BLOCK, State.INTRO]:
+		_splat_used = false   # back in control → the combo is over → the next combo may splat again
 	state_changed.emit(int(s))
 
 
