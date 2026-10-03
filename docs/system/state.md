@@ -11,7 +11,7 @@
 |---|---|---|---|
 | **T2·Mac** | 0, далі B | межі smoke ×2 (`SmokeTest.gd:766`, `Makefile` `--quit-after`), малий PR | `SmokeTest.gd`, `Makefile` |
 | **T2·A** (t2) | A — тверда арена | A1: фон у 3D не крутиться з камерою (`Backdrop.gd:56-58`), 360° оточення; A2: `river`/`bazaar`/`fountain` × день/ніч; A3: ліхтарі-якорі зі світлом | `game/scripts/arena/*`, `GameState.gd` `STAGES`, `game/shaders/backdrop*` |
-| **T2·B** (новий або T2·Mac) | B — VFX у грі | сліди руху, дим, ефекти Choko, електро — процедурно, потім флипбуки від D | нові `game/scripts/fx/*`, `game/shaders/*`, виклики в `skills/*Fx.gd` |
+| **T2·B** (новий або T2·Mac) | B — VFX у грі | сліди руху, дим, ефекти Choko, електро — процедурно, потім флипбуки від D. **Крок 1 зроблено** (T2·B, 0 кредитів): шейдери `fx_*` для привидів, шматків, диму, зірки удару й екрана стоп-часу; `make check` → `ALL OK (134)`, хеші реплеїв = база, гейти зелені — [[2026-10-03-sprint-lane-b-vfx]]. Крок 2 (дим приземлення, електро) — чекає Дедала: виклики живуть у `Fighter.gd` | нові `game/scripts/fx/*`, `game/shaders/*`, виклики в `skills/*Fx.gd` |
 | **T6·A** (t6) | C — арт арен | промпти + `get_cost`: 3 арени × день/ніч у Sketch-Cel, 360°, текстури підлоги, пропи; потім меню M2 | `game/assets/backgrounds/`, `game/assets/textures/`, реєстр |
 | **T6·B** (новий) | D — VFX-арт | промпти + `get_cost`: флипбуки диму, слідів, іскор, електро, гліфи Choko; тест 1 кліпу Kling | `game/assets/vfx/`, [[VFX-Direction]], реєстр |
 | **T3** (t3) | E — R11 | 360° фон у Godot 4.7, бібліотеки текстур під наш стиль (ліцензії), що вміє Higgsfield — ≤ 45 хв; потім R10 і частина A | `docs/Research/2026-10-03-Arena-360-Textures.md` |

@@ -15,11 +15,12 @@
 
 | ефект | файл | що робить | де використано |
 |---|---|---|---|
-| Afterimage | `Afterimage.gd` | знімок пози (капсули рига) у кольорі, ступінчасте згасання, масштаб, зміщення | флеш Skea, перемотка Choko, мерехтіння вуалі, тіні гримуара, луна деша |
-| SmearShards | `SmearShards.gd` | рвані чорнильні й світні шматки летять проти руху й крутяться; тонкі штрихи швидкості | флеш, перемотка, вуаль, фінал шторму |
-| SmokeCloud | `SmokeCloud.gd` | клуби диму, ростуть і світлішають; `covers()` для сліпоти CPU | Shadow Veil |
+| Afterimage | `Afterimage.gd` | знімок пози (капсули рига) у кольорі, ступінчасте шумове згорання (`fx_glow` з френелевим контуром / `fx_ink`), масштаб, зміщення | флеш Skea, перемотка Choko, мерехтіння вуалі, тіні гримуара, луна деша |
+| SmearShards | `SmearShards.gd` | рвані чорнильні й світні шматки (`fx_ink` / `fx_glow`: рваний паперовий край, чорнило на фронті згорання) летять проти руху й крутяться; тонкі штрихи швидкості | флеш, перемотка, вуаль, фінал шторму |
+| SmokeCloud | `SmokeCloud.gd` | cel-клуби `fx_smoke`: тінь × `#B07AA6`, чорнильний обідок, згорання ступенями; `covers()` для сліпоти CPU (вигляд його не змінює) | Shadow Veil |
 | WeakMarks | `WeakMarks.gd` | пульсуючі фіолетові кільця на зонах жертви | пасивка Skea, Armor Break |
-| HitSpark | `HitSpark.gd` | спалах + світло; крит більший і фіолетовий | усі влучання |
+| HitSpark | `HitSpark.gd` | зірка `fx_spark` (4 промені, крит — 8) + світло + чорнильні лінії; крит більший і фіолетовий |
+| FxShader | `FxShader.gd`, `game/shaders/fx_*` | матеріали ефектів, зерна з власного RNG (не глобального); стоп-час на весь екран — `fx_chrono_screen` ([[2026-10-03-sprint-lane-b-vfx]]) | усе вище, `TimeStopFx` | усі влучання |
 | KunaiRain / TimeStopFx / RecordMarker / SwordStormFx / GrimoireFx | `scripts/skills/` | ноди скілів (візуал + розклад ударів) | скіли |
 
 Палітри беруться з `CharacterData.vfx_primary/vfx_secondary/accent_color`, тож новий боєць отримує свої кольори без коду.
@@ -82,7 +83,7 @@
 - Шейдер «паперового розриву» на шматках (альфа-маска з рваним краєм замість прямокутника).
 - GPUParticles3D для диму на ПК, CPUParticles на мобільних.
 - Spring bones на капюшон, волосся Skea і рюкзак (godot-vrm spring bones або `SpringBoneSimulator3D`).
-- Hit spark зараз квадратний плейсхолдер. Його замінить зірка або спрайт-шит з Higgsfield AutoSprite.
+- Hit spark — процедурна зірка `fx_spark` (смуга B, [[2026-10-03-sprint-lane-b-vfx]]); спрайт-шит від смуги D може її замінити.
 
 ## Related
 - [[Style-Guide]] · [[Skea]] · [[Choko]] · [[Active-Ragdoll]] · [[Cel-Shading]] · [[2026-10-03-Crystal-Ult-Arena-Fatigue]] · [[03-Skills-Framework]] · [[2026-10-03-Apollon-3c-2-Gold]]
