@@ -33,6 +33,7 @@ func _ready() -> void:
 	var water_path: String = st.get("water", "")
 	if water_path != "" and ResourceLoader.exists(water_path):
 		GameState.water = (load(water_path) as WaveField).duplicate()
+		GameState.water.use_z = GameState.free_move   # 0.3-5: waves cross the circle arena in 3D
 		GameState.water.reset(1)
 		# fighters stand on the waves; the stone floor sinks below the deepest trough (it still
 		# catches ragdolls) and its mesh is hidden under the water

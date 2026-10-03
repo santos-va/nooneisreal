@@ -1329,7 +1329,7 @@ func _ground_spot(p: Vector3) -> Vector3:
 # --- water (river stage) -------------------------------------------------------------------------
 ## Height of whatever the fighter stands on: the wave surface on water stages, else 0.
 func floor_y() -> float:
-	return GameState.water.height(global_position.x) if GameState.water != null else 0.0
+	return GameState.water.height(global_position.x, global_position.z) if GameState.water != null else 0.0
 
 
 ## Grounded test that also works on water, where there is no collider under the feet.

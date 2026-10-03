@@ -18,7 +18,10 @@ roles:
 gates:
 	bash tools/gates/run_gates.sh
 
-# Headless-імпорт проєкту + парсинг кожного .gd. Без бінаря — інструкція, не мовчазний пропуск.
+# Headless-імпорт проєкту + парсинг кожного .gd + smoke. Без бінаря — інструкція, не мовчазний пропуск.
+# Smoke іде з --fixed-fps 60: одна ітерація = один фізкадр, тож --quit-after 20000 — це 20000 кадрів на будь-якій
+# машині (без нього headless крутить цикл швидше за 60 Гц і бюджет кадрів залежить від швидкості). «Зелений» —
+# лише rc=0 І рядок «[smoke] ALL OK»: вихід по --quit-after дає rc=0 без цього рядка, і це червоне.
 check:
 	@G="$(GODOT)"; case "$$G" in */*) ;; *) G="$$(command -v "$$G" 2>/dev/null)";; esac; \
 	if [ -z "$$G" ] || [ ! -f "$$G" ] || [ ! -x "$$G" ]; then \
@@ -30,9 +33,12 @@ check:
 	printf '%s\n' "$$OUT" | grep -iE 'error|warning' | head -n 40; \
 	[ $$rc -eq 0 ] || { echo "ІМПОРТ ВПАВ: rc=$$rc"; exit $$rc; }; \
 	GODOT_BIN="$$G" bash tools/gates/gd_check_all.sh || exit $$?; \
-	echo "── smoke test: godot --headless -- --smoke ──"; \
-	"$$G" --headless --path $(GAME) --quit-after 12000 -- --smoke 2>&1 | grep -E '^\[smoke\]|SCRIPT ERROR|ERROR:' ; \
-	rc=$${PIPESTATUS[0]}; [ $$rc -eq 0 ] && echo "SMOKE ЗЕЛЕНИЙ" || { echo "SMOKE ЧЕРВОНИЙ rc=$$rc"; exit $$rc; }
+	echo "── smoke test: godot --headless --fixed-fps 60 -- --smoke ──"; \
+	SMOKE="$$("$$G" --headless --path $(GAME) --fixed-fps 60 --quit-after 20000 -- --smoke 2>&1)"; rc=$$?; \
+	printf '%s\n' "$$SMOKE" | grep -E '^\[smoke\]|SCRIPT ERROR|ERROR:'; \
+	if [ $$rc -ne 0 ]; then echo "SMOKE ЧЕРВОНИЙ rc=$$rc"; exit $$rc; fi; \
+	printf '%s\n' "$$SMOKE" | grep -q '^\[smoke\] ALL OK' || { echo "SMOKE ЧЕРВОНИЙ: немає рядка «[smoke] ALL OK» — тест не дійшов до кінця (--quit-after?)"; exit 1; }; \
+	echo "SMOKE ЗЕЛЕНИЙ"
 
 # Свіжий клон не має game/.godot/ (у .gitignore), а з ним — реєстру class_name.
 # Без імпорту гра падає з «Could not find type CharacterData». Тому run/editor

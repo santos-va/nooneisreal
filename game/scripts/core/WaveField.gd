@@ -15,6 +15,10 @@ const FPS := 60.0
 @export var wavelengths: Vector3 = Vector3(7.5, 3.3, 1.7)         # metres
 @export var speeds: Vector3 = Vector3(1.1, -0.75, 1.5)            # metres / second (sign = direction)
 @export var phases: Vector3 = Vector3(0.0, 1.7, 4.1)
+@export var directions_deg: Vector3 = Vector3(0.0, 35.0, -50.0)  # travel direction in XZ, free movement only
+
+## Free movement (GameState.free_move): waves use directions_deg and height depends on z. Set by Arena.
+var use_z: bool = false
 
 @export_group("Swell (PLACEHOLDER)")
 @export var swell_every_min: float = 9.0      # seconds between swells (seeded RNG)
@@ -83,26 +87,52 @@ func swell_started_now() -> bool:
 	return frame == _swell_start
 
 
-func height(x: float) -> float:
+## Surface height at (x, z). In the plane (use_z off) z is ignored and every wave runs along +X,
+## exactly as in 0.2. With use_z (free movement, 0.3-5) each wave travels along its own XZ direction
+## (directions_deg), so the surface varies across the circle arena too.
+func height(x: float, z: float = 0.0) -> float:
 	var t := time_s()
 	var h := 0.0
 	for i in 3:
 		var k := TAU / wavelengths[i]
-		h += amplitudes[i] * sin(k * (x - speeds[i] * t) + phases[i])
+		h += amplitudes[i] * sin(k * (_along(i, x, z) - speeds[i] * t) + phases[i])
 	var k0 := TAU / wavelengths.x
-	h += swell_amplitude * swell_env() * sin(k0 * (x - speeds.x * t) + phases.x + 1.2)
+	h += swell_amplitude * swell_env() * sin(k0 * (_along(0, x, z) - speeds.x * t) + phases.x + 1.2)
 	return h
 
 
-func slope(x: float) -> float:
+## ∂h/∂x — the slope along the fight line in the plane.
+func slope(x: float, z: float = 0.0) -> float:
+	return gradient(x, z).x
+
+
+## (∂h/∂x, ∂h/∂z). In the plane the z component is 0.
+func gradient(x: float, z: float = 0.0) -> Vector2:
 	var t := time_s()
-	var s := 0.0
+	var g := Vector2.ZERO
 	for i in 3:
 		var k := TAU / wavelengths[i]
-		s += amplitudes[i] * k * cos(k * (x - speeds[i] * t) + phases[i])
+		var c := amplitudes[i] * k * cos(k * (_along(i, x, z) - speeds[i] * t) + phases[i])
+		g += _dir(i) * c
 	var k0 := TAU / wavelengths.x
-	s += swell_amplitude * swell_env() * k0 * cos(k0 * (x - speeds.x * t) + phases.x + 1.2)
-	return s
+	g += _dir(0) * swell_amplitude * swell_env() * k0 * cos(k0 * (_along(0, x, z) - speeds.x * t) + phases.x + 1.2)
+	return g
+
+
+## Unit travel direction of wave i in XZ (x, z). Plane: always +X.
+func _dir(i: int) -> Vector2:
+	if not use_z:
+		return Vector2(1.0, 0.0)
+	var a := deg_to_rad(directions_deg[i])
+	return Vector2(cos(a), sin(a))
+
+
+## Position projected on wave i's direction. Plane: x itself (same arithmetic as 0.2).
+func _along(i: int, x: float, z: float) -> float:
+	if not use_z:
+		return x
+	var d := _dir(i)
+	return d.x * x + d.y * z
 
 
 ## Lowest the surface can ever go — the stage puts its collision floor below this.

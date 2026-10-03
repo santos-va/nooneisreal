@@ -7,6 +7,10 @@ extends Node3D
 const WATER_SHADER := preload("res://shaders/water_toon.gdshader")
 const SIZE := Vector2(64.0, 25.0)      # x along the fight axis, z from the camera side to the backdrop
 const CENTER_Z := -5.5                 # spans z ≈ +7 … −18 (backdrop plane)
+## Free movement (0.3-5): a square around the arena centre that reaches the turning backdrop card
+## (Backdrop keeps ~18 m from the centre), fading into the painted river by distance from the centre.
+const FREE_SIZE := 38.0
+const FREE_FAR_R := 18.0
 
 var field: WaveField
 var _mat: ShaderMaterial
@@ -19,12 +23,14 @@ func setup(wf: WaveField, fighters: Array[Fighter]) -> void:
 	_fighters = fighters
 	process_physics_priority = -50       # after InputRouter (-100), before fighters (0)
 	var mesh := PlaneMesh.new()
-	mesh.size = SIZE
+	mesh.size = Vector2(FREE_SIZE, FREE_SIZE) if wf.use_z else SIZE
 	mesh.subdivide_width = 160
 	mesh.subdivide_depth = 6
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
-	mi.position = Vector3(0.0, 0.0, CENTER_Z)
+	mi.position = Vector3.ZERO if wf.use_z else Vector3(0.0, 0.0, CENTER_Z)
+	if wf.use_z:
+		mesh.subdivide_depth = 160
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.extra_cull_margin = 2.0
 	_mat = ShaderMaterial.new()
@@ -33,6 +39,9 @@ func setup(wf: WaveField, fighters: Array[Fighter]) -> void:
 	_mat.set_shader_parameter("wavelength", field.wavelengths)
 	_mat.set_shader_parameter("speed", field.speeds)
 	_mat.set_shader_parameter("phase", field.phases)
+	_mat.set_shader_parameter("use_z", field.use_z)
+	_mat.set_shader_parameter("dir_deg", field.directions_deg)
+	_mat.set_shader_parameter("far_r", FREE_FAR_R if field.use_z else 0.0)
 	mi.material_override = _mat
 	add_child(mi)
 	for f in fighters:
@@ -59,11 +68,13 @@ func _process(_delta: float) -> void:
 	var dim := 1.0 - 0.65 * field.swell_env()
 	for f in _fighters:
 		var ring: MeshInstance3D = _rings[f]
-		var h := field.height(f.global_position.x)
+		var h := field.height(f.global_position.x, f.global_position.z)
 		var grounded := f.global_position.y <= h + 0.12
 		ring.visible = grounded and f.state != Fighter.State.KO and f.animator.visible
-		ring.global_position = Vector3(f.global_position.x, h + 0.03, 0.0)
-		ring.rotation.z = atan(field.slope(f.global_position.x))
+		ring.global_position = Vector3(f.global_position.x, h + 0.03, f.global_position.z)
+		var g := field.gradient(f.global_position.x, f.global_position.z)
+		ring.rotation.z = atan(g.x)
+		ring.rotation.x = -atan(g.y)
 		ring.scale = Vector3(pulse, 0.25, pulse)
 		(ring.material_override as StandardMaterial3D).albedo_color.a = 0.85 * dim
 

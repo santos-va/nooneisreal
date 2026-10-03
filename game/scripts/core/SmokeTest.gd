@@ -20,6 +20,9 @@ var _profile0: String = ""
 var _old_arena: Node = null
 var _river_runs: Array = []
 var _river_min_gap: float = 99.0
+var _river3d_runs: Array = []
+var _zdiff: float = 0.0
+var _zmax: float = 0.0
 var _atk_frames: int = 0
 var _pose_changes: int = 0
 var _last_pose: Array = []
@@ -133,6 +136,37 @@ func _load_arena(stage_idx: int, next_stage: int) -> void:
 	_stage = next_stage
 	_f0 = _f
 	get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
+
+
+## 0.3-5: the same scripted inputs on every river run in free movement (t = frames from FIGHT).
+## Sidesteps take both fighters off the z = 0 line so the depth term of the waves is exercised.
+func _river3d_script(t: int) -> void:
+	InputRouter.v_set(1, "up", t < 70 or (t > 300 and t < 360))
+	InputRouter.v_set(1, "right", t > 90 and t < 130)
+	InputRouter.v_set(2, "down", t > 20 and t < 110)
+	InputRouter.v_set(2, "left", t > 150 and t < 190)
+	InputRouter.v_set(2, "block", t > 400 and t < 450)
+	if t in [140, 380]:
+		InputRouter.v_press(1, "jump")
+	if t in [200, 214, 470]:
+		InputRouter.v_press(1, "light")
+	if t in [250, 520]:
+		InputRouter.v_press(2, "light")
+	if t == 330:
+		InputRouter.v_press(2, "dash")
+
+
+## Hash of everything the water and the fighters decide at this frame: both bodies and HP, plus a
+## 9×9 grid of surface heights over the arena circle (rounded to 1e-6 so it is a value, not a float bit pattern).
+func _river3d_hash() -> int:
+	var w := GameState.water
+	var parts: Array[String] = []
+	for f: Fighter in [p1, p2]:
+		parts.append("%.6f,%.6f,%.6f,%.3f" % [f.global_position.x, f.global_position.y, f.global_position.z, f.hp])
+	for i in 9:
+		for j in 9:
+			parts.append("%.6f" % w.height(-12.0 + 3.0 * i, -12.0 + 3.0 * j))
+	return ";".join(parts).hash()
 
 
 # --- free movement helpers (Prototype 0.3) ------------------------------------------------------
@@ -1101,4 +1135,45 @@ func _physics_process(_delta: float) -> void:
 					_fail("cpu 3D in 10 s: sidesteps %d, swept around P1 %.0f° (want ≥ 20), hits %.0f (want ≥ 1)" % [steps, rad_to_deg(_rmax), hits])
 					return
 				_ok("CPU 3D in 10 s: %d sidesteps, swept %.0f° around P1, %.0f hits landed" % [steps, rad_to_deg(_rmax), hits])
-				_finish()
+				_load_arena(0, 60)   # 0.3-5: river in free movement
+		# ---------------- 0.3-5: river in free movement (two runs, same input → same hash) ----------
+		60:
+			if flow.phase == MatchFlow.Phase.FIGHT and GameState.water != null and p1.is_actionable() and p2.is_actionable():
+				if not GameState.water.use_z:
+					_fail("river 3D: WaveField.use_z is off under free_move")
+					return
+				_river_min_gap = 99.0
+				_zdiff = 0.0
+				_zmax = 0.0
+				_f0 = _f
+				_next()
+			elif _f > _f0 + 600:
+				_fail("river 3D: fight never started")
+		61:
+			var t := _f - _f0
+			_river3d_script(t)
+			var w := GameState.water
+			for f: Fighter in [p1, p2]:
+				var fx := f.global_position.x
+				var fz := f.global_position.z
+				var gap := f.global_position.y - w.height(fx, fz)
+				_river_min_gap = minf(_river_min_gap, gap)
+				_zmax = maxf(_zmax, absf(fz))
+				_zdiff = maxf(_zdiff, absf(w.height(fx, fz) - w.height(fx, 0.0)))
+				if gap < -0.05:
+					_fail("river 3D: P%d sank (y %.3f, surface %.3f at x %.2f z %.2f, frame %d, state %d)" % [f.player_index, f.global_position.y, f.global_position.y - gap, fx, fz, t, f.state])
+					return
+			if t == 600:
+				var h := _river3d_hash()
+				_river3d_runs.append(h)
+				_ok("river 3D run %d: nobody sank in 600 frames (min gap %.3f m), |z| up to %.2f m, surface differs from z=0 by up to %.3f m; hash %d" % [_river3d_runs.size(), _river_min_gap, _zmax, _zdiff, h])
+				if _zmax < 1.0 or _zdiff < 0.01:
+					_fail("river 3D: the run never tested depth (|z| max %.2f m, height(x,z) − height(x,0) max %.3f m)" % [_zmax, _zdiff])
+					return
+				if _river3d_runs.size() == 1:
+					_load_arena(0, 60)
+				elif _river3d_runs[0] != _river3d_runs[1]:
+					_fail("river 3D: two runs differ at frame 600 (hash %d vs %d)" % [_river3d_runs[0], _river3d_runs[1]])
+				else:
+					_ok("river 3D: deterministic — both runs hash %d at frame 600" % h)
+					_finish()
