@@ -97,7 +97,7 @@ Best of 3, 99 с; KO або тайм-аут; slow-mo 0.4× на 30 кадрів 
 | повітряний | 10 | — | напрям задано стрибком |
 | скіл | за скілом, [[03-Skills-Framework]] § Як у 3D | | |
 | ульт | 45 | | дорогий ресурс не промахується через кут |
-| `hook_pull` | 0 | | цілиться конус гарпуна |
+| `hook_pull` (слот `throw`) | 0 | | цілиться конус гарпуна; `backhit_hitstun_bonus` 0 — гарпун не має «спини» |
 
 ### Блок під кутом і удар у спину
 
@@ -113,6 +113,9 @@ Best of 3, 99 с; KO або тайм-аут; slow-mo 0.4× на 30 кадрів 
 - М'яка стіна: радіальна складова відкидання гаситься, тангенційна лишається — боєць ковзає вздовж краю.
 - Регдол у стіну — wall splat: `wall_splat_frames` = 10, без дамагу, **1 раз на комбо** (VF5 — 1, SC6 — 2; FM M15–M17).
   10 — між T8 wall slump 6 f і VF5 wall stun ≤ 23 f; одним числом — ДИЗАЙН.
+- **Hurtbox під час splat — увімкнений (Арес 2026-10-03, пропозиція 5 Феміди):** нападник, що доніс суперника до стіни,
+  має право на одне добивання. Розміну не буде: splat 1 раз на комбо, тож другого splat з добивання немає. Гефест додає
+  рядок smoke: удар під час splat влучає (зараз `hurt_shape.disabled = true` у `_wall_splat` лишає smoke зеленим — NC8).
 
 ### Камера дуелі на швидкому розвороті
 
@@ -197,70 +200,69 @@ CN §3: системно низькі hitstop, blockstun важких/присі
 | `grapple_cone_deg` | `CharacterData` | 30 (половина), [[04-Grapple-System]] | ДИЗАЙН; розбіжність 30↔60 закрита на 30 |
 | `camera_yaw_clamp` · відсув | `DuelCamera` | 3°/тік · поріг 15° → arm до +30 % | FM C10; решта ДИЗАЙН |
 
-## Кліп → удар (C3, #36) — для манекена C1
+## Кліп → удар (C3 #36, перегляд 4a під UAL Source) — для манекена C1
 
-Джерело кліпів і тривалостей: [[2026-10-03-Animation-Sources]] §3 і §8. Кадри кліпу рахуються як секунди × 60. Ціль у кадрах — це
-`startup+active+recovery` з `.tres` (`grep -nE '^(startup|active|recovery)' game/data/characters/*.tres`).
-Для пари «атака + `_Rec`» перший кліп грає на `startup+active`, а `_Rec` — на `recovery` (§8 п. 2).
-**Прискорення ×N** — це арифметика, а не рішення про відчуття. Усе понад ×2 Гефест позначає в C1 як ризик «смикано»
-і показує Santos кадр. Кадр контакту (`contact_time`) у кліпах не заміряно: його знімає Гефест у редакторі.
-Позначки джерела кліпу: **Std** — UAL1/UAL2 Standard (CC0, безкоштовно), **дірка** — у Standard кліпа немає, варіанти
-з §8 п. 3 обирає Santos (RED / $).
+**Джерело кліпів:** `game/assets/animations/ual/UAL1.glb` і `UAL2.glb`, тир **Source** (CC0, куплено Santos, `anim-ual1`/`anim-ual2` у [[Textures-Registry]]).
+**Як міряли кадри (Арес, 2026-10-03, 4a):** розбір glTF-JSON обох GLB (`python3`). Довжина кліпу = max(`input` accessor) × 60, округлено.
+**Ціль:** `startup+active` / `recovery` з `.tres` (`awk` по `game/data/characters/*.tres`).
+Для пари «атака + `_Rec`» перший кліп грає на `s+a`, а `_Rec` — на `recovery`.
+
+**Прискорення ×N** — це арифметика. Як розподілити його по фазах, а не рівно ×N, Гефест вирішує за R2 у [[2026-10-03-Fight-Craft-Research]]. Усе понад ×3 — ризик «смикано»: Гефест показує Santos кадр.
+`contact_time` у кліпах не заміряно, його знімає Гефест у редакторі.
+Кліпи обрано **за назвою і довжиною, без перегляду**: на вигляд їх підтверджують Арес і Santos у редакторі на запуску 4.
+
+**Позначки:**
+- **Src** — UAL Source, 0 кредитів.
+- **Src≈** — наближення, приймаю як є.
+- **шар** — низ і верх тіла з різних кліпів (фільтр кісток в `AnimationTree`, R4).
+- **RigA** — поза з RigAnimator, кліп не потрібен.
+- **дірка $** — кліпа немає, Higgsfield, RED.
 
 ### Choko — мечник-акробат (шука)
 
 | рух (`id` · `anim`) | s+a / r, кадри | кліп | кадри кліпу | прискорення | позначка |
 |---|---|---|---|---|---|
-| стійка | — | `Sword_Idle` | 100 | — | Std |
-| `light` Shuka Jab · `light` | 8 / 9 | `Sword_Regular_A` + `_A_Rec` | 26 + 58 | ×3.3 / ×6.4 | Std, ризик «смикано» |
-| ланцюг `anim_chain` · `light2` | 8 / 9 | `Sword_Regular_B` + `_B_Rec` | 32 + 62 | ×4.0 / ×6.9 | Std, ризик |
-| `heavy` Emerald Arc · `slash` | 15 / 17 | `Sword_Regular_C` | 120 (ціле) | ×3.75 на 32 | Std; кліпа `_C_Rec` немає, тож відрізати хвіст |
-| `crouch_light` Low Cut · `crouch_light` | 8 / 11 | — | — | — | **дірка, у Higgsfield кліпа немає** → поза RigAnimator, нахилена вниз |
-| `air_light` Dive Kick · `air_light` | 12 / 12 | — | — | — | **дірка** → Higgsfield **94** `Flying_Fist_Kick` · 422 `Rising_Flying_Kick` |
-| `record` / `time_stop` · `watch` | 8 / 8 · 20 / 14 | — | — | — | кліпа не треба: поза годинника з RigAnimator поверх `Sword_Idle` |
-| `sword_storm` · `sword_up` | 76 / 16 | — | — | — | **дірка** → Higgsfield **242** `Charged_Slash` · 102 `Sword_Judgment` (наближено: меча вгору в каталозі немає) |
-| `hook_pull` · `throw` | 10 / 14 | `OverhandThrow` | не виміряно | — | Std (UAL2) |
-| DASH (перекат) | — | `Roll` | 88 | під довжину dash | Std |
-| сальто (лист v5, бекдеш у повітрі) | — | — | — | — | **дірка** → Higgsfield **601** `Backflip_inplace` · 452 `Backflip` |
-
-**8 поз для листа Choko v5** (T6 малює, коли Santos дасть слово; Choko тримає меч, бо меч — окремий меш, лише в 3D його немає):
-1. фехтувальна стійка шуки: низько, клинок уперед на рівні очей; 2. випад-джеб (`light`); 3. Emerald Arc: дуга
-над головою з кроком уперед (`heavy`); 4. низький різ у присіді (`crouch_light`); 5. пірнання з ударом ногою вниз
-(`air_light`); 6. перекат через плече з мечем притиснутим (DASH); 7. сальто назад у фазі вершини; 8. меч угору,
-SWORD STORM (`sword_up`).
+| стійка | — | `Sword_Idle` | 100 | — | Src |
+| `light` Shuka Jab · `light` | 8 / 9 | `Sword_Light_A` + `_Rec` | 22 + 30 | ×2.75 / ×3.3 | Src (було `Sword_Regular_A` ×3.3 / ×6.4) |
+| ланцюг · `light2` | 8 / 9 | `Sword_Light_B` + `_Rec` | 26 + 34 | ×3.25 / ×3.8 | Src, ризик |
+| `heavy` Emerald Arc · `slash` | 15 / 17 | `Sword_Heavy_C` + `_Rec` | 42 + 34 | ×2.8 / ×2.0 | Src (було `Regular_C` 120 з відрізаним хвостом) |
+| `crouch_light` Low Cut · `crouch_light` | 8 / 11 | низ `Crouch_Idle_Loop` + верх `Sword_Light_A` + `_Rec` | 176 (луп) · 22 + 30 | верх ×2.75 / ×2.7 | шар, Src |
+| `air_light` · `air_light` | 12 / 12 | `Sword_Aerial_A` + `_Rec` | 24 + 26 | ×2.0 / ×2.2 | Src≈: удар мечем, а не ногою. `display_name` → **Dive Cut** |
+| `record` / `time_stop` · `watch` | 8 / 8 · 20 / 14 | — | — | — | RigA поверх `Sword_Idle` |
+| `sword_storm` · `sword_up` | 76 / 16 | `Sword_Heavy_D` (цілий на 92) | 140 | ×1.5 | Src≈. Запас — Higgsfield 242 `Charged_Slash` (RED, лише якщо в редакторі не ляже) |
+| `hook_pull` · `throw` | 10 / 14 | `OverhandThrow` (цілий на 24) | 80 | ×3.3 | Src, ризик |
+| DASH (перекат) | — | `Roll` | 88 | під довжину dash | Src |
+| сальто (лист v5) | — | `BackFlip` · запас `JogToFlip` | 116 · 72 | під рух | Src |
 
 ### Skea — муай-тай + кунаї
 
 | рух (`id` · `anim`) | s+a / r, кадри | кліп | кадри кліпу | прискорення | позначка |
 |---|---|---|---|---|---|
-| стійка | — | `Idle_Loop` | не виміряно | — | Std |
-| `jab_elbow` · `light` | 7 / 8 | `Punch_Jab` | 52 (ціле) | ×3.5 на 15 | Std, ризик |
-| друге натискання · ліктьовий | 7 / 8 | `Melee_Hook` + `_Rec` | 28 + 36 | ×4 / ×4.5 | Std (UAL2); ближче до ліктя, ніж `Punch_Cross` (60) |
-| `roundhouse` · `roundhouse` | 15 / 18 | — | — | — | **дірка** → Higgsfield **649** `Lunge_Roundhouse_Kick_inplace` · 207 `Roundhouse_Kick` |
-| `low_kick` · `low_kick` | 8 / 11 | — | — | — | **дірка** → Higgsfield **217** `Sweeping_Kick` · 455 `Sweep_Kick` |
-| `flying_knee` · `flying_knee` | 11 / 12 | — | — | — | **дірка** → Higgsfield **211** `Boxing_Guard_Step_Knee_Strike` (наближено: коліно з кроком, не в стрибку) |
-| `kunai_rain` · `toss` | 14 / 16 | `OverhandThrow` | не виміряно | — | Std |
-| `shadow_veil` · `veil` | 10 / 6 | — | — | — | кліпа не треба: поза кидка під ноги з RigAnimator + дим |
-| `cursed_grimoire` · `book` | 84 / 14 | — | — | — | кліпа немає: поза з книгою з RigAnimator |
-| `hook_pull` · `throw` | 10 / 14 | `OverhandThrow` | не виміряно | — | Std |
+| стійка | — | `Idle_Loop` | 150 | — | Src |
+| `jab_elbow` · `light` | 7 / 8 | `Punch_Jab` (цілий на 15) | 52 | ×3.5 | Src, ризик |
+| друге натискання · ліктьовий | 7 / 8 | `Melee_Hook` + `_Rec` | 28 + 36 | ×4.0 / ×4.5 | Src, ризик |
+| `roundhouse` · `roundhouse` | 15 / 18 | `Kick` (цілий на 33) | 66 | ×2.0 | Src≈: тип удару з назви не видно |
+| `low_kick` · `low_kick` | 8 / 11 | — | — | — | **дірка $** → Higgsfield **217** `Sweeping_Kick` · запас 455 `Sweep_Kick`. `Kick` уже зайнятий roundhouse |
+| `flying_knee` · `flying_knee` | 11 / 12 | `Melee_Knee` + `_Rec` | 52 + 14 | ×4.7 / ×1.2 | Src≈, ризик. Стрибок дає код, кліп — лише коліно |
+| `kunai_rain` · `toss` | 14 / 16 | `OverhandThrow` (цілий на 30) | 80 | ×2.7 | Src |
+| `shadow_veil` · `veil` | 10 / 6 | — | — | — | RigA + дим |
+| `cursed_grimoire` · `book` | 84 / 14 (довга з диму — [[03-Skills-Framework]] § Ульта Skea під бас) | — | — | — | RigA. Підпис «SKI» — флеш-степи кодом |
+| `hook_pull` · `throw` | 10 / 14 | `OverhandThrow` (цілий на 24) | 80 | ×3.3 | Src |
+| DASH (флеш-степ) | — | `Dodge_Left` / `Dodge_Right` | 78 | під довжину dash | Src |
 
 ### Спільні стани (обидва)
 
 | стан | кліп | кадри кліпу | позначка |
 |---|---|---|---|
-| BLOCK / BLOCKSTUN | `Sword_Block` | 74 | Std; Skea без меча, але кліп тримає захист руками |
-| HITSTUN high / mid | `Hit_Head` / `Hit_Chest` | 26 / 20 | Std |
-| HITSTUN low | — | — | дірки немає ніде: пружина флінчу `RigAnimator` (`low` = «knees buckle»), адитивно |
-| KNOCKDOWN → GETUP | `Hit_Knockback` → `LayToIdle` | 50 → 92 | Std; під час регдолу кліп не грає |
-| KO | `Death01` | 144 | Std |
+| BLOCK / BLOCKSTUN | `Sword_Block` | 74 | Src. Skea без меча, кліп тримає захист руками |
+| HITSTUN high / mid / low | `Hit_Head` / `Hit_Chest` / `Hit_Stomach` | 26 / 20 / 40 | Src. Low — новий кліп. Пружина флінчу `RigAnimator` лишається адитивно зверху |
+| KNOCKDOWN → GETUP | `Hit_Knockback` → `LayToIdle` (Choko) · `KipUp` (Skea) | 50 → 92 · 70 | Src. Під час регдолу кліп не грає |
+| KO | `Death01` | 144 | Src |
 
-**Дірки закриває Higgsfield (Santos 2026-10-03: «так», без сторонніх підписок).** Id взято з `animation_actions`
-(каталог, безкоштовний виклик, 2026-10-03). Жирним позначено основний кліп, поруч — запасний. Для 6 дір із 7 кліп є,
-два з них наближені (`sword_up`, `flying_knee`). У `crouch_light` кліпа немає, там лишається поза RigAnimator.
-**Ціну не перевірено:** `get_cost` заблокував класифікатор дозволів, а «8 кр./кліп» — заява з
-[[2026-10-03-Animation-Sources]], у цій сесії не перевірена. Невідомо також, чи кліп Meshy ляже на манекен UAL / скелет
-у Godot (кліп прив'язаний до ригу M-0/M-1). Генерація — RED: кредити витрачає T6 у головній сесії зі слова Santos,
-перед цим `get_cost`.
+**Підсумок 4a.**
+- **Дірок лишилась одна:** `low_kick` Skea. Решта 6 із 7 закрито UAL Source за 0 кредитів, з них Src≈ (наближення) — 4.
+- **RED:** було «48 кр. за 6» — стало **8 кр. за 1 кліп**. Ціну «8 кр./кліп» у цій сесії не перевірено (`get_cost` — T6). Генерація лише зі слова Santos.
+- **Запас:** якщо `sword_storm` чи `flying_knee` у редакторі не ляжуть, запасні id Higgsfield є (242, 211).
 
 ## Баланс Choko ↔ Skea (T5 Арес, 2026-10-03, прохід паритету)
 

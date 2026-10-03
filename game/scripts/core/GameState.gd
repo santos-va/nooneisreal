@@ -41,6 +41,9 @@ var water: WaveField = null
 ## the X plane, unchanged. Switch with set_free_move() (it also re-binds the keyboard), or launch with
 ## `-- --plane` / `-- --free-move`.
 var free_move: bool = true
+## Launch 4 (C1): the UAL mannequin with clips draws the fighter instead of the capsules (SkeletalRig.gd); the
+## capsule rig keeps running underneath. Off by default; `-- --skeletal-rig` turns it on.
+var skeletal_rig: bool = false
 ## The duel's screen frame for free movement (scripts/core/DuelFrame.gd); fighters sync it each frame.
 var duel: DuelFrame = DuelFrame.new()
 

@@ -21,7 +21,7 @@ Storm із 13 входами на тач не лягає. 9 дій — стел�
 
 | слот | [[Choko]] — контроль часу | [[Skea]] — Muay Thai + тіні |
 |---|---|---|
-| Нормалі | Shuka Jab · Emerald Arc · Low Cut · Dive Kick | Jab→Elbow · Roundhouse · Low Kick · Flying Knee |
+| Нормалі | Shuka Jab · Emerald Arc · Low Cut · Dive Cut | Jab→Elbow · Roundhouse · Low Kick · Flying Knee |
 | Рух | Chrono Step (деш) | Flash Step ×3 → 4.5 с |
 | Скіл 1 | RECORD (маркер → перемотка) | KUNAI RAIN (AoE + Armor Break) |
 | Скіл 2 | TIME STOP (заморозка 1.2 с) | SHADOW VEIL (невидимість + крит) |

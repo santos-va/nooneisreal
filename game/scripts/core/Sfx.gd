@@ -14,6 +14,8 @@ const BUS := "SFX"
 var _players: Array[AudioStreamPlayer] = []
 var _cache: Dictionary = {}
 var _next: int = 0
+## sfx name → physics frame of its last play() (smoke: hit sound on the hit frame, launch 4 § C1).
+var last_frame: Dictionary = {}
 
 
 func _ready() -> void:
@@ -26,6 +28,7 @@ func _ready() -> void:
 
 
 func play(sfx_name: String, volume_db: float = 0.0, pitch_jitter: float = 0.06) -> void:
+	last_frame[sfx_name] = Engine.get_physics_frames()
 	var stream := _stream(sfx_name)
 	if stream == null:
 		return
