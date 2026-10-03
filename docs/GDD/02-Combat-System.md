@@ -174,13 +174,13 @@ CN §3: системно низькі hitstop, blockstun важких/присі
 | `light` Shuka Jab · `light` | 8 / 9 | `Sword_Regular_A` + `_A_Rec` | 26 + 58 | ×3.3 / ×6.4 | Std, ризик «смикано» |
 | ланцюг `anim_chain` · `light2` | 8 / 9 | `Sword_Regular_B` + `_B_Rec` | 32 + 62 | ×4.0 / ×6.9 | Std, ризик |
 | `heavy` Emerald Arc · `slash` | 15 / 17 | `Sword_Regular_C` | 120 (ціле) | ×3.75 на 32 | Std; кліпа `_C_Rec` немає, тож відрізати хвіст |
-| `crouch_light` Low Cut · `crouch_light` | 8 / 11 | — | — | — | **дірка**: Src `Sword_Light_*` або поза з RigAnimator, нахилена вниз |
-| `air_light` Dive Kick · `air_light` | 12 / 12 | — | — | — | **дірка**: Src `Sword_Aerial_A`; Meshy 94 Flying_Fist_Kick (8 кр.) |
+| `crouch_light` Low Cut · `crouch_light` | 8 / 11 | — | — | — | **дірка, у Higgsfield кліпа немає** → поза RigAnimator, нахилена вниз |
+| `air_light` Dive Kick · `air_light` | 12 / 12 | — | — | — | **дірка** → Higgsfield **94** `Flying_Fist_Kick` · 422 `Rising_Flying_Kick` |
 | `record` / `time_stop` · `watch` | 8 / 8 · 20 / 14 | — | — | — | кліпа не треба: поза годинника з RigAnimator поверх `Sword_Idle` |
-| `sword_storm` · `sword_up` | 76 / 16 | — | — | — | **дірка**: Src `Sword_UpperCut_RM`; до того `Sword_Idle` + поза руки вгору |
+| `sword_storm` · `sword_up` | 76 / 16 | — | — | — | **дірка** → Higgsfield **242** `Charged_Slash` · 102 `Sword_Judgment` (наближено: меча вгору в каталозі немає) |
 | `hook_pull` · `throw` | 10 / 14 | `OverhandThrow` | не виміряно | — | Std (UAL2) |
 | DASH (перекат) | — | `Roll` | 88 | під довжину dash | Std |
-| сальто (лист v5, бекдеш у повітрі) | — | — | — | — | **дірка**: UAL1 Pro `BackFlip` $9.99 · Meshy 452 (8 кр.) |
+| сальто (лист v5, бекдеш у повітрі) | — | — | — | — | **дірка** → Higgsfield **601** `Backflip_inplace` · 452 `Backflip` |
 
 **8 поз для листа Choko v5** (T6 малює, коли Santos дасть слово; Choko тримає меч, бо меч — окремий меш, лише в 3D його немає):
 1. фехтувальна стійка шуки: низько, клинок уперед на рівні очей; 2. випад-джеб (`light`); 3. Emerald Arc: дуга
@@ -195,9 +195,9 @@ SWORD STORM (`sword_up`).
 | стійка | — | `Idle_Loop` | не виміряно | — | Std |
 | `jab_elbow` · `light` | 7 / 8 | `Punch_Jab` | 52 (ціле) | ×3.5 на 15 | Std, ризик |
 | друге натискання · ліктьовий | 7 / 8 | `Melee_Hook` + `_Rec` | 28 + 36 | ×4 / ×4.5 | Std (UAL2); ближче до ліктя, ніж `Punch_Cross` (60) |
-| `roundhouse` · `roundhouse` | 15 / 18 | — | — | — | **дірка**: UAL1 Pro `Kick`, Meshy 207 |
-| `low_kick` · `low_kick` | 8 / 11 | — | — | — | **дірка**: Meshy 213 Leg_Sweep / 103 |
-| `flying_knee` · `flying_knee` | 11 / 12 | — | — | — | **дірка**: UAL2 Src `Melee_Knee` |
+| `roundhouse` · `roundhouse` | 15 / 18 | — | — | — | **дірка** → Higgsfield **649** `Lunge_Roundhouse_Kick_inplace` · 207 `Roundhouse_Kick` |
+| `low_kick` · `low_kick` | 8 / 11 | — | — | — | **дірка** → Higgsfield **217** `Sweeping_Kick` · 455 `Sweep_Kick` |
+| `flying_knee` · `flying_knee` | 11 / 12 | — | — | — | **дірка** → Higgsfield **211** `Boxing_Guard_Step_Knee_Strike` (наближено: коліно з кроком, не в стрибку) |
 | `kunai_rain` · `toss` | 14 / 16 | `OverhandThrow` | не виміряно | — | Std |
 | `shadow_veil` · `veil` | 10 / 6 | — | — | — | кліпа не треба: поза кидка під ноги з RigAnimator + дим |
 | `cursed_grimoire` · `book` | 84 / 14 | — | — | — | кліпа немає: поза з книгою з RigAnimator |
@@ -213,11 +213,13 @@ SWORD STORM (`sword_up`).
 | KNOCKDOWN → GETUP | `Hit_Knockback` → `LayToIdle` | 50 → 92 | Std; під час регдолу кліп не грає |
 | KO | `Death01` | 144 | Std |
 
-**Що з цього треба Santos:** кліпи для 7 рухів-дір (Choko: `crouch_light`, `air_light`, `sword_up`, сальто; Skea:
-`roundhouse`, `low_kick`, `flying_knee`). Найдешевше за кількістю закритих дір — **UAL2 Source $14.99**: у ньому є
-`Sword_Light_*`, `Sword_Aerial_*`, `Sword_UpperCut_RM`, `Melee_Knee`, `JogToFlip`, але немає ударів ногою. За переглядачем це
-**5 із 7 дір без кредитів**; файли не відкривались ([[2026-10-03-Animation-Sources]] Відкрите п. 6). Удари
-ногою закриває UAL1 Pro `Kick` ($9.99) або Meshy 207/213 (RED). До вибору C1 грає дірки позою RigAnimator, як зараз.
+**Дірки закриває Higgsfield (Santos 2026-10-03: «так», без сторонніх підписок).** Id взято з `animation_actions`
+(каталог, безкоштовний виклик, 2026-10-03). Жирним позначено основний кліп, поруч — запасний. Для 6 дір із 7 кліп є,
+два з них наближені (`sword_up`, `flying_knee`). У `crouch_light` кліпа немає, там лишається поза RigAnimator.
+**Ціну не перевірено:** `get_cost` заблокував класифікатор дозволів, а «8 кр./кліп» — заява з
+[[2026-10-03-Animation-Sources]], у цій сесії не перевірена. Невідомо також, чи кліп Meshy ляже на манекен UAL / скелет
+у Godot (кліп прив'язаний до ригу M-0/M-1). Генерація — RED: кредити витрачає T6 у головній сесії зі слова Santos,
+перед цим `get_cost`.
 
 ## Відкриті питання (до інтерв'ю)
 
