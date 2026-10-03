@@ -322,5 +322,32 @@ nano_banana_pro 2k 3:4 і 1:1 — 2 · image_decompose — 2 · flux_2_pro_outpa
 | N-8 | P1 `sprite-pedestrian-courier-walk` | `76fac42d-05a0-43a2-b900-3cb9ac705be0` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022149_76fac42d-05a0-43a2-b900-3cb9ac705be0.png | **залишаємо**, петля так |
 | N-9 | P1 `sprite-pedestrian-elder-walk` | `ccc3ca6e-5e08-4673-baf2-e34dbd197351` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022150_ccc3ca6e-5e08-4673-baf2-e34dbd197351.png | **залишаємо**, петля так |
 
+### Choko v5 кросівки + Skea S3 (2026-10-03, #38, #33)
+
+Слово Santos (сесія T6): «кросівки Choko (картка ×2, стеля 5.5 кр.) і Skea S3 (поворот + 4 T-пози, стеля 13.75 кр.), разом ≤ 19.25».
+Промпти — [[Prompt-Library]] § 15 (кросівки, **без референсу**) і § 14b (S3). Модель `gpt_image_2_5` high 2k (у відповіді — `model: flare`).
+`get_cost`: картка 16:9 без референсу → 2.75; T-поза 3:4 з 4 референсами → 2.75. `models_explore get gpt_image_2_5` **ліміту кількості
+референсів не називає**; `get_cost` із 4 референсами пройшов, і в `show_generation_by_ids` у кожної роботи S3 у `medias` стоять усі 4:
+S-1 `dcdef91d`, N-5 `ab80973c`, N-6 `d2ac65b6`, S-5 `36ace5cf`. Чи модель **використала** всі чотири — видно лише на картинці.
+Мітки `V-n` — номери галереї цього запуску.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C2 кросівки Choko ×2 | 5806.75 | 5801.25 | 5.5 (стеля 5.5) |
+| S3 поворот + 4 T-пози Skea | 5801.25 | 5787.5 | 13.75 (стеля 13.75) |
+| **Разом** | **5806.75** | **5787.5** | **19.25** (стеля 19.25) |
+
+7 робіт `completed`, 0 failed. Лого на кросівках, руки Skea і стиль **не перевірено мною** — CDN із хмари закритий.
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| V-0 | C2 `choko-item-sneakers-v1` · v1 | `b14c174b-acd7-4fb2-aae5-d9cc51690d10` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024505_b14c174b-acd7-4fb2-aae5-d9cc51690d10.png | чекає вибору Santos |
+| V-1 | C2 `choko-item-sneakers-v1` · v2 | `482bfc6d-ab01-4c57-8473-b6010491aff5` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024506_482bfc6d-ab01-4c57-8473-b6010491aff5.png | чекає вибору Santos |
+| V-2 | S3 `skea-turn-v3` | `5a560785-73e8-423b-9235-4a1b99879a80` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024623_5a560785-73e8-423b-9235-4a1b99879a80.png | чекає вибору Santos |
+| V-3 | S3 `skea-tpose-front-v3` | `c17c3449-0e7e-4eb8-b108-3445002aa5a8` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024623_c17c3449-0e7e-4eb8-b108-3445002aa5a8.png | чекає вибору Santos |
+| V-4 | S3 `skea-tpose-side-v3` | `be43c7b7-f30b-43d5-908f-76d38c1454e1` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024624_be43c7b7-f30b-43d5-908f-76d38c1454e1.png | чекає вибору Santos |
+| V-5 | S3 `skea-tpose-back-v3` | `e3b39f3c-8430-4499-a7c7-7b8986da0cec` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024624_e3b39f3c-8430-4499-a7c7-7b8986da0cec.png | чекає вибору Santos |
+| V-6 | S3 `skea-tpose-34-v3` | `82dfeb1b-c881-4361-a3d3-97ff40a8d267` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024624_82dfeb1b-c881-4361-a3d3-97ff40a8d267.png | чекає вибору Santos |
+
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]

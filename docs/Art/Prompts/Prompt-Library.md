@@ -24,9 +24,9 @@ No anime style, no glossy eyes, no 3D render look, no gradients, no realistic sk
 {STYLE} Character pose sheet on a flat muted mint-sage background (#B8CBB1), eight full-body poses of the same original character in two rows of four, evenly spaced, no frames: 1) relaxed standing with weight on one leg, 2) hands-on-hips confident, 3) three-quarter walking, 4) dynamic fighting lunge, 5) arms crossed annoyed, 6) back view looking over shoulder, 7) side view idle, 8) pointing or taunting gesture toward the viewer. Keep the identity, outfit and colors of the reference image: {IDENTITY}. Small title "{NAME}" in the top-left corner in hand-lettered marker. {NEG}
 ```
 
-**IDENTITY — Choko** (v4 з 2026-10-03: легка куртка + кольчуга лише вставками, рішення Santos; попередня — § 13):
+**IDENTITY — Choko** (v5 з 2026-10-03: гладка спина + кросівки, [[2026-10-03-Choko-Outfit-v5]]; до Choko завжди додавати `{NEG_CHOKO}` § 15; попередня v4 — § 15 «Було»):
 ```
-young man, lean narrow face, long straight nose, grey-green eyes, thick curly dark-brown hair covering temples and ears; light fitted cloth jacket in muted dusty orange with a thin cream stripe and a high collar, sleeves to the wrists, with panels of fine gunmetal chainmail rings only on the shoulders and forearms, cut for a fast acrobatic swordsman (no full chainmail coat, no shirt); slate blue-grey trousers; black leather gloves; large analog wristwatch on the left wrist; emerald-green pike-style sword with dark green wrapped grip and brass guard
+young man, lean narrow face, long straight nose, grey-green eyes, thick curly dark-brown hair covering temples and ears; the whole back of the jacket is one smooth plain dusty-orange cloth panel with a single vertical cream stripe down the spine, no metal on the back; light fitted cloth jacket in muted dusty orange with a thin cream stripe and a high collar, sleeves to the wrists, cut for a fast acrobatic swordsman, with small sewn-on patches of fine gunmetal ring mesh on the shoulder caps and the outer forearms only; slate blue-grey trousers; low-top 2000s retro running sneakers, breathable mesh base with layered silver-grey synthetic overlays, chunky segmented light-grey midsole with a visible heel cage, light grey with muted orange accent panels on the heel tab, around the lace eyelets and on the outsole, the same dusty orange as the jacket, no logos, no brand marks, plain side panels; black leather gloves; large analog wristwatch on the left wrist; emerald-green pike-style sword with dark green wrapped grip and brass guard
 ```
 
 **IDENTITY — Skea** (v2 з 2026-10-03, santos-va/nooneisreal#33; попередня — § 12 «Було»; до Skea завжди додавати `{NEG_SKEA}` і пози § 12):
@@ -64,6 +64,7 @@ nano_banana_pro 2k, 3:4. Чотири окремі запуски: `front`, `lef
 | Choko's ultimate sword: the leftmost sword of the reference sheet, keep its shape and colors (reference image: `weapons-choko-ult`) | crossguard and grip; blade tip |
 | Choko's fitted jacket of fine gunmetal chainmail rings with muted dusty-orange leather panels, a thin cream stripe and a high collar | chainmail ring weave; collar and leather panel seam |
 | Skea's purple hoodie with the hood down and sleeves in a teal-green camouflage pattern | camouflage sleeve pattern; hood and drawstrings |
+| Choko's low-top 2000s retro running sneakers, a pair: breathable mesh base with layered silver-grey synthetic overlays, chunky segmented light-grey midsole with a visible heel cage, light grey with muted orange accent panels on the heel tab, around the lace eyelets and on the outsole, no logos, no brand marks, plain side panels (§ 15, без референсу) | heel cage and orange heel tab; lace eyelets with the orange panel and the segmented outsole |
 
 ## 5. Безшовна текстура — `<ch>-tex-<name>`
 
@@ -219,6 +220,43 @@ Santos хоче Choko «вправнішим мечником і акробат�
 
 ```
 lanky, very tall and thin young man of about twenty — for this character only, head about one sixth to one seventh of his height (taller and thinner than the usual proportions), long thin fingers; sharp cheekbones, hollow cheeks, dark magenta-violet shadows under the eyes; pale grey eyes with tiny pinpoint pupils that almost never blink — the eyes stay calm and cold and take no part in the smile; an unnaturally wide smile whose corners reach slightly past where the cheeks should end, too many teeth, thin dark dental braces with a faint violet glint, the smile stays frozen while the rest of the face moves; faint, barely visible freckles; messy curly brown hair falling over the forehead; an oversized boxy purple zip-up hoodie with dropped shoulders, a full-length silver zipper, long baggy sleeves gathered in ribbed cuffs, a ribbed hem and a kangaroo pocket, printed across the chest and down both sleeves with a large flowing white cracked, distressed calligraphic script ornament that has no readable letters, the hood down, hanging low on his back, mostly hidden behind the backpack; crossed leather straps; loose oversized black cargo pants with kunai holstered on the thighs, their lower legs tightly wrapped over the fabric with cloth bandages from the ankle to below the knee, like a Muay Thai fighter; chunky retro running sneakers with layered suede and mesh panels and a thick sculpted white midsole, all white with small black accent panels and a black accent stripe on the side, no logos, no brand marks; a book-shaped backpack, an old leather grimoire, whose glowing purple infinity-eight sigil sits centered on the back panel only, nothing on its sides; tattoo on the forearm; slack, slouching posture, head tilted, shoulders dropped, standing unnervingly still
+```
+
+### 14b. S3 — поворот і 4 T-пози Skea v3 (Santos 2026-10-03, [[2026-10-03-Picks-to-Game-and-Animation]] § A)
+
+Лист v3 N-4 не перегенеровуємо (рішення T1). gpt_image_2_5 high 2k: поворот 16:9 ×1, T-пози 3:4 ×4 (`front`, `left side`, `back`, `three-quarter front`).
+Референси в цьому порядку (пріоритет, якщо модель візьме менше): 1) лист S-1 `dcdef91d` — обличчя, пропорції, манера; 2) худі N-5
+`ab80973c`; 3) кросівки N-6 `d2ac65b6`; 4) обличчя S-5 `36ace5cf`. IDENTITY — § 14a. Хвіст `{NEG_S3}` = `{NEG} {NEG_SKEA}` + `Both arms fully visible, two hands.`
+
+**Поворот** `skea-turn-v3`:
+```
+{STYLE} Character turnaround model sheet on a flat mint-sage background, four consistent full-body views in a row: front, three-quarter, side profile, back; neutral relaxed standing pose, arms hanging slightly away from the body, both arms fully visible, same scale and ground line for all views. Take the face, body proportions and drawing style from the first reference image; take the hoodie exactly from the second reference image, the sneakers exactly from the third, and the face and smile from the fourth; nothing else from the item cards. Identity: {IDENTITY_SKEA_V3}. Title "SKEA TURNAROUND". {NEG_S3}
+```
+
+**T-пози** `skea-tpose-<view>-v3`:
+```
+{STYLE} Single full-body figure only, {VIEW} view, standing in a clean T-pose with both arms straight out to the sides and palms down, two hands clearly visible, legs slightly apart, feet flat, whole body in frame head to toe, centered. Pure white background, no shadow, no ground plane, no props in hands, kunai removed from the hands. Flat even lighting, flat colors with inked lines. Take the face, body proportions and drawing style from the first reference image; the hoodie exactly from the second reference image, the sneakers exactly from the third, the face and smile from the fourth. Identity: {IDENTITY_SKEA_V3}. {NEG_S3}
+```
+
+## 15. Choko — одяг v5: гладка спина і кросівки (Santos 2026-10-03, [[2026-10-03-Choko-Outfit-v5]])
+
+Причини, чому кільця лізли на спину, і ліки — у плані v5 § Діагноз. Що змінилось у тексті:
+1. Спина описана **першою і прямо** (гладка тканина + кремова смуга по хребту).
+2. Слова «chainmail» в IDENTITY немає; вставки — «ring mesh» лише на плечах і зовнішньому боці передпліч.
+3. Заперечення — лише в окремому хвості `{NEG_CHOKO}`, не в IDENTITY.
+4. Взуття вперше в IDENTITY: форма ретро-ранера на кшталт P-6000 (бренд у промпті **не називаємо**, лого немає), сірі з помаранчевими вставками.
+
+**`{NEG_CHOKO}`** (додається після `{NEG}` у кожному промпті Choko з людиною):
+```
+No chain mail or metal rings on the back, chest or torso, no mail shirt, no armor vest, no logos or brand marks on the shoes.
+```
+
+**Картка кросівок** `choko-item-sneakers-v1` — шаблон § 4, рядок ITEM «Choko's low-top 2000s retro running sneakers…».
+gpt_image_2_5 high 2k 16:9, **без референсу** (обличчя не потрібне, стиль задає `{STYLE}`; старий лист `f21298f4` тягне кольчугу).
+
+Було (v4):
+```
+young man, lean narrow face, long straight nose, grey-green eyes, thick curly dark-brown hair covering temples and ears; light fitted cloth jacket in muted dusty orange with a thin cream stripe and a high collar, sleeves to the wrists, with panels of fine gunmetal chainmail rings only on the shoulders and forearms, cut for a fast acrobatic swordsman (no full chainmail coat, no shirt); slate blue-grey trousers; black leather gloves; large analog wristwatch on the left wrist; emerald-green pike-style sword with dark green wrapped grip and brass guard
 ```
 
 ## Related
