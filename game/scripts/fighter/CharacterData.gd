@@ -21,6 +21,11 @@ extends Resource
 ## Art reference, T6 Аполлон — docs/Art/Textures-Registry.md (model-choko-m0, model-skea-m1).
 @export_file("*.glb") var model_scene: String = ""
 @export var weight: float = 1.0                  # scales knockback received (lighter flies further)
+## Body weight (Santos 2026-10-03: «обидва середні, різниця мала»; PLACEHOLDER until T5 Арес confirms the numbers).
+@export var ground_accel: float = 48.0           # m/s² walking speeds up (and turns) on the ground
+@export var ground_decel: float = 52.0           # m/s² it brakes to a stop
+@export var fall_gravity_mult: float = 1.35      # jump arc: the way down is heavier than the way up (GRAVITY × this)
+@export var land_frames: int = 2                 # after a jump lands: no new action for these frames (the body settles)
 ## 0…1, how steadily the fighter stands on water (river stage). Lower = more sway, slower walk,
 ## stumbles on weaker swells. PLACEHOLDER; Santos 2026-10-03: Choko and Skea both 0.85.
 @export_range(0.0, 1.0) var water_balance: float = 0.85

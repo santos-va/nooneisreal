@@ -388,10 +388,14 @@ Hitstun і blockstun **не** чіпаємо: інакше втома супер
 лише час без дій за 297 с дає `fatigue` 0.99; удар по бійцю не змінює його `fatigue`; startup і шкода ударів однакові на `fatigue` 0 і 1; між раундами
 `fatigue` не падає.
 
+## Трюки й стиль
+
+Ідентичність бійців, системні техніки (тех-підйом, відштовх від стіни, зип-удар), по 7 трюків на бійця і числа ваги тіла — [[09-Tricks-And-Style]] (Арес 2026-10-03, PLACEHOLDER).
+
 ## Відкриті питання (до інтерв'ю)
 
 - Низькі/верхні удари (хай/лоу-блок)? Кидок окремою кнопкою чи лишити гарпун-підтягування?
 - Чи має ульт бути кат-сценою (Storm) чи ігровим ударом?
 
 ## Related
-- [[03-Skills-Framework]] · [[04-Grapple-System]] · [[05-Platforms-Input]] · [[Active-Ragdoll]] · [[Glossary]] · [[ADR-018-Camera-Frames-Fight-With-Air]] · [[2026-10-03-Crystal-Ult-Arena-Fatigue]] · [[2026-10-03-Ares-Crystal-Ult-Camera]]
+- [[03-Skills-Framework]] · [[09-Tricks-And-Style]] · [[04-Grapple-System]] · [[05-Platforms-Input]] · [[Active-Ragdoll]] · [[Glossary]] · [[ADR-018-Camera-Frames-Fight-With-Air]] · [[2026-10-03-Crystal-Ult-Arena-Fatigue]] · [[2026-10-03-Ares-Crystal-Ult-Camera]]
