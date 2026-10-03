@@ -281,5 +281,21 @@ gpt_image_2_5 high 2k. Референси в цьому порядку: 1) ку�
 - бік: `true side profile, the body keeps exactly the same height, shoulder width and limb length as the first reference image, not squashed, not compressed, not shortened; the arms point straight toward and away from the viewer`;
 - спина: `the back of the jacket is completely plain and uniform dusty orange, no stripe, no seam, no line down the middle`.
 
+### 15b. Спина Choko v5 (друга переробка) і гліф «C» (Santos 2026-10-03)
+
+**Бік не робимо** (Santos, варіант А): `multi_image_to_3d` бере 1–4 види, тож 3D іде з трьох — front X-0, back, ¾ X-3; так само для Skea.
+**Спина** `choko-tpose-back-v5` ×2, 3:4. Опис спини N-2 дістати не можу (CDN закритий), тому N-2 **не беру референсом**: її промпт спину не
+описував, а референсом мав старий лист із кольчугою. Референси: X-0 `b529a3bd`, X-3 `5b045b7a`, кросівки V-1 `482bfc6d`. Спина описана словами
+повністю, IDENTITY — без меча (`cut for fast acrobatic movement`):
+```
+{STYLE} Single full-body figure only, seen exactly from behind (back view), standing in a clean T-pose with both arms straight out to the sides and palms down, legs slightly apart, feet flat, whole body in frame head to toe, centered. Pure white background, no shadow, no ground plane. Empty hands: he holds nothing, no sword, no scabbard, no weapon or object anywhere on the body. Flat even lighting, flat colors with inked lines. Take the face, hair, body proportions and the jacket front details from the first and second reference images (front and three-quarter views of the same character) and the shoes from the third. What the back looks like, described exactly: the back of the jacket is one single uninterrupted piece of plain dusty-orange cloth from the collar to the hem and from sleeve seam to sleeve seam; there is no stripe, no line, no seam, no zipper, no panel and no metal anywhere in the middle of the back; the only details on the back are the back of the high collar at the top, a few soft cloth folds, and the small gunmetal ring-mesh patches on the shoulder caps and on the outer forearms where they wrap around from the front; the sleeves are plain dusty orange; the slate blue-grey trousers and the heels of the sneakers are visible below. Identity: {ID}. {NEG} {NEG_CHOKO}
+```
+
+**Гліф** `choko-monogram-c-v1` ×2, 16:9, без референсу — [[2026-10-03-Choko-Outfit-v5]] § Монограма (гілка T1): рукописна «C» з петлею й хвостом
+на зовнішній панелі кросівки, помаранчевий `#BD6133` ([[Style-Guide]]) на сірому. Загальний `{NEG}` тут не ставиться: він забороняє текст.
+```
+{STYLE} Monogram design card on a flat mint-sage background (#B8CBB1): a single hand-lettered cursive capital letter C drawn like a calligraphy signature, with an opening loop at the top and a long tail that curls back on itself and then stretches out horizontally to the right, as a mark for the outer side panel of a sneaker. Show it four times: 1) large in the center in dark plum-graphite line on white, 2) filled in muted dusty orange #BD6133 on a light grey mesh swatch, 3) small on a plain light grey low-top sneaker side panel silhouette with no other marks, 4) a thin single-line version. Same letter shape in all four, sketchy hand-drawn line. No other letters, no words, no numbers, no title, no brand logos, no swoosh or stripe shapes, no watermark.
+```
+
 ## Related
 - [[Style-Guide]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Prompts]] · [[Choko]] · [[Skea]] · [[Stage-River]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[2026-10-03-Skea-Redesign]]

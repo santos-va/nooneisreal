@@ -399,5 +399,22 @@ X-0 і X-3 промптились ще з мечем в IDENTITY; Santos (дош
 | Y-0 | C4r `choko-tpose-side-v5` · 2 | `913c53bb-6e28-4e03-9250-bf01f4bc91c5` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_030544_913c53bb-6e28-4e03-9250-bf01f4bc91c5.png | **переробити** — бік у T-позі не заходить (і в Skea V-4); варіанти — у журналі зустрічі |
 | Y-1 | C4r `choko-tpose-back-v5` · 2 | `f5a3a1fb-d423-4773-90a2-cff460ea466c` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_030544_f5a3a1fb-d423-4773-90a2-cff460ea466c.png | **переробити** — «подивись на оригінал куртки й що на спині й це ретельно опиши моделі» |
 
+### Choko v5 — спина (2-га переробка) і монограма «C» (2026-10-03, #38)
+
+Слово Santos (через передачу T1, `claude/dreamy-turing-7rsxo9` → [[2026-10-03-Choko-Outfit-v5]] § Монограма): «так, до 11 кредитів»;
+**бік не робимо — варіант А** (3D з трьох видів). Промпти — [[Prompt-Library]] § 15b. `get_cost`: 3:4 з 3 референсами → 2.75; 16:9 без референсу → 2.75.
+Спина: референси X-0 `b529a3bd`, X-3 `5b045b7a`, V-1 `482bfc6d`; N-2 не брав — її спину я не бачу (CDN закритий: `curl` 403, WebFetch EGRESS_BLOCKED).
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C4r2 спина ×2 + гліф «C» ×2 | 5765.5 | 5754.5 | 11 (стеля 11) |
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| Z-0 | C4r2 `choko-tpose-back-v5` · 3 | `18eb4161-06ce-4ef5-b3d4-abfc482a5c2b` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031228_18eb4161-06ce-4ef5-b3d4-abfc482a5c2b.png | чекає вибору Santos |
+| Z-1 | C4r2 `choko-tpose-back-v5` · 4 | `50734236-25b0-4062-8ea5-515483926f17` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031229_50734236-25b0-4062-8ea5-515483926f17.png | чекає вибору Santos |
+| Z-2 | G1 `choko-monogram-c-v1` · v1 | `327a6ef9-d037-43d9-a115-3d50093f3165` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031228_327a6ef9-d037-43d9-a115-3d50093f3165.png | чекає вибору Santos |
+| Z-3 | G1 `choko-monogram-c-v1` · v2 | `8e72fa1a-8e8b-4bcb-9466-9d78438fb749` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031227_8e72fa1a-8e8b-4bcb-9466-9d78438fb749.png | чекає вибору Santos |
+
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
