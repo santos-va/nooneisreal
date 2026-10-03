@@ -42,7 +42,7 @@
 | 9 | Оцінювач `autosprite` падає | [[Menu-Skyline-Prompts]], [[Higgsfield-Pipeline]] | на ньому нічого не плануємо; `get_cost` повторюємо на старті кожної сесії T6 | T6 |
 | 10 | Піксельний розмір 2k 21:9 невідомий | [[Menu-Skyline-Prompts]] | з першого файлу Х1 | T6 · Х1 |
 | 11 | **CDN Higgsfield закритий для хмари** | перевірено в цій сесії: `curl` на CDN із `tools/fetch_assets.sh` → `CONNECT tunnel failed, response 403` | файли в `game/assets/` потрапляють лише на Mac через `tools/fetch_assets.sh`; T6 пише в журнал повну CDN-URL кожного переможця | T6 → Гефест → Santos |
-| 12 | **Ліцензія Higgsfield** «підтвердити, Архімед» у [[Textures-Registry]]; тіло T6: «невідома ліцензія → ассет не входить у `game/assets/`» | `roles/t6-apollon.md` § Лінза | бриф T3 Архімеду (умови Ultra на комерційне використання, URL + дата) **паралельно** з Х1 і **до** кроку «Х1 → гра» | T3 |
+| 12 | **Ліцензія Higgsfield** «підтвердити, Архімед» у [[Textures-Registry]]; тіло T6: «невідома ліцензія → ассет не входить у `game/assets/`» | `roles/t6-apollon.md` § Лінза ~~бриф T3 до «Х1 → гра»~~ → **перенесено на ворота релізу** ([[ADR-013-License-Check-At-Release]]) | T3 · перед публікацією |
 | 13 | Ціна 3D-кліпів не виміряна: [[Asset-Manifest]] — «≈ 38 за кліп з image_to_3d», ресерч — «~8/кліп, verify» | [[Asset-Manifest]] § A; `docs/Research/2026-10-02-Animation-Assets-Pipeline.md:32` | `get_cost` на `3d_rigging` і на кліп **до** Х3 | T6 · Х3a |
 
 ## Хвилі
@@ -134,7 +134,7 @@ WebFetch → `EGRESS_BLOCKED`, тож job-id **не перевірено**; T6 �
 |---|---|---|---|---|
 | Х0 | T6 | `docs/Art/Prompts/Prompt-Library.md` § 4, § 6, § 6c; `docs/Art/Prompts/Menu-Skyline-Prompts.md` § M2-A; `docs/Art/Asset-Manifest.md` § B2; `docs/Art/Style-Guide.md` (рядок про неон) | неон з помилкою в назві → платна перегенерація | `grep -n 'KRONSHIFT\|city of Kronshift' docs/Art/Prompts/*.md docs/Art/Asset-Manifest.md docs/Art/Style-Guide.md` → порожньо; `grep -c 'twin domed clock towers' docs/Art/Prompts/Prompt-Library.md docs/Art/Prompts/Menu-Skyline-Prompts.md` → ≥ 1 у кожному; `bash tools/gates/run_gates.sh` → rc=0 |
 | Х1 | T6 · **RED** | журнал запусків у [[Menu-Skyline-Prompts]], рядки в [[Asset-Manifest]], журнал у `docs/Meetings/` | стиль не той → 39 кр. на повтор | `balance` до/після, різниця в журнал; 12 job-id і CDN-URL у журналі; вибір Santos записаний |
-| Х1-Л | T3 | `docs/Research/` — умови Higgsfield Ultra на комерційне використання | без ліцензії ассет не входить у гру | джерело URL + дата доступу; рядки «підтвердити» в [[Textures-Registry]] закриті або позначені UNGROUNDED |
+| Х1-Л | T3 | **перенесено на ворота релізу** ([[ADR-013-License-Check-At-Release]]) | — | — |
 | Х1→гра | T2 | новий файл `game/assets/backgrounds/bg_cronshift_river_v1.<ext>` (старий не видаляємо — видалення RED), стадія `river` на нього; `tools/fetch_assets.sh`; [[Textures-Registry]] | шви/кадрування фону; ассет без рядка реєстру | на Mac: `bash tools/fetch_assets.sh`; `make check` → `SMOKE ЗЕЛЕНИЙ`; `make gates` → rc=0; кадр `--screenshot` стадії `river` |
 | Х2 | T6 · **RED** | ті самі файли, що в Х1 | 2g: петля не сходиться | `balance` до/після; переможці в журналі; проба 2g оцінена Santos до решти типів |
 | Х3a | T6 + T3 | ціни в [[Higgsfield-Pipeline]]; ліцензії CC0-бібліотек у `docs/Research/` | рішення 3c без чисел | числа `get_cost` у чаті й у файлі; ліцензії з URL |
