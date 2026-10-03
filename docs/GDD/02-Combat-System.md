@@ -32,8 +32,8 @@
 `startup · active · recovery · damage · chip · hitstun · blockstun · hitstop · knockback(x, y) ·
 launcher · knockdown · effect("freeze") · hitbox_offset/size · meter_gain · cooldown · forward_step · cancel_tier`
 
-Приклад (Choko, PLACEHOLDER; запропоновані зміни — § Кадри нормалей проти еталонів): легкий 5/3/9 кадрів, 42 дамаг, hitstun 14, blockstun 8, hitstop 4;
-важкий 11/4/17, 95, hitstun 20, hitstop 7, knockback (6.5, 2.0).
+Приклад (Choko; кадри — § Кадри нормалей проти еталонів, решта PLACEHOLDER): легкий 5/3/9 кадрів, 42 дамаг, hitstun 14, blockstun 8, hitstop 6;
+важкий 11/4/17, 95, hitstun 20, blockstun 13, hitstop 13, knockback (6.5, 2.0).
 
 ## Правила влучання
 
@@ -140,9 +140,8 @@ CN §3: системно низькі hitstop, blockstun важких/присі
 | heavy Skea (roundhouse) | `hitstop` · `blockstun` | 7 · 12 (−10) | 13 · 14 (−8) | те саме; −10 — поріг punishable T8 | CN §4; T6 |
 | crouch_light (обидва) | `startup` · `hitstun` · `blockstun` · `hitstop` | 6 · 13 (−1) · 8 (−6) · 4 | 5 · 15 (+1) · 11 (−3) · 9 | 3–5 · 12–15 · 10–11 (−3…0) · 9–12 | CN §4 |
 
-**Не застосовано в `.tres`:** запис у `game/data/characters/*.tres` у цій сесії заблокував класифікатор дозволів.
-Застосування — після дозволу Santos; перевірка — `GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot make check`
-(до правок: `ALL OK (36 checks)`). Hitstop 13 на важкому — помітна зміна відчуття; Santos має почути її на Mac.
+**Застосовано в `.tres`** 2026-10-03 зі слова Santos: `GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot make check` →
+`ALL OK (36 checks)`. Hitstop 13 на важкому — помітна зміна відчуття; слух Santos на Mac — відкрито.
 
 ### Поле → значення → джерело (для Гефеста, 0.3-1)
 
