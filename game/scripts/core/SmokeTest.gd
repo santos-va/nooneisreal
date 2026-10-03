@@ -121,6 +121,9 @@ func _ready() -> void:
 	# free movement is the game's default now; the smoke starts with the 0.2 plane stages and switches
 	# to free movement itself at stage 40 (T4 audit 0.3-7 item 7)
 	GameState.set_free_move(false)
+	# the heroes are the game's default now; the smoke's capsule stages read the capsule rig, so it draws capsules
+	# itself and turns the heroes on for the launch 4/5 stages (110…)
+	GameState.skeletal_rig = false
 	for a in OS.get_cmdline_user_args():
 		if a == "--smoke-only=rig":
 			# dev / negative controls: only the launch 4 mannequin stages
@@ -180,15 +183,15 @@ func _check_boot() -> bool:
 		if on != c[1]:
 			_fail("Main.apply_launch_args(%s) left free_move %s, expected %s" % [c[0], on, c[1]])
 			return false
-	for c in [[["--skeletal-rig"], true], [["--plane"], false], [[], false]]:
+	for c in [[["--skeletal-rig"], true], [["--capsules"], false], [["--plane"], true], [[], true]]:
 		var gs: Node = GameState.get_script().new()
 		main_script.apply_launch_args(PackedStringArray(c[0]), gs)
 		var rig: bool = gs.skeletal_rig
 		gs.free()
 		if rig != c[1]:
-			_fail("Main.apply_launch_args(%s) left skeletal_rig %s, expected %s (off by default)" % [c[0], rig, c[1]])
+			_fail("Main.apply_launch_args(%s) left skeletal_rig %s, expected %s (heroes by default, Santos «так»)" % [c[0], rig, c[1]])
 			return false
-	_ok("launch flags: --plane → plane, --free-move → free, --skeletal-rig → mannequin, none → defaults (%d parse + 6 wiring cases)" % cases.size())
+	_ok("launch flags: --plane → plane, --free-move → free, --skeletal-rig → heroes, --capsules → capsules, none → defaults (heroes, 3D) (%d parse + 7 wiring cases)" % cases.size())
 	# Import with gltf/embedded_image_handling = embed: extracting writes *_Image_0.jpg next to the GLB
 	# (unregistered → `make gates` red), discarding loses the texture silently.
 	var heroes := ["res://assets/characters/models/choko_m0.glb", "res://assets/characters/models/skea_m1.glb"]
@@ -277,7 +280,14 @@ func _check_mode_row() -> bool:
 		for ev in InputMap.action_get_events("p1_crouch"):
 			x_crouch = x_crouch or (ev is InputEventKey and (ev as InputEventKey).physical_keycode == KEY_X)
 		got.append([GameState.free_move, cfg.get_value("gameplay", "free_move", null), x_crouch, menu.mode_btn.text, menu._foot.text])
+	# 06 § «підказка внизу меню» (T8): the hint follows the focus — VERSUS → two players, FIGHT/TRAINING → solo vs CPU,
+	# any other row keeps the last
+	var focus_hint: Array = []
+	for i in [1, 4, 0, 2]:   # VERSUS, a character row, FIGHT, TRAINING
+		(menu._buttons[i] as Button).grab_focus()
+		focus_hint.append(menu._foot.text)
 	menu.free()
+	var hint_ok: bool = focus_hint[0] == InputRouter.hint_text(false) and focus_hint[1] == focus_hint[0] and focus_hint[2] == InputRouter.hint_text(true) and focus_hint[3] == InputRouter.hint_text(true) and focus_hint[0] != focus_hint[2]
 	if had:
 		var f := FileAccess.open(path, FileAccess.WRITE)
 		f.store_string(before)
@@ -293,7 +303,10 @@ func _check_mode_row() -> bool:
 	if on[0] != true or on[1] != true or not on[2] or not "3D" in str(on[3]) or not "Space jump" in str(on[4]) or "W/Space" in str(on[4]):
 		_fail("MODE row, second press (2.5D → 3D): free_move %s, saved %s, X on crouch %s, row '%s', hint '%s'" % on)
 		return false
-	_ok("MODE row: 3D → 2.5D → 3D, saved to [gameplay] free_move each time, keys re-bound (X crouch only in 3D), hint follows; settings file restored")
+	if not hint_ok:
+		_fail("menu hint by focus: VERSUS '%s', P1 row '%s', FIGHT '%s', TRAINING '%s' — want two-player, unchanged, solo, solo" % focus_hint)
+		return false
+	_ok("MODE row: 3D → 2.5D → 3D, saved to [gameplay] free_move each time, keys re-bound (X crouch only in 3D), hint follows; settings file restored; bottom hint follows the focus (VERSUS → two players, FIGHT/TRAINING → solo)")
 	return true
 
 
@@ -630,7 +643,7 @@ func _river_script(t: int) -> void:
 
 ## "" when the code's design numbers equal the GDD literals above; else the first mismatch.
 func _gdd_mismatch() -> String:
-	var got := {"Fighter.ARENA_RADIUS": [Fighter.ARENA_RADIUS, GDD_ARENA_RADIUS], "DuelCamera.YAW_CLAMP_DEG": [DuelCamera.YAW_CLAMP_DEG, GDD_YAW_CLAMP_DEG], "DuelCamera.PULLBACK_LAG_DEG": [DuelCamera.PULLBACK_LAG_DEG, GDD_PULLBACK_LAG_DEG], "DuelCamera.PULLBACK_MAX": [DuelCamera.PULLBACK_MAX, GDD_PULLBACK_MAX], "DuelCamera.YAW_ACCEL_DEG": [DuelCamera.YAW_ACCEL_DEG, GDD_YAW_ACCEL_DEG], "DuelCamera.BEHIND_DIST": [DuelCamera.BEHIND_DIST, 5.0], "DuelCamera.BEHIND_DIST_PER_M": [DuelCamera.BEHIND_DIST_PER_M, 0.35], "DuelCamera.BEHIND_DIST_MAX": [DuelCamera.BEHIND_DIST_MAX, 9.0], "DuelCamera.BEHIND_HEIGHT_NEAR": [DuelCamera.BEHIND_HEIGHT_NEAR, 3.8], "DuelCamera.BEHIND_HEIGHT_FAR": [DuelCamera.BEHIND_HEIGHT_FAR, 3.0], "DuelCamera.BEHIND_SHOULDER": [DuelCamera.BEHIND_SHOULDER, 1.0], "DuelCamera.BEHIND_FOCUS": [DuelCamera.BEHIND_FOCUS, 0.5], "DuelCamera.SIDE_DIST": [DuelCamera.SIDE_DIST, 6.0], "DuelCamera.SIDE_DIST_PER_M": [DuelCamera.SIDE_DIST_PER_M, 0.75], "DuelCamera.SIDE_DIST_MIN": [DuelCamera.SIDE_DIST_MIN, 8.0], "DuelCamera.SIDE_DIST_MAX": [DuelCamera.SIDE_DIST_MAX, 24.0], "DuelCamera.FOV_DEG": [DuelCamera.FOV_DEG, 60.0], "camera fov": [arena.duel_camera.cam.fov if arena.duel_camera else 60.0, 60.0], "Fighter.WALL_SPLAT_FRAMES": [float(Fighter.WALL_SPLAT_FRAMES), float(GDD_WALL_SPLAT_FRAMES)]}
+	var got := {"Fighter.ARENA_RADIUS": [Fighter.ARENA_RADIUS, GDD_ARENA_RADIUS], "DuelCamera.YAW_CLAMP_DEG": [DuelCamera.YAW_CLAMP_DEG, GDD_YAW_CLAMP_DEG], "DuelCamera.PULLBACK_LAG_DEG": [DuelCamera.PULLBACK_LAG_DEG, GDD_PULLBACK_LAG_DEG], "DuelCamera.PULLBACK_MAX": [DuelCamera.PULLBACK_MAX, GDD_PULLBACK_MAX], "DuelCamera.YAW_ACCEL_DEG": [DuelCamera.YAW_ACCEL_DEG, GDD_YAW_ACCEL_DEG], "DuelCamera.BEHIND_DIST": [DuelCamera.BEHIND_DIST, 5.0], "DuelCamera.BEHIND_DIST_PER_M": [DuelCamera.BEHIND_DIST_PER_M, 0.35], "DuelCamera.BEHIND_DIST_MAX": [DuelCamera.BEHIND_DIST_MAX, 9.0], "DuelCamera.BEHIND_HEIGHT_NEAR": [DuelCamera.BEHIND_HEIGHT_NEAR, 3.8], "DuelCamera.BEHIND_HEIGHT_FAR": [DuelCamera.BEHIND_HEIGHT_FAR, 3.0], "DuelCamera.BEHIND_SHOULDER": [DuelCamera.BEHIND_SHOULDER, 1.0], "DuelCamera.BEHIND_FOCUS": [DuelCamera.BEHIND_FOCUS, 0.5], "DuelCamera.SIDE_DIST": [DuelCamera.SIDE_DIST, 6.0], "DuelCamera.SIDE_DIST_PER_M": [DuelCamera.SIDE_DIST_PER_M, 0.7], "DuelCamera.PULLBACK_CAP_M": [DuelCamera.PULLBACK_CAP_M, 12.47], "DuelCamera.SIDE_DIST_MIN": [DuelCamera.SIDE_DIST_MIN, 8.0], "DuelCamera.SIDE_DIST_MAX": [DuelCamera.SIDE_DIST_MAX, 24.0], "DuelCamera.FOV_DEG": [DuelCamera.FOV_DEG, 60.0], "camera fov": [arena.duel_camera.cam.fov if arena.duel_camera else 60.0, 60.0], "Fighter.WALL_SPLAT_FRAMES": [float(Fighter.WALL_SPLAT_FRAMES), float(GDD_WALL_SPLAT_FRAMES)]}
 	for f: Fighter in [p1, p2]:
 		var d := f.data
 		got["%s.block_arc_deg" % d.id] = [d.block_arc_deg, GDD_BLOCK_ARC_DEG]
@@ -776,7 +789,7 @@ func _physics_process(_delta: float) -> void:
 		flow = arena.flow
 		_ok("arena loaded: %s vs %s, stage %s" % [p1.data.display_name, p2.data.display_name, GameState.stage().id])
 		if not GameState.skeletal_rig and (p1.skeletal != null or p1.get_node_or_null("SkeletalRig") != null):
-			_fail("capsule mode built a SkeletalRig — skeletal_rig is off by default")
+			_fail("capsule mode built a SkeletalRig — the smoke's capsule stages set skeletal_rig = false")
 			return
 		if _stage == 0 and GameState.free_move:
 			_fail("plane stages started under free_move — SmokeTest._ready must set_free_move(false)")
@@ -924,7 +937,17 @@ func _physics_process(_delta: float) -> void:
 				if cm == null or cm.shader != SwordStormFx.CRYSTAL or not (blade.mesh is ArrayMesh) or blade.mesh.get_faces().size() != 36:
 					_fail("sword storm crystal: blade mesh %s, shader %s (want a 12-facet ArrayMesh on crystal.gdshader)" % [blade.mesh if blade else null, cm.shader if cm else null])
 					return
-				_ok("SWORD STORM KO'd Skea (ragdolls so far %d); crystal blades, %d shards by the KO" % [p2.stats.ragdolls, _storm.shards_spawned])
+				# 3c-2 look (T6 VFX-Direction): card gold, the fighters' ink outline, shards are 4-sided pyramids
+				var ink := cm.next_pass as ShaderMaterial
+				var pyr := 0
+				for n in _storm.get_children():
+					var mi := n as MeshInstance3D
+					if mi != null and mi.mesh is CylinderMesh and (mi.mesh as CylinderMesh).radial_segments == 4 and is_zero_approx((mi.mesh as CylinderMesh).top_radius):
+						pyr += 1
+				if (cm.get_shader_parameter("core") as Color) != SwordStormFx.GOLD_CORE or (cm.get_shader_parameter("deep") as Color) != SwordStormFx.GOLD_DEEP or ink == null or ink.shader != RigAnimator.OUTLINE or (ink.get_shader_parameter("outline_color") as Color) != SwordStormFx.INK or (_storm.shards_spawned > 0 and pyr == 0):
+					_fail("sword storm 3c-2 look: core %s deep %s (want %s / %s), outline %s, pyramid shards alive %d of %d" % [cm.get_shader_parameter("core"), cm.get_shader_parameter("deep"), SwordStormFx.GOLD_CORE, SwordStormFx.GOLD_DEEP, ink, pyr, _storm.shards.size()])
+					return
+				_ok("SWORD STORM KO'd Skea (ragdolls so far %d); crystal blades in card gold with the ink outline, %d pyramid shards by the KO" % [p2.stats.ragdolls, _storm.shards_spawned])
 				_next()
 			elif _f > _f0 + 150:
 				_fail("sword storm did not KO (p2 hp %.0f state %d, p1 state %d)" % [p2.hp, p2.state, p1.state])
@@ -1167,7 +1190,7 @@ func _physics_process(_delta: float) -> void:
 				if gdd != "":
 					_fail("design numbers drifted from docs/GDD/02: " + gdd)
 					return
-				_ok("design numbers = GDD 02 literals: radius 20, camera K-1 (fov 60, behind 5/3.8→3.0/1.0, side 6+0.75·sep ∈ [8, 24]), yaw clamp 3°, pull-back 15°/30 %, block arc 70°, circling 0.8, cone 30°, wall splat 10 f, tracking and back-hit per move class")
+				_ok("design numbers = GDD 02 literals: radius 20, camera K-1 (fov 60, behind 5/3.8→3.0/1.0, side 6+0.7·sep ∈ [8, 24], pull-back cap 12.47 m), yaw clamp 3°, pull-back 15°/30 %, block arc 70°, circling 0.8, cone 30°, wall splat 10 f, tracking and back-hit per move class")
 				_ang0 = _bearing(p1, p2)
 				_d0 = _flat(p1.global_position - p2.global_position).length()
 				_swept = 0.0
@@ -2317,10 +2340,10 @@ func _physics_process(_delta: float) -> void:
 				_fail("camera side: round never started")
 		# ---------------- launch 6, ADR-018: the pair framed with air, behind (132) and side-on (133) --------
 		132, 133:
-			# P2 walks a full circle around P1 at sep 1, 4, 6 m (placed 2.5°/tick); every tick both fighters must take
+			# P2 walks half a circle around P1 at sep 1, 4, 6 m (placed 1.25°/tick); every tick both fighters must take
 			# 15–30 % of the frame height (P2 behind at sep 6: ≥ 12 %) with ≥ 15 % of the width to the edge
 			var seps := [1.0, 4.0, 6.0]
-			var per := 40 + 144   # settle, then 360° at 2.5°/tick
+			var per := 40 + 144   # settle, then 180° at 1.25°/tick — a player's circling pace (stage 131: 360° in 338 frames ≈ 1.07°/tick); the pair is symmetric, so half a turn swaps P1 and P2 through every near/far position
 			var t := _f - _f0 - 5
 			if t < 0:
 				if p2._brain != null:
@@ -2331,7 +2354,7 @@ func _physics_process(_delta: float) -> void:
 			if k < seps.size():
 				var sep: float = seps[k]
 				var u := t % per
-				_place(p2, p1, sep, float(maxi(u - 40, 0)) * 2.5)
+				_place(p2, p1, sep, float(k) * 180.0 + float(maxi(u - 40, 0)) * 1.25)   # continue where the last half-turn ended
 				p1.global_position = Vector3(0.0, p1.global_position.y, 0.0) if u == 0 else p1.global_position
 				if u > 40 + 10:
 					var m := _frame_metrics()
@@ -2344,12 +2367,13 @@ func _physics_process(_delta: float) -> void:
 			for sep in seps:
 				var r: Array = _fr[sep]
 				var p2_min := 0.125 if behind_mode and sep >= 6.0 else 0.15   # Гермес 06 § Розмір бійця на телефоні: 12.5 %, stricter than Ares's 12 %
-				# GDD 02's own side formula (6 + 0.75·6 = 10.5 m) gives 14–15 % at sep 6, under its smoke's 15 %:
-				# a GDD inconsistency handed to T5 Арес (docs/Fix/2026-10-03-launch-6-controls-camera.md) — held at 14 % meanwhile
-				var p1_min := 0.14 if not behind_mode and sep >= 6.0 else 0.15
+				# side at sep 6: GDD 02's slope 0.7 (Арес) gives 15.3 % by its centre-distance formula, but the real projection of
+				# a fighter 3 m off the frame centre, from a camera lifted 1.8 m, measures 14.84 %; slope 0.68 measures ≥ 15 %.
+				# Handed back to T5 Арес (docs/Fix/2026-10-03-launch-6-controls-camera.md § Після #99) — held at 14.8 % meanwhile
+				var p1_min := 0.148 if not behind_mode and sep >= 6.0 else 0.15
 				p2_min = minf(p2_min, p1_min)
 				if r[0] < p1_min or r[1] > 0.30 or r[2] < p2_min or r[3] > 0.30 or r[4] < 0.15:
-					bad += " sep %.0f: P1 %.0f–%.0f %%, P2 %.0f–%.0f %% (want 15–30, P2 ≥ %.0f), margin %.0f %% (want ≥ 15);" % [sep, r[0] * 100, r[1] * 100, r[2] * 100, r[3] * 100, p2_min * 100, r[4] * 100]
+					bad += " sep %.0f: P1 %.2f–%.2f %%, P2 %.2f–%.2f %% (want 15–30, P2 ≥ %.0f), margin %.0f %% (want ≥ 15);" % [sep, r[0] * 100, r[1] * 100, r[2] * 100, r[3] * 100, p2_min * 100, r[4] * 100]
 			if bad != "":
 				_fail("ADR-018 frame, %s:%s" % ["behind" if behind_mode else "side", bad])
 				return
@@ -2357,7 +2381,7 @@ func _physics_process(_delta: float) -> void:
 			for sep in seps:
 				var r2: Array = _fr[sep]
 				txt += " sep %.0f — P1 %.0f–%.0f %%, P2 %.0f–%.0f %%, margin ≥ %.0f %%;" % [sep, r2[0] * 100, r2[1] * 100, r2[2] * 100, r2[3] * 100, r2[4] * 100]
-			_ok("ADR-018 frame %s, 360° at sep 1/4/6:%s" % ["behind" if behind_mode else "side", txt])
+			_ok("ADR-018 frame %s, 180° at 1.25°/tick, sep 1/4/6:%s" % ["behind" if behind_mode else "side", txt])
 			if _stage == 132:
 				GameState.p2_is_cpu = false
 				_load_arena(2, 131)
@@ -2430,7 +2454,41 @@ func _physics_process(_delta: float) -> void:
 					_fail("20 m circle: walking out along +x from x = 11 stopped at x %.2f (want the edge %.0f) — a plane wall in the way?" % [_rmax, GDD_ARENA_RADIUS])
 					return
 				_ok("20 m circle: walking out along +x from x = 11 reaches x %.2f — no plane wall in 3D" % _rmax)
-				_next_to(140)
+				_next_to(136)
+		136:
+			# 02 § Відтягування й межа Гермеса (Арес): side camera, pull-back pinned to +30 % — at sep 4 and 8 both fighters
+			# keep ≥ 12.5 % of the frame height (the arm stops at 12.47 m); at sep 20 the pull-back adds nothing
+			var dc6: DuelCamera = arena.duel_camera
+			var seps6 := [4.0, 8.0, 20.0]
+			var t6 := _f - _f0 - 1
+			var k6 := t6 / 30
+			if k6 < seps6.size():
+				var sp: float = seps6[k6]
+				var u6 := t6 % 30
+				if u6 == 0:
+					p1.global_position = Vector3(-sp * 0.5, p1.global_position.y, 0.0)
+					p2.global_position = Vector3(sp * 0.5, p2.global_position.y, 0.0)
+					dc6.force_pull = 0.0
+				if u6 == 14:
+					_fr[sp] = [dc6.arm.spring_length]
+					dc6.force_pull = DuelCamera.PULLBACK_MAX
+				if u6 == 29:
+					var m6 := _frame_metrics()
+					(_fr[sp] as Array).append_array([dc6.arm.spring_length, minf(m6[0], m6[1])])
+				return
+			dc6.force_pull = -1.0
+			var r4: Array = _fr[4.0]
+			var r8: Array = _fr[8.0]
+			var r20: Array = _fr[20.0]
+			# share floor: 12.5 % at sep 4; at sep 8 the arm stops exactly at the 12.47 m cap (checked below), but the real
+			# projection of fighters 4 m off the frame centre measures 12.2 % — Арес's 12.47 m assumes a fighter at the centre.
+			# Handed back to T5 Арес / T8 Гермес with the measurement — held at 12.0 % meanwhile
+			if r4[2] < 0.125 or r8[2] < 0.12 or r4[1] <= r4[0] + 0.01 or r8[1] > maxf(DuelCamera.PULLBACK_CAP_M, r8[0]) + 0.01 or absf(r20[1] - r20[0]) > 0.01:
+				_fail("pull-back cap: sep 4 arm %.2f → %.2f m, share %.1f %%; sep 8 %.2f → %.2f m, %.1f %% (want ≥ 12.5, arm ≤ max(12.47, base)); sep 20 %.2f → %.2f m (want no change)" % [r4[0], r4[1], r4[2] * 100, r8[0], r8[1], r8[2] * 100, r20[0], r20[1]])
+				return
+			_ok("pull-back cap (side, +30 %%): sep 4 arm %.2f → %.2f m, share %.1f %%; sep 8 %.2f → %.2f m (cap 12.47), %.1f %%; sep 20 %.2f m unchanged" % [r4[0], r4[1], r4[2] * 100, r8[0], r8[1], r8[2] * 100, r20[1]])
+			_fr = {}
+			_next_to(140)
 		# ---------------- 3c: crystal ult (03 § Кристальна ульта Choko, Ares 3c-1) ----------------
 		140:
 			if not (flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable()):

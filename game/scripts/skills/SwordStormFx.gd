@@ -29,9 +29,16 @@ const BANDS := [
 const NEAR_BEHIND := -0.6
 const REACH := 6.8
 const CRYSTAL := preload("res://shaders/crystal.gdshader")
-## Gold of ult sword №1 (weapons-choko-ult). PLACEHOLDER until Apollon's 3c-2 VFX row.
-const GOLD_CORE := Color(1.0, 0.86, 0.45)
-const GOLD_DEEP := Color(0.42, 0.24, 0.04)
+## Gold of ult sword №1 (weapons-choko-ult) — docs/Art/VFX-Direction.md § Кристальна ульта Choko (T6 Аполлон, 3c-2):
+## taken from the card's pixels, the shadow shifted into Style-Guide's #B07AA6.
+const GOLD_CORE := Color(0.812, 0.747, 0.447)    # #CFBE72
+const GOLD_DEEP := Color(0.387, 0.218, 0.140)    # #633724
+const GOLD_SHADE := Color("#8F5B4A")             # gold in shadow — final shards
+const INK := Color("#2B2230")                    # line ink: shards and the crystals' outline
+const TIP := Color("#EFEED4")                    # the cream tip: frame 5, «it is coming»
+const GLOW := 1.6
+const GLOW_FLASH := 3.0                          # frame 0
+const OUTLINE_W := 0.022                         # same ink outline as the fighters (RigAnimator._mat)
 const BLADE_SHARDS := 5     # shards when a landed crystal bursts
 const SHARD_LIFE := 22      # frames
 
@@ -69,6 +76,12 @@ func _ready() -> void:
 	_mat.shader = CRYSTAL
 	_mat.set_shader_parameter("core", GOLD_CORE)
 	_mat.set_shader_parameter("deep", GOLD_DEEP)
+	# against terracotta the gold reads at contrast 2.15 only: the silhouette is the rim + the fighters' ink outline (T6)
+	var ink := ShaderMaterial.new()
+	ink.shader = RigAnimator.OUTLINE
+	ink.set_shader_parameter("outline_color", INK)
+	ink.set_shader_parameter("width", OUTLINE_W)
+	_mat.next_pass = ink
 	var blade := crystal_blade(1.2, 0.16, 0.07)
 	for i in BLADES:
 		var b := Fx.mesh(blade, _mat)
@@ -99,9 +112,20 @@ static func crystal_blade(length: float, width: float, thick: float) -> ArrayMes
 	return st.commit()
 
 
+## A 4-sided pyramid «пірамідка» (T6: CylinderMesh, top_radius 0, radial_segments 4), `size` tall.
+static func pyramid(size: float) -> CylinderMesh:
+	var m := CylinderMesh.new()
+	m.top_radius = 0.0
+	m.bottom_radius = size * 0.45
+	m.height = size
+	m.radial_segments = 4
+	m.rings = 1
+	return m
+
+
 ## Shards: small crystals flung from `at`, spread around `dir` (local space). Deterministic (index-based), visual only.
 func _burst(at: Vector3, dir: Vector3, count: int, size: float, salt: int) -> void:
-	var shard := crystal_blade(size, size * 0.45, size * 0.3)
+	var shard := pyramid(size)
 	for k in count:
 		var h := float((salt * 73 + k * 37) % 101) / 101.0
 		var h2 := float((salt * 29 + k * 61) % 97) / 97.0
@@ -139,6 +163,9 @@ func _physics_process(_delta: float) -> void:
 	if owner_f.frozen_frames > 0 or TimeStopFx.freezes(global_position, owner_f):
 		return
 	_f += 1
+	# frames 0…6 (T6): a flash on frame 0, the cream tip on frame 5, back to gold when it bursts on 6 — in steps, no fades
+	_mat.set_shader_parameter("glow", GLOW_FLASH if _f == 1 else GLOW)
+	_mat.set_shader_parameter("core", TIP if _f == BLAST_FRAME - 1 else GOLD_CORE)
 	for i in BLADES:
 		var b: MeshInstance3D = _blades[i]
 		var launch := RISE + i * 5
@@ -165,7 +192,7 @@ func _physics_process(_delta: float) -> void:
 	if _f == FINAL:
 		_hit_band(_finals)
 		SmearShards.burst(Fx.root(owner_f), to_global(Vector3(_facing * 0.5, 0, 0)), to_global(Vector3(_facing * REACH, 0, 0)),
-			[GOLD_CORE, owner_f.data.vfx_secondary, Color(0.05, 0.05, 0.08)], 18, 5)
+			[GOLD_CORE, GOLD_SHADE, INK], 18, 5)
 		for i in BANDS.size():
 			var b: Array = BANDS[i]
 			var mid := (float(b[0]) + float(b[1])) * 0.5

@@ -41,9 +41,10 @@ var water: WaveField = null
 ## the X plane, unchanged. Switch with set_free_move() (it also re-binds the keyboard), or launch with
 ## `-- --plane` / `-- --free-move`.
 var free_move: bool = true
-## Launch 4 (C1): the UAL mannequin with clips draws the fighter instead of the capsules (SkeletalRig.gd); the
-## capsule rig keeps running underneath. Off by default; `-- --skeletal-rig` turns it on.
-var skeletal_rig: bool = false
+## Launch 4/5: the heroes (Meshy M-0/M-1, retargeted from the UAL mannequin) draw the fighter instead of the capsules
+## (SkeletalRig.gd); the capsule rig keeps running underneath. On by default since Santos's «так» (2026-10-03, via T1);
+## `-- --capsules` draws the old capsules, `-- --skeletal-rig` forces the heroes.
+var skeletal_rig: bool = true
 ## The duel's screen frame for free movement (scripts/core/DuelFrame.gd); fighters sync it each frame.
 var duel: DuelFrame = DuelFrame.new()
 
