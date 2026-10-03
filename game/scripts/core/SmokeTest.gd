@@ -90,6 +90,7 @@ var _cr_hp: float = 0.0
 ## recovery + 2; actions in seconds of fight time; 300 s to full for both; 297 s of fight alone → 0.99.
 const GDD_FATIGUE := {"on": 0.3, "getup": [18, 27], "walk": 0.9, "dash": 1.25, "grapple_s": 3.6, "recovery": 2,
 	"dash_s": 1.5, "grapple_shot_s": 2.0, "skill_s": 1.0, "seconds": 300.0, "match_s": 297.0, "match_fatigue": 0.99}
+var _fb0: Dictionary = {}             # lane B: Flipbook.spawned at the start of a duel replay run
 var _fz: int = 0                      # fatigue stage: which jab run (0 fresh, 1 tired)
 var _fz_log: Array = []               # per run: [hit frame, damage, idle frame] counted from the press
 var _fz_t0: int = -1                  # fatigue stage: frame the clock window started (-1 = not yet)
@@ -649,10 +650,59 @@ func _stage_a3_anchors_cover() -> void:
 	_ok("A3 anchors + cover (04 § Якорі й укриття): %s; passage walkable, stall blocks a fighter and a line of sight" % "; ".join(_a2_seen))
 	if not _check_hud():   # fountain at night: the darkest arena behind the HUD
 		return
+	if not _check_flipbook():
+		return
 	_a2_k = -1
 	_a2_seen = []
 	_load_arena(2, 140)   # back to an arena without cover: the 3c stage puts the fighters at the centre (fountain bowl)
 
+
+
+## Flipbook.spawned minus a snapshot: {sheet: how many since}.
+func _flipbooks_since(snap: Dictionary) -> Dictionary:
+	var out := {}
+	for k in Flipbook.spawned:
+		var n := int(Flipbook.spawned[k]) - int(snap.get(k, 0))
+		if n > 0:
+			out[k] = n
+	return out
+
+
+## Lane B: every sheet FxDirector plays is a 4 × 4 sheet of 512 px cells; a Flipbook steps through its cells at 12 fps
+## (one cell per 5 physics frames), honours its delay and frees itself; with Fx.enabled false it spawns nothing.
+func _check_flipbook() -> bool:
+	var sheets := ["spark_hit", "slash_choko", "slash_heavy_choko", "slash_air_choko", "ko_burst", "trail_chrono", "trail_flash",
+		"grapple_launch", "dust_land", "ground_crack", "water_splash", "smoke_veil", "armor_break", "choko_timestop"]
+	for id in sheets:
+		var t := Flipbook.texture_for(id)
+		if t == null or t.get_width() != 2048 or t.get_height() != 2048:
+			_fail("lane B: sheet '%s' is %s, want a 2048 × 2048 texture (4 × 4 cells of 512 px)" % [id, "missing" if t == null else "%d × %d" % [t.get_width(), t.get_height()]])
+			return false
+	var dt := 1.0 / 60.0
+	var fb := Flipbook.play(p1, "dust_land", p1.global_position, 1.0)
+	var cells: Array = []        # the cell after each physics step, while alive
+	var steps: Array = []        # 12 fps at 60 Hz: one cell per 5 steps
+	for i in 16 * 5 + 2:
+		if fb.is_queued_for_deletion():
+			break
+		fb._process(dt)
+		if not fb.is_queued_for_deletion():
+			cells.append(fb.cell())
+			steps.append((i + 1) / 5)
+	var late := Flipbook.play(p1, "spark_hit", p1.global_position, 1.0, {"first": 4, "count": 4, "delay": 0.25})
+	var hidden := not late.visible and late.cell() == -1
+	for i in 16:
+		late._process(dt)
+	var shown := late.visible and late.cell() == 0 and is_equal_approx(late._mat.uv1_offset.y, 0.25)
+	late.queue_free()
+	Fx.enabled = false
+	var none := Flipbook.play(p1, "spark_hit", p1.global_position, 1.0)
+	Fx.enabled = true
+	if cells != steps or cells.size() != 16 * 5 - 1 or not fb.is_queued_for_deletion() or not hidden or not shown or none != null:
+		_fail("lane B flipbook: cells per step %s (want %s: 0…15, one per 5 steps, freed on step 80), freed %s, delayed hidden %s / shown on row 2 %s, Fx off spawned %s" % [cells, steps, fb.is_queued_for_deletion(), hidden, shown, none != null])
+		return false
+	_ok("lane B flipbook: %d sheets are 2048 × 2048; cells 0…15 at 12 fps, then freed; a delayed row-2 spark waits 0.25 s; Fx off spawns nothing" % sheets.size())
+	return true
 
 
 ## 06-UI-UX § Контраст HUD, Santos's variant 2: no plate; every bar, round pip, grapple charge and dash cell wears an ink
@@ -2204,6 +2254,7 @@ func _physics_process(_delta: float) -> void:
 		# ---------------- 0.3-6: same input twice → same hash, in both modes ----------------------
 		70:
 			if flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable():
+				_fb0 = Flipbook.spawned.duplicate()
 				_duel_trace = []
 				_f0 = _f
 				_next()
@@ -2226,6 +2277,23 @@ func _physics_process(_delta: float) -> void:
 				if p1.stats.hits + p2.stats.hits < 3 or p1.stats.ragdolls + p2.stats.ragdolls < 1:
 					_fail("duel replay %s: the script did not exercise combat (%s)" % [mode, used])
 					return
+				var fb := _flipbooks_since(_fb0)
+				if GameState.free_move and _duel_runs.size() % 2 == 1:
+					# lane B guard (T4 Lane I-2, proposal 2): run 1 draws the painted effects, run 2 has them off — same hash below
+					var want := ["spark_hit", "slash_choko"]
+					if p1.stats.ragdolls + p2.stats.ragdolls > 0:
+						want.append("ground_crack")   # a ragdoll settled: dust + the crack decal
+					for k in want:
+						if int(fb.get(k, 0)) < 1:
+							_fail("lane B: the free duel drew no '%s' (flipbooks %s)" % [k, fb])
+							return
+					print("[smoke] lane B flipbooks in the free duel: ", fb)
+					Fx.enabled = false
+				elif GameState.free_move:
+					Fx.enabled = true
+					if not fb.is_empty():
+						_fail("lane B: Fx.enabled false still spawned %s" % fb)
+						return
 				if _duel_runs.size() % 2 == 1:
 					_duel_first_trace = _duel_trace.duplicate()
 					_load_arena(2, 70)
@@ -2236,7 +2304,7 @@ func _physics_process(_delta: float) -> void:
 						at += 1
 					_fail("duel replay %s: runs differ, first at frame %d:\n  %s\n  %s" % [mode, at * 30, _duel_first_trace[at], _duel_trace[at]])
 					return
-				_ok("duel replay %s: deterministic — same input twice, same hash %d (%d checkpoints)" % [mode, h, _duel_trace.size()])
+				_ok("duel replay %s: deterministic — same input twice, same hash %d (%d checkpoints)%s" % [mode, h, _duel_trace.size(), "; run 1 with the painted effects, run 2 without (Fx.enabled false) — effects change nothing" if GameState.free_move else ""])
 				if not GameState.free_move:
 					GameState.set_free_move(true)
 					_load_arena(2, 70)
