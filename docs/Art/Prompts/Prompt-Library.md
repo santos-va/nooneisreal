@@ -24,9 +24,9 @@ No anime style, no glossy eyes, no 3D render look, no gradients, no realistic sk
 {STYLE} Character pose sheet on a flat muted mint-sage background (#B8CBB1), eight full-body poses of the same original character in two rows of four, evenly spaced, no frames: 1) relaxed standing with weight on one leg, 2) hands-on-hips confident, 3) three-quarter walking, 4) dynamic fighting lunge, 5) arms crossed annoyed, 6) back view looking over shoulder, 7) side view idle, 8) pointing or taunting gesture toward the viewer. Keep the identity, outfit and colors of the reference image: {IDENTITY}. Small title "{NAME}" in the top-left corner in hand-lettered marker. {NEG}
 ```
 
-**IDENTITY — Choko:**
+**IDENTITY — Choko** (v4 з 2026-10-03: легка куртка + кольчуга лише вставками, рішення Santos; попередня — § 13):
 ```
-young man, lean narrow face, long straight nose, grey-green eyes, thick curly dark-brown hair covering temples and ears; fitted jacket of fine gunmetal chainmail rings with muted dusty-orange leather panels and a thin cream stripe, high collar, sleeves to the wrists; slate blue-grey trousers; black leather gloves; large analog wristwatch on the left wrist; emerald-green pike-style sword with dark green wrapped grip and brass guard
+young man, lean narrow face, long straight nose, grey-green eyes, thick curly dark-brown hair covering temples and ears; light fitted cloth jacket in muted dusty orange with a thin cream stripe and a high collar, sleeves to the wrists, with panels of fine gunmetal chainmail rings only on the shoulders and forearms, cut for a fast acrobatic swordsman (no full chainmail coat, no shirt); slate blue-grey trousers; black leather gloves; large analog wristwatch on the left wrist; emerald-green pike-style sword with dark green wrapped grip and brass guard
 ```
 
 **IDENTITY — Skea** (v2 з 2026-10-03, santos-va/nooneisreal#33; попередня — § 12 «Було»; до Skea завжди додавати `{NEG_SKEA}` і пози § 12):
@@ -182,6 +182,38 @@ gpt_image_2_5 high 2k 16:9, ті самі два референси. Основ�
 ```
 wiry young man, messy curly brown hair, wide grey eyes, a manic toothy grin with dental braces, freckles; purple hoodie with the hood down, sleeves in a teal-green camouflage pattern, crossed leather straps; loose black cargo pants with kunai holstered on the thighs; shins wrapped in bandages like a Muay Thai fighter; black-and-purple sneakers; a book-shaped backpack with a glowing purple infinity-eight sigil; tattoo on the forearm
 ```
+
+## 13. Choko — одяг v4 (рішення Santos 2026-10-03)
+
+Santos побачив, що на різних картках верх Choko різний: десь кольчужна куртка, десь сорочка. Канон тепер один —
+**легка приталена тканинна куртка** приглушено-помаранчева, кремова смуга, високий комір, рукави до зап'ясть;
+**кольчуга лише вставками** на плечах і передпліччях. Повної кольчужної куртки й сорочки більше немає. IDENTITY в § 1 замінено.
+
+Промпти, що просили **повну** кольчугу (тобто можуть розходитися з v4; що саме намальовано — **не перевірено мною**,
+CDN із хмари закритий): лист `f21298f4`, поворот `1fa22c1b` (Х2-5), T-пози `c280d939`/`822b889d`/`f0763795`/`cbaf6f58`
+(Х2-8…11), картка куртки `4b792412` (Х2-19). Рядок ITEM куртки в § 4 застарів; нова картка куртки:
+«Choko's light fitted cloth jacket in muted dusty orange with a thin cream stripe and a high collar, chainmail ring panels only on the shoulders and forearms» · DETAILS «chainmail shoulder panel; collar and cream stripe».
+
+Було (v3):
+```
+young man, lean narrow face, long straight nose, grey-green eyes, thick curly dark-brown hair covering temples and ears; fitted jacket of fine gunmetal chainmail rings with muted dusty-orange leather panels and a thin cream stripe, high collar, sleeves to the wrists; slate blue-grey trousers; black leather gloves; large analog wristwatch on the left wrist; emerald-green pike-style sword with dark green wrapped grip and brass guard
+```
+
+### 13a. Передача T1 (не робота T6)
+
+Santos хоче Choko «вправнішим мечником і акробатом» — це мувсет і пози бою (T5 Арес) і план (T1 Дедал). Одяг v4 уже
+легший під це; пози листа Choko v4 — після рішення T1/T5.
+
+## 14. Skea — одяг v3 (Santos 2026-10-03, у роботі)
+
+Поверх § 12 (обличчя, посмішка, постава лишаються з v2; канон листа — `dcdef91d`, S-1):
+
+| що | рішення Santos | промпт |
+|---|---|---|
+| Худі | «цю худі» за посиланням Pinterest | **відкрито**: посилання з хмари не відкривається (`curl` → 000), образу немає. Потрібен опис словами (крій, колір, рукави, принт); чужу картинку в Higgsfield не вантажимо ([[Style-Guide]] § Референси). Напис — шрифт «Valid Affiliated»: модель не ставить названий шрифт, тож напис — **окремий шар/декаль** зі справжнього файла шрифту в рушії, а на генерації — чисте поле принта. Текст напису й ліцензія шрифту — **не відомо** |
+| Капюшон | висить донизу за спиною, майже схований рюкзаком | `hood down, hanging low on his back, mostly hidden behind the backpack` |
+| Взуття | «типу New Balance 1960, без лого, повністю білі з чорними акцентами» | `chunky retro running sneakers, layered suede and mesh panels, thick sculpted white midsole, all white with small black accent panels and a black accent stripe on the side, no logos, no brand marks` — бренд у промпті **не називаємо** |
+| Штани й бинти | оверсайз карго; бинти щільно поверх низу штанин, як в оригіналі | `loose oversized black cargo pants, their lower legs tightly wrapped over the fabric with cloth bandages from the ankle to below the knee, like a Muay Thai fighter` |
 
 ## Related
 - [[Style-Guide]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Prompts]] · [[Choko]] · [[Skea]] · [[Stage-River]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[2026-10-03-Skea-Redesign]]

@@ -84,21 +84,23 @@ Job-id, CDN-URL і `balance` до/після кожної партії — [[Men
 | 1b | `stage-river-plate-v1` | 4 | 11 | **канон `a2913501`** |
 | 1c | `menu-skyline-plate-v1` | 4 | 17 | **канон `73ee9806`** |
 | 2a | `skea-sheet-v1` | 4 | 11 | **канон `9c0b4476`** |
-| 2b | `choko-turn-v1`, `skea-turn-v1` | 2 + 2 | 11 | чекає вибору |
-| 2c | `<ch>-tpose-front/side/back/34` | 4 + 4 | 16 | чекає перевірки (для 3b) |
-| 2d | `choko-item-sword/ult-sword/watch/jacket`, `skea-item-kunai/grimoire/backpack/hoodie` | 8 | 22 | чекає перевірки |
-| 2e | `tex-water-foam`, `tex-water-ripple`, `stage-river-layers` | 2 + 1 | 6 | чекає перевірки; **`stage-river-outpaint` — 422, не згенеровано** |
-| 2f | `menu-roof-edge-v1`, `menu-skyline-layers` | 2 + 1 | 7.5 | чекає вибору; outpaint меню не потрібен (діорама, [[ADR-012-Menu-As-3D-Diorama]]) |
-| 2g | `sprite-pedestrian-worker-walk` (проба) | 1 | 2.75 | **Santos оцінює петлю**; решта 3 типи (8.25) — після оцінки |
-| 2h | `sprite-steamcar-a/b`, `vfx-steam-puff` | 2 + 2 | 11 | чекає вибору |
-| 2i | `props-anchors-v1` — ліхтар, білборд без літер, труба, вентстовп ([[ADR-011-Diegetic-Grapple-Anchors]]) | 4 | 11 | чекає вибору |
-| 2j | `drone-heavy-v1` — висить · нахил · просідання · повернення · знизу | 4 | 11 | чекає вибору |
-| 2k | `menu-depth-cards-v1` — квартали середнього й ближнього плану, прозоре тло | 2 | 5.5 | чекає вибору |
+| 2b | `choko-turn-v1`, `skea-turn-v1` | 2 + 2 | 11 | **Choko — канон `1fa22c1b` (Х2-5)**; Skea — застаріло (#33) |
+| 2c | `<ch>-tpose-front/side/back/34` | 4 + 4 | 16 | **Choko — так, усі 4** (`c280d939`, `822b889d`, `f0763795`, `cbaf6f58`); Skea — застаріло, **не для 3D** |
+| 2d | `choko-item-sword/ult-sword/watch/jacket`, `skea-item-kunai/grimoire/backpack/hoodie` | 8 | 22 | так: Choko 4/4, Skea кунаї `68218084`, гримуар `d65011c3`; **худі `28d02e0f` — переробити** (§ 12e Prompt-Library); рюкзак — замінено S-6 |
+| 2e | `tex-water-foam`, `tex-water-ripple`, `stage-river-layers` | 2 + 1 | 6 | **так**: `b0a9189d`, `bb5e3e44`, шари `bc9d78b2` (URL шарів — лише галерея Higgsfield); `stage-river-outpaint` — 422, не згенеровано |
+| 2f | `menu-roof-edge-v1`, `menu-skyline-layers` | 2 + 1 | 7.5 | **канон `f500c1cf` (Х2-27)**; шари меню `9fe905f1` — так |
+| 2g | `sprite-pedestrian-worker-walk` (проба) | 1 | 2.75 | **петля так** (`cc4637e4`); решта 3 типи (8.25) — чекає слова Santos |
+| 2h | `sprite-steamcar-a/b`, `vfx-steam-puff` | 2 + 2 | 11 | **канон: машини `4603954f` (Х2-31), пара `bd9797c1` (Х2-33)** |
+| 2i | `props-anchors-v1` — ліхтар, білборд без літер, труба, вентстовп ([[ADR-011-Diegetic-Grapple-Anchors]]) | 4 | 11 | **канон `c5900952` (Х2-38)** |
+| 2j | `drone-heavy-v1` — висить · нахил · просідання · повернення · знизу | 4 | 11 | **канон `e9fd9e33` (Х2-39)** |
+| 2k | `menu-depth-cards-v1` — квартали середнього й ближнього плану, прозоре тло | 2 | 5.5 | **канон `08c09625` (Х2-43)** |
 | | **Хвиля 2 разом** | 44 + 1 проба | **114.75** | `balance` 5971 → 5856.25 |
-| #33 S2a | `skea-sheet-v2` — Skea-психопат ([[2026-10-03-Skea-Redesign]]) | 4 | 11 | чекає вибору; **заміняє канон 2a `9c0b4476`** після вибору |
-| #33 S2a | `skea-faces-v1` — 8 виразів, основа атласу облич для 3D | 2 | 5.5 | чекає вибору |
-| #33 S2b | `skea-item-backpack-v2` — ∞8 лише на задній панелі | 2 | 5.5 | чекає вибору; заміняє `14c45bff` |
+| #33 S2a | `skea-sheet-v2` — Skea-психопат ([[2026-10-03-Skea-Redesign]]) | 4 | 11 | **канон `dcdef91d` (S-1)**; одяг доробляється — Skea v3 (худі, взуття, бинти) |
+| #33 S2a | `skea-faces-v1` — 8 виразів, основа атласу облич для 3D | 2 | 5.5 | **канон `36ace5cf` (S-5)** |
+| #33 S2b | `skea-item-backpack-v2` — ∞8 лише на задній панелі | 2 | 5.5 | **канон `84849343` (S-6)** |
 | #33 S3 | `skea-turn-v2`, `skea-tpose-*-v2` з референсом переможця S2a | 1 + 4 | ≈ 13.5 (оцінка плану) | **окреме слово Santos**; T-пози 2c Skea і 2b Skea — **не для 3D** |
+| Choko v4 | одяг: легка куртка + кольчуга вставками ([[Prompt-Library]] § 13) | — | — | канони 1a `f21298f4`, 2b `1fa22c1b`, 2c ×4, куртка `4b792412` **промптились з повною кольчугою** — Santos звіряє; що розходиться — переробка окремим словом |
+| Skea v3 | одяг: худі (опис від Santos), білі ретро-кросівки з чорними акцентами, бинти поверх оверсайз-карго ([[Prompt-Library]] § 14) | — | — | худі **відкрито** — чекає опису Santos; далі S3 з новим одягом |
 
 ## Загальний бюджет (затверджено Santos 2026-10-03)
 
