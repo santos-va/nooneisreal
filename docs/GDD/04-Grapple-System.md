@@ -53,4 +53,4 @@
 - Зип у повітряну атаку (скасування), «подвійний якір» для ультимейтів, якорі на пропсах, що рухаються.
 
 ## Related
-- [[02-Combat-System]] · [[2026-10-02-Grapple-Input-UI]] · [[ADR-005-Grapple-Charges]] · [[Kronshift]]
+- [[02-Combat-System]] · [[2026-10-02-Grapple-Input-UI]] · [[ADR-005-Grapple-Charges]] · [[Cronshift]]

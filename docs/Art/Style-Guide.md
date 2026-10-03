@@ -55,4 +55,4 @@ Santos надіслав два листи поз (характер-шіти, 8 �
 [[Textures-Registry]]. Повний конвеєр і ціни — [[Higgsfield-Pipeline]], список усього, що генеруємо, — [[Asset-Manifest]].
 
 ## Related
-- [[ADR-007-Art-Style-Sketch-Cel]] · [[Prompt-Library]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Cel-Shading]] · [[Kronshift]]
+- [[ADR-007-Art-Style-Sketch-Cel]] · [[Prompt-Library]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Cel-Shading]] · [[Cronshift]]

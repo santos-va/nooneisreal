@@ -25,7 +25,7 @@
 - `WEAPONS - CHOKO ULTIMATE`: ряд ультимейт-мечів, різні приглушені палітри, номери.
 - `CHOKO HANDS`: 6 панелей рукавичок/хватів, рукав кольчуги, годинник у панелі 2.
 
-## Фони (Kronshift)
+## Фони (Cronshift)
 
 Формула: «muted dusk palette of terracotta, dusty orange, slate blue and deep teal shadows, worn
 European-industrial architecture, brass rooftops, hanging lanterns, bold outlines… not cyberpunk.

@@ -6,7 +6,7 @@
 
 Проєкт: 3D cel-shaded аніме-файтинг на арені в стилі Naruto Ultimate Ninja Storm,
 Godot 4.7 (GDScript), active ragdoll, гарпун на зарядах. Бійці — Choko і Skeasse,
-місто — Kronshift. Арт генерується в Higgsfield, 3D — Meshy через Higgsfield MCP.
+місто — Cronshift. Арт генерується в Higgsfield, 3D — Meshy через Higgsfield MCP.
 Документація — Obsidian-вікі в `docs/` з wikilinks.
 
 ## Що вантажиться саме, без твоєї участі
