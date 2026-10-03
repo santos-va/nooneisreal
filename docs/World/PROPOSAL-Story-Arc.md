@@ -4,6 +4,11 @@
 > and raise new questions — in English, in a separate, clearly signed file so it can never be mixed up with the original.
 > The canon lives in [[Lore]], [[Skea]] and [[Choko]]. **Nothing here becomes canon until Santos answers "yes" to an
 > item by its number**; then Klio moves that item into [[Lore]] with a meeting log, and strikes it here.
+>
+> **Status (2026-10-03):** Santos — «мені все подобається, що ти описав, по суті» → **direction approved in essence**.
+> H1–H11 with Klio's recommended options are the *working direction*, still not canon word for word. New canon from the
+> same answer (portrait in the book, Choko the technician, his device and his assistant) is in [[Lore]]; Klio's ideas
+> around it are H12–H14 below. Source — [[2026-10-03-Klio-Story-Proposal]].
 
 **How to read the tags**
 
@@ -42,6 +47,11 @@ Everything below is a short English rendering of canon. If a line here disagrees
   back panel of Skea's grimoire-backpack: alive, but **no eyes, teeth or mouth, no pulse**; moving, it leaves a **neon
   trail that disperses**. The grimoire is a cursed book. — [[Skea]] § Рюкзак-гримуар і ∞8
 - Names and effects of the 12 — **later, from Santos**.
+- **A clear picture of the curser must be stuck into the book** — the one they are going to meet. **Maybe** they learn his
+  name **through dialogue**. — [[Lore]] § Портрет того, хто прокляв, і пристрій Choko
+- **Choko is a technician who talks to an AI.** In his world it looks like this: long ago he invented, ahead of his time,
+  a **device that creates and visualises pictures and can print them**, to be **stuck into the book like a sticker**.
+  **An assistant goes with him.** — same source
 
 ---
 
@@ -173,6 +183,45 @@ more later. Klio does **not** pick the character, only notes a fit to check:
 - **Arcade frame:** *"Echo Trial"* — the Eight test the squad against echoes so they can tell shadow from friend.
 - Fits [[Roster]]: Mirage's "ghost double" and hand mirror.
 
+### H12. The portrait sticker — how do they get a clear picture of a man nobody saw? [P] [?]
+
+Canon: a clear picture of the curser goes into the book; maybe the name comes through dialogue. Klio proposes:
+
+- **A — Skea's half-memory (recommended).** Skea was there; his half-soul is still tied to the curser (H2, H3). He says
+  almost nothing about himself (canon), but Choko's AI can work from fragments — a word, a gesture, a sketch. The device
+  visualises and prints. **The first prints are wrong: they keep coming out with Skea's own smile** — the AI is reading
+  Shaper through the link, not the curser. Learning to separate the two is the turn of Act II, and it pays off H4 and H10.
+- **B — The Eight describe him.** They stopped him once before (H3); the trail "draws" him for the AI.
+- **The sticker in the book.** Once the clear portrait is glued in, the ∞8 finally *see* who they hunt — the trail
+  sharpens. The grimoire becomes a **hunting album**: the curser's face first, then a sticker for each of the 12 as they
+  are found. (UI idea for T8 Hermes: a gallery / character select styled as this sticker book.)
+- **The name through dialogue.** Recommended source: the **teammate among the 12** called from the amulet (H8) — the
+  only one of the 12 still "theirs", the only one who would say it. Alternatives: Shaper lets it slip while taunting;
+  the curser says it himself at the clock tower.
+
+### H13. Choko's device and his AI [P] [?]
+
+Canon: technician, talks to an AI, a device invented "ahead" that creates, visualises and prints pictures. Cronshift is
+Arcane-like, **not cyberpunk** ([[Kronshift]]), so Klio proposes the device looks like the city:
+
+- **A brass box with a lens, a crank and a paper spool** — half instant camera, half typewriter. The AI's answers come
+  out as short printed strips; the pictures as stickers with a torn edge. Warm valve glow, no screens.
+- **The AI lives in Choko's wristwatch** (his canon large analog watch). He talks to the watch; the box prints. That ties
+  his time powers to the same machine — and H1-A becomes sharper: **it was the AI in the watch that stopped time in the
+  catacombs**, on its own, and never told him.
+- Small wink, only if Santos likes it: the game's own art is generated from descriptions — in the world, Choko does the
+  same thing with a machine he built too early.
+
+### H14. Choko's assistant [P] [?]
+
+Canon: an assistant goes with him. Options:
+
+- **A — the AI's body (recommended):** a small flying brass drone with one lens-eye that carries the paper spool and
+  hands out the stickers. Drones already exist in Cronshift ([[ADR-011-Diegetic-Grapple-Anchors]]; Tess's drones in
+  [[Roster]]), so it fits the world. Accent in Choko's dusty orange. Name ideas: **Tick**, **Spool**.
+- **B — a person:** an apprentice from [[Roster]] who runs the device while Choko fights.
+- **C — no body:** the AI is only a voice from the watch; the "assistant" is the printing box itself.
+
 ---
 
 ## 4. Proposed arc [P]
@@ -184,8 +233,8 @@ intros/endings now. Stages are the ones that already exist or are planned on [[K
 |---|---|---|---|
 | **Prologue — The Catacombs** | Night. Choko waits in the street; something goes wrong below; he forces his way in and finds Skea unconscious. (Canon up to here.) | Tutorial: Choko vs. an echo in the dark | back alley (night) |
 | **Act I — Half** | Skea wakes up wrong: the grin, the silence. The squad looks into the disappearances; the first stolen body walks the market. | Choko vs. Skea — Skea not himself (the first "is it really him?" fight) · Skea vs. a page | market street, bazaar |
-| **Act II — Pages** | The ∞8 trail leads from page to page. Skea cuts one down; its imprint enters the book (H5). The amulet calls back the teammate's shadow for one fight. **Shaper appears** — Skea's face, Skea's smile, eyes that smile. | Skea vs. page · Choko vs. Shaper (wearing Skea) | main street, river |
-| **Act III — No One Is Real** | The Quiet One begins: streets empty, people turn to shadows. The Eight show Choko what his watch did in the catacombs (H1-A). | Skea vs. Shaper | the clock tower (H9) |
+| **Act II — Pages** | Choko's device tries to print the curser's face — and keeps printing Skea's smile (H12). The ∞8 trail leads from page to page. Skea cuts one down; its imprint enters the book (H5). The amulet calls back the teammate's shadow for one fight. **Shaper appears** — Skea's face, Skea's smile, eyes that smile. | Skea vs. page · Choko vs. Shaper (wearing Skea) | main street, river |
+| **Act III — No One Is Real** | The clear portrait is finally glued into the book; the trail sharpens; through dialogue they learn his name (H12). The Quiet One begins: streets empty, people turn to shadows. The Eight show Choko what his watch did in the catacombs (H1-A). | Skea vs. Shaper | the clock tower (H9) |
 | **Finale** | Choko and Skea vs. the Quiet One under the clock. | duo / tag fight (future mode) | fountain square at night, CRONSHIFT neon |
 
 **Endings for Santos to choose** [?] **Q6**:
@@ -220,12 +269,17 @@ intros/endings now. Stages are the ones that already exist or are planned on [[K
 | Q8 | The old building — clock tower? | yes (H9) |
 | Q9 | Squad purpose and name (H7)? | investigates disappearances; name — Santos |
 | Q10 | Title meaning (H10) and why heroes fight each other (H11)? | as proposed |
+| Q11 | How does the device get the curser's face — Skea's half-memory or the Eight (H12)? | Skea's half-memory; wrong prints first |
+| Q12 | Who tells them the name in dialogue (H12)? | the teammate from the amulet |
+| Q13 | Device look; does the AI live in Choko's watch (H13)? | brass printer box + AI in the watch |
+| Q14 | Who is the assistant — drone, person, or only the AI (H14)? | A — a small brass drone |
 
 ---
 
 ## 7. What happens next
 
-- Santos answers by ID (H1–H11) or by question (Q1–Q10).
+- Santos answers by ID (H1–H14) or by question (Q1–Q14). "In essence" approval (2026-10-03) already covers the
+  direction of H1–H11; word-for-word canon still needs a "yes" per item.
 - Klio moves each "yes" into [[Lore]] / [[Skea]] / [[Choko]] with a meeting log in `docs/Meetings/`, and strikes it
   here. Anything about the kit goes to T5 Ares; anything visual (Shaper's look, the curser) — to T6 Apollon after
   Santos's word.
