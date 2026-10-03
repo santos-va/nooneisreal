@@ -24,12 +24,38 @@ santos-va/nooneisreal#36 (Choko — мечник-акробат) · issue santos
 Це рецидивний клас: *референс несе старий одяг, текст просить новий*. Через нього кольчугу вже малювали на
 `1fa22c1b`, `c280d939`, `822b889d`, `f0763795`, `cbaf6f58`, `4b792412` і на трьох роботах v4. Пропоную Феміді внести його в реєстр рецидивів.
 
-## Модель «Nike 5000»: що знайдено
+## Модель «Nike 5000»: що знайдено → Santos: **P-6000**
 
 Пошук моделі з такою назвою не знайшов (`WebSearch "Nike 5000 sneaker grey orange"`). Найближчі ретро-ранери в
 результатах — **P-6000** і **Zoom Vomero 5**: низький верх, сітка з шаруватими сріблясто-сірими накладками, масивна
 ребриста підошва, каркас на п'яті. Бренд у промпті все одно **не називаємо** (правило Аполлона, [[Prompt-Library]] § 14 на гілці T6),
-тому форма описується словами. Якщо Santos мав на увазі іншу модель — правиться один рядок кроку 1.
+тому форма описується словами. Santos підтвердив: **P-6000** (2026-10-03).
+
+## Монограма «C» замість лого (Santos, 2026-10-03, доповнення)
+
+**Що сказав Santos** (з посиланням на фото кросівок на Farfetch): «такі повинні бути у Choko, тільки адаптовані під
+його одяг і без лого. Там можеш написати C шрифтом розписним, закручену, щоб вона вийшла з хвостиком». Саме фото
+**не перевірено**: `curl` на `cdn-images.farfetch-contents.com` → `CONNECT tunnel failed, response 403`.
+
+**Стан на момент запису (`show_generations`, 0 кр.):** картка кросівок `482bfc6d`, поворот (`4091fd4d`, `d048c40f`) і
+T-пози Choko (`b529a3bd`, `da24265e`, `5b045b7a`, `1cb13491`) уже згенеровані з «no logos or brand marks on the
+shoes», тобто з чистими боками. Монограми на них нема.
+
+**Канон:** на зовнішній боковій панелі кожної кросівки — одна **рукописна літера «C»**, курсивна, з петлею, хвіст
+якої закручується назад і тягнеться вздовж панелі. Колір — помаранчевий акцент кросівок на сірому. Це не бренд:
+ні слів, ні інших літер, ні знайомих логотипів.
+
+**Як не перемальовувати вже обране:**
+1. **Гліф окремо.** T6 малює картку монограми ×2: тільки літера «C» з хвостом на рівному тлі, у лінії Sketch-Cel
+   ([[Style-Guide]]). RED ≈ 5.5 кр. (2 × 2.75 — ціна хвилі 1, T6 переміряє `get_cost`).
+2. **На 3D-моделі — декаль**, як ∞8 у Skea ([[2026-10-03-Skea-Redesign]] § Рюкзак-гримуар і ∞8): Гефест кладе
+   обраний гліф на зовнішні панелі обох кросівок. Поворот і T-пози Choko лишаються як є, монограма їм не потрібна.
+3. **У наступних 2D-генераціях Choko** (лист поз v5, крок 5) — рядок у {NEG_CHOKO} «no logos» уточнити: «no brand
+   logos; the only mark is a hand-lettered cursive C with a curled tail on the outer side of each sneaker».
+
+**Choko у 3D нічого не тримає** (Santos, 2026-10-03): у T-позах і в 3D-генерації — порожні руки, без меча й будь-яких
+предметів. Меч — окремий меш на `BoneAttachment3D` у Godot ([[2026-10-03-Behaviour-Cloth-VFX-Shaders]] розвилка 7).
+T-пози X-1 (бік) і X-2 (спина) — на переробці (вердикт Santos у журналі T6, PR #40); у повторних промптах — «empty hands».
 
 ## Кроки
 
@@ -54,10 +80,13 @@ santos-va/nooneisreal#36 (Choko — мечник-акробат) · issue santos
        ring mesh on the shoulder caps and the outer forearms only`.
     3. Заперечення перенести в окремий хвіст `{NEG_CHOKO}`: `no chain mail or metal rings on the back, chest or torso,
        no mail shirt, no armor vest`.
-    4. Взуття (пропозиція Дедала, остаточне слово за Santos): `low-top 2000s retro running sneakers, breathable mesh
-       base with layered silver-grey synthetic overlays, chunky segmented light-grey midsole with a visible heel cage,
-       light grey with muted orange accent panels on the heel tab, around the lace eyelets and on the outsole, the same
-       dusty orange as the jacket, no logos, no brand marks, plain side panels`.
+    4. Взуття — форма **P-6000** (вибір Santos 2026-10-03), бренд не називаємо: `low-top Y2K-era retro running
+       sneakers: breathable light-grey mesh base with layered horizontal and vertical metallic silver-grey synthetic
+       overlays, windowed mesh panels on the toe and heel, a tall chunky foam midsole and a full rubber outsole; muted
+       dusty-orange accent panels on the heel tab, around the lace eyelets and along the outsole, the same orange as the
+       jacket; no logos, no brand marks, plain side panels with only stitched overlays`. Ознаки P-6000 (сітка з
+       горизонтальними й вертикальними накладками, вікна сітки на носку й п'яті, висока підошва) — з картки моделі у
+       WebSearch «Nike P-6000 design details» (footlocker.com, hiconsumption.com).
 - **Ризик:** якщо § 1 і Choko.md розійдуться, наступна картка знову змішає версії.
 - **Перевірка:** `grep -A2 "IDENTITY — Choko" docs/Art/Prompts/Prompt-Library.md | grep -ci chainmail` → `0`;
   `grep -c "NEG_CHOKO" docs/Art/Prompts/Prompt-Library.md` → ≥ 2; `grep -ci "кольчужна куртка" docs/Characters/Choko.md` → `0`;
@@ -102,6 +131,27 @@ santos-va/nooneisreal#36 (Choko — мечник-акробат) · issue santos
 
 **Разом RED:** ≈ 27.5 кр. (5.5 + 5.5 + 11 + 5.5), із них ≈ 13.75 і так стояли в «кроці 2» Аполлона. Стеля фаз 2–3 — 600
 ([[2026-10-03-Production-Plan]]). Від старту 6010 до `balance` 5806.75 (виміряно в цій сесії) витрачено 203.25 разом із меню.
+
+## Слово Santos (2026-10-03, сесія T1)
+
+«P-6000, слово на кросівки й Skea даю». Слово покриває **рівно два кроки**:
+- **крок 2 цього плану** — `choko-item-sneakers-v1` ×2, стеля **5.5 кр.**;
+- **S3 Skea** — поворот ×1 + T-пози ×4 ([[2026-10-03-Picks-to-Game-and-Animation]] § A), стеля **13.75 кр.**
+
+Разом ≤ **19.25 кр.** Поворот, T-пози й лист Choko v5 (кроки 3–5) у слово **не входять** і чекають окремого.
+Генерує сесія T6, не T1 (одна сесія = одна роль, [[constitution]]). Перед кроком 2 — кроки 0 і 1 (0 кредитів).
+
+### Стартове повідомлення для сесії T6 (скопіюй Santos)
+
+```
+T6 — слово Santos 2026-10-03: кросівки Choko (картка ×2, стеля 5.5 кр.) і Skea S3 (поворот + 4 T-пози, стеля 13.75 кр.), разом ≤ 19.25.
+1) Злий origin/main у claude/practical-hopper-rmfgi4, розв'яжи конфлікт docs/system/state.md, відкрий PR (план docs/Plans/2026-10-03-Choko-Outfit-v5.md, крок 0).
+2) Крок 1 того ж плану: IDENTITY Choko v5 + {NEG_CHOKO} + рядок ITEM кросівок (форма P-6000, бренд не називати, без лого).
+3) balance → get_cost → choko-item-sneakers-v1 ×2 БЕЗ референсу → balance.
+4) Skea S3 за docs/Plans/2026-10-03-Picks-to-Game-and-Animation.md § A: референси лист S-1 dcdef91d, худі N-5 ab80973c, кросівки N-6 d2ac65b6, обличчя S-5 36ace5cf
+   (скільки референсів бере модель — models_explore; якщо менше, пріоритет S-1, потім N-5); до NEG — both arms fully visible, two hands.
+5) Журнал у Menu-Skyline-Prompts, Asset-Manifest § E, коментарі в #38 і #33. Поворот, T-пози й лист Choko — НЕ в цьому слові.
+```
 
 ## Хто що
 
