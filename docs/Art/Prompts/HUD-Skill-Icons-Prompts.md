@@ -49,6 +49,31 @@ No circle or square background, no frame, no border, no badge, no text, no lette
 | `ui-icon-skea-kunai` | `Subject: three kunai knives falling point down in a tight fan, each with a ring pommel, the middle one slightly lower.` |
 | `ui-icon-skea-veil` | `Subject: a compact billowing cloud of smoke clumps with one sharp crescent-shaped cut-out in the middle, like a veil hiding something.` |
 
+## Іконки ульт і портрети вибору бійця (Santos 2026-10-03: «давай все інше, що вже готове й точно буде»)
+
+Звідки «точно буде»: [[06-UI-UX]] § Вибір персонажа — картка P1 має **3 панелі: скіл 1 · скіл 2 · ульта** (іконки S1/S2 вже є,
+ульт бракує) і **сітку портретів** 112×112 од.; [[2026-10-03-Production-Plan]] фаза 2.8 «Іконки скілів, портрети HUD».
+
+**Іконки ульт** — ті самі ICON_STYLE / NEG_ICON, `gpt_image_2_5` high 1k transparent, 2 × 2 варіанти:
+
+| id | скіл | опис (слот) |
+|---|---|---|
+| `ui-icon-choko-ult` | SWORD STORM (кристальна ульта, меч № 1) | `Subject: a single straight sword pointing upward with five small pointed crystal shards fanned like wings around its crossguard.` |
+| `ui-icon-skea-ult` | CURSED GRIMOIRE ∞8 | `Subject: a thick closed old grimoire book standing upright, iron corner caps, a plain infinity-eight shape on its cover, no face, no eyes.` |
+
+**Портрети** — `gpt_image_2_5` high 2k 1:1 transparent, 2 × 2 варіанти. Погруддя в 3/4 обличчям **праворуч** (P2 дзеркалить код).
+Блоки `{STYLE}`, `{NEG}`, `{NEG_CHOKO}`, `{NEG_SKEA}`, IDENTITY — з [[Prompt-Library]] байт-у-байт (Choko — IDENTITY v5.2 § 1,
+Skea — IDENTITY v3 § 14a).
+
+```
+{STYLE} Head-and-shoulders character portrait for a fighting game character-select card: three-quarter view facing to the right, from the top of the hair down to mid-chest, centered with a small empty margin, {MOOD}, fully transparent background, no frame, no border. {REFS} Identity: {IDENTITY}. {NEG} {NEG_CH}
+```
+
+| id | референси | `{MOOD}` · `{REFS}` |
+|---|---|---|
+| `ui-portrait-choko` | лист Choko `f21298f4` (обличчя, манера) + картка куртки v5 N-2 `a2bf79a1` | `calm, focused, slightly cocky half-smile` · `Match the face, drawing style, line and shading of the first reference image exactly; take the jacket and collar from the second reference image.` |
+| `ui-portrait-skea` | лист Skea v3 S-1 `dcdef91d` (обличчя, пропорції, манера) + обличчя S-5 `36ace5cf` | `his base smile, the eyes cold and not smiling, head slightly tilted` · `Match the face, drawing style, line and shading of the first reference image exactly; the face must match the second reference image.` |
+
 ## Модель і ціна (`get_cost` 2026-10-03, кредитів не списує; `balance` → 5281)
 
 | варіант | `get_cost` за 1 зображення | 4 іконки × 2 варіанти | за і проти |
@@ -66,6 +91,7 @@ No circle or square background, no frame, no border, no badge, no text, no lette
 | пакет | job-id | результат | `balance` до → після |
 |---|---|---|---|
 | 4 × 2 (`generate_image_batch`, `gpt_image_2_5` high 1k transparent) | RECORD `40370239` (a) / `e3ac701b` · TIME STOP `ca9face2` (a) / `fa7d17cd` · KUNAI `a09e17c5` (a) / `cb73794e` · VEIL `b807998c` / `0927bd84` (b) | у гру — RECORD a, TIME STOP a, KUNAI a, VEIL b (серпоподібний виріз — справжній отвір, на 48 px читається найкраще). Усі 8 читаються на 48 px (огляд зменшених копій). Обрізано по силуету + поле 8 % → 512×512, щоб заливка знизу вгору мала однакову висоту. Зауваження: крапка «запису» на RECORD в одному кольорі читається як коронка кишенькового годинника — образ «годинник» лишається | 5281 → **5269** (−12, як у кошторисі) |
+| іконки ульт 2 × 2 (1k, 1.5) + портрети 2 × 2 (2k, 2 референси, 2.75) | ульта Choko `af93bfb4` / `bb91ec57` (b) · ульта Skea `722cfeec` / `ad336ee9` (b) · портрет Choko `b7032ada` (a) / `718e6d21` · портрет Skea `6992a087` (a) / `ae54ef62` | у гру — ульти b, портрети a. Звірено з каноном: кольчуга на плечах Choko є на картці куртки `a2bf79a1`; «окуляроподібні» очі Skea — як на листі облич `36ace5cf`. Портрет Skea b відкинуто: ∞8 видно на боці рюкзака (канон — лише задня панель) | 5236 → **5219** (−17, як у кошторисі) |
 
 ## Related
 - [[06-UI-UX]] · [[03-Skills-Framework]] · [[Style-Guide]] · [[Textures-Registry]] · [[VFX-Sheets-Prompts]] · [[2026-10-03-Production-Plan]] · [[Choko]] · [[Skea]]
