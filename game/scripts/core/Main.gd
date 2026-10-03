@@ -3,6 +3,10 @@ extends Node
 
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
+	if not "--smoke" in args and free_move_arg(args) == -1:
+		var saved := GameState.saved_free_move(GameState.free_move)
+		if saved != GameState.free_move:
+			GameState.set_free_move(saved)   # the menu's MODE choice; flags override it for this run only
 	apply_launch_args(args, GameState)
 	if "--smoke" in args:
 		var t := SmokeTest.new()

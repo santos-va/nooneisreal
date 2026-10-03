@@ -6,12 +6,15 @@ extends Node
 
 const BUFFER_FRAMES := 6
 const ACTIONS := ["left", "right", "jump", "crouch", "light", "heavy", "block", "skill1", "skill2", "ultimate", "grapple", "dash", "up", "down"]
-## Free movement (GameState.free_move): screen up/down = sidestep around the opponent. These two
-## actions have no keys in project.godot; while free_move is on, apply_profile() moves the W/↑ key
-## off `jump` onto `up` and S/↓ off `crouch` onto `down` (Space stays jump; crouch has no key).
-## TEMPORARY until T8 Гермес fixes the free-movement layout — TODO #26.
+## Free movement (GameState.free_move) — docs/Decisions/ADR-014-Free-Movement-Layout.md: W/↑ and S/↓ move
+## off `jump` / `crouch` onto `up` / `down` (camera-relative movement); jump is Space (P1) and `/` (P2) only;
+## crouch is X (P1) and M (P2, SHARED). Gamepad: left stick ↑/↓ drives up/down and leaves crouch, which is
+## D-pad ↓ only. The plane mode keeps project.godot's layout (ADR-009) untouched.
 const FREE_MOVE_UP_KEYS := [KEY_W, KEY_UP]
 const FREE_MOVE_DOWN_KEYS := [KEY_S, KEY_DOWN]
+const FREE_MOVE_CROUCH_KEYS := {1: KEY_X, 2: KEY_M}
+## Gamepad left stick, vertical axis (JOY_AXIS_LEFT_Y): −1 = up, +1 = down.
+const STICK_Y := JOY_AXIS_LEFT_Y
 const SETTINGS_PATH := "user://settings.cfg"
 
 ## Keyboard profiles (docs/Decisions/ADR-009-Solo-Keyboard-Layout.md). Only keyboard events are
@@ -34,6 +37,7 @@ var _pressed_at: Dictionary = {}    # "p1_light" -> physics frame of the last ju
 var _virtual_held: Dictionary = {}  # "p2_light" -> bool   (CPU / tests)
 var _virtual_just: Dictionary = {}  # "p2_light" -> frame
 var _shared_keys: Dictionary = {}   # action -> Array[InputEventKey] captured from project.godot
+var _pad_events: Dictionary = {}    # action -> Array of gamepad events captured from project.godot
 var profile: String = PROFILE_SOLO
 
 
@@ -45,10 +49,14 @@ func _ready() -> void:
 			if not InputMap.has_action(n):
 				InputMap.add_action(n)   # up/down exist only for free movement
 			var keys: Array = []
+			var pads: Array = []
 			for ev in InputMap.action_get_events(n):
 				if ev is InputEventKey:
 					keys.append(ev)
+				else:
+					pads.append(ev)
 			_shared_keys[n] = keys
+			_pad_events[n] = pads
 	var cfg := ConfigFile.new()
 	var saved: String = PROFILE_SOLO
 	if cfg.load(SETTINGS_PATH) == OK:
@@ -77,9 +85,14 @@ func apply_profile(prof: String, save: bool = true) -> void:
 					if code == KEY_SHIFT:
 						k.location = KEY_LOCATION_LEFT   # RShift stays free
 					InputMap.action_add_event(n, k)
+		_apply_pad(p)
 		if GameState.free_move:
 			_move_keys(action_name(p, "jump"), action_name(p, "up"), FREE_MOVE_UP_KEYS)
 			_move_keys(action_name(p, "crouch"), action_name(p, "down"), FREE_MOVE_DOWN_KEYS)
+			if prof == PROFILE_SHARED or p == 1:
+				var k := InputEventKey.new()
+				k.physical_keycode = FREE_MOVE_CROUCH_KEYS[p]
+				InputMap.action_add_event(action_name(p, "crouch"), k)
 	_pressed_at.clear()
 	if save:
 		var cfg := ConfigFile.new()
@@ -88,7 +101,27 @@ func apply_profile(prof: String, save: bool = true) -> void:
 		cfg.save(SETTINGS_PATH)
 
 
-## TODO #26: free-movement layout is temporary (see FREE_MOVE_UP_KEYS).
+## Gamepad half for player `p`: project.godot's events, and in free movement the left stick's vertical axis
+## moves from crouch onto up/down (ADR-014 п. 4). Device = the one project.godot gives this player.
+func _apply_pad(p: int) -> void:
+	for a in ACTIONS:
+		var n := action_name(p, a)
+		for ev in InputMap.action_get_events(n):
+			if not ev is InputEventKey:
+				InputMap.action_erase_event(n, ev)
+		for ev in _pad_events.get(n, []):
+			if GameState.free_move and a == "crouch" and ev is InputEventJoypadMotion and (ev as InputEventJoypadMotion).axis == STICK_Y:
+				continue
+			InputMap.action_add_event(n, ev)
+	if GameState.free_move:
+		for pair in [["up", -1.0], ["down", 1.0]]:
+			var m := InputEventJoypadMotion.new()
+			m.device = p - 1
+			m.axis = STICK_Y
+			m.axis_value = pair[1]
+			InputMap.action_add_event(action_name(p, pair[0]), m)
+
+
 func _move_keys(from: String, to: String, codes: Array) -> void:
 	for ev in InputMap.action_get_events(from):
 		if ev is InputEventKey and (ev as InputEventKey).physical_keycode in codes:
@@ -103,8 +136,20 @@ func cycle_profile() -> void:
 ## One-line control hint for the HUD / menu, matching the active profile.
 func hint_text(vs_cpu: bool) -> String:
 	if GameState.free_move:
-		return _hint_profile(vs_cpu).replace("W/Space jump · S crouch", "W/S sidestep · Space jump").replace("(S+E pull)", "(no anchor in cone → pull)").replace("(S+R pull)", "(no anchor in cone → pull)") + "   [3D free move — keys TODO #26]"
+		return _hint_free(vs_cpu)
 	return _hint_profile(vs_cpu)
+
+
+## Free movement hint (ADR-014, ADR-015 п. 6): solo vs CPU the camera is behind P1, so W/S go to / from the
+## opponent and A/D circle; in VERSUS the camera is side-on, so A/D go to / from and W/S circle.
+func _hint_free(vs_cpu: bool) -> String:
+	var walk := "W/S to·from foe · A/D circle" if vs_cpu else "A/D to·from foe · W/S circle"
+	if profile == PROFILE_SOLO:
+		var p1 := "P1  %s · Space jump · X crouch · LShift dash · E grapple   J light · K heavy · L guard · U/I skills · O ultimate" % walk
+		return p1 + ("   |   Tab hitboxes · Esc pause" if vs_cpu else "      P2  gamepad (SOLO keyboard)")
+	if vs_cpu:
+		return "P1  %s · Space jump · X crouch · F light · G heavy · LShift guard · Q/E skills · R grapple · C dash · V ultimate   |   Tab hitboxes · Esc pause" % walk
+	return "P1  WASD · Space · X · F light · G heavy · LShift guard · Q/E · R grapple · C dash · V ult        P2  arrows · / · M · K light · L heavy · RShift guard · ; ' · I grapple · . dash · , ult"
 
 
 func _hint_profile(vs_cpu: bool) -> String:

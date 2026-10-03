@@ -39,6 +39,7 @@ const GDD_BLOCK_ARC_DEG := 70.0
 const GDD_CIRCLE_SPEED_MULT := 0.8
 const GDD_GRAPPLE_CONE_DEG := 30.0
 const GDD_WALL_SPLAT_FRAMES := 10
+const GDD_YAW_ACCEL_DEG := 0.25        # 02 § Камера за спиною і плавність (launch 6)
 ## slot → [tracking_deg, backhit_hitstun_bonus]; skills follow 03 § Як у 3D and are not in this table
 const GDD_MOVES := {"light": [30.0, 2], "crouch_light": [20.0, 3], "heavy": [15.0, 3], "air_light": [10.0, 2], "ultimate": [45.0, 6], "throw": [0.0, 0]}
 var _duel_trace: Array = []
@@ -68,6 +69,14 @@ var _ult_only: bool = false
 var _bone0: Vector3 = Vector3.ZERO
 var _rig_hit: int = -1               # launch 4: physics frame Skea took the mannequin's light (-1 = not yet)
 var _rig_swung: bool = false
+var _aim_max: float = 0.0             # launch 5: worst hero-vs-mannequin bone direction (deg) over the light
+var _aim_bone: String = ""
+var _storm: SwordStormFx = null       # crystal ult: the live SWORD STORM effect
+var _cam_only: bool = false           # dev / negative controls: only the launch 6 camera stages
+var _dw_max: float = 0.0              # launch 6: worst |change of yaw turn| per tick (deg)
+var _w_max: float = 0.0               # launch 6: worst |yaw turn| per tick (deg)
+var _head_low: float = -1e9           # launch 6: worst (P2 head screen y − P1 head screen y), px; > 0 = P2 lower
+var _w_prev: float = 0.0
 # launch 3b: Skea's ult under the bass (docs/GDD/03 § Ульта Skea під бас — literals, not the .tres)
 const GDD_ULT_BEATS := [62, 72, 82]                             # normal ult, move frames from frame 0
 const GDD_ULT_END := 84                                         # startup 12 + active 72
@@ -116,12 +125,18 @@ func _ready() -> void:
 			_ult_only = true
 			GameState.set_free_move(true)
 			_stage = 120
+		if a == "--smoke-only=cam":
+			# dev / negative controls: only the launch 6 stages (menu MODE, layout, camera behind / side)
+			_cam_only = true
 		if a == "--smoke-only=duel":
 			# dev / negative controls: only the 0.3-6 duel replay (plane, then free movement)
 			GameState.set_free_move(false)
 			_stage = 70
 	if _rig_only:
 		_start_rig_stages()
+		return
+	if _cam_only:
+		_start_cam_stages()
 		return
 	get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
 
@@ -220,6 +235,124 @@ func _start_rig_stages() -> void:
 		get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
 	else:
 		_load_arena(2, 110)
+
+
+## Launch 6 (ADR-014, ADR-015, 06-UI-UX § Кнопка «РЕЖИМ 2.5D / 3D»): the menu MODE row and the 3D layout, then
+## the camera behind P1 (solo vs CPU, stage 130) and side-on (VERSUS, stage 131).
+func _start_cam_stages() -> void:
+	GameState.skeletal_rig = false
+	GameState.set_free_move(true)
+	_x0 = 0.0
+	if not _check_mode_row() or not _check_free_layout():
+		return
+	GameState.p2_is_cpu = true
+	if _cam_only:
+		GameState.stage_index = 2
+		_stage = 130
+		_f0 = _f
+		get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
+	else:
+		_load_arena(2, 130)
+
+
+## The MODE row flips free_move both ways, re-binds the keyboard, updates the hint and writes
+## [gameplay] free_move; the player's settings file is restored afterwards. false = already failed.
+func _check_mode_row() -> bool:
+	var path := InputRouter.SETTINGS_PATH
+	var had := FileAccess.file_exists(path)
+	var before := FileAccess.get_file_as_string(path) if had else ""
+	var menu: Control = load("res://scripts/ui/MainMenu.gd").new()
+	get_tree().root.add_child(menu)
+	var got: Array = []
+	for i in 2:
+		menu.mode_btn.pressed.emit()
+		var cfg := ConfigFile.new()
+		cfg.load(path)
+		var x_crouch := false
+		for ev in InputMap.action_get_events("p1_crouch"):
+			x_crouch = x_crouch or (ev is InputEventKey and (ev as InputEventKey).physical_keycode == KEY_X)
+		got.append([GameState.free_move, cfg.get_value("gameplay", "free_move", null), x_crouch, menu.mode_btn.text, menu._foot.text])
+	menu.free()
+	if had:
+		var f := FileAccess.open(path, FileAccess.WRITE)
+		f.store_string(before)
+		f.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	GameState.set_free_move(true)
+	var off: Array = got[0]
+	var on: Array = got[1]
+	if off[0] != false or off[1] != false or off[2] or not "2.5D" in str(off[3]) or not "W/Space jump" in str(off[4]):
+		_fail("MODE row, first press (3D → 2.5D): free_move %s, saved %s, X on crouch %s, row '%s', hint '%s'" % off)
+		return false
+	if on[0] != true or on[1] != true or not on[2] or not "3D" in str(on[3]) or not "Space jump" in str(on[4]) or "W/Space" in str(on[4]):
+		_fail("MODE row, second press (2.5D → 3D): free_move %s, saved %s, X on crouch %s, row '%s', hint '%s'" % on)
+		return false
+	_ok("MODE row: 3D → 2.5D → 3D, saved to [gameplay] free_move each time, keys re-bound (X crouch only in 3D), hint follows; settings file restored")
+	return true
+
+
+## ADR-014 in free movement: X/M crouch, W/↑ up, S/↓ down, Space and / only jump; gamepad left stick ↑/↓ on
+## up/down and off crouch (D-pad ↓ stays); no key or pad input on two actions, both profiles. false = failed.
+func _check_free_layout() -> bool:
+	var prof0 := InputRouter.profile
+	var bad := ""
+	for prof in InputRouter.PROFILES:
+		var clash := _key_clash(prof)
+		if clash != "":
+			bad = "%s: %s" % [prof, clash]
+			break
+		var pads: Dictionary = {}
+		for p in [1, 2]:
+			for a in InputRouter.ACTIONS:
+				var n := InputRouter.action_name(p, a)
+				for ev in InputMap.action_get_events(n):
+					var id := ""
+					if ev is InputEventJoypadButton:
+						id = "d%d b%d" % [ev.device, (ev as InputEventJoypadButton).button_index]
+					elif ev is InputEventJoypadMotion:
+						id = "d%d axis%d %+d" % [ev.device, (ev as InputEventJoypadMotion).axis, int(signf((ev as InputEventJoypadMotion).axis_value))]
+					if id == "":
+						continue
+					if pads.has(id) and pads[id] != n:
+						bad = "%s: pad %s on both %s and %s" % [prof, id, pads[id], n]
+					pads[id] = n
+		var want := {"p1_crouch": KEY_X, "p1_up": KEY_W, "p1_down": KEY_S, "p1_jump": KEY_SPACE}
+		if prof == InputRouter.PROFILE_SHARED:
+			want.merge({"p2_crouch": KEY_M, "p2_up": KEY_UP, "p2_down": KEY_DOWN, "p2_jump": KEY_SLASH})
+		for n in want:
+			var has := false
+			for ev in InputMap.action_get_events(n):
+				has = has or (ev is InputEventKey and (ev as InputEventKey).physical_keycode == want[n])
+			if not has:
+				bad = "%s: %s has no %s" % [prof, n, OS.get_keycode_string(want[n])]
+		for p in [1, 2]:
+			if pads.get("d%d axis%d -1" % [p - 1, JOY_AXIS_LEFT_Y], "") != "p%d_up" % p or pads.get("d%d axis%d +1" % [p - 1, JOY_AXIS_LEFT_Y], "") != "p%d_down" % p:
+				bad = "%s: P%d left stick ↑/↓ on %s / %s, want up / down" % [prof, p, pads.get("d%d axis%d -1" % [p - 1, JOY_AXIS_LEFT_Y]), pads.get("d%d axis%d +1" % [p - 1, JOY_AXIS_LEFT_Y])]
+			if pads.get("d%d b%d" % [p - 1, JOY_BUTTON_DPAD_DOWN], "") != "p%d_crouch" % p:
+				bad = "%s: P%d D-pad ↓ not on crouch" % [prof, p]
+		if bad != "":
+			break
+	InputRouter.apply_profile(prof0, false)
+	if bad != "":
+		_fail("ADR-014 layout, " + bad)
+		return false
+	_ok("ADR-014 layout in 3D: X/M crouch, W/S ↑/↓ up/down, Space and / jump, stick ↑/↓ up/down, D-pad ↓ crouch; no key or pad clash in SOLO/SHARED")
+	return true
+
+
+## Launch 6: per physics tick — the camera's yaw turn and its change, and (behind) how far P2's head is below P1's on screen.
+func _track_cam6() -> void:
+	var dc: DuelCamera = arena.duel_camera
+	var w := dc.turn_deg()
+	_w_max = maxf(_w_max, absf(w))
+	_dw_max = maxf(_dw_max, absf(w - _w_prev))
+	_w_prev = w
+	if dc.behind:
+		var cam: Camera3D = dc.cam
+		var y1 := cam.unproject_position(p1.global_position + Vector3.UP * 1.8).y
+		var y2 := cam.unproject_position(p2.global_position + Vector3.UP * 1.8).y
+		_head_low = maxf(_head_low, y2 - y1)
 
 
 func _finish() -> void:
@@ -476,7 +609,7 @@ func _river_script(t: int) -> void:
 
 ## "" when the code's design numbers equal the GDD literals above; else the first mismatch.
 func _gdd_mismatch() -> String:
-	var got := {"Fighter.ARENA_RADIUS": [Fighter.ARENA_RADIUS, GDD_ARENA_RADIUS], "DuelCamera.YAW_CLAMP_DEG": [DuelCamera.YAW_CLAMP_DEG, GDD_YAW_CLAMP_DEG], "DuelCamera.PULLBACK_LAG_DEG": [DuelCamera.PULLBACK_LAG_DEG, GDD_PULLBACK_LAG_DEG], "DuelCamera.PULLBACK_MAX": [DuelCamera.PULLBACK_MAX, GDD_PULLBACK_MAX], "Fighter.WALL_SPLAT_FRAMES": [float(Fighter.WALL_SPLAT_FRAMES), float(GDD_WALL_SPLAT_FRAMES)]}
+	var got := {"Fighter.ARENA_RADIUS": [Fighter.ARENA_RADIUS, GDD_ARENA_RADIUS], "DuelCamera.YAW_CLAMP_DEG": [DuelCamera.YAW_CLAMP_DEG, GDD_YAW_CLAMP_DEG], "DuelCamera.PULLBACK_LAG_DEG": [DuelCamera.PULLBACK_LAG_DEG, GDD_PULLBACK_LAG_DEG], "DuelCamera.PULLBACK_MAX": [DuelCamera.PULLBACK_MAX, GDD_PULLBACK_MAX], "DuelCamera.YAW_ACCEL_DEG": [DuelCamera.YAW_ACCEL_DEG, GDD_YAW_ACCEL_DEG], "DuelCamera.BEHIND_DIST": [DuelCamera.BEHIND_DIST, 3.4], "DuelCamera.BEHIND_HEIGHT_NEAR": [DuelCamera.BEHIND_HEIGHT_NEAR, 3.2], "DuelCamera.BEHIND_HEIGHT_FAR": [DuelCamera.BEHIND_HEIGHT_FAR, 2.5], "DuelCamera.BEHIND_SHOULDER": [DuelCamera.BEHIND_SHOULDER, 1.2], "Fighter.WALL_SPLAT_FRAMES": [float(Fighter.WALL_SPLAT_FRAMES), float(GDD_WALL_SPLAT_FRAMES)]}
 	for f: Fighter in [p1, p2]:
 		var d := f.data
 		got["%s.block_arc_deg" % d.id] = [d.block_arc_deg, GDD_BLOCK_ARC_DEG]
@@ -758,8 +891,19 @@ func _physics_process(_delta: float) -> void:
 				InputRouter.v_press(1, "ultimate")
 			if _f == _f0 + 30 or _f == _f0 + 62:
 				_shot("04_choko_sword_storm_%d" % (_f - _f0))
+			for n in get_tree().current_scene.find_children("*", "SwordStormFx", true, false):
+				_storm = n as SwordStormFx
 			if p2.state == Fighter.State.KO:
-				_ok("SWORD STORM KO'd Skea (ragdolls so far %d)" % p2.stats.ragdolls)
+				# crystal look: faceted crystal blades on crystal.gdshader, and they burst into shards
+				if _storm == null or not is_instance_valid(_storm):
+					_fail("sword storm: no SwordStormFx seen")
+					return
+				var blade := _storm.get_child(0) as MeshInstance3D
+				var cm := blade.material_override as ShaderMaterial if blade else null
+				if cm == null or cm.shader != SwordStormFx.CRYSTAL or not (blade.mesh is ArrayMesh) or blade.mesh.get_faces().size() != 36:
+					_fail("sword storm crystal: blade mesh %s, shader %s (want a 12-facet ArrayMesh on crystal.gdshader)" % [blade.mesh if blade else null, cm.shader if cm else null])
+					return
+				_ok("SWORD STORM KO'd Skea (ragdolls so far %d); crystal blades, %d shards by the KO" % [p2.stats.ragdolls, _storm.shards_spawned])
 				_next()
 			elif _f > _f0 + 150:
 				_fail("sword storm did not KO (p2 hp %.0f state %d, p1 state %d)" % [p2.hp, p2.state, p1.state])
@@ -997,7 +1141,7 @@ func _physics_process(_delta: float) -> void:
 				if get_viewport().get_camera_3d() != arena.duel_camera.cam:
 					_fail("free move: duel camera is not the current camera")
 					return
-				_ok("free move: duel camera current; SOLO W/S → sidestep (TODO #26), no key clashes in SOLO/SHARED")
+				_ok("free move: duel camera current; SOLO W/S → up/down (ADR-014), no key clashes in SOLO/SHARED")
 				var gdd := _gdd_mismatch()
 				if gdd != "":
 					_fail("design numbers drifted from docs/GDD/02: " + gdd)
@@ -1956,6 +2100,24 @@ func _physics_process(_delta: float) -> void:
 							return
 				_bone0 = sk.skeleton.get_bone_pose_rotation(sk.skeleton.find_bone("spine_02")).get_euler()
 				_ok("mannequin: UAL1+UAL2 on one player (%d state clips), capsules hidden but ticking, idle '%s'" % [ok_names, sk.clip])
+				# launch 5: the heroes draw instead of the mannequin, which stays hidden as the pose source
+				for fx in [p1, p2]:
+					var hs: SkeletalRig = fx.skeletal
+					if fx.data.model_scene == "" or hs.hero == null or hs.hero_skeleton == null:
+						_fail("%s: no hero model (model_scene '%s') — launch 5 draws Choko and Skea" % [fx.data.id, fx.data.model_scene])
+						return
+					var shown := 0
+					for m in hs.skeleton.find_children("*", "MeshInstance3D", true, false):
+						shown += int((m as MeshInstance3D).visible)
+					if shown != 0 or not hs.hero_mesh.visible or hs._map.size() != SkeletalRig.HERO_BONES.size():
+						_fail("%s hero: mannequin meshes drawn %d, hero mesh visible %s, bones mapped %d of %d (want 0, true, all)" % [fx.data.id, shown, hs.hero_mesh.visible, hs._map.size(), SkeletalRig.HERO_BONES.size()])
+						return
+					if not (hs.hero_mesh.material_override in fx.animator.materials):
+						_fail("%s hero: toon material not in the rig's materials — hit flash / time-stop tint would skip the hero" % fx.data.id)
+						return
+				_ok("heroes: %s and %s drawn, mannequins hidden, %d bones retargeted each" % [p1.data.model_scene.get_file(), p2.data.model_scene.get_file(), SkeletalRig.HERO_BONES.size()])
+				_aim_max = 0.0
+				_aim_bone = ""
 				_next()
 			elif _f > _f0 + 400:
 				_fail("mannequin round never started")
@@ -1974,6 +2136,12 @@ func _physics_process(_delta: float) -> void:
 				if not p2.hit_landed.is_connected(_on_rig_hit):
 					p2.hit_landed.connect(_on_rig_hit)
 				InputRouter.v_press(1, "light")
+			if _f > _f0 + 40 and p1.state == Fighter.State.ATTACK:
+				for b in SkeletalRig.HERO_AIM:
+					var e: float = sk.aim_error(b)
+					if e > _aim_max:
+						_aim_max = e
+						_aim_bone = b
 			if _f > _f0 + 40 and p1.state == Fighter.State.ATTACK and p1.current_move != null:
 				var m := p1.current_move
 				if p1.move_frame == m.startup:
@@ -1995,6 +2163,12 @@ func _physics_process(_delta: float) -> void:
 					_fail("mannequin hit sound: '%s' last played on frame %d, the hit landed on %d" % [hit_sfx, Sfx.last_frame.get(hit_sfx, -1), _rig_hit])
 					return
 				_ok("mannequin attack: '%s' contact pose (%.2f s) on the first active frame %d, then '%s'; hit sound on the hit frame %d" % [p1.data.light.anim_clip, _x0, p1.data.light.startup, p1.data.light.anim_clip_rec, _rig_hit])
+				# launch 5: every aimed hero bone points where its mannequin twin points, on every frame of the swing
+				var hip_err := absf(sk.hero_skeleton.get_bone_global_pose(sk.hero_skeleton.find_bone("Hips")).origin.y - sk.skeleton.get_bone_global_pose(sk.skeleton.find_bone("pelvis")).origin.y * sk._hip_scale)
+				if _aim_max > 3.0 or _aim_bone == "" or hip_err > 0.5:
+					_fail("hero retarget: worst bone '%s' %.2f° off the mannequin (limit 3°), hips %.2f cm off (limit 0.5)" % [_aim_bone, _aim_max, hip_err])
+					return
+				_ok("hero retarget: %d aimed bones follow the mannequin through the light, worst '%s' %.2f° (limit 3°), hips %.2f cm" % [SkeletalRig.HERO_AIM.size(), _aim_bone, _aim_max, hip_err])
 				_next()
 			elif _f > _f0 + 200:
 				_fail("mannequin attack never reached its first active frame (state %d)" % p1.state)
@@ -2032,7 +2206,96 @@ func _physics_process(_delta: float) -> void:
 					_fail("mannequin during ragdoll: visible %s (capsule rig visible %s) — want both hidden" % [s2.visible, p2.animator.visible])
 					return
 				_ok("mannequin reactions: head '%s', chest '%s', stomach '%s' — three different; hidden while the capsule ragdoll flies" % [s2.clip_name(SkeletalRig.STATE_CLIPS["hit_high"]), s2.clip_name(SkeletalRig.STATE_CLIPS["hit_mid"]), s2.clip_name(SkeletalRig.STATE_CLIPS["hit_low"])])
-				_finish()
+				if _rig_only:
+					_finish()
+				else:
+					_start_cam_stages()
+		# ---------------- launch 6: camera behind P1 (solo vs CPU), then side-on (VERSUS) ----------------
+		130:
+			var dc: DuelCamera = arena.duel_camera
+			if flow.phase == MatchFlow.Phase.FIGHT and _x0 == 0.0:
+				if p2._brain != null:
+					p2._brain.process_mode = Node.PROCESS_MODE_DISABLED   # hold the CPU still: the test drives the circle
+				if dc == null or not dc.behind or not GameState.duel.behind or get_viewport().get_camera_3d() != dc.cam:
+					_fail("camera behind: vs CPU in 3D want behind (camera %s, duel %s, current %s)" % [dc.behind if dc else null, GameState.duel.behind, get_viewport().get_camera_3d() == (dc.cam if dc else null)])
+					return
+				p1.global_position = Vector3(-2.0, p1.global_position.y, 0.0)
+				p2.global_position = Vector3(2.0, p2.global_position.y, 0.0)
+				_x0 = 1.0
+				_y0 = _f
+			if _x0 == 1.0 and _f == int(_y0) + 30:
+				_hp0 = _flat(p2.global_position - p1.global_position).length()
+				InputRouter.v_set(1, "up", true)
+			if _x0 == 1.0 and _f == int(_y0) + 50:
+				InputRouter.v_clear(1)
+				var sep := _flat(p2.global_position - p1.global_position).length()
+				if sep > _hp0 - 0.5:
+					_fail("camera behind: W (up) for 20 frames took P1 from %.2f to %.2f m — want toward the opponent" % [_hp0, sep])
+					return
+				_hp0 = sep
+				_ang0 = _bearing(p1, p2)
+				_swept = 0.0
+				_w_max = 0.0
+				_dw_max = 0.0
+				_w_prev = dc.turn_deg()
+				_head_low = -1e9
+				_x0 = 2.0
+			if _x0 == 2.0:
+				InputRouter.v_set(1, "right", true)
+				_track_cam6()
+				var a := _bearing(p1, p2)
+				_swept += angle_difference(_ang0, a)
+				_ang0 = a
+				if _f == int(_y0) + 120:
+					_shot("14_camera_behind")
+				if absf(_swept) >= TAU:
+					InputRouter.v_clear(1)
+					var sep2 := _flat(p2.global_position - p1.global_position).length()
+					if _w_max > GDD_YAW_CLAMP_DEG + 0.001 or _dw_max > GDD_YAW_ACCEL_DEG + 0.001 or not _both_in_view() or _head_low > 0.0 or absf(sep2 - _hp0) > 1.0:
+						_fail("camera behind, 360° circle on D: |ω| max %.3f°/tick (≤ %.1f), |Δω| max %.3f (≤ %.2f), both in view %s, P2 head %.1f px below P1's (want ≤ 0), sep %.2f → %.2f m" % [_w_max, GDD_YAW_CLAMP_DEG, _dw_max, GDD_YAW_ACCEL_DEG, _both_in_view(), _head_low, _hp0, sep2])
+						return
+					_ok("camera behind P1: W closes in, D circles 360° in %d frames; |ω| ≤ %.2f°/tick, |Δω| ≤ %.3f°/tick², both in view, P2's head never below P1's (worst %.0f px), sep %.2f → %.2f m" % [_f - int(_y0) - 50, _w_max, _dw_max, _head_low, _hp0, sep2])
+					_x0 = 0.0
+					GameState.p2_is_cpu = false
+					_load_arena(2, 131)
+				elif _f > int(_y0) + 1200:
+					_fail("camera behind: 360° circle not finished (swept %.1f°)" % rad_to_deg(_swept))
+			elif _f > _f0 + 600 and _x0 == 0.0:
+				_fail("camera behind: round never started")
+		131:
+			var dc2: DuelCamera = arena.duel_camera
+			if flow.phase == MatchFlow.Phase.FIGHT and _x0 == 0.0:
+				if dc2 == null or dc2.behind or GameState.duel.behind:
+					_fail("camera side: VERSUS in 3D want side-on (camera behind %s, duel %s)" % [dc2.behind if dc2 else null, GameState.duel.behind])
+					return
+				p1.global_position = Vector3(-2.0, p1.global_position.y, 0.0)
+				p2.global_position = Vector3(2.0, p2.global_position.y, 0.0)
+				_x0 = 1.0
+				_y0 = _f
+				_ang0 = _bearing(p1, p2)
+				_swept = 0.0
+				_w_max = 0.0
+				_dw_max = 0.0
+				_w_prev = dc2.turn_deg()
+			if _x0 == 1.0 and _f > int(_y0) + 10:
+				InputRouter.v_set(1, "up", true)
+				_track_cam6()
+				var a2 := _bearing(p1, p2)
+				_swept += angle_difference(_ang0, a2)
+				_ang0 = a2
+				if absf(_swept) >= TAU:
+					InputRouter.v_clear(1)
+					if _w_max > GDD_YAW_CLAMP_DEG + 0.001 or _dw_max > GDD_YAW_ACCEL_DEG + 0.001 or not _both_in_view():
+						_fail("camera side, 360° circle on W: |ω| max %.3f°/tick, |Δω| max %.3f (≤ %.2f), both in view %s" % [_w_max, _dw_max, GDD_YAW_ACCEL_DEG, _both_in_view()])
+						return
+					_ok("camera side-on in VERSUS: W circles 360° in %d frames; |ω| ≤ %.2f°/tick, |Δω| ≤ %.3f°/tick², both in view" % [_f - int(_y0) - 10, _w_max, _dw_max])
+					_x0 = 0.0
+					GameState.p2_is_cpu = false
+					_finish()
+				elif _f > int(_y0) + 1200:
+					_fail("camera side: 360° circle not finished (swept %.1f°)" % rad_to_deg(_swept))
+			elif _f > _f0 + 600 and _x0 == 0.0:
+				_fail("camera side: round never started")
 		# ---------------- wall splat (02 § Коло арени: 10 f, no damage, once per combo) -----------
 		80:
 			# phase 0: first combo → splat; phase 1: next combo → splat again, then a second launch in that

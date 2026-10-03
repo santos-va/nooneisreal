@@ -7,6 +7,7 @@ var _p1_btn: Button
 var _p2_btn: Button
 var _stage_btn: Button
 var _keys_btn: Button
+var mode_btn: Button   # MODE 2.5D / 3D (docs/GDD/06-UI-UX.md § Кнопка «РЕЖИМ 2.5D / 3D»); the smoke presses it
 var _foot: Label
 var _card1: TextureRect
 var _card2: TextureRect
@@ -60,8 +61,9 @@ func _ready() -> void:
 	_p2_btn = _add(center, "", func(): GameState.cycle_character(2, 1); _refresh())
 	_stage_btn = _add(center, "", func(): GameState.cycle_stage(1); _refresh())
 	_keys_btn = _add(center, "", func(): InputRouter.cycle_profile(); _refresh())
+	mode_btn = _add(center, "", toggle_mode)
 	_add(center, "QUIT", func(): get_tree().quit())
-	for b in [_p1_btn, _p2_btn, _stage_btn, _keys_btn]:
+	for b in [_p1_btn, _p2_btn, _stage_btn, _keys_btn, mode_btn]:
 		b.gui_input.connect(_cycle_input.bind(b))
 	_card1 = _card_rect(Vector2(24, 470))
 	_card2 = _card_rect(Vector2(-504, 470))
@@ -107,6 +109,9 @@ func _cycle_input(event: InputEvent, b: Button) -> void:
 		GameState.cycle_character(2, dir)
 	elif b == _keys_btn:
 		InputRouter.cycle_profile()
+	elif b == mode_btn:
+		toggle_mode()
+		return
 	else:
 		GameState.cycle_stage(dir)
 	Sfx.play("ui_move", -10)
@@ -122,11 +127,20 @@ func _refresh() -> void:
 	_stage_btn.text = "STAGE:  ◂ %s ▸" % GameState.stage().name
 	var solo := InputRouter.profile == InputRouter.PROFILE_SOLO
 	_keys_btn.text = "KEYBOARD:  ◂ %s ▸" % ("SOLO (P2 on gamepad)" if solo else "SHARED (two on one keyboard)")
+	mode_btn.text = "MODE:  ◂ %s ▸" % ("3D (free move)" if GameState.free_move else "2.5D (plane)")
 	if _foot:
 		_foot.text = InputRouter.hint_text(false)
 	if _card1:
 		_card1.texture = _card_tex(c1)
 		_card2.texture = _card_tex(c2)
+
+
+## MODE row: 2.5D ↔ 3D, remembered in user://settings.cfg; the keyboard re-binds and the hint updates at once.
+func toggle_mode() -> void:
+	GameState.save_free_move(not GameState.free_move)
+	Sfx.play("ui_move", -10)
+	_refresh()
+	get_viewport().set_input_as_handled()
 
 
 func _card_rect(pos: Vector2) -> TextureRect:
