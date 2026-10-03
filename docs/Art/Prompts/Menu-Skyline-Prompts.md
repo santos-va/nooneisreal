@@ -223,49 +223,49 @@ nano_banana_pro 2k 3:4 і 1:1 — 2 · image_decompose — 2 · flux_2_pro_outpa
 |---|---|---|---|---|
 | 0 | 2a `skea-sheet-v1` · v1 | `2c1ee808-b456-4edf-92d6-ef8b1e02af37` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012249_2c1ee808-b456-4edf-92d6-ef8b1e02af37.png | не обрано |
 | 1 | 2a `skea-sheet-v1` · v2 | `cb13b1a6-c70c-4436-a395-dca98a0088a3` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012248_cb13b1a6-c70c-4436-a395-dca98a0088a3.png | не обрано |
-| 2 | 2a `skea-sheet-v1` · v3 | `9c0b4476-966b-48ae-bfb8-2d8841bec089` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012248_9c0b4476-966b-48ae-bfb8-2d8841bec089.png | **канон** (Santos: галерея № 2) |
+| 2 | 2a `skea-sheet-v1` · v3 | `9c0b4476-966b-48ae-bfb8-2d8841bec089` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012248_9c0b4476-966b-48ae-bfb8-2d8841bec089.png | був канон; замінено Skea v2 (#33) |
 | 3 | 2a `skea-sheet-v1` · v4 | `2ac654ed-cb81-453b-90d5-80d4823b2d46` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012249_2ac654ed-cb81-453b-90d5-80d4823b2d46.png | не обрано |
-| 4 | 2b `choko-turn-v1` · v1 | `051d4752-b0d3-4a26-aaef-5d2e23dd1c4a` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012311_051d4752-b0d3-4a26-aaef-5d2e23dd1c4a.png | чекає вибору Santos |
-| 5 | 2b `choko-turn-v1` · v2 | `1fa22c1b-8d5a-4ddf-b4e3-17cf3ed89605` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012312_1fa22c1b-8d5a-4ddf-b4e3-17cf3ed89605.png | чекає вибору Santos |
-| 6 | 2b `skea-turn-v1` · v1 | `e6929d03-e058-4567-817b-feb97fadf5d1` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013047_e6929d03-e058-4567-817b-feb97fadf5d1.png | чекає вибору Santos |
-| 7 | 2b `skea-turn-v1` · v2 | `58f56291-a110-4a59-805a-563052c3757d` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013047_58f56291-a110-4a59-805a-563052c3757d.png | чекає вибору Santos |
-| 8 | 2c `choko-tpose` · front | `c280d939-8332-4887-9862-a56893a6c5d3` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012338_c280d939-8332-4887-9862-a56893a6c5d3.png | чекає вибору Santos |
-| 9 | 2c `choko-tpose` · side | `822b889d-c3e3-4394-acff-119ee99aeab2` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012338_822b889d-c3e3-4394-acff-119ee99aeab2.png | чекає вибору Santos |
-| 10 | 2c `choko-tpose` · back | `f0763795-0ef7-4c4b-a0e3-06dc6e42735b` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012338_f0763795-0ef7-4c4b-a0e3-06dc6e42735b.png | чекає вибору Santos |
-| 11 | 2c `choko-tpose` · 34 | `cbaf6f58-0594-43b2-a6ad-437ea58486e7` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012338_cbaf6f58-0594-43b2-a6ad-437ea58486e7.png | чекає вибору Santos |
-| 12 | 2c `skea-tpose` · front | `efb93ee1-5602-4686-ae4b-f9258a9c8e9a` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013112_efb93ee1-5602-4686-ae4b-f9258a9c8e9a.png | чекає вибору Santos |
-| 13 | 2c `skea-tpose` · side | `a596463b-7f3c-4827-bb2b-2abc0d52c04c` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013112_a596463b-7f3c-4827-bb2b-2abc0d52c04c.png | чекає вибору Santos |
-| 14 | 2c `skea-tpose` · back | `1d611f5b-e104-4707-b5a9-45a4af3cdffb` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013113_1d611f5b-e104-4707-b5a9-45a4af3cdffb.png | чекає вибору Santos |
-| 15 | 2c `skea-tpose` · 34 | `78951fe0-3c7f-4d36-9e57-249ab9141e38` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013112_78951fe0-3c7f-4d36-9e57-249ab9141e38.png | чекає вибору Santos |
-| 16 | 2d `choko-item` · sword | `07225208-8944-4359-8d3e-236b77ab3567` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012412_07225208-8944-4359-8d3e-236b77ab3567.png | чекає вибору Santos |
-| 17 | 2d `choko-item` · ult-sword | `e212477a-a758-4a3e-b976-b5f4ce561350` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012412_e212477a-a758-4a3e-b976-b5f4ce561350.png | чекає вибору Santos |
-| 18 | 2d `choko-item` · watch | `cecf569d-47f2-4e78-b757-8d9eb633b046` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012412_cecf569d-47f2-4e78-b757-8d9eb633b046.png | чекає вибору Santos |
-| 19 | 2d `choko-item` · jacket | `4b792412-45c1-40b2-a1d2-f5bdcfc8fc2e` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012412_4b792412-45c1-40b2-a1d2-f5bdcfc8fc2e.png | чекає вибору Santos |
-| 20 | 2d `skea-item` · kunai | `68218084-7494-402e-861d-c5f4819506d7` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013135_68218084-7494-402e-861d-c5f4819506d7.png | чекає вибору Santos |
-| 21 | 2d `skea-item` · grimoire | `d65011c3-36c5-48d2-bdfe-1cf01d2b66dd` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013135_d65011c3-36c5-48d2-bdfe-1cf01d2b66dd.png | чекає вибору Santos |
-| 22 | 2d `skea-item` · backpack | `14c45bff-1045-49e3-81e4-601398f322ab` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013134_14c45bff-1045-49e3-81e4-601398f322ab.png | чекає вибору Santos |
-| 23 | 2d `skea-item` · hoodie | `28d02e0f-b70e-4992-b658-51189bbed263` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013135_28d02e0f-b70e-4992-b658-51189bbed263.png | чекає вибору Santos |
-| 24 | 2e `tex-water` · foam | `b0a9189d-0b0a-435f-b5a5-459b105374ce` | 2048×2048 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013154_b0a9189d-0b0a-435f-b5a5-459b105374ce.png | чекає вибору Santos |
-| 25 | 2e `tex-water` · ripple | `bb5e3e44-27c1-478c-9b2d-2252bf2e9339` | 2048×2048 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013154_bb5e3e44-27c1-478c-9b2d-2252bf2e9339.png | чекає вибору Santos |
-| 26 | 2e `stage-river-layers` · decompose standard | `bc9d78b2-7241-4167-a16b-c78cd5200d56` | — · URL шарів інструменти не повертають | чекає вибору Santos |
-| 27 | 2f `menu-roof-edge-v1` · v1 | `f500c1cf-46e3-4931-a83e-8cda14c5fdd2` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013309_f500c1cf-46e3-4931-a83e-8cda14c5fdd2.png | чекає вибору Santos |
-| 28 | 2f `menu-roof-edge-v1` · v2 | `af419cb5-32e7-48b1-8527-7fdf361756ac` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013309_af419cb5-32e7-48b1-8527-7fdf361756ac.png | чекає вибору Santos |
-| 29 | 2f `menu-skyline-layers` · decompose standard | `9fe905f1-0b7a-4d67-896e-7b9269fc3fa2` | — · URL шарів інструменти не повертають | чекає вибору Santos |
-| 30 | 2g `sprite-pedestrian-worker-walk` · проба | `cc4637e4-da18-48d9-90b0-45ca3e8c3941` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013319_cc4637e4-da18-48d9-90b0-45ca3e8c3941.png | чекає вибору Santos |
-| 31 | 2h `sprite-steamcar-a/b` · v1 | `4603954f-5b46-4067-826c-43788b9d8b79` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013335_4603954f-5b46-4067-826c-43788b9d8b79.png | чекає вибору Santos |
-| 32 | 2h `sprite-steamcar-a/b` · v2 | `2f8837ee-4d7d-4e20-8b5e-86044538ffd1` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013335_2f8837ee-4d7d-4e20-8b5e-86044538ffd1.png | чекає вибору Santos |
-| 33 | 2h `vfx-steam-puff` · v1 | `bd9797c1-11f4-4ef3-9e32-a26aef2dc1ca` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013334_bd9797c1-11f4-4ef3-9e32-a26aef2dc1ca.png | чекає вибору Santos |
-| 34 | 2h `vfx-steam-puff` · v2 | `0fb87128-7f6e-4746-a9d6-c046618a1034` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013335_0fb87128-7f6e-4746-a9d6-c046618a1034.png | чекає вибору Santos |
-| 35 | 2i `props-anchors-v1` · v1 | `74200113-20d7-4507-9bea-c493e3d4aacc` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013416_74200113-20d7-4507-9bea-c493e3d4aacc.png | чекає вибору Santos |
-| 36 | 2i `props-anchors-v1` · v2 | `f7528c35-3939-4ffd-b1d0-c32956f9f1f4` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013415_f7528c35-3939-4ffd-b1d0-c32956f9f1f4.png | чекає вибору Santos |
-| 37 | 2i `props-anchors-v1` · v3 | `b0ecfbc6-47fb-45e8-bf79-5d2eb1aeafca` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013415_b0ecfbc6-47fb-45e8-bf79-5d2eb1aeafca.png | чекає вибору Santos |
-| 38 | 2i `props-anchors-v1` · v4 | `c5900952-f4f0-4728-8ada-5b30d641be3a` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013416_c5900952-f4f0-4728-8ada-5b30d641be3a.png | чекає вибору Santos |
-| 39 | 2j `drone-heavy-v1` · v1 | `e9fd9e33-beaa-43b7-8e1c-573c12691253` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013436_e9fd9e33-beaa-43b7-8e1c-573c12691253.png | чекає вибору Santos |
-| 40 | 2j `drone-heavy-v1` · v2 | `84113d16-906e-4cd3-99c1-eabc30c46077` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013437_84113d16-906e-4cd3-99c1-eabc30c46077.png | чекає вибору Santos |
-| 41 | 2j `drone-heavy-v1` · v3 | `148ff101-872e-4274-bc78-4d6934414e06` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013437_148ff101-872e-4274-bc78-4d6934414e06.png | чекає вибору Santos |
-| 42 | 2j `drone-heavy-v1` · v4 | `88a358da-1306-44d1-9dd8-0963025fc403` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013437_88a358da-1306-44d1-9dd8-0963025fc403.png | чекає вибору Santos |
-| 43 | 2k `menu-depth-cards-v1` · v1 | `08c09625-7766-4984-81c8-f03d9bae618f` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013449_08c09625-7766-4984-81c8-f03d9bae618f.png | чекає вибору Santos |
-| 44 | 2k `menu-depth-cards-v1` · v2 | `134a6b14-a16c-48cc-9912-cf833230da72` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013448_134a6b14-a16c-48cc-9912-cf833230da72.png | чекає вибору Santos |
+| 4 | 2b `choko-turn-v1` · v1 | `051d4752-b0d3-4a26-aaef-5d2e23dd1c4a` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012311_051d4752-b0d3-4a26-aaef-5d2e23dd1c4a.png | не обрано |
+| 5 | 2b `choko-turn-v1` · v2 | `1fa22c1b-8d5a-4ddf-b4e3-17cf3ed89605` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012312_1fa22c1b-8d5a-4ddf-b4e3-17cf3ed89605.png | **не обрано** — Santos змінив на «жоден, переробити» (дошка, 02:28) |
+| 6 | 2b `skea-turn-v1` · v1 | `e6929d03-e058-4567-817b-feb97fadf5d1` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013047_e6929d03-e058-4567-817b-feb97fadf5d1.png | застаріло (#33) |
+| 7 | 2b `skea-turn-v1` · v2 | `58f56291-a110-4a59-805a-563052c3757d` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013047_58f56291-a110-4a59-805a-563052c3757d.png | застаріло (#33) |
+| 8 | 2c `choko-tpose` · front | `c280d939-8332-4887-9862-a56893a6c5d3` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012338_c280d939-8332-4887-9862-a56893a6c5d3.png | **не беремо** (Santos: старий одяг, не канон v4) |
+| 9 | 2c `choko-tpose` · side | `822b889d-c3e3-4394-acff-119ee99aeab2` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012338_822b889d-c3e3-4394-acff-119ee99aeab2.png | **не беремо** (Santos: старий одяг, не канон v4) |
+| 10 | 2c `choko-tpose` · back | `f0763795-0ef7-4c4b-a0e3-06dc6e42735b` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012338_f0763795-0ef7-4c4b-a0e3-06dc6e42735b.png | **не беремо** (Santos: старий одяг, не канон v4) |
+| 11 | 2c `choko-tpose` · 34 | `cbaf6f58-0594-43b2-a6ad-437ea58486e7` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012338_cbaf6f58-0594-43b2-a6ad-437ea58486e7.png | **не беремо** (Santos: старий одяг, не канон v4) |
+| 12 | 2c `skea-tpose` · front | `efb93ee1-5602-4686-ae4b-f9258a9c8e9a` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013112_efb93ee1-5602-4686-ae4b-f9258a9c8e9a.png | застаріло (#33) |
+| 13 | 2c `skea-tpose` · side | `a596463b-7f3c-4827-bb2b-2abc0d52c04c` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013112_a596463b-7f3c-4827-bb2b-2abc0d52c04c.png | застаріло (#33) |
+| 14 | 2c `skea-tpose` · back | `1d611f5b-e104-4707-b5a9-45a4af3cdffb` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013113_1d611f5b-e104-4707-b5a9-45a4af3cdffb.png | застаріло (#33) |
+| 15 | 2c `skea-tpose` · 34 | `78951fe0-3c7f-4d36-9e57-249ab9141e38` | 1792×2400 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013112_78951fe0-3c7f-4d36-9e57-249ab9141e38.png | застаріло (#33) |
+| 16 | 2d `choko-item` · sword | `07225208-8944-4359-8d3e-236b77ab3567` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012412_07225208-8944-4359-8d3e-236b77ab3567.png | **так** (Santos) |
+| 17 | 2d `choko-item` · ult-sword | `e212477a-a758-4a3e-b976-b5f4ce561350` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012412_e212477a-a758-4a3e-b976-b5f4ce561350.png | **так** (Santos) |
+| 18 | 2d `choko-item` · watch | `cecf569d-47f2-4e78-b757-8d9eb633b046` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012412_cecf569d-47f2-4e78-b757-8d9eb633b046.png | **так** (Santos) |
+| 19 | 2d `choko-item` · jacket | `4b792412-45c1-40b2-a1d2-f5bdcfc8fc2e` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_012412_4b792412-45c1-40b2-a1d2-f5bdcfc8fc2e.png | **не беремо** (Santos: старий одяг, не канон v4) |
+| 20 | 2d `skea-item` · kunai | `68218084-7494-402e-861d-c5f4819506d7` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013135_68218084-7494-402e-861d-c5f4819506d7.png | **так** (Santos) |
+| 21 | 2d `skea-item` · grimoire | `d65011c3-36c5-48d2-bdfe-1cf01d2b66dd` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013135_d65011c3-36c5-48d2-bdfe-1cf01d2b66dd.png | **так** (Santos) |
+| 22 | 2d `skea-item` · backpack | `14c45bff-1045-49e3-81e4-601398f322ab` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013134_14c45bff-1045-49e3-81e4-601398f322ab.png | застаріло (#33) |
+| 23 | 2d `skea-item` · hoodie | `28d02e0f-b70e-4992-b658-51189bbed263` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013135_28d02e0f-b70e-4992-b658-51189bbed263.png | **переробити** (Santos) |
+| 24 | 2e `tex-water` · foam | `b0a9189d-0b0a-435f-b5a5-459b105374ce` | 2048×2048 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013154_b0a9189d-0b0a-435f-b5a5-459b105374ce.png | **так** (Santos) |
+| 25 | 2e `tex-water` · ripple | `bb5e3e44-27c1-478c-9b2d-2252bf2e9339` | 2048×2048 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013154_bb5e3e44-27c1-478c-9b2d-2252bf2e9339.png | **так** (Santos) |
+| 26 | 2e `stage-river-layers` · decompose standard | `bc9d78b2-7241-4167-a16b-c78cd5200d56` | — · URL шарів інструменти не повертають | **так** (Santos) |
+| 27 | 2f `menu-roof-edge-v1` · v1 | `f500c1cf-46e3-4931-a83e-8cda14c5fdd2` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013309_f500c1cf-46e3-4931-a83e-8cda14c5fdd2.png | **переможець** (Santos, дошка 2026-10-03) |
+| 28 | 2f `menu-roof-edge-v1` · v2 | `af419cb5-32e7-48b1-8527-7fdf361756ac` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013309_af419cb5-32e7-48b1-8527-7fdf361756ac.png | не обрано |
+| 29 | 2f `menu-skyline-layers` · decompose standard | `9fe905f1-0b7a-4d67-896e-7b9269fc3fa2` | — · URL шарів інструменти не повертають | **так** (Santos) |
+| 30 | 2g `sprite-pedestrian-worker-walk` · проба | `cc4637e4-da18-48d9-90b0-45ca3e8c3941` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013319_cc4637e4-da18-48d9-90b0-45ca3e8c3941.png | **так** (Santos) |
+| 31 | 2h `sprite-steamcar-a/b` · v1 | `4603954f-5b46-4067-826c-43788b9d8b79` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013335_4603954f-5b46-4067-826c-43788b9d8b79.png | **переможець** (Santos, дошка 2026-10-03) |
+| 32 | 2h `sprite-steamcar-a/b` · v2 | `2f8837ee-4d7d-4e20-8b5e-86044538ffd1` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013335_2f8837ee-4d7d-4e20-8b5e-86044538ffd1.png | не обрано |
+| 33 | 2h `vfx-steam-puff` · v1 | `bd9797c1-11f4-4ef3-9e32-a26aef2dc1ca` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013334_bd9797c1-11f4-4ef3-9e32-a26aef2dc1ca.png | **переможець** (Santos, дошка 2026-10-03) |
+| 34 | 2h `vfx-steam-puff` · v2 | `0fb87128-7f6e-4746-a9d6-c046618a1034` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013335_0fb87128-7f6e-4746-a9d6-c046618a1034.png | не обрано |
+| 35 | 2i `props-anchors-v1` · v1 | `74200113-20d7-4507-9bea-c493e3d4aacc` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013416_74200113-20d7-4507-9bea-c493e3d4aacc.png | не обрано |
+| 36 | 2i `props-anchors-v1` · v2 | `f7528c35-3939-4ffd-b1d0-c32956f9f1f4` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013415_f7528c35-3939-4ffd-b1d0-c32956f9f1f4.png | не обрано |
+| 37 | 2i `props-anchors-v1` · v3 | `b0ecfbc6-47fb-45e8-bf79-5d2eb1aeafca` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013415_b0ecfbc6-47fb-45e8-bf79-5d2eb1aeafca.png | не обрано |
+| 38 | 2i `props-anchors-v1` · v4 | `c5900952-f4f0-4728-8ada-5b30d641be3a` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013416_c5900952-f4f0-4728-8ada-5b30d641be3a.png | **переможець** (Santos, дошка 2026-10-03) |
+| 39 | 2j `drone-heavy-v1` · v1 | `e9fd9e33-beaa-43b7-8e1c-573c12691253` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013436_e9fd9e33-beaa-43b7-8e1c-573c12691253.png | **переможець** (Santos, дошка 2026-10-03) |
+| 40 | 2j `drone-heavy-v1` · v2 | `84113d16-906e-4cd3-99c1-eabc30c46077` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013437_84113d16-906e-4cd3-99c1-eabc30c46077.png | не обрано |
+| 41 | 2j `drone-heavy-v1` · v3 | `148ff101-872e-4274-bc78-4d6934414e06` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013437_148ff101-872e-4274-bc78-4d6934414e06.png | не обрано |
+| 42 | 2j `drone-heavy-v1` · v4 | `88a358da-1306-44d1-9dd8-0963025fc403` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013437_88a358da-1306-44d1-9dd8-0963025fc403.png | не обрано |
+| 43 | 2k `menu-depth-cards-v1` · v1 | `08c09625-7766-4984-81c8-f03d9bae618f` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013449_08c09625-7766-4984-81c8-f03d9bae618f.png | **переможець** (Santos, дошка 2026-10-03) |
+| 44 | 2k `menu-depth-cards-v1` · v2 | `134a6b14-a16c-48cc-9912-cf833230da72` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013448_134a6b14-a16c-48cc-9912-cf833230da72.png | не обрано |
 
 ### Skea v2 (2026-10-03, santos-va/nooneisreal#33, [[2026-10-03-Skea-Redesign]] S2 + S2b)
 
@@ -285,14 +285,103 @@ nano_banana_pro 2k 3:4 і 1:1 — 2 · image_decompose — 2 · flux_2_pro_outpa
 
 | № | партія · варіант | job-id | розмір · CDN-URL | результат |
 |---|---|---|---|---|
-| 0 | S2a `skea-sheet-v2` · v1 | `9190fcfa-46f2-41c2-918e-6d871c68ec98` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_014952_9190fcfa-46f2-41c2-918e-6d871c68ec98.png | чекає вибору Santos |
-| 1 | S2a `skea-sheet-v2` · v2 | `dcdef91d-396f-4334-875b-035b07452457` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_014953_dcdef91d-396f-4334-875b-035b07452457.png | чекає вибору Santos |
-| 2 | S2a `skea-sheet-v2` · v3 | `d56e2671-ba09-4766-8d1a-b04087e1cb14` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_014952_d56e2671-ba09-4766-8d1a-b04087e1cb14.png | чекає вибору Santos |
-| 3 | S2a `skea-sheet-v2` · v4 | `ca895e35-1d8d-4851-9a0e-42b58f72b029` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_014954_ca895e35-1d8d-4851-9a0e-42b58f72b029.png | чекає вибору Santos |
-| 4 | S2a `skea-faces-v1` · v1 | `f4a48750-2e45-4709-a7ff-066452179e15` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015024_f4a48750-2e45-4709-a7ff-066452179e15.png | чекає вибору Santos |
-| 5 | S2a `skea-faces-v1` · v2 | `36ace5cf-6698-45d7-bc08-9fdc49737ff1` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015023_36ace5cf-6698-45d7-bc08-9fdc49737ff1.png | чекає вибору Santos |
-| 6 | S2b `skea-item-backpack-v2` · v1 | `84849343-bdbe-46b5-83f5-ae95b0994f8a` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015043_84849343-bdbe-46b5-83f5-ae95b0994f8a.png | чекає вибору Santos |
-| 7 | S2b `skea-item-backpack-v2` · v2 | `241dd472-ac05-46f7-8f96-e7f577349973` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015042_241dd472-ac05-46f7-8f96-e7f577349973.png | чекає вибору Santos |
+| 0 | S2a `skea-sheet-v2` · v1 | `9190fcfa-46f2-41c2-918e-6d871c68ec98` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_014952_9190fcfa-46f2-41c2-918e-6d871c68ec98.png | не обрано |
+| 1 | S2a `skea-sheet-v2` · v2 | `dcdef91d-396f-4334-875b-035b07452457` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_014953_dcdef91d-396f-4334-875b-035b07452457.png | **переможець** (Santos, дошка 2026-10-03) |
+| 2 | S2a `skea-sheet-v2` · v3 | `d56e2671-ba09-4766-8d1a-b04087e1cb14` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_014952_d56e2671-ba09-4766-8d1a-b04087e1cb14.png | не обрано |
+| 3 | S2a `skea-sheet-v2` · v4 | `ca895e35-1d8d-4851-9a0e-42b58f72b029` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_014954_ca895e35-1d8d-4851-9a0e-42b58f72b029.png | не обрано |
+| 4 | S2a `skea-faces-v1` · v1 | `f4a48750-2e45-4709-a7ff-066452179e15` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015024_f4a48750-2e45-4709-a7ff-066452179e15.png | не обрано |
+| 5 | S2a `skea-faces-v1` · v2 | `36ace5cf-6698-45d7-bc08-9fdc49737ff1` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015023_36ace5cf-6698-45d7-bc08-9fdc49737ff1.png | **переможець** (Santos, дошка 2026-10-03) |
+| 6 | S2b `skea-item-backpack-v2` · v1 | `84849343-bdbe-46b5-83f5-ae95b0994f8a` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015043_84849343-bdbe-46b5-83f5-ae95b0994f8a.png | **переможець** (Santos, дошка 2026-10-03) |
+| 7 | S2b `skea-item-backpack-v2` · v2 | `241dd472-ac05-46f7-8f96-e7f577349973` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015042_241dd472-ac05-46f7-8f96-e7f577349973.png | не обрано |
+
+### Одяг v4/v3 + перехожі (2026-10-03, #14, #33, #36)
+
+Слово Santos: «перехожих більше звісно й оновлюй все інше… давай будемо на gpt». Обсяг — мій кошторис у чаті (перехожі ×3,
+пакет Choko v4, пакет Skea v3). **Крок 1** (цей): листи + картки + перехожі; **крок 2** — поворот і 4 T-пози кожного героя
+з референсом переможця кроку 1 (≈ 27.5 кр., `get_cost` 3:4 = 2.75) — після вибору Santos. Промпти — [[Prompt-Library]] § 13–14.
+Фото худі від Santos у репо й у Higgsfield не кладемо — лише опис. Референси: Choko — `f21298f4`; Skea — `f21298f4` (манера) +
+`dcdef91d` (обличчя S-1); перехожі — `73ee9806` (панорама) + `cc4637e4` (проба робітника). Мітки `N-n` — номери галереї цього кроку.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C1 лист Choko v4 ×2 + куртка | 5834.25 | 5826 | 8.25 |
+| K1 лист Skea v3 ×2 + худі + кросівки | 5826 | 5815 | 11 |
+| P1 перехожі ×3 | 5815 | 5806.75 | 8.25 |
+| **Разом** | **5834.25** | **5806.75** | **27.5** |
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| N-0 | C1 `choko-sheet-v4` · v1 | `80480e9f-91d3-4595-a816-2790b5dc78be` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022042_80480e9f-91d3-4595-a816-2790b5dc78be.png | **до T1** — «на спині кольчуга, якої не має бути на куртці» |
+| N-1 | C1 `choko-sheet-v4` · v2 | `d6841a7a-329e-406b-806b-2006ce15b209` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022041_d6841a7a-329e-406b-806b-2006ce15b209.png | не беремо — «те саме, що в першому» |
+| N-2 | C1 `choko-item-jacket-v4` | `a2bf79a1-d459-4381-a268-14b76ee9d13d` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022041_a2bf79a1-d459-4381-a268-14b76ee9d13d.png | **залишаємо** (канон куртки v4) |
+| N-3 | K1 `skea-sheet-v3` · v1 | `8af7b7f5-6254-47bf-86d1-619330618786` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022128_8af7b7f5-6254-47bf-86d1-619330618786.png | не беремо |
+| N-4 | K1 `skea-sheet-v3` · v2 | `f30eeab4-c64c-4fa8-a128-8c490d794ced` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022127_f30eeab4-c64c-4fa8-a128-8c490d794ced.png | **до T1** — «ліва рука ніби зникає на ривку» |
+| N-5 | K1 `skea-item-hoodie-v3` | `ab80973c-4d74-4467-a8be-de2371bc6f31` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022129_ab80973c-4d74-4467-a8be-de2371bc6f31.png | **залишаємо** — орнамент без напису лишається («напис складно завжди однаковим утримувати») |
+| N-6 | K1 `skea-item-sneakers-v1` | `d2ac65b6-c764-41a5-b8ac-8aa5b0b40599` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022127_d2ac65b6-c764-41a5-b8ac-8aa5b0b40599.png | **залишаємо** (канон кросівок) |
+| N-7 | P1 `sprite-pedestrian-lady-walk` | `b4cc96ad-0d95-42e6-a2e7-23d7c4d6ba8c` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022151_b4cc96ad-0d95-42e6-a2e7-23d7c4d6ba8c.png | **залишаємо**, петля так |
+| N-8 | P1 `sprite-pedestrian-courier-walk` | `76fac42d-05a0-43a2-b900-3cb9ac705be0` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022149_76fac42d-05a0-43a2-b900-3cb9ac705be0.png | **залишаємо**, петля так |
+| N-9 | P1 `sprite-pedestrian-elder-walk` | `ccc3ca6e-5e08-4673-baf2-e34dbd197351` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022150_ccc3ca6e-5e08-4673-baf2-e34dbd197351.png | **залишаємо**, петля так |
+
+### Choko v5 кросівки + Skea S3 (2026-10-03, #38, #33)
+
+Слово Santos (сесія T6): «кросівки Choko (картка ×2, стеля 5.5 кр.) і Skea S3 (поворот + 4 T-пози, стеля 13.75 кр.), разом ≤ 19.25».
+Промпти — [[Prompt-Library]] § 15 (кросівки, **без референсу**) і § 14b (S3). Модель `gpt_image_2_5` high 2k (у відповіді — `model: flare`).
+`get_cost`: картка 16:9 без референсу → 2.75; T-поза 3:4 з 4 референсами → 2.75. `models_explore get gpt_image_2_5` **ліміту кількості
+референсів не називає**; `get_cost` із 4 референсами пройшов, і в `show_generation_by_ids` у кожної роботи S3 у `medias` стоять усі 4:
+S-1 `dcdef91d`, N-5 `ab80973c`, N-6 `d2ac65b6`, S-5 `36ace5cf`. Чи модель **використала** всі чотири — видно лише на картинці.
+Мітки `V-n` — номери галереї цього запуску.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C2 кросівки Choko ×2 | 5806.75 | 5801.25 | 5.5 (стеля 5.5) |
+| S3 поворот + 4 T-пози Skea | 5801.25 | 5787.5 | 13.75 (стеля 13.75) |
+| **Разом** | **5806.75** | **5787.5** | **19.25** (стеля 19.25) |
+
+7 робіт `completed`, 0 failed. Лого на кросівках, руки Skea і стиль **не перевірено мною** — CDN із хмари закритий.
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| V-0 | C2 `choko-item-sneakers-v1` · v1 | `b14c174b-acd7-4fb2-aae5-d9cc51690d10` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024505_b14c174b-acd7-4fb2-aae5-d9cc51690d10.png | не обрано |
+| V-1 | C2 `choko-item-sneakers-v1` · v2 | `482bfc6d-ab01-4c57-8473-b6010491aff5` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024506_482bfc6d-ab01-4c57-8473-b6010491aff5.png | **переможець** (Santos, дошка V) |
+| V-2 | S3 `skea-turn-v3` | `5a560785-73e8-423b-9235-4a1b99879a80` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024623_5a560785-73e8-423b-9235-4a1b99879a80.png | **так** (Santos, дошка V) |
+| V-3 | S3 `skea-tpose-front-v3` | `c17c3449-0e7e-4eb8-b108-3445002aa5a8` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024623_c17c3449-0e7e-4eb8-b108-3445002aa5a8.png | **так** (Santos, дошка V) |
+| V-4 | S3 `skea-tpose-side-v3` | `be43c7b7-f30b-43d5-908f-76d38c1454e1` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024624_be43c7b7-f30b-43d5-908f-76d38c1454e1.png | **так** (Santos, дошка V) |
+| V-5 | S3 `skea-tpose-back-v3` | `e3b39f3c-8430-4499-a7c7-7b8986da0cec` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024624_e3b39f3c-8430-4499-a7c7-7b8986da0cec.png | **так** (Santos, дошка V) |
+| V-6 | S3 `skea-tpose-34-v3` | `82dfeb1b-c881-4361-a3d3-97ff40a8d267` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024624_82dfeb1b-c881-4361-a3d3-97ff40a8d267.png | **так** (Santos, дошка V) |
+
+### Choko v5 — поворот (2026-10-03, #38, план v5 крок 3)
+
+Слово Santos: «Поворот і T-пози Choko v5, давай» (стеля ≈ 16.5 кр.: поворот ×2 + T-пози ×4). Промпт — [[Prompt-Library]] § 15a.
+Референси: куртка N-2 `a2bf79a1`, кросівки V-1 `482bfc6d`, лист `f21298f4` (лише обличчя й манера) — у `medias` обох робіт усі 3.
+`get_cost` gpt_image_2_5 high 2k 16:9 з 3 референсами → 2.75. T-пози ×4 (≈ 11) — після вибору повороту, бо він їхній референс.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C3 поворот Choko v5 ×2 | 5787.5 | 5782 | 5.5 |
+
+Спину й лого **не перевірено мною** — CDN із хмари закритий.
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| W-0 | C3 `choko-turn-v5` · v1 | `4091fd4d-67d3-45b2-8f52-f39fa617026c` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025259_4091fd4d-67d3-45b2-8f52-f39fa617026c.png | не обрано |
+| W-1 | C3 `choko-turn-v5` · v2 | `d048c40f-ef80-4d8d-a9c8-35b5b7838bac` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025259_d048c40f-ef80-4d8d-a9c8-35b5b7838bac.png | **переможець** (Santos, дошка) |
+
+### Choko v5 — T-пози (2026-10-03, #38, план v5 крок 4)
+
+Те саме слово Santos. Поворот — **W-1 `d048c40f`** (вибір Santos). Промпт — [[Prompt-Library]] § 15a; референси: W-1, куртка N-2 `a2bf79a1`,
+кросівки V-1 `482bfc6d` (без старого листа). `get_cost` 3:4 з 3 референсами → 2.75.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C4 T-пози Choko v5 ×4 | 5782 | 5771 | 11 |
+| **Слово «поворот + T-пози»** | **5787.5** | **5771** | **16.5** (стеля 16.5) |
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| X-0 | C4 `choko-tpose-front-v5` | `b529a3bd-4e3a-4dfc-bbbd-d6a90ead9e75` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_b529a3bd-4e3a-4dfc-bbbd-d6a90ead9e75.png | **так** (Santos, дошка) |
+| X-1 | C4 `choko-tpose-side-v5` | `1cb13491-cfd6-46c4-aaeb-b1364af992e0` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_1cb13491-cfd6-46c4-aaeb-b1364af992e0.png | **переробити** — «ніби хтось стиснув» |
+| X-2 | C4 `choko-tpose-back-v5` | `da24265e-c6d6-4dfd-8530-2bb49772b3ed` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_da24265e-c6d6-4dfd-8530-2bb49772b3ed.png | **переробити** — «полоски по центру не повинно бути» |
+| X-3 | C4 `choko-tpose-34-v5` | `5b045b7a-b48f-4014-a7e7-011d60f2d5e8` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_5b045b7a-b48f-4014-a7e7-011d60f2d5e8.png | **так** (Santos, дошка) |
 
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
