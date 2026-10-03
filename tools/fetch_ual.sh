@@ -9,15 +9,17 @@
 # It checks the zips against the sha256 T3 Архімед recorded (docs/Research/2026-10-03-Animation-Sources.md),
 # extracts Unreal-Godot/UAL{1,2}_Standard.glb (no _RM, CC0) into game/assets/animations/ual/, adds the two
 # rows to docs/Art/Textures-Registry.md, commits on a branch `assets/ual-standard` from fresh origin/main and
-# pushes it. T2 Гефест takes it from there. Run it from the repo folder (it may live outside the repo). Flags: --no-push (stop after the commit), --src DIR (default ~/Downloads).
+# pushes it. T2 Гефест takes it from there. `--list` only prints what the zips hold (for the paid Pro /
+# Source tiers, whose names and contents nobody has checked yet) and changes nothing. Run it from the repo folder (it may live outside the repo). Flags: --no-push (stop after the commit), --src DIR (default ~/Downloads).
 set -euo pipefail
 main() {  # the whole body is parsed before it runs: `git switch` below may replace this very file
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "fetch_ual: запускай з теки репо nooneisreal"; exit 2; }
-SRC="$HOME/Downloads"; PUSH=1
+SRC="$HOME/Downloads"; PUSH=1; LIST=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --no-push) PUSH=0 ;;
     --src) SRC="$2"; shift ;;
+    --list) LIST=1 ;;
     *) echo "fetch_ual: unknown flag $1"; exit 2 ;;
   esac
   shift
@@ -43,6 +45,24 @@ find_zip() { # $1 = 1 or 2; prints the newest matching zip in $SRC ("" if none)
   done
   printf '%s' "$best"
 }
+if [ "$LIST" = "1" ]; then
+  # paid tiers (Pro / Source) have names and contents nobody has checked yet: show them, change nothing
+  found=0
+  for f in "$SRC"/*.zip; do
+    [ -f "$f" ] || continue
+    case "$(basename "$f")" in *"Animation Library"*|*UAL*|*"Universal Animation"*) ;; *) continue ;; esac
+    found=1
+    echo "== $(basename "$f")  ($(wc -c < "$f" | tr -d ' ') байт)"
+    echo "   sha256 $(sha "$f")"
+    lic="$(unzip -Z1 "$f" | grep -iE '(^|/)licen[sc]e[^/]*\.txt$' | head -n 1)"
+    if [ -n "$lic" ]; then echo "   ліцензія ($lic): $(unzip -p "$f" "$lic" | tr '\n' ' ' | cut -c1-160)"; else echo "   ліцензійного файлу немає"; fi
+    echo "   3D-файли всередині (glb/gltf/fbx/blend), перші 40:"
+    unzip -Z1 "$f" | grep -iE '\.(glb|gltf|fbx|blend)$' | head -n 40 | sed 's/^/     /'
+    echo "   усього: $(unzip -Z1 "$f" | grep -ciE '\.(glb|gltf)$') glb/gltf · $(unzip -Z1 "$f" | grep -ciE '\.fbx$') fbx · $(unzip -Z1 "$f" | grep -ciE '\.blend$') blend"
+  done
+  [ "$found" = 1 ] || echo "fetch_ual --list: у $SRC немає zip з «Animation Library» в імені"
+  exit 0
+fi
 Z1="$(find_zip 1)"
 Z2="$(find_zip 2)"
 [ -n "$Z1" ] || { echo "fetch_ual: у $SRC немає «Universal Animation Library[Standard].zip» (UAL1, безкоштовний тир)"; exit 1; }
