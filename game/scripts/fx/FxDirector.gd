@@ -7,15 +7,17 @@ extends Node
 ## what → sheet (docs/Art/Prompts/VFX-Sheets-Prompts.md):
 ##   Choko's normals → slash_choko / slash_heavy_choko / slash_air_choko, from the first active frame
 ##   Skea's normals (jab_elbow, roundhouse, low_kick, flying_knee) → slash_skea, same hook, her own size
-##   a hit → spark_hit (row: cream, crit violet, Choko emerald, blocked blue); a BLOCKED hit also drops spark_metal — Arena._on_hit
+##   a hit → spark_hit (row: cream, crit violet, Choko emerald, blocked blue) — Arena._on_hit
 ##   K.O. → ko_burst · a dash → trail_chrono (Choko) / trail_flash (Skea's Flash Step), plus a smoke_puff at the push-off point
-##   a grapple shot → grapple_launch + speed_lines along the throw · landing from a jump → dust_land (water_splash on the river)
-##   a ragdoll settles → dust_land + ground_crack · SHADOW VEIL → smoke_veil · TIME STOP → choko_timestop under Choko
-##   armor break → armor_break · «Seen» on a fighter → seen_mark over the head while it lasts
-##   Printer Patch picked → patch_heal · Spring spent in the air → spring_jump · RECORD rewind → choko_rewind where Choko lands
+##   a grapple shot → grapple_launch
+##   landing from a jump → dust_land (water_splash on the river) · a ragdoll settles → dust_land + ground_crack
+##   SHADOW VEIL → smoke_veil · TIME STOP → choko_timestop under Choko · armor break → armor_break
+##   «Seen» on a fighter → seen_mark over the head while it lasts · Printer Patch picked → patch_heal
+##   Spring spent in the air → spring_jump · RECORD rewind → choko_rewind where Choko lands
+##   sliding along the soft wall → skid_dust (again every SKID_EVERY frames) · a zip to an anchor → speed_lines
+##   a blocked hit → spark_metal on top of the blue spark_hit row
+## Still without a hook: electro_arc / electro_arc_kling — no electro mechanic on Fighter yet (T5 Арес, #161).
 ## (Printer stickers, the RECORD sticker, kunai, grimoire pages, ult sigils and weak marks draw inside their own scripts.)
-## Still without a hook: skid_dust (needs a wall-slide state) and electro_arc / electro_arc_kling (needs an electro-charge
-## mechanic) — neither exists on Fighter yet, so they wait for that design rather than a FxDirector guess (docs/Fix).
 
 const SLASH := {"light": "slash_choko", "crouch_light": "slash_choko", "heavy": "slash_heavy_choko", "air_light": "slash_air_choko"}
 ## Skea's normals all share one sheet; only the size differs (roundhouse is her "heavy").
@@ -70,13 +72,12 @@ func _on_picked(f: Fighter, kind: String) -> void:
 		Flipbook.play(f, "patch_heal", f.global_position + Vector3.UP * 0.9, 1.8)
 
 
-## The hit spark (Arena._on_hit calls it next to HitSpark's lines and flash). A blocked hit also drops spark_metal —
-## the sword-on-sword (or grapple-on-metal) clash — under the same spark, additive so it reads as a flash, not a cloud.
+## The hit spark (Arena._on_hit calls it next to HitSpark's lines and flash).
 static func hit_spark(near: Node, at: Vector3, attacker: Fighter, damage: float, blocked: bool, crit: bool) -> Flipbook:
 	var row: int = SPARK_ROW.blocked if blocked else (SPARK_ROW.crit if crit else (SPARK_ROW.choko if attacker.data.id == "choko" else SPARK_ROW.normal))
 	var size := 1.0 if blocked else clampf(1.3 + damage / 90.0, 1.4, 3.2) * (1.4 if crit else 1.0)
 	if blocked:
-		Flipbook.play(near, "spark_metal", at, 1.2, {"additive": true})
+		Flipbook.play(near, "spark_metal", at, 1.4)   # MIX: the streaks keep their ink outline
 	return Flipbook.play(near, "spark_hit", at, size, {"first": row * Flipbook.GRID, "count": Flipbook.GRID})   # MIX: ADD + the hit light burned the star to white, losing the ink line
 
 
@@ -115,10 +116,18 @@ func _events(f: Fighter, p: Array, now: Array) -> void:
 	if f.data.dash_style == "flash" and now[6] < p[6]:
 		Flipbook.play(f, "trail_flash", pos + Vector3.UP * 0.9, 2.6, {"count": 12, "flip": f.forward.x < 0.0})
 		Flipbook.play(f, "smoke_puff", Vector3(pos.x, floor_y + 0.3, pos.z), 1.6)
-	# a grapple shot (any of the three verbs spends a charge) — speed lines along the throw
+	# a grapple shot (any of the three verbs spends a charge)
 	if now[5] < p[5]:
 		Flipbook.play(f, "grapple_launch", pos + GrappleHook.HAND + f.forward * 0.4, 1.2, {"count": 9, "flip": f.forward.x < 0.0})
-		Flipbook.play(f, "speed_lines", pos + GrappleHook.HAND + f.forward * 0.4, 2.0, {"additive": true, "flip": f.forward.x < 0.0})
+	# a zip to an anchor: speed lines ride along with the fighter (the sheet points left → right)
+	if now[0] == Fighter.State.GRAPPLE and p[0] != Fighter.State.GRAPPLE:
+		var left := f.grapple.anchor_point.x < pos.x
+		Flipbook.play(f, "speed_lines", Vector3.UP * 1.0, 2.2, {"parent": f, "flip": left})
+	# sliding along the soft wall: low dust at the feet (the sheet's feet slide right, the trail goes left)
+	if wall_slide_speed(now[10], now[11], now[1]) >= SKID_SPEED and _frame - int(_skid_at.get(f, -SKID_EVERY)) >= SKID_EVERY:
+		_skid_at[f] = _frame
+		var v: Vector3 = now[11]
+		Flipbook.play(f, "skid_dust", Vector3(pos.x, floor_y + 0.8, pos.z), 1.6, {"flip": v.x < 0.0})
 	# a ragdoll settles (LAUNCHED → GETUP, or KNOCKDOWN without a ragdoll; the body stays on the floor while the ragdoll
 	# flies, so on_ground() never flips) → dust + a crack decal
 	if p[0] == Fighter.State.LAUNCHED and now[0] in [Fighter.State.GETUP, Fighter.State.KNOCKDOWN]:

@@ -107,6 +107,17 @@ spawns nothing») лишився зеленим і після моїх прав�
 клас 4 реєстру, ті самі чужі файли, нуль з мого стейджу); ВІК 0/0, ПАР 0 проблем, GDS 42/42. PR —
 santos-va/nooneisreal — мерджить Santos.
 
+## Злиття з #160 (T2·B Гефест, хмара)
+
+Паралельно змерджено #160 (крок 3 смуги B: `skid_dust` на ковзанні вздовж м'якої стіни, `speed_lines` на зіпі,
+`spark_metal` на блоці). Мерж `main` у цю гілку (`ccc613b`) розв'язав конфлікт у `FxDirector.gd` на користь старої версії —
+код #160 випав, CI: `[smoke] FAIL lane B step 3: skid_dust drawn 0 times (want 2); speed_lines drawn 0 times (want 1)`.
+
+Виправлено: `FxDirector.gd` узято з `main` і зверху накладено лише нове з цього PR — `slash_skea` на нормалі Skea і
+`smoke_puff` на старт деша. Не взято (дублює змерджене): `speed_lines` на постріл гарпуна (у `main` — на зіп) і `spark_metal`
+1.2 м ADD (у `main` — 1.4 м MIX, щоб лишився чорнильний контур). Реєстр: рядки `speed_lines`, `spark_metal`, `skid_dust`
+переписано під фактичне підключення. Таблиця вище й § про `skid_dust` описують стан до злиття.
+
 ## Related
 - [[2026-10-03-Sprint-Arenas-VFX]] · [[2026-10-03-lane-b-flipbooks]] · [[2026-10-03-Character-Select]] ·
   [[Textures-Registry]] · [[06-UI-UX]] · [[state]]
