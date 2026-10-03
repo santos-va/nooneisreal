@@ -1060,4 +1060,45 @@ func _physics_process(_delta: float) -> void:
 						_fail("flash 3D: sideways stick turned the exit %.1f° (want %.0f°)" % [ang, Fighter.FLASH_SIDE_DEG])
 						return
 					_ok("FLASH STEP 3D: sideways stick turned the exit %.1f° off the line (rule %.0f°)" % [ang, Fighter.FLASH_SIDE_DEG])
-					_finish()
+					_n0 = 0
+					_next()
+		56:
+			# 0.3-4: a CPU P2 in 3D circles at least once and lands at least one hit within 10 s (600 f)
+			if _n0 == 0:
+				if not (p1.is_actionable() and p2.is_actionable()):
+					if _f > _f0 + 600:
+						_fail("cpu 3D: fighters never ready")
+					return
+				_n0 = 1
+				p1.hp = p1.data.max_hp
+				p2.hp = p2.data.max_hp
+				p1.global_position = Vector3(-2.5, p1.global_position.y, 0.0)
+				p2.global_position = Vector3(2.5, p2.global_position.y, 0.0)
+				var b := CpuBrain.new()
+				b.fighter = p2
+				p2.add_child(b)
+				p2._brain = b
+				_x0 = float(p2.stats.hits)
+				_ang0 = _bearing(p2, p1)
+				_swept = 0.0
+				_rmax = 0.0
+				_f0 = _f
+				return
+			var a := _bearing(p2, p1)
+			var da := angle_difference(_ang0, a)
+			_ang0 = a
+			if absf(da) < deg_to_rad(30.0):   # passing through / over the opponent flips the bearing — not circling
+				_swept += da
+			_rmax = maxf(_rmax, absf(_swept))
+			if _f == _f0 + 600:
+				var b: CpuBrain = p2._brain
+				var hits := float(p2.stats.hits) - _x0
+				var steps := b.sidesteps
+				b.queue_free()
+				p2._brain = null
+				InputRouter.v_clear(2)
+				if steps < 1 or rad_to_deg(_rmax) < 20.0 or hits < 1.0:
+					_fail("cpu 3D in 10 s: sidesteps %d, swept around P1 %.0f° (want ≥ 20), hits %.0f (want ≥ 1)" % [steps, rad_to_deg(_rmax), hits])
+					return
+				_ok("CPU 3D in 10 s: %d sidesteps, swept %.0f° around P1, %.0f hits landed" % [steps, rad_to_deg(_rmax), hits])
+				_finish()
