@@ -8,7 +8,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BG="$ROOT/game/assets/backgrounds"
 CARDS="$ROOT/game/assets/characters/cards"
 MODELS="$ROOT/game/assets/characters/models"
-mkdir -p "$BG" "$CARDS" "$MODELS"
+TEX="$ROOT/game/assets/textures"
+PROPS="$ROOT/game/assets/props"
+mkdir -p "$BG" "$CARDS" "$MODELS" "$TEX" "$PROPS"
 CDN="https://d8j0ntlcm91z4.cloudfront.net/user_3JiwWmSIzQvXHlHhmCxwWysInqU"
 
 fetch() { # url, dest
@@ -38,5 +40,12 @@ fetch "$CDN/hf_20261002_110646_b776f4f8-c0a8-46b1-8987-242907591958.png" "$CARDS
 CDN3D="https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO"
 fetch "$CDN3D/hf_20261003_034701_2488e146-f049-4469-9aad-4a512a810022.glb" "$MODELS/choko_m0.glb"
 fetch "$CDN3D/hf_20261003_034702_f7f95324-7686-48af-8d0c-3f4d5010502c.glb" "$MODELS/skea_m1.glb"
+
+# Sprint lane C (T6, 2026-10-03): Sketch-Cel art already generated and picked by Santos in wave 2, never downloaded.
+# 0 credits — docs/Art/Prompts/Arenas-360-Prompts.md, docs/Art/Prompts/Menu-Skyline-Prompts.md rows 24, 25, 38 and 1b.
+fetch "$CDN3D/hf_20261003_005206_a2913501-694d-4bbc-9908-66892760bf7e.png" "$BG/stage_river_plate_v1.png"
+fetch "$CDN3D/hf_20261003_013154_b0a9189d-0b0a-435f-b5a5-459b105374ce.png" "$TEX/tex_water_foam.png"
+fetch "$CDN3D/hf_20261003_013154_bb5e3e44-27c1-478c-9b2d-2252bf2e9339.png" "$TEX/tex_water_ripple.png"
+fetch "$CDN3D/hf_20261003_013416_c5900952-f4f0-4728-8ada-5b30d641be3a.png" "$PROPS/props_anchors_v1.png"
 
 echo "done. Now run: make check   (re-imports the new textures headlessly)"

@@ -27,6 +27,8 @@
 
 ## Фони (Cronshift)
 
+**Арени 360° (спринт, смуга C):** три арени × 4 картки N/E/S/W × день/ніч, текстури підлоги, пропи, кошторис — [[Arenas-360-Prompts]].
+
 Формула: «muted dusk palette of terracotta, dusty orange, slate blue and deep teal shadows, worn
 European-industrial architecture, brass rooftops, hanging lanterns, bold outlines… not cyberpunk.
 No text, no letters on signs, no logos.» + опис сцени (market street / back alley / main street).
