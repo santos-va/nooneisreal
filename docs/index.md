@@ -23,7 +23,7 @@ Santos і товариша (лідер команди [[Choko]] — контро
 | Світ | [[Kronshift]] · [[Stage-River]] · [[Lore]] |
 | Арт | [[Style-Guide]] · [[Textures-Registry]] · [[Backgrounds]] · [[Pipeline-2D-to-3D]] · [[Prompts]] · [[VFX-Direction]] · [[Higgsfield-Pipeline]] · [[Asset-Manifest]] · [[Prompt-Library]] |
 | Техніка | [[Architecture]] · [[Active-Ragdoll]] · [[Cel-Shading]] · [[Build-and-Run]] · [[Export-Platforms]] · [[Testing]] · [[Animation-Plan]] · [[Library]] |
-| Рішення | [[ADR-001-Engine-Godot]] · [[ADR-002-2.5D-First]] · [[ADR-003-Docs-As-Wiki]] · [[ADR-004-Physics-Is-Presentation]] · [[ADR-005-Grapple-Charges]] · [[ADR-006-Equal-Kit-Structure]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-008-Audio-Sourcing]] · [[ADR-009-Solo-Keyboard-Layout]] · [[ADR-010-City-Name-Cronshift]] |
+| Рішення | [[ADR-001-Engine-Godot]] · [[ADR-002-2.5D-First]] · [[ADR-003-Docs-As-Wiki]] · [[ADR-004-Physics-Is-Presentation]] · [[ADR-005-Grapple-Charges]] · [[ADR-006-Equal-Kit-Structure]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-008-Audio-Sourcing]] · [[ADR-009-Solo-Keyboard-Layout]] · [[ADR-010-City-Name-Cronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] |
 | Ресерч | [[2026-10-02-Engine-Physics]] · [[2026-10-02-Animation-Assets-Pipeline]] · [[2026-10-02-Grapple-Input-UI]] |
 | Процес | [[constitution]] · [[state]] · [[recurring_class_register]] · [[2026-10-02-Kickoff]] · [[2026-10-02-Prototype-0.1]] · [[2026-10-02-Characters-Interview]] · [[2026-10-02-Skea-Kit-and-Balance]] · [[2026-10-02-Art-Direction-and-Pipeline]] |
 
