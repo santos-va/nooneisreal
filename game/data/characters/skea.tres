@@ -218,6 +218,7 @@ id = "skea"
 idle_clip = "Idle_Loop"
 dash_clip = "Dodge_Right"
 getup_clip = "KipUp"
+model_scene = "res://assets/characters/models/skea_m1.glb"
 display_name = "SKEA"
 tagline = "Manic grin, braces, kunai in a knuckle grip, the ∞8 grimoire on his back. Muay Thai + flash-steps. Glass cannon."
 max_hp = 900.0

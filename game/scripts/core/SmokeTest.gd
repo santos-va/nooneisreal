@@ -68,6 +68,8 @@ var _ult_only: bool = false
 var _bone0: Vector3 = Vector3.ZERO
 var _rig_hit: int = -1               # launch 4: physics frame Skea took the mannequin's light (-1 = not yet)
 var _rig_swung: bool = false
+var _aim_max: float = 0.0             # launch 5: worst hero-vs-mannequin bone direction (deg) over the light
+var _aim_bone: String = ""
 # launch 3b: Skea's ult under the bass (docs/GDD/03 § Ульта Skea під бас — literals, not the .tres)
 const GDD_ULT_BEATS := [62, 72, 82]                             # normal ult, move frames from frame 0
 const GDD_ULT_END := 84                                         # startup 12 + active 72
@@ -1927,6 +1929,24 @@ func _physics_process(_delta: float) -> void:
 							return
 				_bone0 = sk.skeleton.get_bone_pose_rotation(sk.skeleton.find_bone("spine_02")).get_euler()
 				_ok("mannequin: UAL1+UAL2 on one player (%d state clips), capsules hidden but ticking, idle '%s'" % [ok_names, sk.clip])
+				# launch 5: the heroes draw instead of the mannequin, which stays hidden as the pose source
+				for fx in [p1, p2]:
+					var hs: SkeletalRig = fx.skeletal
+					if fx.data.model_scene == "" or hs.hero == null or hs.hero_skeleton == null:
+						_fail("%s: no hero model (model_scene '%s') — launch 5 draws Choko and Skea" % [fx.data.id, fx.data.model_scene])
+						return
+					var shown := 0
+					for m in hs.skeleton.find_children("*", "MeshInstance3D", true, false):
+						shown += int((m as MeshInstance3D).visible)
+					if shown != 0 or not hs.hero_mesh.visible or hs._map.size() != SkeletalRig.HERO_BONES.size():
+						_fail("%s hero: mannequin meshes drawn %d, hero mesh visible %s, bones mapped %d of %d (want 0, true, all)" % [fx.data.id, shown, hs.hero_mesh.visible, hs._map.size(), SkeletalRig.HERO_BONES.size()])
+						return
+					if not (hs.hero_mesh.material_override in fx.animator.materials):
+						_fail("%s hero: toon material not in the rig's materials — hit flash / time-stop tint would skip the hero" % fx.data.id)
+						return
+				_ok("heroes: %s and %s drawn, mannequins hidden, %d bones retargeted each" % [p1.data.model_scene.get_file(), p2.data.model_scene.get_file(), SkeletalRig.HERO_BONES.size()])
+				_aim_max = 0.0
+				_aim_bone = ""
 				_next()
 			elif _f > _f0 + 400:
 				_fail("mannequin round never started")
@@ -1945,6 +1965,12 @@ func _physics_process(_delta: float) -> void:
 				if not p2.hit_landed.is_connected(_on_rig_hit):
 					p2.hit_landed.connect(_on_rig_hit)
 				InputRouter.v_press(1, "light")
+			if _f > _f0 + 40 and p1.state == Fighter.State.ATTACK:
+				for b in SkeletalRig.HERO_AIM:
+					var e: float = sk.aim_error(b)
+					if e > _aim_max:
+						_aim_max = e
+						_aim_bone = b
 			if _f > _f0 + 40 and p1.state == Fighter.State.ATTACK and p1.current_move != null:
 				var m := p1.current_move
 				if p1.move_frame == m.startup:
@@ -1966,6 +1992,12 @@ func _physics_process(_delta: float) -> void:
 					_fail("mannequin hit sound: '%s' last played on frame %d, the hit landed on %d" % [hit_sfx, Sfx.last_frame.get(hit_sfx, -1), _rig_hit])
 					return
 				_ok("mannequin attack: '%s' contact pose (%.2f s) on the first active frame %d, then '%s'; hit sound on the hit frame %d" % [p1.data.light.anim_clip, _x0, p1.data.light.startup, p1.data.light.anim_clip_rec, _rig_hit])
+				# launch 5: every aimed hero bone points where its mannequin twin points, on every frame of the swing
+				var hip_err := absf(sk.hero_skeleton.get_bone_global_pose(sk.hero_skeleton.find_bone("Hips")).origin.y - sk.skeleton.get_bone_global_pose(sk.skeleton.find_bone("pelvis")).origin.y * sk._hip_scale)
+				if _aim_max > 3.0 or _aim_bone == "" or hip_err > 0.5:
+					_fail("hero retarget: worst bone '%s' %.2f° off the mannequin (limit 3°), hips %.2f cm off (limit 0.5)" % [_aim_bone, _aim_max, hip_err])
+					return
+				_ok("hero retarget: %d aimed bones follow the mannequin through the light, worst '%s' %.2f° (limit 3°), hips %.2f cm" % [SkeletalRig.HERO_AIM.size(), _aim_bone, _aim_max, hip_err])
 				_next()
 			elif _f > _f0 + 200:
 				_fail("mannequin attack never reached its first active frame (state %d)" % p1.state)
