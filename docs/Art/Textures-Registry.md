@@ -8,10 +8,18 @@
 
 | id | файл | джерело | автор/модель | ліцензія | де використано |
 |---|---|---|---|---|---|
-| sfx-hit-light | `game/assets/audio/sfx/hit_light.wav` | синтез ffmpeg lavfi (pink noise + lowpass) | проєкт, 2026-10-02 | CC0 (наше) | `Sfx.play("hit_light")`, легкі удари |
-| sfx-hit-heavy | `game/assets/audio/sfx/hit_heavy.wav` | ffmpeg: brown noise + sine 62 Hz | проєкт | CC0 | важкі удари, скіли |
-| sfx-block | `game/assets/audio/sfx/block.wav` | ffmpeg: white noise highpass + 1.9/3.1 kHz | проєкт | CC0 | блок |
-| sfx-whoosh | `game/assets/audio/sfx/whoosh.wav` | ffmpeg: pink noise bandpass | проєкт | CC0 | старт активних кадрів, деш |
+| sfx-hit-light | `game/assets/audio/sfx/hit_light.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03 | проєкт | CC0 (наше) | `Sfx.play("hit_light")`, легкі удари |
+| sfx-hit-light-2 | `game/assets/audio/sfx/hit_light_2.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03, варіант 2 | проєкт | CC0 (наше) | `AudioStreamRandomizer` для «hit_light» |
+| sfx-hit-light-3 | `game/assets/audio/sfx/hit_light_3.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03, варіант 3 | проєкт | CC0 (наше) | `AudioStreamRandomizer` для «hit_light» |
+| sfx-hit-heavy | `game/assets/audio/sfx/hit_heavy.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03 | проєкт | CC0 (наше) | важкі удари, скіли |
+| sfx-hit-heavy-2 | `game/assets/audio/sfx/hit_heavy_2.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03, варіант 2 | проєкт | CC0 (наше) | `AudioStreamRandomizer` для «hit_heavy» |
+| sfx-hit-heavy-3 | `game/assets/audio/sfx/hit_heavy_3.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03, варіант 3 | проєкт | CC0 (наше) | `AudioStreamRandomizer` для «hit_heavy» |
+| sfx-block | `game/assets/audio/sfx/block.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03 | проєкт | CC0 (наше) | блок |
+| sfx-block-2 | `game/assets/audio/sfx/block_2.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03, варіант 2 | проєкт | CC0 (наше) | `AudioStreamRandomizer` для «block» |
+| sfx-block-3 | `game/assets/audio/sfx/block_3.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03, варіант 3 | проєкт | CC0 (наше) | `AudioStreamRandomizer` для «block» |
+| sfx-whoosh | `game/assets/audio/sfx/whoosh.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03 | проєкт | CC0 (наше) | старт активних кадрів, деш |
+| sfx-whoosh-2 | `game/assets/audio/sfx/whoosh_2.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03, варіант 2 | проєкт | CC0 (наше) | `AudioStreamRandomizer` для «whoosh» |
+| sfx-whoosh-3 | `game/assets/audio/sfx/whoosh_3.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03, варіант 3 | проєкт | CC0 (наше) | `AudioStreamRandomizer` для «whoosh» |
 | sfx-grapple-fire | `game/assets/audio/sfx/grapple_fire.wav` | ffmpeg: aevalsrc chirp 1400→… | проєкт | CC0 | постріл гарпуна |
 | sfx-grapple-hit | `game/assets/audio/sfx/grapple_hit.wav` | ffmpeg: 2.4 kHz + 640 Hz decay | проєкт | CC0 | підтягування ворога, TIME STOP |
 | sfx-grapple-release | `game/assets/audio/sfx/grapple_release.wav` | ffmpeg: pink noise bandpass 1.4 kHz | проєкт | CC0 | відпускання мотузки |
@@ -23,12 +31,14 @@
 | sfx-ultimate | `game/assets/audio/sfx/ultimate.wav` | ffmpeg: sweep 180→1080 Hz + 55 Hz | проєкт | CC0 | старт ультимейту |
 | sfx-land | `game/assets/audio/sfx/land.wav` | ffmpeg: brown noise lowpass 500 | проєкт | CC0 | приземлення |
 | sfx-flash | `game/assets/audio/sfx/flash.wav` | ffmpeg: chirp 300→5500 Hz + white noise highpass | проєкт, 2026-10-02 | CC0 | Flash Step Skea |
-| sfx-kunai | `game/assets/audio/sfx/kunai.wav` | ffmpeg: 3.2/4.7/2.1 kHz metallic decay | проєкт | CC0 | Kunai Rain (кидок і тіки) |
+| sfx-kunai | `game/assets/audio/sfx/kunai.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03 | проєкт | CC0 (наше) | Kunai Rain (кидок і тіки) |
+| sfx-kunai-2 | `game/assets/audio/sfx/kunai_2.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03, варіант 2 | проєкт | CC0 (наше) | `AudioStreamRandomizer` для «kunai» |
 | sfx-smoke | `game/assets/audio/sfx/smoke.wav` | ffmpeg: pink noise bandpass 1.8 kHz, 0.9 s | проєкт | CC0 | Shadow Veil |
 | sfx-rewind | `game/assets/audio/sfx/rewind.wav` | ffmpeg: зворотні свіпи 1500→200 Hz | проєкт | CC0 | RECORD: маркер і перемотка |
 | sfx-time-stop | `game/assets/audio/sfx/time_stop.wav` | ffmpeg: 80 Hz удар + дзвін 1320/1980 Hz | проєкт | CC0 | TIME STOP, Chrono Guard |
-| sfx-crit | `game/assets/audio/sfx/crit.wav` | ffmpeg: 2.6/3.9/5.2 kHz дзвін | проєкт | CC0 | крит по слабкій точці |
-| sfx-sword | `game/assets/audio/sfx/sword.wav` | ffmpeg: свіп 4.2 kHz + 6.1 kHz «шінг» | проєкт | CC0 | Sword Storm |
+| sfx-crit | `game/assets/audio/sfx/crit.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03 | проєкт | CC0 (наше) | крит по слабкій точці |
+| sfx-sword | `game/assets/audio/sfx/sword.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03 | проєкт | CC0 (наше) | Sword Storm |
+| sfx-sword-2 | `game/assets/audio/sfx/sword_2.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03, варіант 2 | проєкт | CC0 (наше) | `AudioStreamRandomizer` для «sword» |
 | sfx-book | `game/assets/audio/sfx/book.wav` | ffmpeg: 55/82.5/110 Hz дрон | проєкт | CC0 | Cursed Grimoire |
 | bg-kronshift-river | `game/assets/backgrounds/bg_kronshift_river.jpg` | надіслав Santos у чаті 2026-10-03 (1500×848 JPEG, ймовірно Higgsfield, оригінальна URL невідома) | Santos | підтвердити (Архімед) | стадія `river` (дефолтна), джерело для [[Stage-River]] |
 | card-skea-v1 | `game/assets/characters/cards/card_skea_v1.jpg` | надіслав Santos у чаті 2026-10-02 (1500×848 JPEG; згенеровано в Higgsfield, оригінальна URL невідома) | Santos / Higgsfield | Higgsfield ToS (підтвердити, Архімед) | картка Skea в меню; референс для 3D |

@@ -16,6 +16,7 @@ var flow: MatchFlow
 var _oks: Array[String] = []
 var _done: bool = false
 var _shots_dir: String = ""
+var _profile0: String = ""
 
 
 func _ready() -> void:
@@ -64,6 +65,37 @@ func _shot(tag: String) -> void:
 		print("[smoke] shot ", tag)
 
 
+## "" when every physical key of `prof` belongs to exactly one p1_/p2_ action (and SOLO gives P2
+## no keys at all); otherwise a description of the first clash.
+func _key_clash(prof: String) -> String:
+	InputRouter.apply_profile(prof, false)
+	var owner: Dictionary = {}
+	for p in [1, 2]:
+		for a in InputRouter.ACTIONS:
+			var n := InputRouter.action_name(p, a)
+			for ev in InputMap.action_get_events(n):
+				if not ev is InputEventKey:
+					continue
+				var k := ev as InputEventKey
+				if prof == InputRouter.PROFILE_SOLO and p == 2:
+					return "P2 has key %s in SOLO" % OS.get_keycode_string(k.physical_keycode)
+				var id := "%d@%d" % [k.physical_keycode, k.location]
+				if owner.has(id):
+					return "key %s in both %s and %s" % [OS.get_keycode_string(k.physical_keycode), owner[id], n]
+				owner[id] = n
+	if owner.is_empty():
+		return "no keys at all"
+	return ""
+
+
+## Injects a real keyboard event (physical keycode) through the engine's input pipeline.
+func _key(code: Key, down: bool) -> void:
+	var ev := InputEventKey.new()
+	ev.physical_keycode = code
+	ev.pressed = down
+	Input.parse_input_event(ev)
+
+
 func _next() -> void:
 	_stage += 1
 	_f0 = _f
@@ -99,6 +131,12 @@ func _physics_process(_delta: float) -> void:
 		p2 = arena.p2
 		flow = arena.flow
 		_ok("arena loaded: %s vs %s, stage %s" % [p1.data.display_name, p2.data.display_name, GameState.stage().id])
+		var bus := AudioServer.get_bus_index(Sfx.BUS)
+		var vh := Sfx.variant_count("hit_light")
+		if bus == -1 or AudioServer.get_bus_effect_count(bus) < 2 or vh < 3 or Sfx.variant_count("no_such_sfx") != 0:
+			_fail("SFX: bus %d (effects %d), hit_light variants %d" % [bus, AudioServer.get_bus_effect_count(bus) if bus != -1 else 0, vh])
+			return
+		_ok("SFX bus with %d effects; hit_light %d variants, hit_heavy %d, whoosh %d" % [AudioServer.get_bus_effect_count(bus), vh, Sfx.variant_count("hit_heavy"), Sfx.variant_count("whoosh")])
 		return
 	match _stage:
 		# ---------------- round 1: Choko ----------------
@@ -297,6 +335,41 @@ func _physics_process(_delta: float) -> void:
 		25:
 			if flow.round_no == 3 and flow.phase == MatchFlow.Phase.INTRO:
 				_ok("round 3 started (1-1)")
+				_next()
+		# ---------------- keyboard profiles (ADR-009): real key events, not virtual input -------
+		26:
+			if flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable():
+				_profile0 = InputRouter.profile
+				for prof in InputRouter.PROFILES:
+					var clash := _key_clash(prof)
+					if clash != "":
+						_fail("profile %s: %s" % [prof, clash])
+						return
+				_ok("profiles SOLO/SHARED: every key drives one action; SOLO leaves P2 keyless")
+				InputRouter.apply_profile(InputRouter.PROFILE_SOLO, false)
+				_key(KEY_J, true)
+				_next()
+		27:
+			if _f == _f0 + 2:
+				_key(KEY_J, false)
+			if p1.state == Fighter.State.ATTACK and p2.state != Fighter.State.ATTACK:
+				_ok("SOLO: key J → P1 %s (P2 idle)" % p1.current_move.id)
+				_next()
+			elif _f > _f0 + 20:
+				_fail("SOLO: J did not start a P1 attack (p1 state %d, p2 state %d)" % [p1.state, p2.state])
+		28:
+			if p1.is_actionable() and p2.is_actionable() and _f > _f0 + 30:
+				InputRouter.apply_profile(InputRouter.PROFILE_SHARED, false)
+				_key(KEY_K, true)
+				_next()
+		29:
+			if _f == _f0 + 2:
+				_key(KEY_K, false)
+			if p2.state == Fighter.State.ATTACK and p1.state != Fighter.State.ATTACK:
+				_ok("SHARED: key K → P2 %s (P1 idle)" % p2.current_move.id)
+				InputRouter.apply_profile(_profile0, false)
 				_finish()
+			elif _f > _f0 + 20:
+				_fail("SHARED: K did not start a P2 attack (p1 state %d, p2 state %d)" % [p1.state, p2.state])
 			elif _f > _f0 + 400:
 				_fail("round 3 never started")

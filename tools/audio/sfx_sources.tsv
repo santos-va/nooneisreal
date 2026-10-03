@@ -1,0 +1,10 @@
+# zip_glob	licence	source_url	attribution
+# One row per downloaded pack. build_sfx.py refuses to touch a zip that has no row here (R1/R7:
+# every shipped sound needs a licence we actually read on the download page).
+# Licence values we accept without extra steps: CC0, Sonniss-GDC-royalty-free. Anything with BY/NC/SA
+# needs a decision from Santos first (docs/GDD/07-Audio.md).
+#
+# Examples — uncomment after checking the licence on the page you downloaded from:
+# kenney_impact-sounds*.zip	CC0	https://kenney.nl/assets/impact-sounds	Kenney (not required)
+# Sonniss*GDC*.zip	Sonniss-GDC-royalty-free	https://gdc.sonniss.com	not required
+# swishes*.zip	CC0	https://opengameart.org/content/swishes-sound-pack	not required
