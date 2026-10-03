@@ -702,6 +702,75 @@ func _check_flipbook() -> bool:
 		_fail("lane B flipbook: cells per step %s (want %s: 0…15, one per 5 steps, freed on step 80), freed %s, delayed hidden %s / shown on row 2 %s, Fx off spawned %s" % [cells, steps, fb.is_queued_for_deletion(), hidden, shown, none != null])
 		return false
 	_ok("lane B flipbook: %d sheets are 2048 × 2048; cells 0…15 at 12 fps, then freed; a delayed row-2 spark waits 0.25 s; Fx off spawns nothing" % sheets.size())
+	return _check_flipbook_part2()
+
+
+## Lane B part 2: the art inside the skill scripts (Printer and RECORD stickers, weak marks) and the director's rarer events
+## (Seen, Patch, Spring, rewind) — driven straight through the same functions, since a duel may not reach them.
+func _check_flipbook_part2() -> bool:
+	var bad := ""
+	# Printer: the sticker is the art on a flat plane, and it is still the pick-up anchor
+	var pr: Printer = p1.printer
+	if pr == null:
+		bad += " Choko has no Printer;"
+	else:
+		var at := Vector3(2.0, 0.0, -1.0)
+		pr._make_disc("patch", at)
+		var mi := pr._disc
+		var tex: Texture2D = (mi.material_override as StandardMaterial3D).albedo_texture if mi != null else null
+		if not (mi != null and mi.mesh is PlaneMesh and tex == Flipbook.texture_for("sticker_patch") and pr.sticker_position().is_equal_approx(at + Vector3(0.0, 0.02, 0.0))):
+			bad += " Printer sticker is %s (want a PlaneMesh with sticker_patch at the pick-up point);" % (mi.mesh if mi != null else null)
+		pr._remove_sticker()
+	# RECORD: the sticker on the floor
+	var rm := RecordMarker.spawn(p1)
+	var rec_ok := rm._sticker_mat != null and rm._sticker_mat.albedo_texture == Flipbook.texture_for("choko_record_sticker")
+	rm.free()
+	if not rec_ok:
+		bad += " RECORD marker has no choko_record_sticker;"
+	# weak marks: looping weak_mark sheets, one per zone
+	var wm: WeakMarks = null
+	for c in p2.get_children():
+		if c is WeakMarks:
+			wm = c
+	var loops := 0
+	if wm != null:
+		for z in wm._rings:
+			if wm._rings[z] is Flipbook and (wm._rings[z] as Flipbook).loop and (wm._rings[z] as Flipbook).id == "weak_mark":
+				loops += 1
+	if loops != WeakMarks.ZONES.size():
+		bad += " weak marks: %d looping weak_mark sheets (want %d);" % [loops, WeakMarks.ZONES.size()]
+	# the director's rarer events
+	var dir: FxDirector = arena.get_node("FxDirector")
+	var snap := Flipbook.spawned.duplicate()
+	var base := FxDirector._snap(p1)
+	var seen_on := base.duplicate()
+	seen_on[7] = 30
+	dir._events(p1, base, seen_on)
+	var mark: Flipbook = dir._seen.get(p1, null)
+	var seen_ok := mark != null and mark.loop
+	dir._events(p1, seen_on, base)
+	seen_ok = seen_ok and not dir._seen.has(p1) and mark.is_queued_for_deletion()
+	dir._on_picked(p1, "patch")
+	var air := base.duplicate()
+	air[1] = false
+	air[0] = Fighter.State.JUMP
+	var spring_before := air.duplicate()
+	spring_before[8] = 200
+	dir._events(p1, spring_before, air)
+	var marker_before := base.duplicate()
+	marker_before[9] = true
+	marker_before[10] = p1.global_position + Vector3(3.0, 0.0, 0.0)
+	dir._events(p1, marker_before, base)
+	var drawn := _flipbooks_since(snap)
+	for k in ["seen_mark", "patch_heal", "spring_jump", "choko_rewind"]:
+		if int(drawn.get(k, 0)) != 1:
+			bad += " %s drawn %d times (want 1);" % [k, int(drawn.get(k, 0))]
+	if not seen_ok:
+		bad += " the Seen mark did not loop over the head or did not go when Seen ended;"
+	if bad != "":
+		_fail("lane B part 2:" + bad)
+		return false
+	_ok("lane B part 2: Printer sticker = sticker_patch on a plane at the pick-up point, RECORD sticker, %d looping weak marks; Seen over the head while it lasts, Patch, Spring and rewind each drawn once" % loops)
 	return true
 
 

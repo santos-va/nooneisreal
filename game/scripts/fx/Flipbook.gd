@@ -20,11 +20,16 @@ var first: int = 0
 var count: int = 16
 var delay: float = 0.0
 var life: float = 0.0
+var loop: bool = false
+var hold: bool = false            # stay on `first` (a still); the owner frees it
+var seconds: float = 0.0          # loop: free after this long (0 = until the owner frees it)
 var _mat: StandardMaterial3D
 
 
 ## Spawns sheet `id` at `pos` (world), `size_m` metres across. opts: mode (Mode), additive (bool), first (cell 0…15),
-## count (cells to play), delay (s before the first cell), tint (Color), flip (bool, mirror left-right).
+## count (cells to play), delay (s before the first cell), tint (Color), flip (bool, mirror left-right),
+## parent (Node3D: becomes its child and `pos` is local), loop (bool: wraps; with seconds > 0 frees after that long),
+## hold (bool: stays on `first`, the owner frees it).
 ## FLOOR lies flat (decals seen from above); BILLBOARD faces the camera (side-view sheets: put `pos` at their centre).
 static func play(near: Node, sheet: String, pos: Vector3, size_m: float, opts: Dictionary = {}) -> Flipbook:
 	if not Fx.enabled or near == null or not near.is_inside_tree():
@@ -37,6 +42,9 @@ static func play(near: Node, sheet: String, pos: Vector3, size_m: float, opts: D
 	fb.first = clampi(int(opts.get("first", 0)), 0, GRID * GRID - 1)
 	fb.count = clampi(int(opts.get("count", GRID * GRID - fb.first)), 1, GRID * GRID - fb.first)
 	fb.delay = float(opts.get("delay", 0.0))
+	fb.loop = bool(opts.get("loop", false))
+	fb.hold = bool(opts.get("hold", false))
+	fb.seconds = float(opts.get("seconds", 0.0))
 	var qm := QuadMesh.new()
 	qm.size = Vector2(size_m, size_m)
 	fb.mesh = qm
@@ -55,8 +63,13 @@ static func play(near: Node, sheet: String, pos: Vector3, size_m: float, opts: D
 	fb._mat = m
 	fb.material_override = m
 	fb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	Fx.root(near).add_child(fb)
-	fb.global_position = pos
+	var parent: Node3D = opts.get("parent", null)
+	if parent != null:
+		parent.add_child(fb)
+		fb.position = pos
+	else:
+		Fx.root(near).add_child(fb)
+		fb.global_position = pos
 	if mode == Mode.FLOOR:
 		fb.rotation = Vector3(-PI / 2.0, 0.0, 0.0)
 	if bool(opts.get("flip", false)):
@@ -74,11 +87,40 @@ static func texture_for(sheet: String) -> Texture2D:
 	return _cache[sheet]
 
 
+## A whole single image (a sticker, not a sheet) as a flat PlaneMesh on the floor, `size_m` across; null if the file is
+## missing. Not gated by Fx.enabled: Printer and RecordMarker keep their node either way (the pick-up reads its position).
+static func sticker_mesh(sheet: String, size_m: float) -> MeshInstance3D:
+	var tex := texture_for(sheet)
+	if tex == null:
+		return null
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(size_m, size_m)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.albedo_texture = tex
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	var mi := MeshInstance3D.new()
+	mi.mesh = pm
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+
 ## The cell on screen now (0…count-1 relative to `first`), or -1 before the delay ends.
 func cell() -> int:
 	if delay > 0.0:
 		return -1
-	return mini(floori(life * FPS + 1e-6), count - 1)
+	if hold:
+		return 0
+	var k := floori(life * FPS + 1e-6)
+	return k % count if loop else mini(k, count - 1)
+
+
+## Fade the sheet (alpha 0…1), e.g. an owner's tail.
+func set_alpha(a: float) -> void:
+	_mat.albedo_color.a = a
 
 
 func _show(k: int) -> void:
@@ -95,7 +137,13 @@ func _process(dt: float) -> void:
 		dt = -delay
 		delay = 0.0
 	life += dt
-	if floori(life * FPS + 1e-6) >= count:
+	if hold:
+		return
+	if loop:
+		if seconds > 0.0 and life >= seconds:
+			queue_free()
+			return
+	elif floori(life * FPS + 1e-6) >= count:
 		queue_free()
 		return
 	_show(cell())
