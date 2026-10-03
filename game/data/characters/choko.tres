@@ -185,6 +185,7 @@ id = "choko"
 idle_clip = "Sword_Idle"
 dash_clip = "Roll"
 getup_clip = "LayToIdle"
+model_scene = "res://assets/characters/models/choko_m0.glb"
 display_name = "CHOKO"
 tagline = "Team leader. Chainmail jacket, emerald shuka sword, the wristwatch that records and stops time. Control fighter."
 max_hp = 1050.0

@@ -43,6 +43,7 @@ func _ready() -> void:
 	p2 = _spawn(2, GameState.p2_character, 3.0, -1, GameState.p2_is_cpu)
 	p1.opponent = p2
 	p2.opponent = p1
+	GameState.duel.behind = GameState.camera_behind()
 	if GameState.free_move:
 		camera.process_mode = Node.PROCESS_MODE_DISABLED
 		duel_camera.setup(p1, p2)

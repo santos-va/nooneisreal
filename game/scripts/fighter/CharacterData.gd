@@ -17,6 +17,9 @@ extends Resource
 @export var idle_clip: String = "Idle_Loop"
 @export var dash_clip: String = "Roll"
 @export var getup_clip: String = "LayToIdle"
+## Launch 5: the hero GLB (Meshy rig, 24 bones) the mannequin's pose is retargeted onto; "" = draw the bare mannequin.
+## Art reference, T6 Аполлон — docs/Art/Textures-Registry.md (model-choko-m0, model-skea-m1).
+@export_file("*.glb") var model_scene: String = ""
 @export var weight: float = 1.0                  # scales knockback received (lighter flies further)
 ## 0…1, how steadily the fighter stands on water (river stage). Lower = more sway, slower walk,
 ## stumbles on weaker swells. PLACEHOLDER; Santos 2026-10-03: Choko and Skea both 0.85.
