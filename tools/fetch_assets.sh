@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fetch the Higgsfield-generated source art into the Godot project.
-# The cloud agent container cannot reach the CDN (egress policy), so this runs on a dev machine:
+# Runs on a dev machine or in the cloud container (CDN allowed for T6 since 2026-10-03):
 #   bash tools/fetch_assets.sh          # downloads into game/assets/...
 # Every file here is registered in docs/Art/Textures-Registry.md — keep the two in sync (gate: texture_registry_check.py).
 set -euo pipefail
@@ -10,7 +10,10 @@ CARDS="$ROOT/game/assets/characters/cards"
 MODELS="$ROOT/game/assets/characters/models"
 TEX="$ROOT/game/assets/textures"
 PROPS="$ROOT/game/assets/props"
-mkdir -p "$BG" "$CARDS" "$MODELS" "$TEX" "$PROPS"
+MENU="$ROOT/game/assets/menu"
+SPRITES="$ROOT/game/assets/sprites"
+VFX="$ROOT/game/assets/vfx"
+mkdir -p "$BG" "$CARDS" "$MODELS" "$TEX" "$PROPS" "$MENU" "$SPRITES" "$VFX"
 CDN="https://d8j0ntlcm91z4.cloudfront.net/user_3JiwWmSIzQvXHlHhmCxwWysInqU"
 
 fetch() { # url, dest
@@ -47,5 +50,19 @@ fetch "$CDN3D/hf_20261003_005206_a2913501-694d-4bbc-9908-66892760bf7e.png" "$BG/
 fetch "$CDN3D/hf_20261003_013154_b0a9189d-0b0a-435f-b5a5-459b105374ce.png" "$TEX/tex_water_foam.png"
 fetch "$CDN3D/hf_20261003_013154_bb5e3e44-27c1-478c-9b2d-2252bf2e9339.png" "$TEX/tex_water_ripple.png"
 fetch "$CDN3D/hf_20261003_013416_c5900952-f4f0-4728-8ada-5b30d641be3a.png" "$PROPS/props_anchors_v1.png"
+
+# Wave 2 canon picked by Santos, never downloaded (plan Picks-to-Game B1). 0 credits.
+# docs/Art/Prompts/Menu-Skyline-Prompts.md rows 1c, 27, 31, 33, 39, 43, 30 and N-7..N-9.
+# Decompose layers bc9d78b2 / 9fe905f1: Higgsfield tools return no layer URLs — not fetchable.
+fetch "$CDN3D/hf_20261003_005204_73ee9806-ca24-4dcc-965f-848941e01fe7.png" "$MENU/menu_skyline_plate_v1.png"
+fetch "$CDN3D/hf_20261003_013309_f500c1cf-46e3-4931-a83e-8cda14c5fdd2.png" "$MENU/menu_roof_edge_v1.png"
+fetch "$CDN3D/hf_20261003_013449_08c09625-7766-4984-81c8-f03d9bae618f.png" "$MENU/menu_depth_cards_v1.png"
+fetch "$CDN3D/hf_20261003_013335_4603954f-5b46-4067-826c-43788b9d8b79.png" "$SPRITES/sprite_steamcars_v1.png"
+fetch "$CDN3D/hf_20261003_013319_cc4637e4-da18-48d9-90b0-45ca3e8c3941.png" "$SPRITES/sprite_pedestrian_worker_walk.png"
+fetch "$CDN3D/hf_20261003_022151_b4cc96ad-0d95-42e6-a2e7-23d7c4d6ba8c.png" "$SPRITES/sprite_pedestrian_lady_walk.png"
+fetch "$CDN3D/hf_20261003_022149_76fac42d-05a0-43a2-b900-3cb9ac705be0.png" "$SPRITES/sprite_pedestrian_courier_walk.png"
+fetch "$CDN3D/hf_20261003_022150_ccc3ca6e-5e08-4673-baf2-e34dbd197351.png" "$SPRITES/sprite_pedestrian_elder_walk.png"
+fetch "$CDN3D/hf_20261003_013334_bd9797c1-11f4-4ef3-9e32-a26aef2dc1ca.png" "$VFX/vfx_steam_puff_v1.png"
+fetch "$CDN3D/hf_20261003_013436_e9fd9e33-beaa-43b7-8e1c-573c12691253.png" "$PROPS/drone_heavy_v1.png"
 
 echo "done. Now run: make check   (re-imports the new textures headlessly)"
