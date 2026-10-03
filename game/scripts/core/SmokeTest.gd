@@ -114,7 +114,16 @@ func _check_boot() -> bool:
 		if got != c[1]:
 			_fail("Main.free_move_arg(%s) → %d, expected %d" % [c[0], got, c[1]])
 			return false
-	_ok("launch flags: --plane → plane, --free-move → free, none → default (%d cases)" % cases.size())
+	# the wiring Main._ready runs, on fresh copies: a flipped or dropped set_free_move shows up here
+	for c in [[["--plane"], false], [["--free-move"], true], [[], true]]:
+		var gs: Node = GameState.get_script().new()
+		main_script.apply_launch_args(PackedStringArray(c[0]), gs)
+		var on: bool = gs.free_move
+		gs.free()
+		if on != c[1]:
+			_fail("Main.apply_launch_args(%s) left free_move %s, expected %s" % [c[0], on, c[1]])
+			return false
+	_ok("launch flags: --plane → plane, --free-move → free, none → default (%d parse + 3 wiring cases)" % cases.size())
 	# Import with gltf/embedded_image_handling = embed: extracting writes *_Image_0.jpg next to the GLB
 	# (unregistered → `make gates` red), discarding loses the texture silently.
 	var heroes := ["res://assets/characters/models/choko_m0.glb", "res://assets/characters/models/skea_m1.glb"]
