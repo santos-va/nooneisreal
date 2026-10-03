@@ -26,5 +26,17 @@
 - [ ] T2 Гефест · smoke-замір переваги light на блоці (±1 кадр) · `make check`
 - [ ] T2 Гефест · пружина дрона (f/ζ — від Ареса), точка якоря не рухається · smoke з ADR-011
 
+## Друга половина 0.3-A — референси вільного руху (та сама сесія, слово Santos «візьми другу половину»)
+
+- Бриф [[2026-10-03-Free-Movement-References]]: усі сім PLACEHOLDER Ареса проти T8 / SC6 / VF5 / Storm / Sparking! Zero, N° камери, `SpringArm3D` і `Camera3D` у 4.7.
+- **Заземлено:** «sidestep без i-кадрів» (T8 дослівно); back hit — VF5 +2/+3/+6 кадрів за шкодою (дослівно).
+- **UNGROUNDED:** `tracking_deg` (T8 міряє трекінг кадрами step, не градусами), `circle_speed_mult`, `block_arc_deg` (кутового блоку немає в жодній грі), `arena_radius` у метрах, `wall_splat_frames`, `grapple_cone_deg` (+ внутрішня розбіжність 30° ↔ 60°), N° камери (VR-дефолти 60 і 180°/с розходяться).
+- Розрахунок: лінія між бійцями на 0.95 м обертається 4.5–5°/тік при обході, 13.6°/тік при деші, ~45°/тік на Flash Step → N — це кламп у `DuelCamera`, а не властивість руху.
+- Godot 4.7: `SpringArm3D` не згладжує — ставить камеру миттєво щотіку; `margin` у коді віднімається лише без дитини-камери (розбіжність із документацією).
+
+### Дії
+- [ ] T5 Арес · обрати числа замість PLACEHOLDER з урахуванням §1 брифу; розв'язати 30° ↔ 60° конуса гарпуна
+- [ ] T2 Гефест · `DuelCamera`: кламп через `rotate_toward`, зафіксувати «за кадр» = тік чи кадр рендеру; перевірити `margin` у сцені
+
 ## Related
-- [[state]] · [[2026-10-03-Combat-Numbers-Grounding]] · [[02-Combat-System]] · [[ADR-011-Diegetic-Grapple-Anchors]]
+- [[state]] · [[2026-10-03-Combat-Numbers-Grounding]] · [[2026-10-03-Free-Movement-References]] · [[02-Combat-System]] · [[ADR-011-Diegetic-Grapple-Anchors]]
