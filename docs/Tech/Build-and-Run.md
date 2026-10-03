@@ -7,6 +7,13 @@
    агент у хмарі їх завантажити не може).
 3. `GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot make check` — імпорт, парс, smoke-тест.
 
+## Оновити гру
+
+- `GODOT_BIN=… make update` — `git fetch` → fast-forward поточної гілки → примусовий `--import` (нові `class_name`
+  без нього не видно) → «готово: make run». Показує нові коміти.
+- `make update BRANCH=<гілка>` — спершу перейти на гілку (наприклад, гілку PR, щоб спробувати до мержу).
+- Відмовляє й нічого не стирає, якщо є незакомічені зміни або гілка розійшлася з `origin`.
+
 ## Грати
 
 - `GODOT_BIN=… make run` — при першому запуску сам імпортує проєкт (до хвилини), далі запускає `scenes/main/Main.tscn` → меню → «FIGHT · P1 vs CPU».
@@ -15,7 +22,7 @@
 
 ## Перевірки
 
-- `make check` — authoritative: `--headless --import` → `--check-only` на кожен `.gd` → `-- --smoke` (11 перевірок бою).
+- `make check` — authoritative: `--headless --import` → `--check-only` на кожен `.gd` → `-- --smoke` (36 перевірок, 2026-10-03).
 - `make gates` — wikilinks, реєстр ассетів, парність ролей, парс .gd.
 - Скриншоти без GPU: `godot --path game --rendering-driver opengl3 --rendering-method gl_compatibility -- --screenshot=/tmp/shots`
   (у контейнері — через `xvfb-run` і Mesa llvmpipe).
