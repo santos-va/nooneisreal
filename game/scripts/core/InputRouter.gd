@@ -103,7 +103,7 @@ func cycle_profile() -> void:
 ## One-line control hint for the HUD / menu, matching the active profile.
 func hint_text(vs_cpu: bool) -> String:
 	if GameState.free_move:
-		return _hint_profile(vs_cpu).replace("W/Space jump · S crouch", "W/S sidestep · Space jump") + "   [3D free move — keys TODO #26]"
+		return _hint_profile(vs_cpu).replace("W/Space jump · S crouch", "W/S sidestep · Space jump").replace("(S+E pull)", "(no anchor in cone → pull)").replace("(S+R pull)", "(no anchor in cone → pull)") + "   [3D free move — keys TODO #26]"
 	return _hint_profile(vs_cpu)
 
 
