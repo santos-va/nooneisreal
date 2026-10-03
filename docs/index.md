@@ -17,6 +17,7 @@ Santos і товариша (лідер команди [[Choko]] — контро
 | Бачення | [[01-Vision]] · [[Roadmap]] · [[Glossary]] |
 | Бій | [[02-Combat-System]] · [[03-Skills-Framework]] · [[04-Grapple-System]] · [[08-Balance]] |
 | **План виробництва** | [[2026-10-03-Production-Plan]] — старт нової сесії |
+| **Меню «погляд з даху»** | [[2026-10-03-Main-Menu-Skyline]] — ланцюжок issues у [[state]] |
 | Платформи та UI | [[05-Platforms-Input]] · [[06-UI-UX]] · [[07-Audio]] |
 | Персонажі | [[Choko]] · [[Skea]] · [[Roster]] |
 | Світ | [[Kronshift]] · [[Stage-River]] · [[Lore]] |
