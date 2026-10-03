@@ -1,9 +1,9 @@
 # План — паки Santos у гру: 3D-пропи, стиль через Higgsfield, три арени, на яких хочеться битись
 
-**Дата:** 2026-10-03 · **Роль:** T1 Дедал · **Статус:** `draft` — чекає Santos на Р1–Р3.
+**Дата:** 2026-10-03 · **Роль:** T1 Дедал · **Статус:** `approved` — Santos «ааа» 2026-10-03: Р1 = A, Р2 = A, Р3 = A ([[2026-10-03-T1-Repo-Cleanup-Packs]]).
 **Виріс із:** голосових Santos 2026-10-03 ([[2026-10-03-T1-Santos-Packs]]) · [[2026-10-03-Sprint-Arenas-VFX]] (смуги A, C, H) ·
 [[2026-10-03-Free-Cartoon-Texture-Sources]] (звідки Santos брав паки) · [[2026-10-03-Arena-360-Textures]] (R11) ·
-[[Arenas-360-Prompts]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-013-License-Check-At-Release]].
+[[Arenas-360-Prompts]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-013-License-Check-At-Release]] · ліцензії паків — [[2026-10-03-Pack-Licenses]] (Ф0.2).
 **Кредити:** у цьому плані не витрачено жодного. Кожен пакет Higgsfield — `RED: потребує слова Santos`, перед ним `balance` → `get_cost`.
 
 ## Що хоче Santos (його словами, стисло)
@@ -22,7 +22,7 @@
 
 | що | команда | вихід |
 |---|---|---|
-| паки Santos | `git log --oneline origin/main..origin/textures/santos-pack` | 1 коміт `7ce1ba3` «Prop packs from Santos: KayKit Dungeon EXTRA + FBX props», 10 файлів у `tools/packs/`; у `main` не змерджено, PR немає |
+| паки Santos | `git log --oneline origin/main..origin/textures/santos-pack` | 1 коміт `7ce1ba3` «Prop packs from Santos: KayKit Dungeon EXTRA + FBX props», 10 файлів у `tools/packs/`; у `main` не змерджено, PR немає. **Після переписування** (Santos «прибрати повністю», 2026-10-03): `46da3e6` KayKit + `6bd36a2` MegaKit, FBX — 0 |
 | KayKit Dungeon 1.1 EXTRA | `unzip` → `License.txt` | **CC0 1.0**, Kay Lousberg, «free to use in personal, educational and commercial projects» (файл відкрито в цій сесії) |
 | скільки моделей KayKit | `ls Assets/gltf/*.gltf \| wc -l` | **283**; формати: gltf, fbx, fbx(unity), obj |
 | текстура KayKit | `Assets/textures/dungeon_texture.png` (PNG-заголовок) | **одна палітра-атлас 1024×1024**: 8×4 плашки-градієнти; ще 6 альтернатив (`Golden`, `BlackAndWhite`, `SepiaA/B`, `NightA/B`). Деталей у текстурі немає — «чіткість» KayKit дає наш toon + контур, не роздільність |
@@ -58,6 +58,9 @@
 
 ## Розвилки для Santos
 
+**Закрито (Santos «ааа», 2026-10-03): Р1 = A, Р2 = A, Р3 = A.** За Р2 = A гілка `textures/santos-pack` — склад сирців паків:
+у `main` не мерджиться і живе довше за робочі гілки.
+
 **Р1 — як фарбуємо пропи паків.**
 - **A (рекомендую):** усі пропи — перефарбована палітра + наш toon/контур, 0 кр.; `meshy_v5_retexture` — лише 4–6 героїчних
   пропів у центрі уваги. Один стиль, мало кредитів, міняється за хвилину.
@@ -70,12 +73,31 @@
 - B: змерджити гілку як є — усе в `main`, кожен наступний пак теж.
 
 **Р3 — дальнє кільце.**
+> **Замінено 2026-10-03 (T1, голос Santos «об'єм замість 4 однакових карток»):** Р3 = A більше не діє — фон стає театром шарів, план [[2026-10-03-Arena-Depth-Life]] (Р1 там). Ф4.3 нижче не виконувати.
 - **A (рекомендую):** 4 **різні** картки N/E/S/W на нинішньому кільці (Гефест: `texture` → `textures: [N, E, S, W]` у
   `STAGES`), промпти v2 «великі форми, мало деталей», ближні 3–8 м — 3D-пропи.
 - B: панорама-небо (R11, форма А) — 0 паралаксу, але свій sky-шейдер і шов 0°↔360°, якого Higgsfield не гарантує.
 
 Поза цим планом: **крамниця скінів і донат** — окремий план і ADR, коли Santos скаже; бачення вже записане в
 [[Stage-Bazaar]] § Базар у майбутньому. Цей план дає їй вітрину — гарні арени.
+
+## Ліцензії паків — що можна вже зараз (T1 за брифом [[2026-10-03-Pack-Licenses]], 2026-10-03)
+
+| пак | ліцензія | чим доведено | у `game/assets/` | у Higgsfield |
+|---|---|---|---|---|
+| KayKit Dungeon 1.1 EXTRA | **CC0 1.0** | `License.txt` у zip, відкрито в сесії T1 | так | так |
+| Quaternius Fantasy Props MegaKit [Standard] | **CC0 1.0** | `git show origin/textures/santos-pack:tools/packs/Fantasy_Props_MegaKit_Standard/License_Standard.txt` → «License: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication» | так | так |
+| Creative Trio, 9 FBX | **UNGROUNDED** | автор роздає ті самі паки під CC0 на сайті й продає в сторах; у файлах ні `License`, ні URL; CC0 на сайті видача підтверджує лише для `Stone_Bridges_01` і `Potions_Final_CT`, `Wooden_Bridges_001` знайдено **тільки в сторах** | **прибрано з гілки** | **ні** |
+
+**Creative Trio прибрано (Santos «прибрати повністю», 2026-10-03).** Спершу T1 поставив 9 FBX на карантин, бо канал
+завантаження невідомий. Якщо це стор, ліцензія прив'язана до покупця, а гілка лежить у **публічному** репо
+(GitHub API `search_repositories repo:santos-va/nooneisreal` → `"visibility":"public"`; те саме — журнал [[2026-10-03-T1-Repo-Cleanup-Packs]]) — це вже поширення сирців. Santos обрав повне прибирання: гілку `textures/santos-pack` перезібрано без FBX
+(force-push `6210890` → `6bd36a2` із замком на старий SHA; `git diff --name-status` старої й нової верхівки → рівно 9 `D`;
+`git log f94f0c8..6bd36a2 -- '*.fbx'` → 0 комітів). Чи GitHub ще віддає старі коміти за SHA — не перевірено. Повернути
+Creative Trio можна лише новим завантаженням з creativetrio.art з `License` і палітрами — тоді знову через Архімеда.
+
+Критичний шлях від Creative Trio **не залежить**: усе, крім дерев і кам'яного мосту, закривають KayKit і MegaKit (таблиця
+нижче, колонка «заміна»).
 
 ## Як розфасовуємо (цільова структура)
 
@@ -128,22 +150,42 @@ game/assets/
 | 6 | каміння, руїни | береги `river` | `rocks`, `rubble_half` |
 | 39 + 1 | поза Cronshift: грати, шипи, мімік, ліжка, зброя, ключі, кирки | резерв, у гру не йде | `bar_straight_A`, `floor_tile_big_spikes`, `chest_mimic` |
 
-**Creative Trio, 9 FBX, 187 мешів** (ліцензія — не перевірено):
+**Creative Trio, 9 FBX, 187 мешів** — **прибрано з гілки** (§ Ліцензії паків). Таблиця лишається довідкою: що це було і чим закриваємо без них:
 
-| файл | мешів | що | арена | зауваги |
-|---|---|---|---|---|
-| `Stone_Bridges_01.fbx` | 12 | кам'яні мости 15–19 м | `river` E — міст у ближньому плані | герой-кандидат на ретекстур |
-| `Wooden_Bridges_001.fbx` | 10 | дерев'яні мости/помости | `river` S — причал, баржі | імена `Cube.*` → перейменувати |
-| `Doors_Pack.fbx` | 45 | двері, ворота, арки дерев'яні й кам'яні | фасади всіх арен; арка входу в критий ринок `bazaar` S | `Base_Material_Emission` — світні вікна вночі? |
-| `Tables_Chairs_01.fbx` | 15 | лавки, столи, стілець | тераси `fountain` W | |
-| `Trees_Pack_02.fbx` | 24 | дерева, усі нормовані до 1 м | `fountain` площа, `river` набережна | матеріал `GenshinMaterial.Default` |
-| `Rocks_01.fbx` | 29 | каміння, скельні формації | береги `river` | своя палітра `CT_Rocks_Palette.png` |
-| `Wooden_Fences_01.fbx` | 26 | паркани, зламані дошки | `bazaar` задвірки, `river` | |
-| `Potions_Final_CT.fbx` | 16 | пляшки-зілля | ятка спецій `bazaar` W; **«хілочки»** майбутньої крамниці | імена `Cylinder.*`, `Sphere.*` → перейменувати; є emission |
-| `Food_01_CT.fbx` | 10 | бургер, картопля, хот-дог, стейк, сосиска, пиріг | їжа на ятках `bazaar` | бургер і паперовий стакан — сучасні; чи пасує старому Cronshift — Кліо/Santos |
+| файл | мешів | що | арена | зауваги | заміна з CC0-паків |
+|---|---|---|---|---|---|
+| `Stone_Bridges_01.fbx` | 12 | кам'яні мости 15–19 м | `river` E — міст у ближньому плані | герой-кандидат на ретекстур | **немає** — міст лишається на мальованій картці E |
+| `Wooden_Bridges_001.fbx` | 10 | дерев'яні мости/помости | `river` S — причал, баржі | імена `Cube.*` → перейменувати; лише в сторах | KayKit `floor_wood_*` + `scaffold_*` — причал |
+| `Doors_Pack.fbx` | 45 | двері, ворота, арки дерев'яні й кам'яні | фасади всіх арен; арка входу в критий ринок `bazaar` S | `Base_Material_Emission` — світні вікна вночі? | KayKit `wall_doorway`, `wall_arched`, `wall_window_*` |
+| `Tables_Chairs_01.fbx` | 15 | лавки, столи, стілець | тераси `fountain` W | | MegaKit `Table_Large`, `Bench`, `Chair_1`, `Stool`; KayKit `table_round_*` |
+| `Trees_Pack_02.fbx` | 24 | дерева, усі нормовані до 1 м | `fountain` площа, `river` набережна | матеріал `GenshinMaterial.Default` | **немає** в KayKit/MegaKit — див. Ф0.4 |
+| `Rocks_01.fbx` | 29 | каміння, скельні формації | береги `river` | своя палітра `CT_Rocks_Palette.png` | KayKit `rocks`, `rocks_decorated`, `rubble_*` |
+| `Wooden_Fences_01.fbx` | 26 | паркани, зламані дошки | `bazaar` задвірки, `river` | | немає; не критично — KayKit `barrier_*` або без парканів |
+| `Potions_Final_CT.fbx` | 16 | пляшки-зілля | ятка спецій `bazaar` W; **«хілочки»** майбутньої крамниці | імена `Cylinder.*`, `Sphere.*` → перейменувати; є emission | MegaKit `Potion_1/2/4`, `SmallBottles_1`, `Shelf_Small_Bottles`; KayKit `bottle_*` |
+| `Food_01_CT.fbx` | 10 | бургер, картопля, хот-дог, стейк, сосиска, пиріг | їжа на ятках `bazaar` | бургер і паперовий стакан — сучасні; чи пасує старому Cronshift — Кліо/Santos | MegaKit `Barrel_Apples`, `FarmCrate_Apple/Carrot`, `Carrot`, `Cauldron`, `Pot_1`; KayKit `plate_food_*` — і питання про бургер знімається |
 
-**Quaternius Fantasy Props MegaKit [Standard]** — чекає завантаження (нижче § Як закинути пак). За ресерчем T3 (переказ
-WebSearch, не перевірено): 200+ пропів, є ятки ринку. Після завантаження — той самий інвентар, що вище, і рядок у цій таблиці.
+**Quaternius Fantasy Props MegaKit [Standard]** — **на гілці** `textures/santos-pack` (`6bd36a2`; до переписування — `6210890`; T1 за словом Santos):
+`tools/packs/Fantasy_Props_MegaKit_Standard/` — лише `Exports/glTF` (94 `.gltf` + 94 `.bin` + 13 `.png`, 43 МБ) і
+`License_Standard.txt` (CC0 1.0; «standard FREE version… only contains a portion of the models» — повні Pro/Source платні).
+Архів 150 МБ цілим не проходить ліміт GitHub 100 МБ; FBX, OBJ і нормалі UE не взято.
+
+Інвентар MegaKit (T1, `accessors[POSITION]` у 94 `.gltf`, `python3`): **реальний масштаб** — `Barrel` 0.70×0.90×0.70 м,
+`Chair_1` 1.12 м, `Crate_Wooden` 1.19 м, `Stall_Empty` 1.84×**2.63**×0.93 м. Текстура — не палітра, а **4 трім-атласи**
+2048² (`T_Trim_{Props,Furniture,Metal,Cloth}` × BaseColor/Normal/ORM) + `T_Page_Noise` 4096²; матеріали `*_Vertex` (39 із 94 моделей; атрибут `COLOR_0` — у 63)
+тонують атлас **кольором вершин**.
+
+| група | арена | моделі |
+|---|---|---|
+| **ятки** — героїчний проп без Higgsfield | `bazaar` | `Stall_Empty`, `Stall_Cart_Empty` |
+| ринок: бочки, ящики, урожай | `bazaar`, `river` | `Barrel`, `Barrel_Apples`, `Barrel_Holder`, `Crate_Wooden`, `Crate_Metal`, `FarmCrate_{Apple,Carrot,Empty}`, `Bag`, `Bucket_*` |
+| ятка спецій і «хілочки» | `bazaar` W, майбутня крамниця | `Potion_1/2/4`, `SmallBottle(s_1)`, `Shelf_Small_Bottles`, `Pouch_Large`, `Coin_Pile*` |
+| кузня (індустріальний Cronshift) | `bazaar` E | `Anvil`, `Anvil_Log`, `Workbench`, `Whetstone`, `WeaponStand`, `Peg_Rack` |
+| книжкова ятка (гримуари — лор Skea) | `bazaar` | `BookGroup_*`, `Book_Stack_*`, `BookStand`, `Scroll_*` |
+| тераси кав'ярень | `fountain` W | `Table_Large`, `Bench`, `Chair_1`, `Stool`, `Mug`, `Table_{Plate,Fork,Knife,Spoon}` |
+| набережна | `river` | `Rope_1/2/3`, `Chain_Coil`, `Barrel`, `Crate_*` |
+| світло-декор (не якір) | всі | `Lantern_Wall`, `Torch_Metal`, `CandleStick_*` |
+| тренування | режим тренування | `Dummy` |
+| поза ареною | — | `Bed_Twin*`, `Bookcase_2`, `Chandelier`, `Nightstand_Shelf`, `Cabinet`, `Cage_Small`, `Key_*`, зброя |
 
 ## Кроки
 
@@ -153,9 +195,10 @@ WebSearch, не перевірено): 200+ пропів, є ятки ринку
 
 | # | хто | що | ризик | перевірка |
 |---|---|---|---|---|
-| 0.1 | Santos | докласти на гілку `textures/santos-pack` палітри `CT_Pallete.png`, `EK_Pallete.png`, `CT_Rocks_Palette.png` і файли ліцензії Creative Trio з тих самих завантажень; закинути MegaKit (§ Як закинути пак) | без палітр 9 FBX — сірі | `git ls-tree -r --name-only origin/textures/santos-pack tools/packs \| grep -ci pal` → ≥ 3 |
-| 0.2 | T3 Архімед | ліцензія Creative Trio і MegaKit: текст `License`/сторінки з дати завантаження; бриф `docs/Research/2026-10-03-Pack-Licenses.md` | CC-BY → рядок у титрах; NoAI → не можна ганяти через Higgsfield | файл існує; у кожного паку — цитата + URL + дата або `UNGROUNDED` |
+| 0.1 | Santos | **зроблено / знято**: MegaKit на гілці (`6bd36a2`); палітри Creative Trio більше не потрібні — пак прибрано | — | `git ls-tree -r --name-only origin/textures/santos-pack tools/packs \| grep -c '\.fbx$'` → 0 |
+| 0.2 | T3 Архімед | **зроблено** — [[2026-10-03-Pack-Licenses]]: MegaKit CC0 (закрито `License_Standard.txt`), Creative Trio UNGROUNDED → карантин (§ Ліцензії паків). Лишилось: Santos — канал і `License` Creative Trio | CC-BY → рядок у титрах; NoAI → не можна ганяти через Higgsfield | файл існує; у кожного паку — цитата + URL + дата або `UNGROUNDED` |
 | 0.3 | T2 Гефест | контакт-лист паків: PNG-сітка всіх мешів з іменами (будь-яким способом — Godot на Mac або скрипт у `tools/art/`), у `docs/assets/screenshots/` | без картинки T6 і Кліо називають наосліп | `ls docs/assets/screenshots/packs_*.png` → по одному на пак |
+| 0.4 | Santos | дерева для площі й набережної — у CC0-паках їх немає. Варіант: докачати Quaternius Stylized Nature MegaKit (CC0 за переказом T3, [[2026-10-03-Free-Cartoon-Texture-Sources]] № 2) тим самим способом, що MegaKit | без дерев площа гола; нічого не ламає | `git ls-tree -r --name-only origin/textures/santos-pack \| grep -ci tree` → ≥ 1 |
 
 ### Ф1. Каталог і імена — T7 Кліо + T2 Гефест
 
@@ -177,15 +220,16 @@ WebSearch, не перевірено): 200+ пропів, є ятки ринку
 |---|---|---|---|---|
 | 3.1 | T6 | `docs/Art/Palette-Remap.md`: кожна з 32 плашок `dungeon_texture.png` (і плашки `CT_Pallete`) → колір [[Style-Guide]], день і ніч | кольори «пливуть» від ключа стилю | таблиця 32 рядки, кожен з hex «було → стало» |
 | 3.2 | T2 | `tools/art/recolor_palette.py` (PIL): атлас + таблиця 3.1 → `models/props/palettes/<pack>_{day,night}.png`; градієнт у плашці зберігається або плющиться — за 3.1 | зсув UV-плашок | скрипт ідемпотентний: другий прогін → той самий `sha256sum` |
+| 3.2b | T2 | MegaKit: `tools/art/recolor_trims.py` — 4 атласи BaseColor → постеризація до кольорів [[Style-Guide]] (таблиця 3.1 + трім-рядки), Normal/ORM у гру не йдуть: `toon.gdshader:16-17` читає лише `albedo_tex` (`base = albedo.rgb * tex.rgb`). Той самий рядок **не множить на `COLOR`** — для `*_Vertex` (39 моделей) додати множення на колір вершин (прапорець у `toon.gdshader`, за замовчуванням вимкнений, щоб герої не змінились) | без `COLOR` ятки й зілля стануть одного кольору; з ним увімкненим для всіх — ризик для мешів героїв | `make check` → хеші реплеїв = база; `sha256sum` стабільний на 2-му прогоні; скрин `Stall_Empty` на Mac у PR |
 | 3.3 | T2 | імпорт вибраних моделей (Ф1.1) у `game/assets/models/props/<категорія>/`, матеріал-перекриття: toon + контур + палітра дня/ночі | 283 моделі = повільний імпорт; беремо лише вибрані | `make check`; `texture_registry_check.py` → N/N |
 
 ### Ф4. Арени збираються — T5 Арес → T2 Гефест
 
 | # | хто | що | ризик | перевірка |
 |---|---|---|---|---|
-| 4.1 | T5 | масштаб паків під бійця й укриття: один множник на пак (KayKit `barrel_large` 2.0 м — більше за реальну бочку); що з пропів — укриття з колізією, що — декор без неї; фонтан у центрі кола чи ні ([[Stage-Fountain]]) | проп вищий за коробку → «невидима стіна» | рядки в [[04-Grapple-System]] § Якорі й укриття, кожне число PLACEHOLDER або з джерелом |
+| 4.1 | T5 | масштаб паків під бійця й укриття: один множник на пак (KayKit `barrel_large` 2.0 м проти MegaKit `Barrel` 0.90 м — паки разом без множника не стануть); що з пропів — укриття з колізією, що — декор без неї; фонтан у центрі кола чи ні ([[Stage-Fountain]]) | проп вищий за коробку → «невидима стіна» | рядки в [[04-Grapple-System]] § Якорі й укриття, кожне число PLACEHOLDER або з джерелом |
 | 4.2 | T2 | `PropKit`: на кожну коробку/циліндр `ArenaLayout.cover()` — набір пропів того самого габариту; декор — по колу 20–30 м | розбіжність вигляду й колізії | smoke: AABB візуалу в межах коробки з допуском від Ареса (4.1, PLACEHOLDER) — `make check` |
-| 4.3 | T2 | `Backdrop.gd` + `STAGES`: `textures: [N, E, S, W]` для дня й ночі (Р3 = A) | 4 шви на кутах | `make check`; скрин 4 боків на Mac у PR |
+| 4.3 | T2 | ~~`Backdrop.gd` + `STAGES`: `textures: [N, E, S, W]`~~ — **замінено** Ф4 плану [[2026-10-03-Arena-Depth-Life]] (шари) | — | — |
 | 4.4 | T2 | підлога — тайл `textures/floor/<stage>_*.png` зі світовими UV | розтяг на колі 20 м | скрин з камери на краю кола |
 
 ### Ф5. Підписи, wikilinks, аудит — T7 Кліо, T4 Феміда
@@ -206,26 +250,30 @@ WebSearch, не перевірено): 200+ пропів, є ятки ринку
 
 | # | що | де |
 |---|---|---|
-| 0a | реєстр: розділ «Паки-джерела» — KayKit Dungeon 1.1 EXTRA (CC0, `License.txt` відкрито), Creative Trio ×9 (ліцензія — після Ф0.2), MegaKit | [[Textures-Registry]] |
+| 0a | реєстр: розділ «Паки-джерела» — KayKit Dungeon 1.1 EXTRA (CC0, `License.txt` відкрито), MegaKit (CC0, `License_Standard.txt`), Creative Trio — не реєструємо: прибрано з гілки (§ Ліцензії паків) | [[Textures-Registry]] |
 | 0b | **ключ стилю**: промпт «перемалюй цей кадр у Sketch-Cel» — вхід `Samples/Dungeon_sample_big.png` з паку KayKit (CC0) + канон `a2913501`; виходом визначається палітра-ціль | [[Prompt-Library]] новий § «Ключ стилю» |
 | 0c | `Palette-Remap.md` (Ф3.1) — чернетка з hex [[Style-Guide]] ще до ключа стилю | `docs/Art/Palette-Remap.md` |
 | 0d | **кільце v2 «менше деталей»**: переписати SCENE трьох арен — великі силуети, 3–5 масивів на картку, жодних дрібних вивісок і людей; ближні 3–8 м прибрати з картки (їх дають 3D-пропи) | [[Arenas-360-Prompts]] § v2 |
 | 0e | **декалі** (альфа, вид згори): калюжі, мокра бруківка, тріщини, мох між плитами, люк, трамвайні рейки, рибальська сітка, розсипані спеції, сліди фарби. Без літер — єдиний напис у місті CRONSHIFT (ADR-011 п. 5) | [[Arenas-360-Prompts]] § Декалі |
-| 0f | **героїчні пропи**: фонтан зі статуєю, ятка з тентом, ліхтар-якір, трамвайна зупинка, (опційно) кран над річкою — для кожного: вхід (меш з паку для `meshy_v5_retexture` або лист для `image_to_3d`), промпт стилю | [[Arenas-360-Prompts]] § Пропи |
+| 0f | **героїчні пропи**: фонтан зі статуєю, ліхтар-якір, трамвайна зупинка, (опційно) кран над річкою — для кожного: вхід (меш з KayKit/MegaKit для `meshy_v5_retexture` або лист для `image_to_3d`), промпт стилю. **Ятку не генеруємо** — MegaKit `Stall_Empty`; вхід для ретекстуру — лише CC0-паки, не Creative Trio | [[Arenas-360-Prompts]] § Пропи |
 | 0g | підлоги: до наявних трьох (`tex-floor-cobble`, `-market-planks`, `-square-tiles`) — `tex-floor-quay-stone` (набережна `river`) і `tex-floor-wet-cobble-night` | [[Arenas-360-Prompts]] § Текстури |
 | 0h | `get_cost` на кожен пакет 1–4 нижче + `balance`; таблиця кошторису в PR | PR T6 |
 | 0i | перевірка паків очима (контакт-лист Ф0.3): які пропи «наші», які викинути за стилем | `Prop-Catalog.md`, колонка «Аполлон» |
+| 0j | MegaKit: як 4 трім-атласи лягають у Sketch-Cel — колонка трімів у `Palette-Remap.md`; промпт опційного перемальовування атласу з замком розкладки (вхід — `T_Trim_*_BaseColor.png`, CC0) | `docs/Art/Palette-Remap.md` |
 
-### Хвиля T6-1 — RED: потребує слова Santos (≈ 16.5 кр.)
+### Хвиля T6-1 — RED: потребує слова Santos (≈ 16.5 кр.; з трімами 27.5)
+> **Пауза (T1, 2026-10-03):** «проба кільця v2» не потрібна — шари беруться з уже оплачених вирізок v2 (гілка `claude/practical-hopper-rmfgi4`), план [[2026-10-03-Arena-Depth-Life]] Ф3. Ключ стилю і трім-атласи MegaKit — лишаються в силі.
 
 | пакет | шт | ≈ кр. |
 |---|---|---|
 | ключ стилю, 2 варіанти | 2 | 5.5 |
 | стиль-проба кільця v2: `river` N день + ніч, по 2 варіанти | 4 | 11 |
+| опційно: перемальовування 4 трім-атласів MegaKit, якщо скрипт 3.2b не дасть стилю (ризик — зсув розкладки під UV, перевірка накладанням контурів) | 4 | 11 |
 
 Santos каже «стиль так» → хвиля 2. «Ні» → T6 правит 0b/0d, проба повторюється.
 
 ### Хвиля T6-2 — RED (≈ 102.5 кр. з 1 варіантом)
+> **Замінено (T1, 2026-10-03):** «решта кільця» — це вже згенеровані 20 вирізок кроку 1; нові кредити — лише другий берег `river` і ніч, ≈ 44 кр. ([[2026-10-03-Arena-Depth-Life]] Ф3.8). Неон, підлоги, декалі — лишаються.
 
 | пакет | шт | ≈ кр. |
 |---|---|---|
@@ -235,11 +283,11 @@ Santos каже «стиль так» → хвиля 2. «Ні» → T6 прав
 | декалі, 6 листів-сіток | 6 | 16.5 |
 | апскейл `card_skea_v1.jpg` (1500×848, є в коді) — якщо `get_cost` дешевий | 1 | `get_cost` |
 
-### Хвиля T6-3 — RED (≈ 120–150 кр.)
+### Хвиля T6-3 — RED (≈ 90–120 кр.)
 
 | пакет | шт | ≈ кр. |
 |---|---|---|
-| героїчні пропи: фонтан, ятка, ліхтар-якір, трамвайна зупинка (+ кран) | 4–5 | ≈ 30 кожен, якщо `image_to_3d`; ретекстур — `get_cost` |
+| героїчні пропи: фонтан, ліхтар-якір, трамвайна зупинка (+ кран); ятка — з MegaKit | 3–4 | ≈ 30 кожен, якщо `image_to_3d`; ретекстур — `get_cost` |
 
 ### Хвиля T6-4 — 0 кредитів, після кожної кредитної
 
@@ -251,7 +299,10 @@ Santos каже «стиль так» → хвиля 2. «Ні» → T6 прав
 
 Концепти скінів Choko і Skea (3 на героя) і вітрина крамниці на `bazaar` — промпти й `get_cost`, без генерації.
 
-**Разом хвилі 1–3:** ≈ 240–270 кр. (16.5 + 102.5 + 120–150) з 1 варіантом кільця. Лишок стелі спринту ≈ 513 (розрахунок у § Що є зараз).
+**Разом хвилі 1–3:** ≈ 210–240 кр. (16.5 + 102.5 + 90–120) з 1 варіантом кільця; з трімами — до 251. Лишок стелі спринту ≈ 486
+
+> **Виправлення (T1, 2026-10-03):** лишок стелі спринту не ≈ 486, а ≈ **130.5**: старт 5555.25 ([[2026-10-03-Sprint-Arenas-VFX]] рядок 33) − `balance` 4685.75 (після мержу PR #156) = 869.5 витрачено (`python3`). Чи кожна витрата дня рахується в стелю — не перевірено.
+(`balance` → 5041.25 о 2026-10-03 після мержу #142; 5555.25 − 5041.25 = 514 витрачено).
 Понад стелю — нове слово Santos.
 
 ## Як закинути пак (Santos, на Mac)
@@ -262,18 +313,16 @@ Santos каже «стиль так» → хвиля 2. «Ні» → T6 прав
 cd <твоя копія nooneisreal>
 git fetch origin
 git switch textures/santos-pack
-git pull
-ls -lh ~/Downloads/*MegaKit*            # GitHub не прийме файл > 100 МБ
-cp ~/Downloads/<архів MegaKit>.zip tools/packs/
-cp <теки Creative Trio>/CT_Pallete.png <…>/EK_Pallete.png <…>/CT_Rocks_Palette.png tools/packs/
-# файл ліцензії кожного паку Creative Trio — під своїм іменем, щоб не перезаписались:
-cp <тека паку>/License.txt tools/packs/License_<пак>.txt
+git reset --hard origin/textures/santos-pack   # НЕ git pull: гілку переписано 2026-10-03, pull поверне 9 FBX Creative Trio
+ls -lh ~/Downloads/<архів паку>.zip           # GitHub не прийме файл > 100 МБ
+mkdir -p tools/packs/<Пак> && cp -R <розпакована тека glTF> tools/packs/<Пак>/
+cp <тека паку>/License*.txt tools/packs/<Пак>/   # без файла ліцензії пак у гру не йде
 git add tools/packs
-git commit -m "Packs from Santos: Quaternius Fantasy Props MegaKit Standard, Creative Trio palettes"
+git commit -m "Pack from Santos: <назва паку>"
 git push
 ```
 
-Якщо `ls -lh` показує архів понад 100 МБ — розпакуй і клади лише теку з glTF і текстурами + файл ліцензії. Далі скажи
+Клади лише glTF із текстурами + файл ліцензії, як із MegaKit: архів цілим часто більший за 100 МБ (MegaKit — 150 МБ). Далі скажи
 будь-якому терміналу «пак на гілці» — він робить інвентар (Ф0.3) і додає рядок у § Що з паків куди.
 
 ## Related

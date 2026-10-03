@@ -76,6 +76,17 @@ Seamless tileable flat texture swatch of {MATERIAL}, hand-drawn flat illustratio
 
 MATERIAL: `fine gunmetal chainmail rings` · `muted dusty-orange leather with stitching` · `teal-green camouflage fabric` · `purple knit cotton` · `cloth bandage wraps` · `river water with flat foam shapes` · `small ripples on dark teal water`.
 
+### 5a. Піна річки v2 — `tex-water-foam-v2` (T6, Santos «go», 2026-10-03)
+
+v1 `b0a9189d` (з референсом річки `a2913501`) вийшла з розмазаною смугою відблисків міста на 55–87 % висоти — гіпотеза T6: місто
+протягнув референс. v2 — **без референсу**, кольори hex із тайла брижів (`convert … -colors 4 histogram` → `#244657`, `#2F3C4F`, `#503F59`).
+`nano_banana_pro` 2k 1:1, `get_cost` → 2, ×1; результат `3e04a378` — **канон**. Шов: `convert -roll +1024+1024` — стиків не видно,
+кілька плям на старих краях трохи розмиті.
+
+```
+Seamless tileable flat texture swatch of river water foam seen straight from above: scattered flat foam shapes and thin foam streaks floating on dark teal water (#244657, darker patches #2F3C4F), foam in pale lilac-white with a single magenta-violet shadow edge (#503F59), hand-drawn flat illustration style with inked lines in plum-graphite brown, flat base color, perfectly seamless edges on all four sides, the same even density of foam everywhere, flat even lighting, orthographic top-down, no perspective, no horizon, no sky, no reflections, no city, no lights, no gradient bands, no objects, no text.
+```
+
 ## 6. Арена «Річка» — `stage-river-plate-v1`
 
 Референс: `game/assets/backgrounds/bg_kronshift_river.jpg` — фон, що зараз у грі; Santos хоче перевести **саме його** ([[2026-10-03-Generation-Waves]], застереження 6). gpt_image_2_5 high 2k, 21:9.
@@ -314,7 +325,7 @@ Santos: V-1 «не ті» — форма має бути P-6000 з його фо
 ## 16. Пристрій-принтер Choko — `choko-item-printer-v1` (канон H13, [[Lore]] § Портрет, пристрій і помічник)
 
 gpt_image_2_5 high 2k 16:9, `count: 2`, референс — картка годинника Choko `cecf569d` (латунь і зелене світло: ШІ живе в годиннику,
-скринька — його друк). `get_cost` 2026-10-03 → 2.75 за шт., ×2 = **5.5**. Генерація — слово Santos.
+скринька — його друк). `get_cost` 2026-10-03 → 2.75 за шт., ×2 = **5.5**. **Згенеровано** (Santos «даю добро на все», 2026-10-03): `e74e5c35` — **канон** (вибір T6: рулон видно в боковому вікні, стікер читається), `792c502a` — ні. **Остаточно** (Santos: «обирай, що тобі більше зайде», 2026-10-03).
 
 ```
 Item design card for a fighting game, on a flat muted mint-sage background (#B8CBB1), hand-drawn in a loose expressive western animation sketch style, NOT anime: lively plum-graphite inked lines with small line breaks, flat colors with a single magenta-violet cel shadow tone, almost no highlights, no gradients, no gloss. The item: Choko's portable printing device — a small hand-held brass box, half instant camera and half typewriter, matching the aged brass, dark plum leather and glowing green accents of the reference wristwatch: one round glass lens on the front with a brass bezel, a folding crank handle on the right side, a leather carry strap, a paper roll visible through a small side window, a slot on top where a short printed paper strip curls out, tiny warm glowing lamp windows and green-glowing tick marks like the watch hands. Shown alone four times in a row with the same scale — front view, side view with the crank, back view, three-quarter view — plus two small circled detail insets: 1) a printed sticker coming out of the slot, with a torn ragged edge and a simple sketched face silhouette on it; 2) the lens and the crank. Small hand-written numbers by each view. Title "CHOKO PRINTER". No screens, no displays, no buttons with digits, no cyberpunk, no neon cables, no hands, no characters, no letters except the title, no logos, no watermark.
@@ -324,6 +335,7 @@ Item design card for a fighting game, on a flat muted mint-sage background (#B8C
 
 gpt_image_2_5 high 2k 16:9, `count: 2`, референси — годинник Choko `cecf569d` (латунь, зелене світло) і важкий дрон `e9fd9e33`
 (та сама родина машин Cronshift, але помічник — маленький і легкий). `get_cost` 2026-10-03 → 2.75 за шт., ×2 = **5.5**.
+**Згенеровано** (2026-10-03): `d829cadc` — **канон** (вибір T6: кругле зелене око, дружній), `df9e8675` — ні (вертикальна зіниця, хижий погляд). **Остаточно** (Santos, те саме слово). Око — зелене (Santos «добро на все» на пропозицію T6).
 **Розвилка Santos:** око-лінза світиться зеленим, як стрілки годинника (пропозиція T6: це той самий ШІ), а пилюжно-помаранчевий
 (як куртка Choko) — акцент на корпусі; інакше — помаранчеве око.
 
@@ -331,5 +343,46 @@ gpt_image_2_5 high 2k 16:9, `count: 2`, референси — годинник 
 Character prop design sheet for a fighting game, on a flat muted mint-sage background (#B8CBB1), hand-drawn in a loose expressive western animation sketch style, NOT anime: lively plum-graphite inked lines with small line breaks, flat colors with a single magenta-violet cel shadow tone, no gradients, no gloss. A tiny friendly flying helper drone of the old European-industrial city of Cronshift, about the size of a teapot: a round riveted brass body with muted dusty-orange painted panels, ONE big round eye-lens in the front with a brass shutter ring and a soft green glow like the hands of the reference wristwatch, two small caged rotors on short arms, a little paper roll mounted under its belly feeding a printing slot, a short antenna with a tiny warm lamp. Much smaller, lighter and cuter than the heavy cargo drone in the second reference, same brass-and-rivets family. The same drone shown in five panels with even spacing and the same scale: 1) front view hovering; 2) side view; 3) three-quarter view tilting curiously, eye shutter half closed; 4) printing — a short sticker with a torn ragged edge coming out from under its belly; 5) back view. Small hand-written numbers by each panel. Expressive but no face other than the single lens, no mouth, no screens, no displays, no letters or words, no logos, no watermark, no people.
 ```
 
+## 18. Ключ стилю для 3D-пропів — `style-key-props-{tavern,quay}-v1` ([[2026-10-03-Santos-Packs-Arenas]], хвиля T6-1)
+
+**Навіщо.** Пропи з паків уже мають геометрію, а наш стиль на них дає перефарбований атлас ([[Palette-Remap]]). Ключ стилю —
+кадр із паку, перемальований у Sketch-Cel. З нього ми дізнаємося, як наш стиль «бачить» камінь, дерево, латунь і воду пропів.
+Після ключа hex у [[Palette-Remap]] звіряється з ним: якщо матеріал на ключі виходить інакшим, рядок таблиці міняється разом із
+причиною. Один ключ — один погляд, тому їх **два**, з різним набором матеріалів.
+
+| id | вхід 1 (що малювати) | що перевіряє |
+|---|---|---|
+| `style-key-props-tavern-v1` | KayKit `Samples/Dungeon_sample12.png`, шинок: стійка, бочки, полиці, пляшки, табурети, дощата підлога | дерево (`r0c4`, `r0c2`, `r0c6`), полотно, латунь, пляшки, сланцева кладка |
+| `style-key-props-quay-v1` | KayKit `Samples/Dungeon_sample5.png`, причал: кам'яна стіна, сходи до води, грати, бочки у воді | камінь (`r0c0`, `r0c1`, `r0c5`), вода, мох, ковані грати |
+
+Вхід 2 в обох — канон річки `a2913501-694d-4bbc-9908-66892760bf7e` (стиль і палітра). Модель — `gpt_image_2_5`, `quality: high`,
+`resolution: 2k`, 16:9 для шинку, 4:3 для причалу. `get_cost` 2026-10-03 з двома референсами → **2.75** за шт., разом **5.5**.
+
+**Вхід 1 без логотипів.** Рендери KayKit мають плашку «DUNGEON ASSET PACK» і лого KayKit, а модель домальовує текст, який
+бачить. Обрізаємо локально (CC0, 0 кр.):
+
+```
+python3 -c "
+from PIL import Image, ImageDraw
+S = '<KayKit>/Samples/'
+a = Image.open(S + 'Dungeon_sample12.png').convert('RGB'); ImageDraw.Draw(a).rectangle([60, 830, 640, 1080], fill=a.getpixel((60, 1060)))
+a.crop((280, 150, 1600, 860)).save('style_key_in_tavern.png')
+b = Image.open(S + 'Dungeon_sample5.png').convert('RGB'); ImageDraw.Draw(b).rectangle([380, 830, 640, 1080], fill=b.getpixel((420, 1040)))
+b.crop((400, 60, 1530, 1035)).save('style_key_in_quay.png')"
+```
+
+`sha256`: шинок 1320×710 → `5751774e…20e`, причал 1130×975 → `24dd0290…8e`. Інший хеш означає інший вхід, тоді спершу дивимось
+очима. Обидва файли далі йдуть у `media_upload`, а `medias` бере **повний** UUID.
+
+```
+Redraw the first reference image as a hand-drawn illustration in exactly the drawing style, line work and palette of the second reference image: a loose expressive western animation sketch style, not anime, lively plum-graphite inked lines with small line breaks, thicker outer contours and thinner inner lines, flat base colors with a single magenta-violet cel shadow tone, no gradients, no gloss, no 3D render look. Keep every object, its shape, its place and the camera angle exactly as in the first image; change only how it is drawn and colored. Recolor everything into the muted palette of the old European-industrial city of Cronshift: cool slate-grey stone, red-brown and pale ochre wood, muted terracotta, dull brass, {MATERIAL_NOTE} cream cloth; nothing saturated except small warm lamp accents. Replace the dark background with a flat muted mint-sage background (#B8CBB1). No people, no characters, no text, no letters, no numbers, no logos, no watermark.
+```
+
+`MATERIAL_NOTE`: шинок — `olive-green old glass bottles,` · причал — `flat graphic deep teal water with simple pale foam lines, olive moss,`.
+
+**Відбір (Santos):** «стиль так» → хвиля T6-2; «ні» → правимо промпт, проба повторюється. Після «так» зчитуємо кольори з ключа
+медіаною по плямах кожного матеріалу і звіряємо з [[Palette-Remap]]. Розбіжність понад 10 одиниць світлоти HSL — рядок таблиці
+міняється.
+
 ## Related
-- [[Style-Guide]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Prompts]] · [[Choko]] · [[Skea]] · [[Stage-River]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[2026-10-03-Skea-Redesign]] · [[Lore]]
+- [[Style-Guide]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Prompts]] · [[Choko]] · [[Skea]] · [[Stage-River]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[2026-10-03-Skea-Redesign]] · [[Lore]] · [[Palette-Remap]] · [[2026-10-03-Santos-Packs-Arenas]]

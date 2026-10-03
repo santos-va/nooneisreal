@@ -48,6 +48,8 @@ fetch "$CDN3D/hf_20261003_034702_f7f95324-7686-48af-8d0c-3f4d5010502c.glb" "$MOD
 # 0 credits — docs/Art/Prompts/Arenas-360-Prompts.md, docs/Art/Prompts/Menu-Skyline-Prompts.md rows 24, 25, 38 and 1b.
 fetch "$CDN3D/hf_20261003_005206_a2913501-694d-4bbc-9908-66892760bf7e.png" "$BG/stage_river_plate_v1.png"
 fetch "$CDN3D/hf_20261003_013154_b0a9189d-0b0a-435f-b5a5-459b105374ce.png" "$TEX/tex_water_foam.png"
+# v2 (T6, Santos «go» 2026-10-03): v1 has a smeared city-reflection band at 55–87 % height; v2 has no reference image. 2 credits.
+fetch "$CDN3D/hf_20261003_174931_3e04a378-87e8-4796-b918-f8ba2fbe784d.png" "$TEX/tex_water_foam_v2.png"
 fetch "$CDN3D/hf_20261003_013154_bb5e3e44-27c1-478c-9b2d-2252bf2e9339.png" "$TEX/tex_water_ripple.png"
 fetch "$CDN3D/hf_20261003_013416_c5900952-f4f0-4728-8ada-5b30d641be3a.png" "$PROPS/props_anchors_v1.png"
 
@@ -64,5 +66,10 @@ fetch "$CDN3D/hf_20261003_022149_76fac42d-05a0-43a2-b900-3cb9ac705be0.png" "$SPR
 fetch "$CDN3D/hf_20261003_022150_ccc3ca6e-5e08-4673-baf2-e34dbd197351.png" "$SPRITES/sprite_pedestrian_elder_walk.png"
 fetch "$CDN3D/hf_20261003_013334_bd9797c1-11f4-4ef3-9e32-a26aef2dc1ca.png" "$VFX/vfx_steam_puff_v1.png"
 fetch "$CDN3D/hf_20261003_013436_e9fd9e33-beaa-43b7-8e1c-573c12691253.png" "$PROPS/drone_heavy_v1.png"
+
+# T6·C (Santos 2026-10-03 «даю добро на все»): Choko's printer device and helper drone, canon H13–H14. 11 credits.
+# docs/Art/Prompts/Prompt-Library.md § 16–17.
+fetch "$CDN3D/hf_20261003_160102_e74e5c35-1c47-4581-ad11-22c471a1a8a5.png" "$CARDS/choko_printer_v1.png"
+fetch "$CDN3D/hf_20261003_160106_d829cadc-41cf-480c-836c-0681c85024ac.png" "$CARDS/choko_drone_helper_v1.png"
 
 echo "done. Now run: make check   (re-imports the new textures headlessly)"

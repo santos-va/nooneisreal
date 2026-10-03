@@ -564,5 +564,23 @@ Choko і Skea стоять на парапеті (зона D) картками. 
   на рядку STAGE → знімає READY з P1.
 - Ввід не блокується анімаціями: «стрибок» героя на парапеті при READY — презентація, курсор уже вільний.
 
+
+## Підказка дешу в 8 напрямках (запуск 10)
+
+Мапа — [[05-Platforms-Input]] § Деш у 8 напрямках. Підказка показує **«деш + напрям»**, а не лише кнопку деша: інакше
+гравець не знає, що ухил буває в 8 боків. Гліф — останнього пристрою кожного гравця (§ Вибір персонажа, рядок «підказка»).
+
+| пристрій | рядок підказки (`InputRouter._hint_free`) | гліф у тренуванні / паузі |
+|---|---|---|
+| клавіатура SOLO | `LShift+dir dash` | ⇧ + WASD-хрест |
+| клавіатура SHARED | P1 `C+dir dash` · P2 `.+dir dash` | C + WASD · `.` + стрілки |
+| геймпад | — (рядок клавіатурний) | B / ○ + лівий стік (8 стрілок) |
+| тач | — | кнопка ДЕШ без тексту, іконка — 8 стрілок навколо крапки; поруч із джойстиком нічого не пишемо |
+
+Окремий рядок у списку прийомів тренування: «Від суперника — i-кадри (Choko)», бо «від суперника» на екрані різне:
+соло за спиною P1 — ↓, VERSUS збоку — від бійця вбік. Текст рядків — ТЗ Гефесту п. 3 у [[05-Platforms-Input]].
+Гліфи — Kenney Input Prompts (CC0) з [[05-Platforms-Input]] § Гліфи; у `game/assets/` їх ще немає — коли з'являться,
+рядок у [[Textures-Registry]].
+
 ## Related
-- [[05-Platforms-Input]] · [[Style-Guide]] · [[2026-10-02-Grapple-Input-UI]] · [[2026-10-03-Main-Menu-Skyline]] · [[2026-10-03-Character-Select]] · [[ADR-012-Menu-As-3D-Diorama]] · [[ADR-009-Solo-Keyboard-Layout]] · [[2026-10-03-Menu-UX-Rooftop]] · [[ADR-014-Free-Movement-Layout]] · [[2026-10-03-Path-to-First-Fight]] · [[2026-10-03-Phone-Fighter-Size]] · [[Cronshift]] · [[ADR-010-City-Name-Cronshift]]
+- [[05-Platforms-Input]] · [[Style-Guide]] · [[2026-10-02-Grapple-Input-UI]] · [[2026-10-03-Main-Menu-Skyline]] · [[2026-10-03-Character-Select]] · [[ADR-012-Menu-As-3D-Diorama]] · [[ADR-009-Solo-Keyboard-Layout]] · [[2026-10-03-Menu-UX-Rooftop]] · [[ADR-014-Free-Movement-Layout]] · [[2026-10-03-Path-to-First-Fight]] · [[2026-10-03-Phone-Fighter-Size]] · [[Cronshift]] · [[ADR-010-City-Name-Cronshift]] · [[2026-10-03-Hermes-Dash8]]

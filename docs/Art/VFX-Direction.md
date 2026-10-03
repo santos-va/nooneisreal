@@ -102,6 +102,11 @@
 контуром** — ні: їм потрібна справжня альфа й чорнильна лінія, і їх дає `gpt_image_2_5` `background: transparent` (D1: прозорих
 55–84 % пікселів, лінія ціла). Змах меча в Kling (7.5) має сенс лише як світний слід під `ADD` — рішення Santos.
 
+## Ефекти поверхонь — запуск 9 (T6, 0 кредитів)
+
+Крок, легке приземлення й ковзання для води, асфальту, щебеню, піску — по одному аркушу 4 × 4 на матеріал (ряд 1 — крок,
+ряд 2 — приземлення, ряди 3–4 — ковзання). Що вже є, промпти, `get_cost` і відбір — [[Surface-FX-Prompts]]. Згенеровано (Santos «B» 22 кр. + «Go» 5.5 кр.): `surface_water`, `surface_gravel`, `surface_sand`, `surface_asphalt` у `game/assets/vfx/`.
+
 ## Далі (фаза 2–3)
 
 - Справжні меші: смір-меші / blend shapes на 1–2 кадри, `Trail3D` (Godot 4.8) для кунаїв і меча.
@@ -111,4 +116,4 @@
 - Hit spark — процедурна зірка `fx_spark` (смуга B, [[2026-10-03-sprint-lane-b-vfx]]); спрайт-шит від смуги D може її замінити.
 
 ## Related
-- [[Style-Guide]] · [[Skea]] · [[Choko]] · [[Active-Ragdoll]] · [[Cel-Shading]] · [[2026-10-03-Crystal-Ult-Arena-Fatigue]] · [[03-Skills-Framework]] · [[2026-10-03-Apollon-3c-2-Gold]] · [[VFX-Sheets-Prompts]]
+- [[Style-Guide]] · [[Skea]] · [[Choko]] · [[Active-Ragdoll]] · [[Cel-Shading]] · [[2026-10-03-Crystal-Ult-Arena-Fatigue]] · [[03-Skills-Framework]] · [[2026-10-03-Apollon-3c-2-Gold]] · [[VFX-Sheets-Prompts]] · [[Surface-FX-Prompts]]

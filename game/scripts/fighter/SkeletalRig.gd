@@ -71,6 +71,8 @@ var _map: Array = []              # [[hero bone, mannequin bone]], parents first
 var _align: Dictionary = {}       # hero bone → rest alignment Quaternion
 var _src_rest: Dictionary = {}    # mannequin bone → global rest rotation
 var _hip_scale: float = 1.0
+## Launch 7.1: the skeleton ragdoll running on the mannequin (null = none); while set, the hero is drawn.
+var ragdoll: BoneRagdoll = null
 
 
 func setup(f: Fighter) -> void:
@@ -86,6 +88,9 @@ func setup(f: Fighter) -> void:
 	player.add_animation_library(EXTRA_PREFIX, lib)
 	extra.free()
 	player.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
+	# retarget after the mannequin's modifiers ran: outside this signal get_bone_global_pose() gives the clip's pose,
+	# not the skeleton ragdoll's (launch 7.1)
+	skeleton.skeleton_updated.connect(_on_mannequin_updated)
 	_hide_capsules()
 	if f.data.model_scene != "":
 		_setup_hero(f.data.model_scene)
@@ -252,7 +257,7 @@ func state_clip(f: Fighter) -> String:
 func _physics_process(delta: float) -> void:
 	if _fighter == null or player == null:
 		return
-	visible = _fighter.animator.visible
+	visible = _fighter.animator.visible or ragdoll != null
 	rotation.y = _fighter.animator.rotation.y
 	if _fighter.frozen_frames > 0 or _fighter.hitstop_frames > 0:
 		return   # time stop / hitstop: hold the drawing
@@ -287,5 +292,8 @@ func _physics_process(delta: float) -> void:
 	else:
 		clip_pos = minf(float(_state_frames) * delta, anim.length)
 	player.seek(clip_pos, true)
+
+
+func _on_mannequin_updated() -> void:
 	if hero_skeleton != null:
 		retarget()

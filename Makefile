@@ -42,6 +42,8 @@ check:
 	printf '%s\n' "$$SMOKE" | grep -E '^\[smoke\]|SCRIPT ERROR|ERROR:'; \
 	if [ $$rc -ne 0 ]; then echo "SMOKE ЧЕРВОНИЙ rc=$$rc"; exit $$rc; fi; \
 	printf '%s\n' "$$SMOKE" | grep -q '^\[smoke\] ALL OK' || { echo "SMOKE ЧЕРВОНИЙ: немає рядка «[smoke] ALL OK» — тест не дійшов до кінця (--quit-after?)"; exit 1; }; \
+	J="$$(printf '%s\n' "$$SMOKE" | grep -c 'not supported by Jolt')"; \
+	[ "$$J" -eq 0 ] || { echo "SMOKE ЧЕРВОНИЙ: $$J попереджень Jolt про масштаб тіла (Н7, запуск 7.1)"; exit 1; }; \
 	echo "SMOKE ЗЕЛЕНИЙ"
 
 # Свіжий клон не має game/.godot/ (у .gitignore), а з ним — реєстру class_name.
