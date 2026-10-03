@@ -147,7 +147,7 @@ damage = -1.0
 effect = "grimoire"
 meter_cost = 100.0
 cancel_tier = 3
-description = "PLACEHOLDER (variant B). The book opens, 12 pages orbit, three sealed villains strike within 3.6 m: page 3 Blood Grip 60, page 7 Cursed Burn 60, page 12 Shadow 90 (ragdoll + Poison). All weak points exposed during the ultimate, so every strike crits: 315 total."
+description = "PLACEHOLDER (variant B). The book opens, pages orbit, and the grimoire throws three imprints of pages Skea has beaten within 3.6 m: imprint Blood Grip 60, imprint Cursed Burn 60, imprint Poison Knot 90 (ragdoll + Poison). All weak points exposed during the ultimate, so every strike crits: 315 total."
 
 [sub_resource type="Resource" id="throw_move"]
 script = ExtResource("2")

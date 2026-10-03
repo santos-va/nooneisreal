@@ -202,5 +202,5 @@ dash_style = "dash"
 dash_charges = 0
 vfx_primary = Color(0.2, 0.9, 0.55, 1)
 vfx_secondary = Color(0.6, 0.78, 1, 1)
-passive_id = "chrono_guard"
-passive_description = "PLACEHOLDER (proposal, awaiting Santos). Chrono Guard: block pressed <= 8 frames before a hit freezes the attacker for 24 frames and refunds 1 s of skill cooldowns."
+passive_id = "printer"
+passive_description = "PLACEHOLDER (Ares 2026-10-03, Santos yes; see 03-Skills-Framework). Printer: every 15 s (first at 8 s) the drone prints one sticker 1.5 m behind Choko; it lasts 8 s, max 1 on the floor, the opponent tears it by stepping on it. Fixed order: Patch +30 HP -> Seen (opponent outline through Shadow Veil, 4 s) -> Spring (one extra air jump or air Chrono Step within 6 s)."

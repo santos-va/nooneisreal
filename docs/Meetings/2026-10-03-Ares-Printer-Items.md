@@ -17,9 +17,9 @@
 - Паритет: Латка дає Choko ≈ 60 HP за раунд — міряти на плейтесті ([[08-Balance]] § Що міряти, п. 4).
 
 ## Дії
-- [ ] Santos · «так»/правки на числа Printer і назву «Отруйний вузол»
+- [x] Santos · «так, правь .tres» → `choko.tres` `passive_id = "printer"`, описи в обох `.tres`; `GODOT_BIN=… make check` → `ALL OK (56 checks)`
 - [ ] T6 Аполлон · арт трьох стікерів + стікер-гліф RECORD (промпти й кошторис, генерація — слово Santos)
-- [ ] T2 Гефест · `passive_id = "printer"`, нода друку/підбору, доля `_perfect_block` — після `.tres`
+- [ ] T2 Гефест · нода друку/підбору для `passive_id = "printer"` (до того Choko без пасивки), прибрати `_perfect_block`, перейменувати id `grimoire_page*` у `GrimoireFx.gd`
 
 ## Related
 - [[state]] · [[PROPOSAL-Story-Arc]] · [[Lore]] · [[Choko]] · [[Skea]] · [[03-Skills-Framework]] · [[08-Balance]]
