@@ -8,7 +8,7 @@ SHELL := /usr/bin/env bash
 GODOT ?= $(if $(GODOT_BIN),$(GODOT_BIN),godot)
 GAME  := game
 
-.PHONY: roles gates check import run editor update fetch-assets hooks-check
+.PHONY: roles gates check import run run-plane editor update fetch-assets hooks-check
 
 # Таблиця ролей із tools/hooks/roles.map: аляс · тіло · Claude skill · мітка.
 roles:
@@ -54,6 +54,11 @@ import:
 run:
 	@[ -f $(CLASS_CACHE) ] || $(MAKE) --no-print-directory import
 	$(GODOT) --path $(GAME)
+
+# Бій 0.2 у площині (з 0.3 за замовчуванням — вільний 3D-рух; `make run` грає саме його).
+run-plane:
+	@[ -f $(CLASS_CACHE) ] || $(MAKE) --no-print-directory import
+	$(GODOT) --path $(GAME) -- --plane
 
 # Відкрити проєкт у редакторі.
 editor:

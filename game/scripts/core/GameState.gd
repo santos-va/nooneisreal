@@ -37,9 +37,10 @@ var last_result: Dictionary = {}
 ## Fighters read their floor from it; see scripts/core/WaveField.gd.
 var water: WaveField = null
 ## Prototype 0.3 free 3D movement with lock-on (docs/Plans/2026-10-03-Prototype-0.3-Free-Movement.md).
-## false = the 0.2 fight on the X plane, unchanged. Becomes true only after Santos approves 0.3.
-## Switch with set_free_move() (it also re-binds the keyboard), or launch with `-- --free-move`.
-var free_move: bool = false
+## true = free movement (default since Santos's word 2026-10-03, T4 audit 0.3-7). false = the 0.2 fight on
+## the X plane, unchanged. Switch with set_free_move() (it also re-binds the keyboard), or launch with
+## `-- --plane` / `-- --free-move`.
+var free_move: bool = true
 ## The duel's screen frame for free movement (scripts/core/DuelFrame.gd); fighters sync it each frame.
 var duel: DuelFrame = DuelFrame.new()
 

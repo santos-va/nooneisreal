@@ -73,6 +73,9 @@ func _ready() -> void:
 	GameState.p1_character = "choko"
 	GameState.p2_character = "skea"
 	GameState.stage_index = 2   # back_alley (river is index 0)
+	# free movement is the game's default now; the smoke starts with the 0.2 plane stages and switches
+	# to free movement itself at stage 40 (T4 audit 0.3-7 item 7)
+	GameState.set_free_move(false)
 	for a in OS.get_cmdline_user_args():
 		if a == "--smoke-only=duel":
 			# dev / negative controls: only the 0.3-6 duel replay (plane, then free movement)
@@ -408,6 +411,9 @@ func _physics_process(_delta: float) -> void:
 		p2 = arena.p2
 		flow = arena.flow
 		_ok("arena loaded: %s vs %s, stage %s" % [p1.data.display_name, p2.data.display_name, GameState.stage().id])
+		if _stage == 0 and GameState.free_move:
+			_fail("plane stages started under free_move — SmokeTest._ready must set_free_move(false)")
+			return
 		var bus := AudioServer.get_bus_index(Sfx.BUS)
 		var vh := Sfx.variant_count("hit_light")
 		if bus == -1 or AudioServer.get_bus_effect_count(bus) < 2 or vh < 3 or Sfx.variant_count("no_such_sfx") != 0:
