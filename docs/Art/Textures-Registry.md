@@ -157,6 +157,18 @@
 
 Іконка проєкту `game/icon.svg` — намальована в сесії (SVG, CC0), поза `game/assets/`.
 
+## Паки-джерела (сирці поза `game/assets/`)
+
+Паки 3D-пропів, з яких беремо моделі ([[2026-10-03-Santos-Packs-Arenas]]). Сирці живуть на гілці `textures/santos-pack`,
+у `main` не мерджаться (план Р2 = A, чекає Santos). Коли модель із паку потрапляє в гру, вона отримує **свій рядок у
+«На диску»** з посиланням на пак тут. Перефарбований атлас — теж ([[Palette-Remap]]).
+
+| пак | версія | автор | де лежить | ліцензія | що в паку | статус |
+|---|---|---|---|---|---|---|
+| KayKit Dungeon Pack EXTRA | 1.1 («Creation date: 16/07/2026» у `License.txt`) | Kay Lousberg, kaylousberg.com | `textures/santos-pack` → `tools/packs/KayKit_Dungeon_Pack_1.1_EXTRA.zip`, 38 604 565 байт (`git ls-tree -l`) | **CC0 1.0**. `License.txt` у zip відкрито двічі: T1 і T6, 2026-10-03. Текст: «free to use in personal, educational and commercial projects», кредит за бажанням (у титри — так) | 283 моделі glTF/FBX/OBJ, один атлас `dungeon_texture.png` 1024×1024 + 6 альтернатив | огляд — [[Pack-Review]]; палітра — [[Palette-Remap]] |
+| Creative Trio, 9 FBX (`Doors_Pack`, `Food_01_CT`, `Potions_Final_CT`, `Rocks_01`, `Stone_Bridges_01`, `Tables_Chairs_01`, `Trees_Pack_02`, `Wooden_Bridges_001`, `Wooden_Fences_01`) | — | автор — тека `Creative Trio` у шляхах текстур FBX (T1) | `textures/santos-pack` → `tools/packs/*.fbx` | **UNGROUNDED** — бриф Архімеда [[2026-10-03-Pack-Licenses]]: автор роздає ті самі паки під CC0 на creativetrio.art і продає в сторах (Sketchfab, ArtStation, Fab); CC0 прямо підтверджено видачею лише для 2 з 9 (Stone Bridges, Potions); `License` у коміті немає. Поки Santos не назве канал і не докладе `License_<пак>.txt` — «до релізу ([[ADR-013-License-Check-At-Release]])», у Higgsfield (ретекстур) **не завантажувати** | 187 мешів; палітр `CT_Pallete`, `EK_Pallete`, `CT_Rocks_Palette` у коміті немає | чекає палітр і ліцензії від Santos (план Ф0.1) |
+| Quaternius Fantasy Props MegaKit [Standard] | — | Quaternius | ще не на гілці | **CC0 за 4 каналами** (сайт, itch, Godot Asset Store, OGA — переказ WebSearch, [[2026-10-03-Pack-Licenses]]); UNGROUNDED лише за формою до `License.txt` із zip | Standard — 94 моделі, є ятки ринку (переказ) | чекає Santos (план § Як закинути пак) |
+
 ## Заплановано (завантажує `tools/fetch_assets.sh`; після цього перенести рядок угору з префіксом `game/assets/`)
 
 | id | файл | джерело | автор/модель | ліцензія | де використано |
@@ -166,4 +178,4 @@
 Раніше перенесено вгору: 8 рядків 2026-10-03, ще 2 (M-0, M-1) і `ult_end` — того ж дня; ще 4 (річка, вода ×2, якорі) і 10 нових рядків канону хвилі 2 — T6 у хмарі того ж дня.
 
 ## Related
-- [[Style-Guide]] · [[Backgrounds]] · [[Prompts]] · [[07-Audio]] · [[constitution]]
+- [[Style-Guide]] · [[Backgrounds]] · [[Prompts]] · [[07-Audio]] · [[constitution]] · [[Palette-Remap]] · [[Pack-Review]]
