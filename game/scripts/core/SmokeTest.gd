@@ -77,6 +77,10 @@ var _dw_max: float = 0.0              # launch 6: worst |change of yaw turn| per
 var _w_max: float = 0.0               # launch 6: worst |yaw turn| per tick (deg)
 var _head_low: float = -1e9           # launch 6: worst (P2 head screen y − P1 head screen y), px; > 0 = P2 lower
 var _w_prev: float = 0.0
+var _cr_case: int = 0                 # 3c: which point-blank / band / far run
+var _cr_hp: float = 0.0
+const GDD_CRYSTAL := [[0.5, 330.0], [1.5, 225.0], [6.0, 105.0]]   # 03 § Кристальна ульта, «Для Гефеста»: distance → total
+const GDD_CRYSTAL_BANDS := [225.0, 195.0, 165.0, 135.0, 105.0]
 # launch 3b: Skea's ult under the bass (docs/GDD/03 § Ульта Skea під бас — literals, not the .tres)
 const GDD_ULT_BEATS := [62, 72, 82]                             # normal ult, move frames from frame 0
 const GDD_ULT_END := 84                                         # startup 12 + active 72
@@ -2262,11 +2266,89 @@ func _physics_process(_delta: float) -> void:
 					_ok("camera side-on in VERSUS: W circles 360° in %d frames; |ω| ≤ %.2f°/tick, |Δω| ≤ %.3f°/tick², both in view" % [_f - int(_y0) - 10, _w_max, _dw_max])
 					_x0 = 0.0
 					GameState.p2_is_cpu = false
-					_finish()
+					_next_to(140)
 				elif _f > int(_y0) + 1200:
 					_fail("camera side: 360° circle not finished (swept %.1f°)" % rad_to_deg(_swept))
 			elif _f > _f0 + 600 and _x0 == 0.0:
 				_fail("camera side: round never started")
+		# ---------------- 3c: crystal ult (03 § Кристальна ульта Choko, Ares 3c-1) ----------------
+		140:
+			if not (flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable()):
+				if _f > _f0 + 600:
+					_fail("3c: fighters never actionable")
+				return
+			var bad := ""
+			if SwordStormFx.BANDS.size() != 5:
+				bad = "%d bands, want 5" % SwordStormFx.BANDS.size()
+			for i in SwordStormFx.BANDS.size():
+				var b: Array = SwordStormFx.BANDS[i]
+				var tot: float = float(b[3]) * SwordStormFx.HITS + float(b[4])
+				if absf(tot - GDD_CRYSTAL_BANDS[i]) > 0.01:
+					bad = "band %d totals %.0f, GDD %.0f" % [i + 1, tot, GDD_CRYSTAL_BANDS[i]]
+				if i > 0 and float(b[2]) <= float(SwordStormFx.BANDS[i - 1][2]):
+					bad = "band %d not wider than band %d" % [i + 1, i]
+			var pts := [[Vector2(0.5, 0), 0], [Vector2(1.5, 0), 0], [Vector2(6.0, 0), 4], [Vector2(1.5, 0.8), -1], [Vector2(7.0, 0), -1], [Vector2(-1.0, 0), -1]]
+			for pt in pts:
+				if SwordStormFx.band_at(pt[0]) != pt[1]:
+					bad = "band_at(%s) = %d, want %d" % [pt[0], SwordStormFx.band_at(pt[0]), pt[1]]
+			if SwordStormFx.in_arena(Vector3(Fighter.ARENA_RADIUS + 0.5, 0, 0)) or not SwordStormFx.in_arena(Vector3(Fighter.ARENA_RADIUS - 0.5, 0, 0)):
+				bad = "in_arena wrong at the circle's edge"
+			if not SwordStormFx.in_blast(Vector2(0.5, 0)) or SwordStormFx.in_blast(Vector2(1.5, 0)) or SwordStormFx.in_blast(Vector2(-0.3, 0)):
+				bad = "in_blast: 0.5 m in, 1.5 m out, 0.3 m behind out"
+			if bad != "":
+				_fail("3c crystal ult shape: " + bad)
+				return
+			# Skea under his (armored) ult: a rain tick lands as armored damage; the blast breaks the ult (Santos «так»)
+			p2.current_move = p2.data.ultimate
+			p2._set_state(Fighter.State.ATTACK)
+			p2.move_frame = p2.data.ultimate.startup + 2
+			var armored0 := p2.ult_armored()
+			p2.receive_hit(p1, SwordStormFx.make_tick(0))
+			var after_tick := p2.state
+			p2.receive_hit(p1, SwordStormFx.make_blast())
+			var after_blast := p2.state
+			var crit := p2.last_hit_crit
+			p2.hp = p2.data.max_hp
+			if not armored0 or after_tick != Fighter.State.ATTACK or after_blast == Fighter.State.ATTACK or not crit:
+				_fail("3c vs Skea's ult armor: armored %s, after a tick state %d (want ATTACK), after the blast %d (want not ATTACK), blast crit %s" % [armored0, after_tick, after_blast, crit])
+				return
+			_ok("3c crystal ult shape: 5 bands widening 1.2 → 3.6 m, totals %s; 0.8 m off-axis in band 1 → none; outside the circle → none; blast breaks Skea's ult armor (crit), a tick does not" % [GDD_CRYSTAL_BANDS])
+			_cr_case = 0
+			_x0 = 0.0
+			_next()
+		141:
+			# integration: Choko's ult on Skea standing at 0.5 / 1.5 / 6.0 m in front → 330 / 225 / 105
+			if _x0 == 0.0:
+				if not (p1.is_actionable() and p2.is_actionable()):
+					if _f > _f0 + 900:
+						_fail("3c run %d: fighters never actionable (p1 %d, p2 %d)" % [_cr_case, p1.state, p2.state])
+					return
+				var d: float = GDD_CRYSTAL[_cr_case][0]
+				p1.global_position = Vector3(0.0, p1.global_position.y, 0.0)
+				p2.global_position = Vector3(d, p2.global_position.y, 0.0)
+				p1.forward = Vector3.RIGHT
+				p2.forward = Vector3.LEFT
+				p2.hp = p2.data.max_hp
+				p1.meter = Fighter.MAX_METER
+				_cr_hp = p2.hp
+				InputRouter.v_press(1, "ultimate")
+				_x0 = 1.0
+				_y0 = _f
+			elif _x0 == 1.0:
+				p2.global_position.x = maxf(p2.global_position.x, 0.0)   # hold the pinned distance's side
+				if _f > int(_y0) + 14 + 62 + 30:
+					var got := _cr_hp - p2.hp
+					var want: float = GDD_CRYSTAL[_cr_case][1]
+					if absf(got - want) > 0.5:
+						_fail("3c on Skea at %.1f m: %.1f damage, GDD says %.0f" % [GDD_CRYSTAL[_cr_case][0], got, want])
+						return
+					_cr_case += 1
+					_x0 = 0.0
+					_f0 = _f
+					p2.hp = p2.data.max_hp
+					if _cr_case >= GDD_CRYSTAL.size():
+						_ok("3c crystal ult on Skea: 0.5 m → 330 (blast 105 + band 1), 1.5 m → 225, 6.0 m → 105")
+						_finish()
 		# ---------------- wall splat (02 § Коло арени: 10 f, no damage, once per combo) -----------
 		80:
 			# phase 0: first combo → splat; phase 1: next combo → splat again, then a second launch in that
