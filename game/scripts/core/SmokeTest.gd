@@ -78,10 +78,13 @@ var _w_max: float = 0.0               # launch 6: worst |yaw turn| per tick (deg
 var _head_low: float = -1e9           # launch 6: worst (P2 head screen y − P1 head screen y), px; > 0 = P2 lower
 var _w_prev: float = 0.0
 var _fr: Dictionary = {}              # launch 6, ADR-018: worst frame share / margin per (mode, sep)
+var _cr_log: Array = []              # 3c: the effect's [frame, move id] hits of the current run
 var _cr_case: int = 0                 # 3c: which point-blank / band / far run
 var _cr_hp: float = 0.0
 const GDD_CRYSTAL := [[0.5, 330.0], [1.5, 225.0], [6.0, 105.0]]   # 03 § Кристальна ульта, «Для Гефеста»: distance → total
 const GDD_CRYSTAL_BANDS := [225.0, 195.0, 165.0, 135.0, 105.0]
+const GDD_CRYSTAL_FRAMES := {"blast": 6, "ticks": [18, 24, 30, 36, 42, 48], "final": 62}   # 03 § Кристальна ульта (б)
+const GDD_CRYSTAL_BLAST_R := 1.2                                                           # 03 (в)
 # launch 3b: Skea's ult under the bass (docs/GDD/03 § Ульта Skea під бас — literals, not the .tres)
 const GDD_ULT_BEATS := [62, 72, 82]                             # normal ult, move frames from frame 0
 const GDD_ULT_END := 84                                         # startup 12 + active 72
@@ -191,7 +194,30 @@ func _check_boot() -> bool:
 		if rig != c[1]:
 			_fail("Main.apply_launch_args(%s) left skeletal_rig %s, expected %s (heroes by default, Santos «так»)" % [c[0], rig, c[1]])
 			return false
-	_ok("launch flags: --plane → plane, --free-move → free, --skeletal-rig → heroes, --capsules → capsules, none → defaults (heroes, 3D) (%d parse + 7 wiring cases)" % cases.size())
+	# saved MODE at boot (T4 Launch 5/6, proposal 4): a temp settings file, never the player's
+	var tmp := "user://smoke_mode_settings.cfg"
+	var tcfg := ConfigFile.new()
+	tcfg.set_value("gameplay", "free_move", false)
+	tcfg.save(tmp)
+	var mode_cases := [[[], false], [["--free-move"], true], [["--smoke"], true]]
+	for c in mode_cases:
+		var gs2: Node = GameState.get_script().new()
+		main_script.apply_saved_mode(PackedStringArray(c[0]), gs2, tmp)
+		var got2: bool = gs2.free_move
+		gs2.free()
+		if got2 != c[1]:
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))
+			_fail("Main.apply_saved_mode(%s) with saved free_move=false left %s, expected %s" % [c[0], got2, c[1]])
+			return false
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))
+	var gs3: Node = GameState.get_script().new()
+	main_script.apply_saved_mode(PackedStringArray(), gs3, tmp)   # no file → the default
+	var none: bool = gs3.free_move
+	gs3.free()
+	if none != true:
+		_fail("Main.apply_saved_mode with no settings file left free_move %s, expected the default true" % none)
+		return false
+	_ok("launch flags: --plane → plane, --free-move → free, --skeletal-rig → heroes, --capsules → capsules, none → defaults (heroes, 3D); saved MODE applied unless a flag or the smoke (temp file) (%d parse + 7 wiring + 4 saved-mode cases)" % cases.size())
 	# Import with gltf/embedded_image_handling = embed: extracting writes *_Image_0.jpg next to the GLB
 	# (unregistered → `make gates` red), discarding loses the texture silently.
 	var heroes := ["res://assets/characters/models/choko_m0.glb", "res://assets/characters/models/skea_m1.glb"]
@@ -2370,8 +2396,7 @@ func _physics_process(_delta: float) -> void:
 				# side at sep 6: GDD 02's slope 0.7 (Арес) gives 15.3 % by its centre-distance formula, but the real projection of
 				# a fighter 3 m off the frame centre, from a camera lifted 1.8 m, measures 14.84 %; slope 0.68 measures ≥ 15 %.
 				# Handed back to T5 Арес (docs/Fix/2026-10-03-launch-6-controls-camera.md § Після #99) — held at 14.8 % meanwhile
-				var p1_min := 0.148 if not behind_mode and sep >= 6.0 else 0.15
-				p2_min = minf(p2_min, p1_min)
+				var p1_min := 0.148 if not behind_mode and sep >= 6.0 else 0.15   # P1 only: P2 keeps GDD's 0.15 (T4 Launch 5/6 п. 3)
 				if r[0] < p1_min or r[1] > 0.30 or r[2] < p2_min or r[3] > 0.30 or r[4] < 0.15:
 					bad += " sep %.0f: P1 %.2f–%.2f %%, P2 %.2f–%.2f %% (want 15–30, P2 ≥ %.0f), margin %.0f %% (want ≥ 15);" % [sep, r[0] * 100, r[1] * 100, r[2] * 100, r[3] * 100, p2_min * 100, r[4] * 100]
 			if bad != "":
@@ -2513,6 +2538,13 @@ func _physics_process(_delta: float) -> void:
 				bad = "in_arena wrong at the circle's edge"
 			if not SwordStormFx.in_blast(Vector2(0.5, 0)) or SwordStormFx.in_blast(Vector2(1.5, 0)) or SwordStormFx.in_blast(Vector2(-0.3, 0)):
 				bad = "in_blast: 0.5 m in, 1.5 m out, 0.3 m behind out"
+			# 03 (б)/(в) as literals (T4 Launch 5/6, proposal 3): the blast's radius edge and the frame constants
+			if not SwordStormFx.in_blast(Vector2(GDD_CRYSTAL_BLAST_R - 0.01, 0)) or SwordStormFx.in_blast(Vector2(GDD_CRYSTAL_BLAST_R + 0.01, 0)):
+				bad = "blast radius is not %.1f m (in at %.2f, out at %.2f)" % [GDD_CRYSTAL_BLAST_R, GDD_CRYSTAL_BLAST_R - 0.01, GDD_CRYSTAL_BLAST_R + 0.01]
+			var fr := [SwordStormFx.BLAST_FRAME, SwordStormFx.RISE, SwordStormFx.EVERY, SwordStormFx.HITS, SwordStormFx.FINAL]
+			var want_fr := [GDD_CRYSTAL_FRAMES.blast, GDD_CRYSTAL_FRAMES.ticks[0], GDD_CRYSTAL_FRAMES.ticks[1] - GDD_CRYSTAL_FRAMES.ticks[0], GDD_CRYSTAL_FRAMES.ticks.size(), GDD_CRYSTAL_FRAMES.final]
+			if fr != want_fr:
+				bad = "frames BLAST/RISE/EVERY/HITS/FINAL %s, GDD 03 (б) %s" % [fr, want_fr]
 			if bad != "":
 				_fail("3c crystal ult shape: " + bad)
 				return
@@ -2533,7 +2565,7 @@ func _physics_process(_delta: float) -> void:
 			var crit := p2.last_hit_crit
 			p2.hp = p2.data.max_hp
 			if not armored0 or after_tick != Fighter.State.ATTACK or after_blast == Fighter.State.ATTACK or not crit:
-				_fail("3c vs Skea's ult armor: armored %s, after a tick state %d (want ATTACK), after the blast %d (want not ATTACK), blast crit %s" % [armored0, after_tick, after_blast, crit])
+				_fail("3c vs Skea's ult armor: armored %s, after a tick state %s (want ATTACK), after the blast %s (want not ATTACK), blast crit %s" % [armored0, Fighter.State.keys()[after_tick], Fighter.State.keys()[after_blast], crit])
 				return
 			_ok("3c crystal ult shape: 5 bands widening 1.2 → 3.6 m, totals %s; 0.8 m off-axis in band 1 → none; outside the circle → none; blast breaks Skea's ult armor (crit), a tick does not" % [GDD_CRYSTAL_BANDS])
 			_cr_case = 0
@@ -2559,7 +2591,19 @@ func _physics_process(_delta: float) -> void:
 				_y0 = _f
 			elif _x0 == 1.0:
 				p2.global_position.x = maxf(p2.global_position.x, 0.0)   # hold the pinned distance's side
+				for n in get_tree().current_scene.find_children("*", "SwordStormFx", true, false):
+					_cr_log = (n as SwordStormFx).hit_log.duplicate(true)
 				if _f > int(_y0) + 14 + 62 + 30:
+					if _cr_case == 0:
+						# point-blank: blast on frame 6, band 1 ticks on 18…48, the final on 62 — the events, not just the totals
+						var want_log := [[GDD_CRYSTAL_FRAMES.blast, "sword_storm_blast"]]
+						for tf in GDD_CRYSTAL_FRAMES.ticks:
+							want_log.append([tf, "sword_storm_band1"])
+						want_log.append([GDD_CRYSTAL_FRAMES.final, "sword_storm_final1"])
+						if _cr_log != want_log:
+							_fail("3c point-blank hit frames: %s, GDD 03 (б) %s" % [_cr_log, want_log])
+							return
+					_cr_log = []
 					var got := _cr_hp - p2.hp
 					var want: float = GDD_CRYSTAL[_cr_case][1]
 					if absf(got - want) > 0.5:
@@ -2570,7 +2614,7 @@ func _physics_process(_delta: float) -> void:
 					_f0 = _f
 					p2.hp = p2.data.max_hp
 					if _cr_case >= GDD_CRYSTAL.size():
-						_ok("3c crystal ult on Skea: 0.5 m → 330 (blast 105 + band 1), 1.5 m → 225, 6.0 m → 105")
+						_ok("3c crystal ult on Skea: 0.5 m → 330 (blast on frame 6, band 1 ticks 18…48, final 62), 1.5 m → 225, 6.0 m → 105")
 						_finish()
 		# ---------------- wall splat (02 § Коло арени: 10 f, no damage, once per combo) -----------
 		80:
