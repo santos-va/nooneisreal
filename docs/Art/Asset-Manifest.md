@@ -85,8 +85,8 @@ Job-id, CDN-URL і `balance` до/після кожної партії — [[Men
 | 1c | `menu-skyline-plate-v1` | 4 | 17 | **канон `73ee9806`** |
 | 2a | `skea-sheet-v1` | 4 | 11 | **канон `9c0b4476`** |
 | 2b | `choko-turn-v1`, `skea-turn-v1` | 2 + 2 | 11 | Choko — **жоден, переробити** (Santos змінив з Х2-5); Skea — застаріло (#33); новий поворот — крок 2 з канону листа v4 |
-| 2c | `<ch>-tpose-front/side/back/34` | 4 + 4 | 16 | **Choko — так, усі 4** (`c280d939`, `822b889d`, `f0763795`, `cbaf6f58`); Skea — застаріло, **не для 3D** |
-| 2d | `choko-item-sword/ult-sword/watch/jacket`, `skea-item-kunai/grimoire/backpack/hoodie` | 8 | 22 | так: Choko меч/ульт/годинник; куртка `4b792412` (повна кольчуга) — імовірно замінена v4 `a2bf79a1`, **підтвердити Santos**, Skea кунаї `68218084`, гримуар `d65011c3`; **худі `28d02e0f` — переробити** (§ 12e Prompt-Library); рюкзак — замінено S-6 |
+| 2c | `<ch>-tpose-front/side/back/34` | 4 + 4 | 16 | **не беремо** обидва набори: Choko — старий одяг (Santos), Skea — застаріло (#33); нові T-пози — крок 2 з канону листа |
+| 2d | `choko-item-sword/ult-sword/watch/jacket`, `skea-item-kunai/grimoire/backpack/hoodie` | 8 | 22 | так: Choko меч/ульт/годинник; куртка `4b792412` — **не беремо** (Santos), канон куртки — v4 `a2bf79a1`, Skea кунаї `68218084`, гримуар `d65011c3`; **худі `28d02e0f` — переробити** (§ 12e Prompt-Library); рюкзак — замінено S-6 |
 | 2e | `tex-water-foam`, `tex-water-ripple`, `stage-river-layers` | 2 + 1 | 6 | **так**: `b0a9189d`, `bb5e3e44`, шари `bc9d78b2` (URL шарів — лише галерея Higgsfield); `stage-river-outpaint` — 422, не згенеровано |
 | 2f | `menu-roof-edge-v1`, `menu-skyline-layers` | 2 + 1 | 7.5 | **канон `f500c1cf` (Х2-27)**; шари меню `9fe905f1` — так |
 | 2g | `sprite-pedestrian-<type>-walk` | 4 | 11 | **усі 4 канон**: робітник `cc4637e4`, жінка `b4cc96ad`, кур'єр `76fac42d`, старий `ccc3ca6e` |
