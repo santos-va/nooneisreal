@@ -149,42 +149,25 @@ game/assets/
 | 6 | каміння, руїни | береги `river` | `rocks`, `rubble_half` |
 | 39 + 1 | поза Cronshift: грати, шипи, мімік, ліжка, зброя, ключі, кирки | резерв, у гру не йде | `bar_straight_A`, `floor_tile_big_spikes`, `chest_mimic` |
 
-**Creative Trio, 9 FBX, 187 мешів** — **прибрано з гілки** (§ Ліцензії паків). Таблиця лишається довідкою: що це було і чим закриваємо без них:
+**Creative Trio, 9 FBX, 187 мешів** (ліцензія — не перевірено):
 
-| файл | мешів | що | арена | зауваги | заміна з CC0-паків |
-|---|---|---|---|---|---|
-| `Stone_Bridges_01.fbx` | 12 | кам'яні мости 15–19 м | `river` E — міст у ближньому плані | герой-кандидат на ретекстур | **немає** — міст лишається на мальованій картці E |
-| `Wooden_Bridges_001.fbx` | 10 | дерев'яні мости/помости | `river` S — причал, баржі | імена `Cube.*` → перейменувати; лише в сторах | KayKit `floor_wood_*` + `scaffold_*` — причал |
-| `Doors_Pack.fbx` | 45 | двері, ворота, арки дерев'яні й кам'яні | фасади всіх арен; арка входу в критий ринок `bazaar` S | `Base_Material_Emission` — світні вікна вночі? | KayKit `wall_doorway`, `wall_arched`, `wall_window_*` |
-| `Tables_Chairs_01.fbx` | 15 | лавки, столи, стілець | тераси `fountain` W | | MegaKit `Table_Large`, `Bench`, `Chair_1`, `Stool`; KayKit `table_round_*` |
-| `Trees_Pack_02.fbx` | 24 | дерева, усі нормовані до 1 м | `fountain` площа, `river` набережна | матеріал `GenshinMaterial.Default` | **немає** в KayKit/MegaKit — див. Ф0.4 |
-| `Rocks_01.fbx` | 29 | каміння, скельні формації | береги `river` | своя палітра `CT_Rocks_Palette.png` | KayKit `rocks`, `rocks_decorated`, `rubble_*` |
-| `Wooden_Fences_01.fbx` | 26 | паркани, зламані дошки | `bazaar` задвірки, `river` | | немає; не критично — KayKit `barrier_*` або без парканів |
-| `Potions_Final_CT.fbx` | 16 | пляшки-зілля | ятка спецій `bazaar` W; **«хілочки»** майбутньої крамниці | імена `Cylinder.*`, `Sphere.*` → перейменувати; є emission | MegaKit `Potion_1/2/4`, `SmallBottles_1`, `Shelf_Small_Bottles`; KayKit `bottle_*` |
-| `Food_01_CT.fbx` | 10 | бургер, картопля, хот-дог, стейк, сосиска, пиріг | їжа на ятках `bazaar` | бургер і паперовий стакан — сучасні; чи пасує старому Cronshift — Кліо/Santos | MegaKit `Barrel_Apples`, `FarmCrate_Apple/Carrot`, `Carrot`, `Cauldron`, `Pot_1`; KayKit `plate_food_*` — і питання про бургер знімається |
+| файл | мешів | що | арена | зауваги |
+|---|---|---|---|---|
+| `Stone_Bridges_01.fbx` | 12 | кам'яні мости 15–19 м | `river` E — міст у ближньому плані | герой-кандидат на ретекстур |
+| `Wooden_Bridges_001.fbx` | 10 | дерев'яні мости/помости | `river` S — причал, баржі | імена `Cube.*` → перейменувати |
+| `Doors_Pack.fbx` | 45 | двері, ворота, арки дерев'яні й кам'яні | фасади всіх арен; арка входу в критий ринок `bazaar` S | `Base_Material_Emission` — світні вікна вночі? |
+| `Tables_Chairs_01.fbx` | 15 | лавки, столи, стілець | тераси `fountain` W | |
+| `Trees_Pack_02.fbx` | 24 | дерева, усі нормовані до 1 м | `fountain` площа, `river` набережна | матеріал `GenshinMaterial.Default` |
+| `Rocks_01.fbx` | 29 | каміння, скельні формації | береги `river` | своя палітра `CT_Rocks_Palette.png` |
+| `Wooden_Fences_01.fbx` | 26 | паркани, зламані дошки | `bazaar` задвірки, `river` | |
+| `Potions_Final_CT.fbx` | 16 | пляшки-зілля | ятка спецій `bazaar` W; **«хілочки»** майбутньої крамниці | імена `Cylinder.*`, `Sphere.*` → перейменувати; є emission |
+| `Food_01_CT.fbx` | 10 | бургер, картопля, хот-дог, стейк, сосиска, пиріг | їжа на ятках `bazaar` | бургер і паперовий стакан — сучасні; чи пасує старому Cronshift — Кліо/Santos |
 
-**Quaternius Fantasy Props MegaKit [Standard]** — **на гілці** `textures/santos-pack` (`6bd36a2`; до переписування — `6210890`; T1 за словом Santos):
+**Quaternius Fantasy Props MegaKit [Standard]** — **на гілці** `textures/santos-pack` (`6210890`, T1 за словом Santos):
 `tools/packs/Fantasy_Props_MegaKit_Standard/` — лише `Exports/glTF` (94 `.gltf` + 94 `.bin` + 13 `.png`, 43 МБ) і
 `License_Standard.txt` (CC0 1.0; «standard FREE version… only contains a portion of the models» — повні Pro/Source платні).
-Архів 150 МБ цілим не проходить ліміт GitHub 100 МБ; FBX, OBJ і нормалі UE не взято.
-
-Інвентар MegaKit (T1, `accessors[POSITION]` у 94 `.gltf`, `python3`): **реальний масштаб** — `Barrel` 0.70×0.90×0.70 м,
-`Chair_1` 1.12 м, `Crate_Wooden` 1.19 м, `Stall_Empty` 1.84×**2.63**×0.93 м. Текстура — не палітра, а **4 трім-атласи**
-2048² (`T_Trim_{Props,Furniture,Metal,Cloth}` × BaseColor/Normal/ORM) + `T_Page_Noise` 4096²; матеріали `*_Vertex` (39 із 94 моделей; атрибут `COLOR_0` — у 63)
-тонують атлас **кольором вершин**.
-
-| група | арена | моделі |
-|---|---|---|
-| **ятки** — героїчний проп без Higgsfield | `bazaar` | `Stall_Empty`, `Stall_Cart_Empty` |
-| ринок: бочки, ящики, урожай | `bazaar`, `river` | `Barrel`, `Barrel_Apples`, `Barrel_Holder`, `Crate_Wooden`, `Crate_Metal`, `FarmCrate_{Apple,Carrot,Empty}`, `Bag`, `Bucket_*` |
-| ятка спецій і «хілочки» | `bazaar` W, майбутня крамниця | `Potion_1/2/4`, `SmallBottle(s_1)`, `Shelf_Small_Bottles`, `Pouch_Large`, `Coin_Pile*` |
-| кузня (індустріальний Cronshift) | `bazaar` E | `Anvil`, `Anvil_Log`, `Workbench`, `Whetstone`, `WeaponStand`, `Peg_Rack` |
-| книжкова ятка (гримуари — лор Skea) | `bazaar` | `BookGroup_*`, `Book_Stack_*`, `BookStand`, `Scroll_*` |
-| тераси кав'ярень | `fountain` W | `Table_Large`, `Bench`, `Chair_1`, `Stool`, `Mug`, `Table_{Plate,Fork,Knife,Spoon}` |
-| набережна | `river` | `Rope_1/2/3`, `Chain_Coil`, `Barrel`, `Crate_*` |
-| світло-декор (не якір) | всі | `Lantern_Wall`, `Torch_Metal`, `CandleStick_*` |
-| тренування | режим тренування | `Dummy` |
-| поза ареною | — | `Bed_Twin*`, `Bookcase_2`, `Chandelier`, `Nightstand_Shelf`, `Cabinet`, `Cage_Small`, `Key_*`, зброя |
+Архів 150 МБ цілим не проходить ліміт GitHub 100 МБ; FBX, OBJ і нормалі UE не взято. Далі — той самий інвентар (Ф0.3),
+що вище, і рядок у цій таблиці.
 
 ## Кроки
 
@@ -194,8 +177,8 @@ game/assets/
 
 | # | хто | що | ризик | перевірка |
 |---|---|---|---|---|
-| 0.1 | Santos | **зроблено / знято**: MegaKit на гілці (`6bd36a2`); палітри Creative Trio більше не потрібні — пак прибрано | — | `git ls-tree -r --name-only origin/textures/santos-pack tools/packs \| grep -c '\.fbx$'` → 0 |
-| 0.2 | T3 Архімед | **зроблено** — [[2026-10-03-Pack-Licenses]]: MegaKit CC0 (закрито `License_Standard.txt`), Creative Trio UNGROUNDED → карантин (§ Ліцензії паків). Лишилось: Santos — канал і `License` Creative Trio | CC-BY → рядок у титрах; NoAI → не можна ганяти через Higgsfield | файл існує; у кожного паку — цитата + URL + дата або `UNGROUNDED` |
+| 0.1 | Santos | докласти на гілку `textures/santos-pack` палітри `CT_Pallete.png`, `EK_Pallete.png`, `CT_Rocks_Palette.png` і файли ліцензії Creative Trio з тих самих завантажень (на Mac їх немає: `mdfind -name CT_Pallete` → 0 — докачати); ~~закинути MegaKit~~ — **зроблено** (`6210890`) | без палітр 9 FBX — сірі | `git ls-tree -r --name-only origin/textures/santos-pack tools/packs \| grep -ci pal` → ≥ 3 |
+| 0.2 | T3 Архімед | ліцензія Creative Trio і MegaKit: текст `License`/сторінки з дати завантаження; бриф `docs/Research/2026-10-03-Pack-Licenses.md` | CC-BY → рядок у титрах; NoAI → не можна ганяти через Higgsfield | файл існує; у кожного паку — цитата + URL + дата або `UNGROUNDED` |
 | 0.3 | T2 Гефест | контакт-лист паків: PNG-сітка всіх мешів з іменами (будь-яким способом — Godot на Mac або скрипт у `tools/art/`), у `docs/assets/screenshots/` | без картинки T6 і Кліо називають наосліп | `ls docs/assets/screenshots/packs_*.png` → по одному на пак |
 | 0.4 | Santos | дерева для площі й набережної — у CC0-паках їх немає. Варіант: докачати Quaternius Stylized Nature MegaKit (CC0 за переказом T3, [[2026-10-03-Free-Cartoon-Texture-Sources]] № 2) тим самим способом, що MegaKit | без дерев площа гола; нічого не ламає | `git ls-tree -r --name-only origin/textures/santos-pack \| grep -ci tree` → ≥ 1 |
 
