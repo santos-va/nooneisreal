@@ -94,20 +94,12 @@
 | sfx-lib-sword-3 | `game/assets/audio/sfx/sword_3.ogg` | build_sfx.sh: shing: Sonniss.com-GDC2024-GameAudioBundle2of9/Mechanical Wave - Sound Effects Collection/TOOLHand_Shears Slide Open Close_ 01_MWSFX_SEC.wav @1400ms; scrape: Sonniss.com-GDC2024-GameAudioBundle2of9/Justsoundeffects - Melee Weapons/WEAPSwrd_Weapon 03 Slow Scrapes_JSE_MW.wav @21840ms; cut: Sonniss.com-GDC2024-GameAudioBundle2of9/Justsoundeffects - Melee Weapons/WEAPAxe_Long Two-Handed Axe Flesh Hit_JSE_MW.wav @7410ms | бібліотека | Sonniss-GDC-royalty-free | `Sfx.play("sword")` |
 | sfx-lib-ui-move | `game/assets/audio/sfx/ui_move.ogg` | build_sfx.sh: blip: kenney_interface-sounds/Audio/select_001.ogg | бібліотека | CC0 | `Sfx.play("ui_move")` |
 | sfx-lib-ui-confirm | `game/assets/audio/sfx/ui_confirm.ogg` | build_sfx.sh: chime: kenney_interface-sounds/Audio/confirmation_001.ogg | бібліотека | CC0 | `Sfx.play("ui_confirm")` |
-| sfx-lib-drone-hum | `game/assets/audio/sfx/drone_hum.ogg` | build_sfx.sh: body: Sonniss.com-GDC2024-GameAudioBundle1of9/BluezoneCorp - High Voltage/Bluezone_BC0299_electricity_transformer_hum_low_003.wav | бібліотека | Sonniss-GDC-royalty-free | `Sfx.play("drone_hum")` |
-| sfx-lib-drone-hum-2 | `game/assets/audio/sfx/drone_hum_2.ogg` | build_sfx.sh: body: Sonniss.com-GDC2024-GameAudioBundle1of9/Bolt - ARP 2600- Droids, Blips, Drones & more/MECHMisc_TRS Cable Plug In Solid Metal Thump_BOLT_ARP2600.wav | бібліотека | Sonniss-GDC-royalty-free | `Sfx.play("drone_hum")` |
-| sfx-lib-drone-strain | `game/assets/audio/sfx/drone_strain.ogg` | build_sfx.sh: whine: Sonniss.com-GDC2024-GameAudioBundle2of9/InMotionAudio - UK Motorway/AMBTraf_Day09_Traffic_NTG4_InMotionAudio_UKMotorwaySamples.wav | бібліотека | Sonniss-GDC-royalty-free | `Sfx.play("drone_strain")` |
-| sfx-lib-drone-strain-2 | `game/assets/audio/sfx/drone_strain_2.ogg` | build_sfx.sh: whine: Sonniss.com-GDC2024-GameAudioBundle2of9/InMotionAudio - UK Motorway/AMBTraf_Night07_Traffic_H4N_InMotionAudio_UKMotorwaySamples.wav | бібліотека | Sonniss-GDC-royalty-free | `Sfx.play("drone_strain")` |
 
 Іконка проєкту `game/icon.svg` — намальована в сесії (SVG, CC0), поза `game/assets/`.
 
 ## Заплановано (завантажує `tools/fetch_assets.sh`; після цього перенести рядок угору з префіксом `game/assets/`)
 
-| id | файл | джерело | автор/модель | ліцензія | де використано |
-|---|---|---|---|---|---|
-| sfx-lib-ult-end | `audio/sfx/ult_end.ogg` | `tools/audio/sfx_recipes.tsv` `ult_end`: page «large book squeak page turn» @1190 мс + slam «big cardboard box impact» + tail «modern_cinematic_impact_boom_003»; збирає `build_sfx.sh` на Mac (паки лише там) — він сам додасть рядок угору, цей тоді видалити | бібліотека | Sonniss-GDC-royalty-free | стінгер кінця ульти Skea на обриві басу ([[2026-10-03-Skea-Ult-Bass]] розвилка 4) |
-
-Перенесено вгору: 8 рядків 2026-10-03, ще 2 (M-0, M-1) — того ж дня — файли завантажено `tools/fetch_assets.sh` на Mac Santos (зі слова Santos).
+Порожньо. Перенесено вгору: 8 рядків 2026-10-03, ще 2 (M-0, M-1) — того ж дня — файли завантажено `tools/fetch_assets.sh` на Mac Santos (зі слова Santos); `ult_end` — того ж дня, `build_sfx.sh` на Mac Santos.
 
 ## Related
 - [[Style-Guide]] · [[Backgrounds]] · [[Prompts]] · [[07-Audio]] · [[constitution]]
