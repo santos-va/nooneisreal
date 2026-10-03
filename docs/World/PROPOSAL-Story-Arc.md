@@ -5,6 +5,10 @@
 > The canon lives in [[Lore]], [[Skea]] and [[Choko]]. **Nothing here becomes canon until Santos answers "yes" to an
 > item by its number**; then Klio moves that item into [[Lore]] with a meeting log, and strikes it here.
 >
+> **Status (2026-10-03, later):** Santos — «H1–H11 — у канон». H1–H7 and H9–H11 are now **canon** with Klio's recommended
+> options, written in [[Lore]] § Канон із пропозиції Кліо; H8 had no proposal and stays open. H15 is decided (A + B).
+> Still a proposal: H12–H14, the arc table, endings (Q6), small things (§ 5).
+>
 > **Status (2026-10-03):** Santos — «мені все подобається, що ти описав, по суті» → **direction approved in essence**.
 > H1–H11 with Klio's recommended options are the *working direction*, still not canon word for word. New canon from the
 > same answer (portrait in the book, Choko the technician, his device and his assistant) is in [[Lore]]; Klio's ideas
@@ -68,7 +72,7 @@ of the catacombs, is the only one who remembers who Skea used to be.*
 
 Each hole has an ID. Answer by ID: **"H3 — так"**, **"H3 — ні"**, or **"H3 — інакше: …"**.
 
-### H1. Why did the taking stop "halfway"? [P]
+### H1. Why did the taking stop "halfway"? [P] — **CANON 2026-10-03** (A; see [[Lore]])
 
 Canon only says "for an unknown reason". Three options, Klio recommends **A**:
 
@@ -81,7 +85,7 @@ Canon only says "for an unknown reason". Three options, Klio recommends **A**:
 - **B — Skea's law.** A soul that never caused pain cannot be fully taken; the curse tore on his own goodness.
 - **C — The ∞8 intervened.** The wardens caught the falling half and bound themselves to Skea as their compass.
 
-### H2. Whose is the twelfth soul? (12 souls, 11 bodies) [P] [?]
+### H2. Whose is the twelfth soul? (12 souls, 11 bodies) [P] [?] — **CANON 2026-10-03** (proposed reading; see [[Lore]])
 
 Canon: 12 souls, 11 bodies, Skea halfway, Shaper is Skea's shadow and one of the 12. Klio's **proposed reading**
 (Santos did **not** say this):
@@ -93,7 +97,7 @@ Canon: 12 souls, 11 bodies, Skea halfway, Shaper is Skea's shadow and one of the
 
 **[?] Q1** — Is the 12th soul Skea's half (and Shaper made of it)? Or is Skea's soul outside the 12?
 
-### H3. Who are the ∞8? [P] [?]
+### H3. Who are the ∞8? [P] [?] — **CANON 2026-10-03** (proposal; see [[Lore]])
 
 Canon: "the ones who want to stop him", living, faceless, pulseless, a trail that disperses. Klio proposes:
 
@@ -106,7 +110,7 @@ Canon: "the ones who want to stop him", living, faceless, pulseless, a trail tha
 
 **[?] Q2** — Is "∞8" one being or eight ("ті, що хочуть зупинити" reads as many)? Are they people who were once alive?
 
-### H4. Why does Skea grin, and why does he say nothing about himself? [P]
+### H4. Why does Skea grin, and why does he say nothing about himself? [P] — **CANON 2026-10-03** (proposal; see [[Lore]])
 
 Canon: the curser feeds on Skea's spirit → psychopath; the supernatural smile, eyes not smiling.
 
@@ -117,7 +121,7 @@ Canon: the curser feeds on Skea's spirit → psychopath; the supernatural smile,
   the old Skea can still do — a quiet echo of his law.
 - **Shaper has the same smile** — and his eyes *do* smile. That is how players learn to tell them apart.
 
-### H5. Skea's ultimate vs. the 12 — a contradiction to fix [P] [?]
+### H5. Skea's ultimate vs. the 12 — a contradiction to fix [P] [?] — **CANON 2026-10-03** (imprints + rename (kit wording — Ares); see [[Lore]])
 
 The kit ([[Skea]] § Кіт, [[03-Skills-Framework]]) says the ult **"Cursed Grimoire ∞8: 12 Seals"** opens the book and
 **three sealed villains strike**, with pages named like **"Page 12 «Shadow»"**. But in canon the 12 are **enemies on
@@ -130,7 +134,7 @@ the curser's side**, and Shaper is **not** Skea's ult. As written, Skea summons 
 
 **[?] Q3** — Accept "imprints" as the frame for the ult? (If yes → T5 Ares owns the kit wording, not Klio.)
 
-### H6. The curser [P] [?]
+### H6. The curser [P] [?] — **CANON 2026-10-03** (proposal; see [[Lore]])
 
 Canon: name unknown; feeds on Skea; wants to lay down all life and stay alone with the shadows.
 
@@ -142,7 +146,7 @@ Canon: name unknown; feeds on Skea; wants to lay down all life and stay alone wi
 
 **[?] Q4** — Is he human? Does he have a face/look yet? Keep the codename or leave him nameless in docs?
 
-### H7. The squad [P] [?]
+### H7. The squad [P] [?] — **CANON 2026-10-03** (purpose; name not chosen; see [[Lore]])
 
 Canon: in development. Proposal only, nothing assumed:
 
@@ -153,7 +157,7 @@ Canon: in development. Proposal only, nothing assumed:
   clock hand, and "help that comes after") · **The Watch**.
 - **Members** — Choko (leader), Skea; the rest from [[Roster]] when Santos decides.
 
-### H8. The amulet character and the teammate among the 12 [P] [?]
+### H8. The amulet character and the teammate among the 12 [P] [?] — **not canonised** (Klio proposed no character; still Santos's story)
 
 Canon: one of the 12 "is still theirs, from the team"; another character summons them from an amulet; Santos will tell
 more later. Klio does **not** pick the character, only notes a fit to check:
@@ -164,19 +168,19 @@ more later. Klio does **not** pick the character, only notes a fit to check:
 
 **[?] Q5** — Is the amulet character Sneak, or someone else? Is the teammate among the 12 a separate person (not Skea)?
 
-### H9. The old building and the catacombs [P]
+### H9. The old building and the catacombs [P] — **CANON 2026-10-03** (clock tower; see [[Lore]])
 
 - **The old clock tower** (canon city references show a clock tower over Cronshift — [[Kronshift]]). Catacombs under
   it. It ties Choko's watch, the city's name (*cron* — time) and the "stopped halfway" moment (H1-A) into one place.
 - Alternatives: an old archive, a shut-down station.
 
-### H10. What "No One Is Real" means (interview F1) [P]
+### H10. What "No One Is Real" means (interview F1) [P] — **CANON 2026-10-03** (proposal; see [[Lore]])
 
 - **In the curser's finished world, no one is real** — only shadows wearing the faces of the taken, and him.
 - **Before that,** shadows can wear the faces of people you know. Heroes stop trusting what they see — no one is real.
 - **For Skea,** half of him is gone; he is not sure he is real either.
 
-### H11. Why do the heroes fight each other (interview F2)? [P]
+### H11. Why do the heroes fight each other (interview F2)? [P] — **CANON 2026-10-03** (echoes + Echo Trial; see [[Lore]])
 
 - **Echoes.** The 12 and lesser shadows can **wear the shape of anyone whose shadow they touched**. Most versus fights
   are against an echo of a teammate — that is the story frame for mirror matches and hero-vs-hero.
@@ -305,16 +309,16 @@ intros/endings now. Stages are the ones that already exist or are planned on [[K
 
 | # | question | Klio's recommendation |
 |---|---|---|
-| Q1 | Is the 12th soul Skea's taken half, and is Shaper made of it? | yes — it makes Shaper personal (H2) |
-| Q2 | Is the ∞8 one being or eight? Were they people? | eight former wardens (H3) |
-| Q3 | Frame Skea's ult as "imprints of cut pages"? Rename "Page 12 «Shadow»"? | yes; kit wording → T5 Ares |
-| Q4 | Is the curser human? Look? Codename "the Quiet One" in docs, or nameless? | human; codename until named |
+| Q1 | Is the 12th soul Skea's taken half, and is Shaper made of it? | yes — it makes Shaper personal (H2) → **canon 2026-10-03** |
+| Q2 | Is the ∞8 one being or eight? Were they people? | eight former wardens (H3) → **canon 2026-10-03** |
+| Q3 | Frame Skea's ult as "imprints of cut pages"? Rename "Page 12 «Shadow»"? | yes; kit wording → T5 Ares → **canon 2026-10-03** |
+| Q4 | Is the curser human? Look? Codename "the Quiet One" in docs, or nameless? | human; codename until named → **canon 2026-10-03** |
 | Q5 | Is the amulet character Sneak? Is the teammate among the 12 someone other than Skea? | — Santos's story |
 | Q6 | Ending A, B or C? | B — it costs Choko something |
-| Q7 | Why did the taking stop halfway — H1 A, B or C? | A — Choko's watch |
-| Q8 | The old building — clock tower? | yes (H9) |
-| Q9 | Squad purpose and name (H7)? | investigates disappearances; name — Santos |
-| Q10 | Title meaning (H10) and why heroes fight each other (H11)? | as proposed |
+| Q7 | Why did the taking stop halfway — H1 A, B or C? | A — Choko's watch → **canon 2026-10-03** |
+| Q8 | The old building — clock tower? | yes (H9) → **canon 2026-10-03** |
+| Q9 | Squad purpose and name (H7)? | investigates disappearances; name — Santos → **canon 2026-10-03** |
+| Q10 | Title meaning (H10) and why heroes fight each other (H11)? | as proposed → **canon 2026-10-03** |
 | Q11 | How does the device get the curser's face — Skea's half-memory or the Eight (H12)? | Skea's half-memory; wrong prints first |
 | Q12 | Who tells them the name in dialogue (H12)? | the teammate from the amulet |
 | Q13 | Device look; does the AI live in Choko's watch (H13)? | brass printer box + AI in the watch |
