@@ -43,8 +43,6 @@ const CRIT_SPEED_FRAMES := 90
 const SPEED_MULT := 1.3
 const MARK_INTERVAL := 150
 const MAX_MARKS := 2
-const PERFECT_BLOCK_WINDOW := 8
-const PERFECT_FREEZE := 24
 const REWIND_HEAL_CAP := 0.15
 const TIME_STOP_FRAMES := 72
 ## Wall splat (free movement): a ragdoll that reaches the arena edge sticks to the wall, then falls.
@@ -85,7 +83,7 @@ var dash_dir: int = 1
 var dash_frames_left: int = 0
 var airborne_attack: bool = false
 var pull_pending: bool = false
-var stats: Dictionary = {"hits": 0, "blocks": 0, "grapples": 0, "ragdolls": 0, "crits": 0, "perfect": 0, "flashes": 0}
+var stats: Dictionary = {"hits": 0, "blocks": 0, "grapples": 0, "ragdolls": 0, "crits": 0, "flashes": 0}
 
 # status effects
 var frozen_frames: int = 0
@@ -102,7 +100,11 @@ var dash_charges_left: int = 0
 var dash_recharge_left: float = 0.0
 var flashing: bool = false
 var _water_grounded: bool = false
-var _splat_used: bool = false      # this combo already had its wall splat (reset when the fighter recovers)
+var _splat_used: bool = false
+# Choko's passive Printer (docs/GDD/03 § Пасивка Choko — Printer); effects can land on either fighter
+var printer: Printer = null
+var revealed_frames: int = 0      # «Seen»: this fighter shows through Shadow Veil (information only)
+var spring_frames: int = 0        # «Spring»: one extra air jump or air dash while > 0      # this combo already had its wall splat (reset when the fighter recovers)
 var _wish: Vector3 = Vector3.ZERO   # free_move: camera-relative stick in world space, this frame
 var _dash_vec: Vector3 = Vector3.RIGHT
 var _track_left: float = 0.0       # free_move: radians the current attack may still turn
@@ -153,6 +155,11 @@ func _ready() -> void:
 	_weak_vis = WeakMarks.new()
 	add_child(_weak_vis)
 	_weak_vis.setup(self)
+	if data.passive_id == "printer":
+		printer = Printer.new()
+		printer.name = "Printer"
+		add_child(printer)
+		printer.setup(self)
 	if is_cpu:
 		_brain = CpuBrain.new()
 		_brain.fighter = self
@@ -190,6 +197,10 @@ func reset_for_round(x: float, face: int) -> void:
 	veil_frames = 0
 	veil_strike = false
 	speed_buff_frames = 0
+	revealed_frames = 0
+	spring_frames = 0
+	if printer != null:
+		printer.reset()
 	weak_marks.clear()
 	flashing = false
 	_mark_timer = 90
@@ -216,6 +227,12 @@ func set_control(enabled: bool) -> void:
 		_set_state(State.IDLE)
 	if not enabled and is_cpu:
 		InputRouter.v_clear(player_index)
+
+
+## Healing from an item (Printer «Patch»): never above max HP.
+func heal(amount: float) -> void:
+	hp = minf(data.max_hp, hp + amount)
+	hp_changed.emit(hp, data.max_hp)
 
 
 func heal_full() -> void:
@@ -341,6 +358,12 @@ func _tick_status(delta: float) -> void:
 			Afterimage.spawn(Fx.root(self), animator.part_snapshot(), data.vfx_primary, 0.3, 0.13, true)
 		if veil_frames == 0:
 			end_veil()
+		elif state != State.LAUNCHED and state != State.KO:
+			animator.visible = revealed_frames > 0   # «Seen» shows the veiled body; information only
+	if revealed_frames > 0:
+		revealed_frames -= 1
+	if spring_frames > 0:
+		spring_frames -= 1
 	if data.dash_charges > 0 and dash_charges_left < data.dash_charges and not flashing:
 		dash_recharge_left -= delta
 		if dash_recharge_left <= 0.0:
@@ -489,6 +512,16 @@ func _tick_air(delta: float, intent: Dictionary) -> void:
 	if (_pressed("light") or _pressed("heavy")) and data.air_light:
 		_start_move(data.air_light)
 		return
+	if spring_frames > 0:
+		# Printer «Spring»: one extra jump or one air dash, then it is spent
+		if _pressed("jump"):
+			spring_frames = 0
+			velocity.y = data.jump_velocity
+			Sfx.play("whoosh", -6)
+		elif _pressed("dash") and data.dash_style == "dash":
+			spring_frames = 0
+			_start_dash(intent.axis)
+			return
 	if _free():
 		var rate := data.air_control * data.walk_speed * 3.0 * delta
 		velocity.x = move_toward(velocity.x, _wish.x * data.walk_speed * speed_mult(), rate)
@@ -591,7 +624,7 @@ func _tick_dash(delta: float) -> void:
 			_start_move(data.heavy)
 			return
 	if dash_frames_left <= 0:
-		_set_state(State.IDLE)
+		_set_state(State.IDLE if on_ground() else State.JUMP)   # an air dash (Spring) ends falling
 
 
 func _tick_flash(delta: float) -> void:
@@ -794,6 +827,8 @@ func _check_hit(m: MoveData) -> void:
 		var area := r.get("collider") as Area3D
 		if area != null and area.get_parent() == opponent and opponent.hurtbox_enabled():
 			has_hit = true
+			if not on_ground():
+				spring_frames = 0   # Spring never extends an air juggle: a hit in the air spends it
 			opponent.receive_hit(self, m)
 			return
 
@@ -851,8 +886,6 @@ func receive_hit(attacker: Fighter, m: MoveData) -> void:
 		meter_changed.emit(meter, MAX_METER)
 		attacker.meter_changed.emit(attacker.meter, MAX_METER)
 		hit_landed.emit(attacker, self, m, true)
-		if data.passive_id == "chrono_guard" and InputRouter.pressed_within(player_index, "block", PERFECT_BLOCK_WINDOW):
-			_perfect_block(attacker)
 		return
 	var dmg := m.damage * scale * crit_k
 	hp -= dmg
@@ -946,18 +979,6 @@ func _gain_meter(attacker: Fighter, gain: float) -> void:
 	meter = minf(MAX_METER, meter + gain * 0.5)
 	meter_changed.emit(meter, MAX_METER)
 	attacker.meter_changed.emit(attacker.meter, MAX_METER)
-
-
-## Choko passive «Хроно-захист»: block pressed ≤ 8 frames before the hit freezes the attacker
-## for 24 frames and refunds 1 s of skill cooldowns.
-func _perfect_block(attacker: Fighter) -> void:
-	if attacker.freeze(PERFECT_FREEZE):
-		stats.perfect += 1
-		for k in cooldowns.keys():
-			cooldowns[k] = maxf(0.0, cooldowns[k] - 1.0)
-		cooldowns_changed.emit(cooldowns)
-		animator.flash()
-		Sfx.play("time_stop", -8)
 
 
 ## Grapple "get over here": pulled to target_x and stunned. No damage; the follow-up is the reward.
