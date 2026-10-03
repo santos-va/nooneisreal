@@ -73,6 +73,29 @@
 | `<ch>-flyby-poses-v1` | замах / політ / відпуск, після `<ch>-sheet-v1` | gpt_image_2_5 high 2k transparent | 2×2 | 11 |
 | **Разом** | | | | **57.5–61.46** |
 
+## E. Стан генерації (хвилі 1–2, 2026-10-03)
+
+Job-id, CDN-URL і `balance` до/після кожної партії — [[Menu-Skyline-Prompts]] § Журнал запусків. Нічого з цього ще не
+в `game/assets/` (CDN закритий для хмари → `tools/fetch_assets.sh` на Mac; ліцензія — бриф Архімеда).
+
+| хвиля · партія | id | шт | кр. | стан |
+|---|---|---|---|---|
+| 1a | `choko-sheet-v1` | 4 | 11 | **канон `f21298f4`** |
+| 1b | `stage-river-plate-v1` | 4 | 11 | **канон `a2913501`** |
+| 1c | `menu-skyline-plate-v1` | 4 | 17 | **канон `73ee9806`** |
+| 2a | `skea-sheet-v1` | 4 | 11 | **канон `9c0b4476`** |
+| 2b | `choko-turn-v1`, `skea-turn-v1` | 2 + 2 | 11 | чекає вибору |
+| 2c | `<ch>-tpose-front/side/back/34` | 4 + 4 | 16 | чекає перевірки (для 3b) |
+| 2d | `choko-item-sword/ult-sword/watch/jacket`, `skea-item-kunai/grimoire/backpack/hoodie` | 8 | 22 | чекає перевірки |
+| 2e | `tex-water-foam`, `tex-water-ripple`, `stage-river-layers` | 2 + 1 | 6 | чекає перевірки; **`stage-river-outpaint` — 422, не згенеровано** |
+| 2f | `menu-roof-edge-v1`, `menu-skyline-layers` | 2 + 1 | 7.5 | чекає вибору; outpaint меню не потрібен (діорама, [[ADR-012-Menu-As-3D-Diorama]]) |
+| 2g | `sprite-pedestrian-worker-walk` (проба) | 1 | 2.75 | **Santos оцінює петлю**; решта 3 типи (8.25) — після оцінки |
+| 2h | `sprite-steamcar-a/b`, `vfx-steam-puff` | 2 + 2 | 11 | чекає вибору |
+| 2i | `props-anchors-v1` — ліхтар, білборд без літер, труба, вентстовп ([[ADR-011-Diegetic-Grapple-Anchors]]) | 4 | 11 | чекає вибору |
+| 2j | `drone-heavy-v1` — висить · нахил · просідання · повернення · знизу | 4 | 11 | чекає вибору |
+| 2k | `menu-depth-cards-v1` — квартали середнього й ближнього плану, прозоре тло | 2 | 5.5 | чекає вибору |
+| | **Хвиля 2 разом** | 44 + 1 проба | **114.75** | `balance` 5971 → 5856.25 |
+
 ## Загальний бюджет (затверджено Santos 2026-10-03)
 
 Santos: «беремо стільки, скільки потрібно для старту й реалізації плану: два герої й мапи». Оцінка:
@@ -88,4 +111,4 @@ Santos. Звук — 0 кредитів ([[ADR-008-Audio-Sourcing]]).
 5. Арени: річка → базарчик → площа з фонтаном; потім VFX, UI.
 
 ## Related
-- [[Higgsfield-Pipeline]] · [[Prompt-Library]] · [[Menu-Skyline-Prompts]] · [[Style-Guide]] · [[Stage-River]] · [[Textures-Registry]] · [[2026-10-03-Production-Plan]]
+- [[Higgsfield-Pipeline]] · [[Prompt-Library]] · [[Menu-Skyline-Prompts]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[Style-Guide]] · [[Stage-River]] · [[Textures-Registry]] · [[2026-10-03-Production-Plan]]
