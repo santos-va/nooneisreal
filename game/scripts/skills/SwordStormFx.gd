@@ -52,6 +52,7 @@ var _blast: MoveData
 var _mat: ShaderMaterial
 var shards: Array = []      # [{node, vel, spin, left}] — read by the smoke
 var shards_spawned: int = 0
+var hit_log: Array = []     # [effect frame, move id] per landed hit — the smoke checks the frames against GDD 03 (б)
 
 
 static func spawn(f: Fighter) -> SwordStormFx:
@@ -264,9 +265,11 @@ func _hit_band(moves: Array) -> void:
 	var i := band_at(_local(v.global_position))
 	if i >= 0:
 		v.receive_hit(owner_f, moves[i])
+		hit_log.append([_f, (moves[i] as MoveData).id])
 
 
 func _hit_blast() -> void:
 	var v := _target()
 	if v != null and in_blast(_local(v.global_position)):
 		v.receive_hit(owner_f, _blast)
+		hit_log.append([_f, _blast.id])

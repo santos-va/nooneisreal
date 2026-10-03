@@ -3,10 +3,7 @@ extends Node
 
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
-	if not "--smoke" in args and free_move_arg(args) == -1:
-		var saved := GameState.saved_free_move(GameState.free_move)
-		if saved != GameState.free_move:
-			GameState.set_free_move(saved)   # the menu's MODE choice; flags override it for this run only
+	apply_saved_mode(args, GameState, InputRouter.SETTINGS_PATH)
 	apply_launch_args(args, GameState)
 	if "--smoke" in args:
 		var t := SmokeTest.new()
@@ -33,6 +30,16 @@ static func apply_launch_args(args: PackedStringArray, state: Node) -> void:
 		state.skeletal_rig = false
 	if "--skeletal-rig" in args:
 		state.skeletal_rig = true
+
+
+## The menu's MODE choice from `cfg_path` ([gameplay] free_move) onto `state`, unless this is the smoke or a launch
+## flag picks the mode for this run (T4 audit Launch 5/6, proposal 4: pure, so the smoke checks it on a temp file).
+static func apply_saved_mode(args: PackedStringArray, state: Node, cfg_path: String) -> void:
+	if "--smoke" in args or free_move_arg(args) != -1:
+		return
+	var saved: bool = state.saved_free_move(state.free_move, cfg_path)
+	if saved != state.free_move:
+		state.set_free_move(saved)
 
 
 static func free_move_arg(args: PackedStringArray) -> int:
