@@ -8,7 +8,7 @@ SHELL := /usr/bin/env bash
 GODOT ?= $(if $(GODOT_BIN),$(GODOT_BIN),godot)
 GAME  := game
 
-.PHONY: roles gates check import run run-plane editor update fetch-assets hooks-check
+.PHONY: roles gates check import run run-plane run-rig editor update fetch-assets hooks-check
 
 # Таблиця ролей із tools/hooks/roles.map: аляс · тіло · Claude skill · мітка.
 roles:
@@ -59,6 +59,11 @@ run:
 run-plane:
 	@[ -f $(CLASS_CACHE) ] || $(MAKE) --no-print-directory import
 	$(GODOT) --path $(GAME) -- --plane
+
+# Запуск 4 (C1): манекен UAL з кліпами замість капсул (`-- --skeletal-rig`).
+run-rig:
+	@[ -f $(CLASS_CACHE) ] || $(MAKE) --no-print-directory import
+	$(GODOT) --path $(GAME) -- --skeletal-rig
 
 # Відкрити проєкт у редакторі.
 editor:

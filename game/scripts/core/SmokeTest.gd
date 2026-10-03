@@ -63,6 +63,9 @@ var _rotated: bool = false
 var _picks: Dictionary = {}
 var _v0: Vector3 = Vector3.ZERO
 var _pull_max: float = 0.0
+var _rig_only: bool = false
+var _rig_move: MoveData = null       # launch 4: p1's light before the smoke gave it a clip
+var _bone0: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
@@ -82,10 +85,16 @@ func _ready() -> void:
 	# to free movement itself at stage 40 (T4 audit 0.3-7 item 7)
 	GameState.set_free_move(false)
 	for a in OS.get_cmdline_user_args():
+		if a == "--smoke-only=rig":
+			# dev / negative controls: only the launch 4 mannequin stages
+			_rig_only = true
 		if a == "--smoke-only=duel":
 			# dev / negative controls: only the 0.3-6 duel replay (plane, then free movement)
 			GameState.set_free_move(false)
 			_stage = 70
+	if _rig_only:
+		_start_rig_stages()
+		return
 	get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
 
 
@@ -123,7 +132,15 @@ func _check_boot() -> bool:
 		if on != c[1]:
 			_fail("Main.apply_launch_args(%s) left free_move %s, expected %s" % [c[0], on, c[1]])
 			return false
-	_ok("launch flags: --plane → plane, --free-move → free, none → default (%d parse + 3 wiring cases)" % cases.size())
+	for c in [[["--skeletal-rig"], true], [["--plane"], false], [[], false]]:
+		var gs: Node = GameState.get_script().new()
+		main_script.apply_launch_args(PackedStringArray(c[0]), gs)
+		var rig: bool = gs.skeletal_rig
+		gs.free()
+		if rig != c[1]:
+			_fail("Main.apply_launch_args(%s) left skeletal_rig %s, expected %s (off by default)" % [c[0], rig, c[1]])
+			return false
+	_ok("launch flags: --plane → plane, --free-move → free, --skeletal-rig → mannequin, none → defaults (%d parse + 6 wiring cases)" % cases.size())
 	# Import with gltf/embedded_image_handling = embed: extracting writes *_Image_0.jpg next to the GLB
 	# (unregistered → `make gates` red), discarding loses the texture silently.
 	var heroes := ["res://assets/characters/models/choko_m0.glb", "res://assets/characters/models/skea_m1.glb"]
@@ -160,11 +177,25 @@ func _fail(msg: String) -> void:
 	get_tree().quit(1)
 
 
+## Launch 4 (C1): the same fight again with the UAL mannequin drawing the fighters (GameState.skeletal_rig).
+func _start_rig_stages() -> void:
+	GameState.set_free_move(true)
+	GameState.skeletal_rig = true
+	if _rig_only:
+		GameState.stage_index = 2
+		_stage = 110
+		_f0 = _f
+		get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
+	else:
+		_load_arena(2, 110)
+
+
 func _finish() -> void:
 	if _done:
 		return
 	_done = true
 	GameState.set_free_move(false)
+	GameState.skeletal_rig = false
 	print("[smoke] ALL OK (%d checks) in %d frames" % [_oks.size(), _f])
 	get_tree().quit(0)
 
@@ -461,7 +492,7 @@ func _physics_process(_delta: float) -> void:
 	if _done:
 		return
 	_f += 1
-	if _f > 14000:
+	if _f > 15000:
 		_fail("timeout at stage %d (p1 %d, p2 %d)" % [_stage, p1.state if p1 else -1, p2.state if p2 else -1])
 		return
 	if arena == null:
@@ -473,6 +504,9 @@ func _physics_process(_delta: float) -> void:
 		p2 = arena.p2
 		flow = arena.flow
 		_ok("arena loaded: %s vs %s, stage %s" % [p1.data.display_name, p2.data.display_name, GameState.stage().id])
+		if not GameState.skeletal_rig and (p1.skeletal != null or p1.get_node_or_null("SkeletalRig") != null):
+			_fail("capsule mode built a SkeletalRig — skeletal_rig is off by default")
+			return
 		if _stage == 0 and GameState.free_move:
 			_fail("plane stages started under free_move — SmokeTest._ready must set_free_move(false)")
 			return
@@ -1586,6 +1620,92 @@ func _physics_process(_delta: float) -> void:
 					_fail("printer spring: a second air dash worked — Spring is one use")
 					return
 				_ok("printer: Spring also gives one air dash (ends falling), and only one")
+				_start_rig_stages()
+		# ---------------- launch 4 (C1): UAL mannequin, GameState.skeletal_rig -------------------------
+		110:
+			if flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable() and _f > _f0 + 10:
+				var sk: SkeletalRig = p1.skeletal
+				if sk == null or sk.skeleton == null or p2.skeletal == null:
+					_fail("skeletal_rig on but the fighters have no SkeletalRig (p1 %s, p2 %s)" % [p1.skeletal, p2.skeletal])
+					return
+				var drawn := 0
+				for m in p1.animator.find_children("*", "MeshInstance3D", true, false):
+					drawn += int((m as MeshInstance3D).visible)
+				if drawn != 0 or not sk.visible or p1.animator.parts.is_empty():
+					_fail("mannequin: %d capsule meshes still drawn, mannequin visible %s, capsule parts %d (want 0, true, > 0)" % [drawn, sk.visible, p1.animator.parts.size()])
+					return
+				if sk.clip != sk.clip_name(p1.data.idle_clip) or sk.clip == "":
+					_fail("mannequin idle: clip '%s', want '%s' (%s)" % [sk.clip, sk.clip_name(p1.data.idle_clip), p1.data.idle_clip])
+					return
+				var ok_names := 0
+				for k in SkeletalRig.STATE_CLIPS:
+					ok_names += int(sk.clip_name(SkeletalRig.STATE_CLIPS[k]) != "")
+				if ok_names != SkeletalRig.STATE_CLIPS.size() or sk.clip_name("No_Such_Clip") != "":
+					_fail("mannequin: %d of %d state clips found in UAL1+UAL2" % [ok_names, SkeletalRig.STATE_CLIPS.size()])
+					return
+				# attack_clip_time: contact pose on the first active frame, clip end at the end of recovery
+				var at := [SkeletalRig.attack_clip_time(0, 8, 3, 9, 1.0, 0.25), SkeletalRig.attack_clip_time(8, 8, 3, 9, 1.0, 0.25),
+					SkeletalRig.attack_clip_time(20, 8, 3, 9, 1.0, 0.25), SkeletalRig.attack_clip_time(11, 8, 3, 9, 1.0, 0.0)]
+				if absf(at[0]) > 1e-6 or absf(at[1] - 0.25) > 1e-6 or absf(at[2] - 1.0) > 1e-6 or absf(at[3] - 1.0) > 1e-6:
+					_fail("attack_clip_time: frame 0 → %.3f, first active → %.3f, end → %.3f, unmeasured end of active → %.3f (want 0, 0.25, 1, 1)" % at)
+					return
+				_bone0 = sk.skeleton.get_bone_pose_rotation(sk.skeleton.find_bone("spine_02")).get_euler()
+				_ok("mannequin: UAL1+UAL2 on one player (%d state clips), capsules hidden but ticking, idle '%s'" % [ok_names, sk.clip])
+				_next()
+			elif _f > _f0 + 400:
+				_fail("mannequin round never started")
+		111:
+			var sk: SkeletalRig = p1.skeletal
+			if _f == _f0 + 40:
+				var b: Vector3 = sk.skeleton.get_bone_pose_rotation(sk.skeleton.find_bone("spine_02")).get_euler()
+				if b.distance_to(_bone0) < 1e-4:
+					_fail("mannequin idle is frozen: spine_02 unchanged over 40 frames (clip '%s' at %.2f s)" % [sk.clip, sk.clip_pos])
+					return
+				_ok("mannequin idle animates (spine_02 moved %.4f rad in 40 frames)" % b.distance_to(_bone0))
+				# a clip on p1's light (table 4a is not merged yet: a test clip, restored afterwards)
+				_rig_move = p1.data.light
+				var m: MoveData = _rig_move.duplicate()
+				m.anim_clip = "Sword_Regular_A"
+				m.contact_time = 0.2
+				p1.data.light = m
+				InputRouter.v_press(1, "light")
+			if _f > _f0 + 40 and p1.state == Fighter.State.ATTACK and p1.current_move != null:
+				var m := p1.current_move
+				if p1.move_frame == m.startup:
+					if sk.clip != sk.clip_name(m.anim_clip) or absf(sk.clip_pos - m.contact_time) > 1.0 / 60.0:
+						_fail("mannequin attack: first active frame plays '%s' at %.3f s, want '%s' at contact %.3f s ±1 frame" % [sk.clip, sk.clip_pos, m.anim_clip, m.contact_time])
+						return
+					_ok("mannequin attack: '%s' contact pose (%.2f s) on the first active frame %d" % [sk.clip, sk.clip_pos, m.startup])
+					_next()
+			elif _f > _f0 + 200:
+				_fail("mannequin attack never reached its first active frame (state %d)" % p1.state)
+		112:
+			# a hit reaction on Skea, then the ragdoll hides the mannequin with the capsule rig
+			if p1.data.light != _rig_move and p1.state != Fighter.State.ATTACK:
+				p1.data.light = _rig_move
+			var s2: SkeletalRig = p2.skeletal
+			if _f == _f0 + 30:
+				p2.hitstop_frames = 0
+				p2.animator.flinch_zone = "high"
+				p2.stun_frames = 20
+				p2._set_state(Fighter.State.HITSTUN)
+			if _f == _f0 + 31:
+				var high := s2.clip
+				if high != s2.clip_name(SkeletalRig.STATE_CLIPS["hit_high"]):
+					_fail("mannequin hit high: clip '%s', want '%s'" % [high, SkeletalRig.STATE_CLIPS["hit_high"]])
+					return
+				p2.animator.flinch_zone = "mid"
+				p2.stun_frames = 20
+			if _f == _f0 + 32:
+				if s2.clip != s2.clip_name(SkeletalRig.STATE_CLIPS["hit_mid"]) or s2.clip == s2.clip_name(SkeletalRig.STATE_CLIPS["hit_high"]):
+					_fail("mannequin hit mid: clip '%s', want '%s' (and not the head reaction)" % [s2.clip, SkeletalRig.STATE_CLIPS["hit_mid"]])
+					return
+				p2._enter_ragdoll(Vector3(4.0, 3.0, 0.0))
+			if _f == _f0 + 34:
+				if s2.visible or p2.animator.visible:
+					_fail("mannequin during ragdoll: visible %s (capsule rig visible %s) — want both hidden" % [s2.visible, p2.animator.visible])
+					return
+				_ok("mannequin reactions: head '%s' ≠ chest '%s'; hidden while the capsule ragdoll flies" % [s2.clip_name(SkeletalRig.STATE_CLIPS["hit_high"]), s2.clip_name(SkeletalRig.STATE_CLIPS["hit_mid"])])
 				_finish()
 		# ---------------- wall splat (02 § Коло арени: 10 f, no damage, once per combo) -----------
 		80:
