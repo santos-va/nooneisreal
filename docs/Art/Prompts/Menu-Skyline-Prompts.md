@@ -388,7 +388,7 @@ S-1 `dcdef91d`, N-5 `ab80973c`, N-6 `d2ac65b6`, S-5 `36ace5cf`. Чи модел�
 Слово Santos: «так, генеруй» на X-1 (бік, «стиснутий») і X-2 (спина, смуга по центру), по одній, 5.5 кр.; і **«прибери з 3D моделі меч, має бути
 чистий персонаж»**. Промпт — [[Prompt-Library]] § 15a + рядки переробки, IDENTITY **без меча**, «Clean character only: no sword, no scabbard…».
 Референси: X-0 `b529a3bd`, куртка N-2 `a2bf79a1`, кросівки V-1 `482bfc6d`. `get_cost` 3:4 → 2.75.
-X-0 і X-3 промптились ще з мечем в IDENTITY — чи є там меч, **не перевірено** (CDN закритий), питання — на дошці.
+X-0 і X-3 промптились ще з мечем в IDENTITY; Santos (дошка): **на обох меча немає**.
 
 | партія | `balance` до | після | різниця |
 |---|---|---|---|
@@ -396,8 +396,8 @@ X-0 і X-3 промптились ще з мечем в IDENTITY — чи є т�
 
 | мітка | партія | job-id | розмір · CDN-URL | результат |
 |---|---|---|---|---|
-| Y-0 | C4r `choko-tpose-side-v5` · 2 | `913c53bb-6e28-4e03-9250-bf01f4bc91c5` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_030544_913c53bb-6e28-4e03-9250-bf01f4bc91c5.png | чекає вибору Santos |
-| Y-1 | C4r `choko-tpose-back-v5` · 2 | `f5a3a1fb-d423-4773-90a2-cff460ea466c` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_030544_f5a3a1fb-d423-4773-90a2-cff460ea466c.png | чекає вибору Santos |
+| Y-0 | C4r `choko-tpose-side-v5` · 2 | `913c53bb-6e28-4e03-9250-bf01f4bc91c5` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_030544_913c53bb-6e28-4e03-9250-bf01f4bc91c5.png | **переробити** — бік у T-позі не заходить (і в Skea V-4); варіанти — у журналі зустрічі |
+| Y-1 | C4r `choko-tpose-back-v5` · 2 | `f5a3a1fb-d423-4773-90a2-cff460ea466c` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_030544_f5a3a1fb-d423-4773-90a2-cff460ea466c.png | **переробити** — «подивись на оригінал куртки й що на спині й це ретельно опиши моделі» |
 
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
