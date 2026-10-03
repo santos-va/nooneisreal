@@ -1,7 +1,7 @@
 # Промпти меню «Погляд з даху» (М2)
 
 Власник: T6 Аполлон · **Дата:** 2026-10-03 · **Issue:** santos-va/nooneisreal#6 · **План:** [[2026-10-03-Main-Menu-Skyline]] § М2
-**Статус:** промпти готові, **нічого не згенеровано** — кожна партія чекає слова Santos (RED). Меню — поза стелею 600 кредитів фази 2–3.
+**Статус:** M2-A згенеровано 2026-10-03 (4 варіанти, хвиля 1, santos-va/nooneisreal#14) — чекає вибору Santos; решта партій чекає слова Santos (RED). Меню — поза стелею 600 кредитів фази 2–3.
 
 Місто в промптах — **Cronshift** ([[ADR-010-City-Name-Cronshift]]). Стиль — [[Style-Guide]]; блоки `{STYLE}` і `{NEG}`
 персонажних партій — байт-у-байт з [[Prompt-Library]]. Фонові партії використовують фонову формулу з
@@ -37,7 +37,7 @@
 | | **Разом** | | | | **57.5** (+ 3.96 outpaint = **61.46**) |
 
 Дешевший варіант панорами — 2k: 4 × 2.75 = 11 → разом **51.5**. Рекомендую 4k: меню — перший кадр гри, а 2k
-21:9 на 4K-моніторі розтягується (точна піксельна ширина 2k 21:9 — **не перевірено**, побачимо по першому файлу).
+21:9 на 4K-моніторі розтягується (2k 21:9 = 2688×1152, 4k 21:9 = 3840×1648 — `show_generation_by_ids`, хвиля 1).
 
 ### Порядок і рекомендація Аполлона
 
@@ -63,7 +63,7 @@
 gpt_image_2_5, quality high, 4k, 21:9, `count:4`, референс міста (`image_references`).
 
 ```
-Wide main-menu background for a fighting game, 21:9, hand-drawn in a loose expressive western animation sketch style, not anime: lively plum-graphite inked lines with small line breaks, flat colors with a single magenta-violet cel shadow tone, no gradients, no gloss. The view from the flat rooftop of a tall skyscraper looking out over the old European-industrial city of Cronshift at dusk. Composition in depth: on the left quarter of the frame the near edge of an even taller neighbouring skyscraper rises out of frame, dark brick with a steel cornice; along the very bottom a low stone rooftop parapet and the curved side of a riveted water tower barrel. Middle ground far below: two or three cobblestone streets with wide sidewalks seen from high above at a steep angle, gas lamps already lit, empty of people and vehicles. Background: a dense skyline of brick and terracotta roofs, brass domes, chimneys and water tanks, a large clock tower slightly right of center, a river glinting between buildings. Sky: dusk with a warm terracotta glow at the horizon fading to slate blue, a few long flat cloud shapes. Muted palette of terracotta #C8623A, slate blue #4A5C73, deep teal #1F4D5A, warm lamp accents. The upper-middle band of the sky is calm and uncluttered. No people, no cars, no text, no logos, no signs with letters, no neon.
+Wide main-menu background for a fighting game, 21:9, hand-drawn in a loose expressive western animation sketch style, not anime: lively plum-graphite inked lines with small line breaks, flat colors with a single magenta-violet cel shadow tone, no gradients, no gloss. The view from the flat rooftop of a tall skyscraper looking out over the old European-industrial city of Cronshift at dusk. Composition in depth: on the left quarter of the frame the near edge of an even taller neighbouring skyscraper rises out of frame, dark brick with a steel cornice; along the very bottom a low stone rooftop parapet and the curved side of a riveted water tower barrel. Middle ground far below: two or three cobblestone streets with wide sidewalks seen from high above at a steep angle, gas lamps already lit, empty of people and vehicles. Background: a dense skyline of brick and terracotta roofs, brass domes, chimneys and water tanks, the twin domed clock towers of the city slightly right of center, a river glinting between buildings. Sky: dusk with a warm terracotta glow at the horizon fading to slate blue, a few long flat cloud shapes. Muted palette of terracotta #C8623A, slate blue #4A5C73, deep teal #1F4D5A, warm lamp accents. The upper-middle band of the sky is calm and uncluttered. No people, no cars, no text, no logos, no signs with letters, no neon.
 ```
 
 Чому без людей і машин: вони живуть окремими спрайтами (шар 2), інакше намальовані перехожі стоятимуть поверх живих.
@@ -146,9 +146,28 @@ gpt_image_2_5, high, 2k, 16:9, `background:"transparent"`, `count:2` на пер
 
 ## Журнал запусків
 
-| дата | партія | job-id | результат |
-|---|---|---|---|
-| — | — | — | ще нічого не запускалось |
+Хвиля 1 ([[2026-10-03-Generation-Waves]] § Х1, santos-va/nooneisreal#14) — усі 12 зображень, не лише меню, щоб журнал був один.
+`balance` до → **6010**, після → **5971**, різниця **39** = кошторис (`get_cost` перед запуском: 2.75 / 2.75 / 4.25 за шт.).
+Модель `gpt_image_2_5` high (у `show_generation_by_ids` — `model: flare`); роль референса `image_references` сервер привів до `image`.
+Референси: 1a — `card-choko-v3` `87a54896-…`; 1b — `bg_kronshift_river.jpg` → `media_import_url` raw-GitHub → `8e7345cb-24be-46a6-b876-d1b1f5e6c420`
+(шлях (а) `media_upload` + PUT із хмари: `upload.higgsfield.ai` → `CONNECT tunnel failed, response 403`); 1c — місто `59110bbd-…`.
+Піксельні розміри (застереження 10 закрите): 2k 16:9 = 2688×1520, **2k 21:9 = 2688×1152**, 4k 21:9 = 3840×1648.
+Стиль за чек-листом [[Style-Guide]] **не перевірено** — CDN із хмари закритий (застереження 11), картинки бачить лише Santos у віджеті.
+
+| дата | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| 2026-10-03 | 1a `choko-sheet-v1` · v1 | `f21298f4-515d-4120-b0e7-872339de695a` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_005206_f21298f4-515d-4120-b0e7-872339de695a.png | чекає вибору Santos |
+| 2026-10-03 | 1a `choko-sheet-v1` · v2 | `acbfa81a-284f-4426-ad87-3b0075dbac00` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_005205_acbfa81a-284f-4426-ad87-3b0075dbac00.png | чекає вибору Santos |
+| 2026-10-03 | 1a `choko-sheet-v1` · v3 | `eeffc2e0-745c-494e-80b5-1bba2455fcaf` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_005204_eeffc2e0-745c-494e-80b5-1bba2455fcaf.png | чекає вибору Santos |
+| 2026-10-03 | 1a `choko-sheet-v1` · v4 | `392c6101-eaf2-4da2-bf2a-7168a734d233` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_005205_392c6101-eaf2-4da2-bf2a-7168a734d233.png | чекає вибору Santos |
+| 2026-10-03 | 1b `stage-river-plate-v1` · v1 | `a2913501-694d-4bbc-9908-66892760bf7e` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_005206_a2913501-694d-4bbc-9908-66892760bf7e.png | чекає вибору Santos |
+| 2026-10-03 | 1b `stage-river-plate-v1` · v2 | `6c0a40e1-398d-4b22-ae4b-087006644dff` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_005206_6c0a40e1-398d-4b22-ae4b-087006644dff.png | чекає вибору Santos |
+| 2026-10-03 | 1b `stage-river-plate-v1` · v3 | `7fcf598e-01b4-4b7f-b18f-2fd20e41eb0d` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_005204_7fcf598e-01b4-4b7f-b18f-2fd20e41eb0d.png | чекає вибору Santos |
+| 2026-10-03 | 1b `stage-river-plate-v1` · v4 | `806a4f16-141f-4bac-a7b0-14811e40d7c5` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_005206_806a4f16-141f-4bac-a7b0-14811e40d7c5.png | чекає вибору Santos |
+| 2026-10-03 | 1c M2-A `menu-skyline-plate-v1` · v1 | `73ee9806-ca24-4dcc-965f-848941e01fe7` | 3840×1648 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_005204_73ee9806-ca24-4dcc-965f-848941e01fe7.png | чекає вибору Santos |
+| 2026-10-03 | 1c M2-A `menu-skyline-plate-v1` · v2 | `b4df3f33-4afe-4e0a-b430-4d7c5a635da5` | 3840×1648 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_005205_b4df3f33-4afe-4e0a-b430-4d7c5a635da5.png | чекає вибору Santos |
+| 2026-10-03 | 1c M2-A `menu-skyline-plate-v1` · v3 | `62038161-9911-4a55-81c3-03de63fea3ea` | 3840×1648 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_005205_62038161-9911-4a55-81c3-03de63fea3ea.png | чекає вибору Santos |
+| 2026-10-03 | 1c M2-A `menu-skyline-plate-v1` · v4 | `1992adf3-5099-429d-b001-390152ba70a4` | 3840×1648 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_005205_1992adf3-5099-429d-b001-390152ba70a4.png | чекає вибору Santos |
 
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]]
