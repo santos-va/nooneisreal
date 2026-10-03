@@ -52,6 +52,8 @@ enum Kind { NORMAL, SKILL, ULTIMATE, THROW }
 ## On-hit effect for synthetic hits: armor_break · bleed · poison
 @export var effect: String = ""
 @export var can_crit: bool = true                     # Skea weak-point passive may crit this
+@export var force_crit: bool = false                  # always a crit (×CRIT_MULT): the crystal ult's point-blank blast (GDD 03 § Кристальна ульта (в))
+@export var breaks_ult_armor: bool = false            # counts as a spell against Skea's ult armor (GDD 03 § Кристальна ульта (е), Santos «так»)
 @export var ignore_scaling: bool = false              # ultimate hits skip combo scaling
 @export var cancel_tier: int = 0                      # 0 light, 1 heavy, 2 skill, 3 ultimate — can cancel into higher tier on hit
 @export var sfx_hit: String = "hit_light"

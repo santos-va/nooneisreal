@@ -50,7 +50,7 @@ const WALL_SPLAT_FRAMES := 10     # `wall_splat_frames`, ДИЗАЙН (T5 Аре
 const WATER_GETUP_EXTRA := 6      # Stage-River: getting up out of the water is slower (PLACEHOLDER)
 # free movement, GameState.free_move — numbers: T5 Арес, docs/GDD/02-Combat-System.md § Вільний 3D-рух
 # (per-fighter ones live in CharacterData: block_arc_deg, circle_speed_mult, grapple_cone_deg)
-const ARENA_RADIUS := 12.5        # `arena_radius`, ДИЗАЙН (= ARENA_HALF_WIDTH)
+const ARENA_RADIUS := 20.0        # `arena_radius`, ДИЗАЙН, PLACEHOLDER (Арес 2026-10-03, Р4; ≠ ARENA_HALF_WIDTH since then)
 const FLASH_INPUT_LOCK := 6       # input stays in the pre-flash camera frame for the flash + 6 frames
 const MIN_LINE := 0.05            # below this the direction to the opponent is undefined: keep the last
 const FLASH_SIDE_DEG := 45.0      # Flash Step exit turned by a sideways stick (ДИЗАЙН, T5 Арес, docs/GDD/03 § Як у 3D)
@@ -852,7 +852,7 @@ func _check_hit(m: MoveData) -> void:
 func receive_hit(attacker: Fighter, m: MoveData) -> void:
 	if state == State.KO or state == State.LAUNCHED or invulnerable_frames > 0:
 		return
-	if ult_armored():
+	if ult_armored() and not m.breaks_ult_armor:
 		_armored_hit(attacker, m)
 		return
 	_break_ult()
@@ -939,7 +939,7 @@ func receive_hit(attacker: Fighter, m: MoveData) -> void:
 
 ## Under a beat ultimate (MoveData.armor) Skea does not fall, flinch or lose the ult — from the move's
 ## first frame to the end of active. A spell already on him breaks it: DoT, armor break, «Seen», time
-## stop. Checked on every hit, so a poison landed mid-ult breaks the armor too (docs/GDD/03 § Ульта Skea
+## stop; so does a hit with MoveData.breaks_ult_armor (Choko's crystal blast, receive_hit). Checked on every hit, so a poison landed mid-ult breaks the armor too (docs/GDD/03 § Ульта Skea
 ## під бас, «Непорушний»).
 func ult_armored() -> bool:
 	if dot_frames > 0 or armor_break_frames > 0 or revealed_frames > 0 or frozen_frames > 0:
@@ -1014,7 +1014,7 @@ func _flinch_dir(attacker: Fighter) -> Vector3:
 
 
 func _check_crit(attacker: Fighter, m: MoveData) -> bool:
-	var crit := false
+	var crit := m.force_crit
 	if attacker.veil_strike:
 		crit = true
 		attacker.veil_strike = false

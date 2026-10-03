@@ -9,8 +9,18 @@ const SIZE := Vector2(64.0, 25.0)      # x along the fight axis, z from the came
 const CENTER_Z := -5.5                 # spans z ≈ +7 … −18 (backdrop plane)
 ## Free movement (0.3-5): a square around the arena centre that reaches the turning backdrop card
 ## (Backdrop keeps ~18 m from the centre), fading into the painted river by distance from the centre.
+## Launch 6: the circle grew to 20 m and Backdrop pushes its card out by Backdrop.free_scale(), so both numbers
+## follow the card's distance (was 38 m / 18 m for the 12.5 m circle).
 const FREE_SIZE := 38.0
 const FREE_FAR_R := 18.0
+
+
+static func free_size() -> float:
+	return FREE_SIZE * Backdrop.free_scale()
+
+
+static func free_far_r() -> float:
+	return FREE_FAR_R * Backdrop.free_scale()
 
 var field: WaveField
 var _mat: ShaderMaterial
@@ -23,14 +33,14 @@ func setup(wf: WaveField, fighters: Array[Fighter]) -> void:
 	_fighters = fighters
 	process_physics_priority = -50       # after InputRouter (-100), before fighters (0)
 	var mesh := PlaneMesh.new()
-	mesh.size = Vector2(FREE_SIZE, FREE_SIZE) if wf.use_z else SIZE
-	mesh.subdivide_width = 160
+	mesh.size = Vector2(free_size(), free_size()) if wf.use_z else SIZE
+	mesh.subdivide_width = 160 if not wf.use_z else 320
 	mesh.subdivide_depth = 6
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.position = Vector3.ZERO if wf.use_z else Vector3(0.0, 0.0, CENTER_Z)
 	if wf.use_z:
-		mesh.subdivide_depth = 160
+		mesh.subdivide_depth = 320
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.extra_cull_margin = 2.0
 	_mat = ShaderMaterial.new()
@@ -41,7 +51,7 @@ func setup(wf: WaveField, fighters: Array[Fighter]) -> void:
 	_mat.set_shader_parameter("phase", field.phases)
 	_mat.set_shader_parameter("use_z", field.use_z)
 	_mat.set_shader_parameter("dir_deg", field.directions_deg)
-	_mat.set_shader_parameter("far_r", FREE_FAR_R if field.use_z else 0.0)
+	_mat.set_shader_parameter("far_r", free_far_r() if field.use_z else 0.0)
 	mi.material_override = _mat
 	add_child(mi)
 	for f in fighters:

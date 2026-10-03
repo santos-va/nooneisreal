@@ -158,7 +158,7 @@ damage = -1.0
 effect = "sword_storm"
 meter_cost = 100.0
 cancel_tier = 3
-description = "All numbers UNGROUNDED (CN §3): feel, playtest. Clip: Sword_Heavy_D whole over 92 f (UAL Source, 4a, approximate). Eight spectral emerald blades rise behind Choko and rain down in a 5.4 m line in front: 6 hits x 26 + final 100 (ragdoll). Ultimate hits ignore combo scaling: 256 total."
+description = "Crystal ult (GDD 03 § Кристальна ульта Choko, Ares 3c-1). All numbers PLACEHOLDER (ДИЗАЙН, playtest). Clip: Sword_Heavy_D whole over 92 f (UAL Source, 4a, approximate). The golden crystal sword bursts into pyramids: point-blank blast on effect frame 6 (half-circle 1.2 m, 70 x crit 1.5 = 105, breaks Skea's ult armor), then 6 ticks of rain + a final (ragdoll) over 5 bands 0.8-6.8 m, 1.2 -> 3.6 m wide: 225 / 195 / 165 / 135 / 105 per band. Point-blank total 330. Ultimate hits ignore combo scaling. Numbers live in SwordStormFx.BANDS."
 [sub_resource type="Resource" id="throw_move"]
 script = ExtResource("2")
 id = "hook_pull"

@@ -133,7 +133,7 @@ script = ExtResource("2")
 
 [node name="Camera3D" type="Camera3D" parent="CameraRig"]
 current = true
-fov = 48.0
+fov = 60.0
 near = 0.1
 far = 200.0
 
@@ -145,7 +145,7 @@ spring_length = 9.0
 margin = 0.2
 
 [node name="Camera3D" type="Camera3D" parent="DuelRig/SpringArm3D"]
-fov = 48.0
+fov = 60.0
 near = 0.1
 far = 200.0
 

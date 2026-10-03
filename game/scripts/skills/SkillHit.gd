@@ -20,6 +20,8 @@ static func make(id: String, damage: float, hitstun: int, knockback: Vector2, op
 	m.ragdoll_impulse = float(opts.get("ragdoll", 1.0))
 	m.effect = String(opts.get("effect", ""))
 	m.can_crit = bool(opts.get("can_crit", true))
+	m.force_crit = bool(opts.get("force_crit", false))
+	m.breaks_ult_armor = bool(opts.get("breaks_armor", false))
 	m.ignore_scaling = bool(opts.get("ignore_scaling", false))
 	m.meter_gain_hit = float(opts.get("meter", 3.0))
 	m.sfx_hit = String(opts.get("sfx", "hit_light"))
