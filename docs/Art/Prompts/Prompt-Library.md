@@ -76,6 +76,17 @@ Seamless tileable flat texture swatch of {MATERIAL}, hand-drawn flat illustratio
 
 MATERIAL: `fine gunmetal chainmail rings` · `muted dusty-orange leather with stitching` · `teal-green camouflage fabric` · `purple knit cotton` · `cloth bandage wraps` · `river water with flat foam shapes` · `small ripples on dark teal water`.
 
+### 5a. Піна річки v2 — `tex-water-foam-v2` (T6, Santos «go», 2026-10-03)
+
+v1 `b0a9189d` (з референсом річки `a2913501`) вийшла з розмазаною смугою відблисків міста на 55–87 % висоти — гіпотеза T6: місто
+протягнув референс. v2 — **без референсу**, кольори hex із тайла брижів (`convert … -colors 4 histogram` → `#244657`, `#2F3C4F`, `#503F59`).
+`nano_banana_pro` 2k 1:1, `get_cost` → 2, ×1; результат `3e04a378` — **канон**. Шов: `convert -roll +1024+1024` — стиків не видно,
+кілька плям на старих краях трохи розмиті.
+
+```
+Seamless tileable flat texture swatch of river water foam seen straight from above: scattered flat foam shapes and thin foam streaks floating on dark teal water (#244657, darker patches #2F3C4F), foam in pale lilac-white with a single magenta-violet shadow edge (#503F59), hand-drawn flat illustration style with inked lines in plum-graphite brown, flat base color, perfectly seamless edges on all four sides, the same even density of foam everywhere, flat even lighting, orthographic top-down, no perspective, no horizon, no sky, no reflections, no city, no lights, no gradient bands, no objects, no text.
+```
+
 ## 6. Арена «Річка» — `stage-river-plate-v1`
 
 Референс: `game/assets/backgrounds/bg_kronshift_river.jpg` — фон, що зараз у грі; Santos хоче перевести **саме його** ([[2026-10-03-Generation-Waves]], застереження 6). gpt_image_2_5 high 2k, 21:9.
