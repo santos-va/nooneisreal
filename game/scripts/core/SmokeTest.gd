@@ -70,6 +70,7 @@ var _rig_hit: int = -1               # launch 4: physics frame Skea took the man
 var _rig_swung: bool = false
 var _aim_max: float = 0.0             # launch 5: worst hero-vs-mannequin bone direction (deg) over the light
 var _aim_bone: String = ""
+var _storm: SwordStormFx = null       # crystal ult: the live SWORD STORM effect
 # launch 3b: Skea's ult under the bass (docs/GDD/03 § Ульта Skea під бас — literals, not the .tres)
 const GDD_ULT_BEATS := [62, 72, 82]                             # normal ult, move frames from frame 0
 const GDD_ULT_END := 84                                         # startup 12 + active 72
@@ -732,8 +733,19 @@ func _physics_process(_delta: float) -> void:
 				InputRouter.v_press(1, "ultimate")
 			if _f == _f0 + 30 or _f == _f0 + 62:
 				_shot("04_choko_sword_storm_%d" % (_f - _f0))
+			for n in get_tree().current_scene.find_children("*", "SwordStormFx", true, false):
+				_storm = n as SwordStormFx
 			if p2.state == Fighter.State.KO:
-				_ok("SWORD STORM KO'd Skea (ragdolls so far %d)" % p2.stats.ragdolls)
+				# crystal look: faceted crystal blades on crystal.gdshader, and they burst into shards
+				if _storm == null or not is_instance_valid(_storm):
+					_fail("sword storm: no SwordStormFx seen")
+					return
+				var blade := _storm.get_child(0) as MeshInstance3D
+				var cm := blade.material_override as ShaderMaterial if blade else null
+				if cm == null or cm.shader != SwordStormFx.CRYSTAL or not (blade.mesh is ArrayMesh) or blade.mesh.get_faces().size() != 36:
+					_fail("sword storm crystal: blade mesh %s, shader %s (want a 12-facet ArrayMesh on crystal.gdshader)" % [blade.mesh if blade else null, cm.shader if cm else null])
+					return
+				_ok("SWORD STORM KO'd Skea (ragdolls so far %d); crystal blades, %d shards by the KO" % [p2.stats.ragdolls, _storm.shards_spawned])
 				_next()
 			elif _f > _f0 + 150:
 				_fail("sword storm did not KO (p2 hp %.0f state %d, p1 state %d)" % [p2.hp, p2.state, p1.state])
