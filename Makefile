@@ -7,6 +7,8 @@ SHELL := /usr/bin/env bash
 
 GODOT ?= $(if $(GODOT_BIN),$(GODOT_BIN),godot)
 GAME  := game
+# Чесний run: відмова при другому Godot на ту саму теку + імпорт, коли HEAD змінився (tools/run/godot_guard.sh).
+GUARD := bash tools/run/godot_guard.sh
 
 .PHONY: roles gates check import run run-plane run-rig editor update fetch-assets hooks-check
 
@@ -28,10 +30,12 @@ check:
 	  echo "godot не знайдено (GODOT_BIN='$(GODOT_BIN)'): постав Godot 4.7 і додай бінар на PATH або задай GODOT_BIN=/шлях/до/godot"; \
 	  echo "  macOS: GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot make check"; \
 	  exit 2; fi; \
+	$(GUARD) busy $(GAME) || exit $$?; \
 	echo "── godot --headless --import ($$G) ──"; \
 	OUT="$$("$$G" --headless --path $(GAME) --import 2>&1)"; rc=$$?; \
 	printf '%s\n' "$$OUT" | grep -iE 'error|warning' | head -n 40; \
 	[ $$rc -eq 0 ] || { echo "ІМПОРТ ВПАВ: rc=$$rc"; exit $$rc; }; \
+	$(GUARD) stamp $(GAME); \
 	GODOT_BIN="$$G" bash tools/gates/gd_check_all.sh || exit $$?; \
 	echo "── smoke test: godot --headless --fixed-fps 60 -- --smoke ──"; \
 	SMOKE="$$("$$G" --headless --path $(GAME) --fixed-fps 60 --quit-after 20000 -- --smoke 2>&1)"; rc=$$?; \
@@ -42,32 +46,37 @@ check:
 
 # Свіжий клон не має game/.godot/ (у .gitignore), а з ним — реєстру class_name.
 # Без імпорту гра падає з «Could not find type CharacterData». Тому run/editor
-# спершу імпортують проєкт, якщо реєстру ще немає (одноразово, до хвилини).
+# спершу імпортують проєкт, якщо реєстру ще немає АБО HEAD змінився з останнього
+# імпорту (штамп game/.godot/nir_import_head) — інакше після pull/checkout кеш
+# класів старий («Could not find type Printer»). І відмовляють, коли на цю ж теку
+# вже працює інший Godot (агент, make check, редактор).
+PREP = @$(GUARD) busy $(GAME) || exit $$?; \
+	if $(GUARD) need-import $(GAME); then $(MAKE) --no-print-directory import || exit $$?; fi
 CLASS_CACHE := $(GAME)/.godot/global_script_class_cache.cfg
 
 import:
 	@echo "── імпорт проєкту ($(GODOT)) — перший раз до хвилини ──"
 	@$(GODOT) --headless --path $(GAME) --import >/dev/null 2>&1; \
-	if [ -f $(CLASS_CACHE) ]; then echo "імпорт готовий"; else echo "ІМПОРТ НЕ СТВОРИВ $(CLASS_CACHE): перевір, що GODOT_BIN вказує на Godot 4.7+"; exit 1; fi
+	if [ -f $(CLASS_CACHE) ]; then $(GUARD) stamp $(GAME); echo "імпорт готовий"; else echo "ІМПОРТ НЕ СТВОРИВ $(CLASS_CACHE): перевір, що GODOT_BIN вказує на Godot 4.7+"; exit 1; fi
 
 # Запустити гру (головна сцена з project.godot).
 run:
-	@[ -f $(CLASS_CACHE) ] || $(MAKE) --no-print-directory import
+	$(PREP)
 	$(GODOT) --path $(GAME)
 
 # Бій 0.2 у площині (з 0.3 за замовчуванням — вільний 3D-рух; `make run` грає саме його).
 run-plane:
-	@[ -f $(CLASS_CACHE) ] || $(MAKE) --no-print-directory import
+	$(PREP)
 	$(GODOT) --path $(GAME) -- --plane
 
 # Запуск 4 (C1): манекен UAL з кліпами замість капсул (`-- --skeletal-rig`).
 run-rig:
-	@[ -f $(CLASS_CACHE) ] || $(MAKE) --no-print-directory import
+	$(PREP)
 	$(GODOT) --path $(GAME) -- --skeletal-rig
 
 # Відкрити проєкт у редакторі.
 editor:
-	@[ -f $(CLASS_CACHE) ] || $(MAKE) --no-print-directory import
+	$(PREP)
 	$(GODOT) --editor --path $(GAME)
 
 # Оновити гру з GitHub і переімпортувати проєкт (нові class_name інакше не видно).
