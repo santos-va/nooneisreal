@@ -23,10 +23,15 @@ const SLASH_SKEA := ["jab_elbow", "roundhouse", "low_kick", "flying_knee"]
 const CHEST := 1.15
 ## spark_hit rows (sheet row 1…4): normal, crit, Choko, blocked.
 const SPARK_ROW := {"normal": 0, "crit": 1, "choko": 2, "blocked": 3}
+## Skid dust at the soft wall: grounded, on the circle, faster than this along it (m/s); one sheet per SKID_EVERY frames.
+const SKID_SPEED := 2.5   # PLACEHOLDER
+const SKID_EVERY := 20    # PLACEHOLDER
 
 var fighters: Array[Fighter] = []
 var _prev: Dictionary = {}   # fighter → see _snap()
 var _seen: Dictionary = {}   # fighter → the seen_mark Flipbook over its head
+var _skid_at: Dictionary = {}   # fighter → _frame of its last skid_dust
+var _frame: int = 0
 
 
 func setup(a: Fighter, b: Fighter) -> void:
@@ -40,11 +45,24 @@ func setup(a: Fighter, b: Fighter) -> void:
 		_prev[f] = _snap(f)
 
 
-## [state, on_ground, veil, armor break, frozen, grapple charges, dash charges, revealed, spring, RECORD marker alive, position]
+## [state, on_ground, veil, armor break, frozen, grapple charges, dash charges, revealed, spring, RECORD marker alive, position,
+##  velocity]
 static func _snap(f: Fighter) -> Array:
 	var marker := f.record_marker != null and is_instance_valid(f.record_marker)
 	return [f.state, f.on_ground(), f.veil_frames, f.armor_break_frames, f.frozen_frames, f.grapple.charges, f.dash_charges_left,
-		f.revealed_frames, f.spring_frames, marker, f.global_position]
+		f.revealed_frames, f.spring_frames, marker, f.global_position, f.velocity]
+
+
+## Speed along the soft wall (m/s) when `pos` is on the circle and the fighter is grounded, else 0. Free movement only.
+static func wall_slide_speed(pos: Vector3, vel: Vector3, grounded: bool) -> float:
+	if not GameState.free_move or not grounded:
+		return 0.0
+	var flat := Vector2(pos.x, pos.z)
+	if flat.length() < Fighter.ARENA_RADIUS - 0.05:
+		return 0.0
+	var n := flat.normalized()
+	var v := Vector2(vel.x, vel.z)
+	return (v - n * v.dot(n)).length()
 
 
 func _on_picked(f: Fighter, kind: String) -> void:
@@ -77,6 +95,7 @@ func _on_ko(f: Fighter) -> void:
 
 
 func _physics_process(_dt: float) -> void:
+	_frame += 1
 	for f in fighters:
 		if not is_instance_valid(f):
 			continue
