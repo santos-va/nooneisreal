@@ -33,9 +33,13 @@ const FLINCH_FREQ := 5.5
 const FLINCH_DAMP := 0.32
 
 var _data: CharacterData
+## The flinch pose feeds Ragdoll.build_from(), and the ragdoll's pelvis becomes the fighter's position
+## after a launch — so even this "visual" randomness must be seeded, or replays diverge (0.3-6).
+var _rng := RandomNumberGenerator.new()
 
 
 func setup(data: CharacterData) -> void:
+	_rng.seed = hash(data.id) if data != null else 1
 	_data = data
 	for c in get_children():
 		c.queue_free()
@@ -195,7 +199,7 @@ func flinch(dir: Vector3, strength: float, facing: int, zone: String = "mid") ->
 	var local_back := -dir.x * float(facing)   # >0 when pushed away from where we face
 	flinch_v.x += clampf(strength / 40.0, 0.4, 2.2) * (1.0 if local_back > 0.0 else -1.0) * 6.0
 	flinch_v.y -= clampf(strength / 60.0, 0.2, 1.5) * 2.0
-	flinch_v.z += randf_range(-1.0, 1.0) * 1.5
+	flinch_v.z += _rng.randf_range(-1.0, 1.0) * 1.5   # own seeded RNG: this pose seeds the ragdoll (0.3-6)
 
 
 func tick(delta: float, f: Fighter, frozen: bool) -> void:

@@ -21,6 +21,10 @@ var _old_arena: Node = null
 var _river_runs: Array = []
 var _river_min_gap: float = 99.0
 var _river3d_runs: Array = []
+const DUEL_FRAMES := 1110   # the last ultimate (t 820) must ragdoll, land and get up inside the trace
+var _duel_runs: Array = []
+var _duel_trace: Array = []
+var _duel_first_trace: Array = []
 var _zdiff: float = 0.0
 var _zmax: float = 0.0
 var _atk_frames: int = 0
@@ -54,6 +58,11 @@ func _ready() -> void:
 	GameState.p1_character = "choko"
 	GameState.p2_character = "skea"
 	GameState.stage_index = 2   # back_alley (river is index 0)
+	for a in OS.get_cmdline_user_args():
+		if a == "--smoke-only=duel":
+			# dev / negative controls: only the 0.3-6 duel replay (plane, then free movement)
+			GameState.set_free_move(false)
+			_stage = 70
 	get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
 
 
@@ -136,6 +145,72 @@ func _load_arena(stage_idx: int, next_stage: int) -> void:
 	_stage = next_stage
 	_f0 = _f
 	get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
+
+
+## 0.3-6: one scripted duel for both modes (t = frames from FIGHT): walk in, strings, heavy, skills,
+## dash/flash, jump-in, grapple, sidesteps (free movement only), and both ultimates (one ragdolls).
+func _duel_script(t: int) -> void:
+	InputRouter.v_set(1, "right", t < 45 or (t > 400 and t < 430))
+	InputRouter.v_set(2, "left", t < 25)
+	InputRouter.v_set(2, "block", (t > 120 and t < 150) or (t > 600 and t < 640))
+	if GameState.free_move:
+		InputRouter.v_set(1, "up", t > 300 and t < 340)
+		InputRouter.v_set(2, "down", t > 460 and t < 500)
+	for at in [50, 62, 74]:
+		if t == at:
+			InputRouter.v_press(1, "light")
+	if t in [100, 520]:
+		InputRouter.v_press(1, "heavy")
+	if t in [160, 172, 560]:
+		InputRouter.v_press(2, "light")
+	if t == 200:
+		InputRouter.v_press(2, "skill1")
+	if t == 260:
+		InputRouter.v_press(1, "skill2")
+	if t == 360:
+		InputRouter.v_press(2, "dash")
+	if t == 440:
+		InputRouter.v_press(1, "jump")
+	if t == 452:
+		InputRouter.v_press(1, "light")
+	if t == 600:
+		InputRouter.v_press(1, "grapple")
+	if t == 610:
+		InputRouter.v_release(1, "grapple")
+	if t >= 600 and t < 680:
+		_close_in(p2, p1, 1.4)
+	if t == 680:
+		p2.meter = Fighter.MAX_METER   # the script spends meter on skills; refill so the ultimate fires
+		InputRouter.v_clear(2)
+		InputRouter.v_press(2, "ultimate")
+	if t >= 730 and t < 820:
+		_close_in(p1, p2, 1.4)
+	if t == 820:
+		p1.meter = Fighter.MAX_METER
+		InputRouter.v_clear(1)
+		InputRouter.v_press(1, "ultimate")
+
+
+## Walk `who` toward `target` until `dist` m apart, by screen side (duel frame in free movement), so
+## the same call works in both modes. Pure function of the state → still deterministic.
+func _close_in(who: Fighter, target: Fighter, dist: float) -> void:
+	var d := target.global_position - who.global_position
+	var dx := d.x
+	var gap := absf(d.x)
+	if GameState.free_move:
+		dx = Vector3(d.x, 0.0, d.z).dot(GameState.duel.right)
+		gap = Vector3(d.x, 0.0, d.z).length()
+	var p := who.player_index
+	InputRouter.v_set(p, "right", dx > 0.0 and gap > dist)
+	InputRouter.v_set(p, "left", dx <= 0.0 and gap > dist)
+
+
+## Everything the fight decides, for both fighters: body, facing, HP, meter, state, combo, statuses.
+func _duel_state() -> String:
+	var parts: Array[String] = []
+	for f: Fighter in [p1, p2]:
+		parts.append("%.5f,%.5f,%.5f|%.4f,%.4f|%.3f|%.3f|%d|%d|%d|%d|%d" % [f.global_position.x, f.global_position.y, f.global_position.z, f.forward.x, f.forward.z, f.hp, f.meter, f.state, f.combo_count, f.dot_frames, f.armor_break_frames, f.stats.hits])
+	return "/".join(parts)
 
 
 ## 0.3-5: the same scripted inputs on every river run in free movement (t = frames from FIGHT).
@@ -1176,4 +1251,47 @@ func _physics_process(_delta: float) -> void:
 					_fail("river 3D: two runs differ at frame 600 (hash %d vs %d)" % [_river3d_runs[0], _river3d_runs[1]])
 				else:
 					_ok("river 3D: deterministic — both runs hash %d at frame 600" % h)
+					GameState.set_free_move(false)
+					_duel_runs.clear()
+					_load_arena(2, 70)   # 0.3-6: full duel replay, plane first
+		# ---------------- 0.3-6: same input twice → same hash, in both modes ----------------------
+		70:
+			if flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable():
+				_duel_trace = []
+				_f0 = _f
+				_next()
+			elif _f > _f0 + 600:
+				_fail("duel replay: fight never started")
+		71:
+			var t := _f - _f0
+			_duel_script(t)
+			if t % 30 == 0:
+				_duel_trace.append(_duel_state())
+			if t == DUEL_FRAMES:
+				var mode := "free" if GameState.free_move else "plane"
+				var h := ";".join(_duel_trace).hash()
+				_duel_runs.append(h)
+				var used := "hits %d/%d, ragdolls %d/%d, grapples %d/%d, hp %.0f/%.0f" % [p1.stats.hits, p2.stats.hits, p1.stats.ragdolls, p2.stats.ragdolls, p1.stats.grapples, p2.stats.grapples, p1.hp, p2.hp]
+				_ok("duel replay %s run %d: %d frames, hash %d (%s)" % [mode, _duel_runs.size() % 2 if _duel_runs.size() % 2 == 1 else 2, DUEL_FRAMES, h, used])
+				if p1.state == Fighter.State.LAUNCHED or p2.state == Fighter.State.LAUNCHED:
+					_fail("duel replay %s: a fighter is still in the ragdoll at the end — its outcome is not in the hash" % mode)
+					return
+				if p1.stats.hits + p2.stats.hits < 3 or p1.stats.ragdolls + p2.stats.ragdolls < 1:
+					_fail("duel replay %s: the script did not exercise combat (%s)" % [mode, used])
+					return
+				if _duel_runs.size() % 2 == 1:
+					_duel_first_trace = _duel_trace.duplicate()
+					_load_arena(2, 70)
+					return
+				if _duel_runs[-1] != _duel_runs[-2]:
+					var at := 0
+					while at < _duel_trace.size() and _duel_trace[at] == _duel_first_trace[at]:
+						at += 1
+					_fail("duel replay %s: runs differ, first at frame %d:\n  %s\n  %s" % [mode, at * 30, _duel_first_trace[at], _duel_trace[at]])
+					return
+				_ok("duel replay %s: deterministic — same input twice, same hash %d (%d checkpoints)" % [mode, h, _duel_trace.size()])
+				if not GameState.free_move:
+					GameState.set_free_move(true)
+					_load_arena(2, 70)
+				else:
 					_finish()
