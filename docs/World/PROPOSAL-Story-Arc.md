@@ -222,7 +222,12 @@ Canon: an assistant goes with him. Options:
 - **B — a person:** an apprentice from [[Roster]] who runs the device while Choko fights.
 - **C — no body:** the AI is only a voice from the watch; the "assistant" is the printing box itself.
 
-### H15. Printed items in the game — "maybe as a skill" [P] [?]
+### H15. Printed items in the game — "maybe as a skill" — **DECIDED: A + B** [C]
+
+> **Santos, 2026-10-03:** «A + B, в історії й арт теж». Option **A** (RECORD glyph = printed sticker) and option **B**
+> (passive "Printer" replacing Chrono Guard) are chosen; items exist **in the story and in the art**. Recorded in [[Lore]]
+> and [[Choko]]. Numbers and the item list — T5 Ares; art — T6 Apollon after Ares, with a cost estimate and Santos's word
+> on credits. The table below is kept for history.
 
 Santos (2026-10-03): the device must **print items too**, and they should get **into the game somehow, maybe as a
 skill**. The kit belongs to **T5 Ares**; Klio only frames the lore and lists options. Hard limit from
@@ -240,8 +245,7 @@ Item ideas, **names only — numbers are Ares's**: a **patch** sticker (small he
 marks the opponent and **reveals an echo** (ties H11 and H12 — the printer that can tell real from shadow), a **spring**
 sticker (one extra jump or dash).
 
-**[?] Q15** — Items in-world only (printed by the device), or do you also mean new item art from Higgsfield? Which of
-A–D for Ares to work on?
+**Q15 — answered:** in the story **and** in the art; **A + B** go to Ares.
 
 **Start message for a T5 Ares session (copy if you want it):**
 
@@ -250,8 +254,18 @@ T5 Арес. Santos хоче, щоб айтеми з принтера Choko по
 Спершу git checkout main && git pull. Прочитай CLAUDE.md, docs/system/state.md, roles/t5-ares.md,
 docs/World/PROPOSAL-Story-Arc.md § H15 (варіанти A–D, не канон), docs/Characters/Choko.md, docs/GDD/03-Skills-Framework.md.
 Обмеження: 9 дій — стеля, вільної кнопки немає; RECORD, TIME STOP, SWORD STORM — від Santos, не прибирати без його слова.
-Запропонуй слот (рекомендація Кліо: A — RECORD як надрукований стікер, B — пасивка «Printer» замість Chrono Guard), 2–3 айтеми з числами PLACEHOLDER.
+Рішення Santos — A + B: гліф RECORD = надрукований стікер (механіка без змін), пасивка «Printer» замість Chrono Guard. Дай 2–3 айтеми з числами PLACEHOLDER.
 Пиши в 03-Skills-Framework і 08-Balance; .tres — лише після «так» Santos. Гейти rc=0, push у гілку claude/…, draft PR.
+```
+
+**Start message for a T6 Apollon session — after Ares has fixed the items (copy if you want it):**
+
+```
+T6 Аполлон. Арт айтемів з принтера Choko: стікер-гліф RECORD + стікери айтемів, які дав Арес (H15 у docs/World/PROPOSAL-Story-Arc.md).
+Спершу git checkout main && git pull. Прочитай CLAUDE.md, docs/system/state.md, roles/t6-apollon.md, docs/Characters/Choko.md,
+Style-Guide, Prompt-Library. Стиль — надрукований стікер з рваним краєм, Sketch-Cel, акцент — помаранч куртки Choko; не кіберпанк.
+Промпти в Prompt-Library; balance → get_cost → кошторис мені. Генерація — лише після мого слова зі стелею кредитів.
+Кожен ассет — рядок у Textures-Registry. Push у гілку claude/…, draft PR.
 ```
 
 ---
@@ -305,7 +319,7 @@ intros/endings now. Stages are the ones that already exist or are planned on [[K
 | Q12 | Who tells them the name in dialogue (H12)? | the teammate from the amulet |
 | Q13 | Device look; does the AI live in Choko's watch (H13)? | brass printer box + AI in the watch |
 | Q14 | Who is the assistant — drone, person, or only the AI (H14)? | A — a small brass drone |
-| Q15 | Printed items: in-world only or also new art? Which of A–D goes to Ares (H15)? | A + B |
+| Q15 | Printed items: in-world only or also new art? Which of A–D goes to Ares (H15)? | **answered:** A + B; story and art |
 
 ---
 
