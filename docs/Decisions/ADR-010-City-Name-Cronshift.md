@@ -15,4 +15,4 @@
 - Нові промпти Higgsfield пишемо одразу з Cronshift.
 
 ## Related
-- [[Kronshift]] · [[2026-10-03-Main-Menu-Skyline]] · [[2026-10-03-Main-Menu-and-Chain]] · [[state]]
+- [[Cronshift]] · [[2026-10-03-Main-Menu-Skyline]] · [[2026-10-03-Main-Menu-and-Chain]] · [[state]]

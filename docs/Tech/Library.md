@@ -9,7 +9,7 @@
 
 | ресурс | ліцензія | для чого |
 |---|---|---|
-| Higgsfield / Meshy: rig + 678 кліпів | кредити плану | основний шлях 3D ([[Animation-Plan]]) |
+| Higgsfield / Meshy: rig + кліпи (678 за внутрішнім доком Higgsfield, 656 у публічній таблиці Meshy — **UNGROUNDED**, [[2026-10-03-Animation-Sources]]) | кредити плану | основний шлях 3D ([[Animation-Plan]]) |
 | Quaternius Universal Animation Library | CC0 | базові рухи, бій (перевірити, що є в безкоштовній частині) |
 | KayKit Adventurers (GitHub) | CC0 | 1H/2H атаки, блок, ухил, хіт, смерть |
 | Rokoko Motion Library (free) | безкоштовно, комерційно | справжній бойовий мокап |

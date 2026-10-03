@@ -1,7 +1,7 @@
 # No One Is Real
 
 3D cel-shaded аніме-файтинг на арені (візуал — Naruto Ultimate Ninja Storm, фізика — active ragdoll,
-мобільність — гарпун на зарядах) за мотивами власного аніме. Godot 4.7 · GDScript. Місто — Kronshift,
+мобільність — гарпун на зарядах) за мотивами власного аніме. Godot 4.7 · GDScript. Місто — Cronshift,
 перші бійці — Choko (контроль часу) і Skea (Muay Thai, флеш-ривки, тіні).
 
 **Вікі:** [docs/index.md](docs/index.md) · **поточна правда:** [docs/system/state.md](docs/system/state.md) ·

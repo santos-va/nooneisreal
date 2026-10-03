@@ -1,6 +1,6 @@
 # Фони арен
 
-Чотири ілюстрації Kronshift (Higgsfield, GPT Image 2.5 «flare», 16:9, 2688×1520). У грі — квад
+Чотири ілюстрації Cronshift (Higgsfield, GPT Image 2.5 «flare», 16:9, 2688×1520). У грі — квад
 54×30 м на z = −18 з шейдером `backdrop.gdshader` (віньєтка, паралакс 0.2 від камери). Без файлу —
 процедурний фолбек `backdrop_fallback.gdshader` (градієнт присмерку + силуети + вікна).
 
@@ -20,4 +20,4 @@
 - Image Decompose → шари; ближній шар із ліхтарями стає якорями гарпуна.
 
 ## Related
-- [[Kronshift]] · [[Textures-Registry]] · [[Style-Guide]] · [[Architecture]]
+- [[Cronshift]] · [[Textures-Registry]] · [[Style-Guide]] · [[Architecture]]
