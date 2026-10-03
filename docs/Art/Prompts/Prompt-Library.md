@@ -24,9 +24,9 @@ No anime style, no glossy eyes, no 3D render look, no gradients, no realistic sk
 {STYLE} Character pose sheet on a flat muted mint-sage background (#B8CBB1), eight full-body poses of the same original character in two rows of four, evenly spaced, no frames: 1) relaxed standing with weight on one leg, 2) hands-on-hips confident, 3) three-quarter walking, 4) dynamic fighting lunge, 5) arms crossed annoyed, 6) back view looking over shoulder, 7) side view idle, 8) pointing or taunting gesture toward the viewer. Keep the identity, outfit and colors of the reference image: {IDENTITY}. Small title "{NAME}" in the top-left corner in hand-lettered marker. {NEG}
 ```
 
-**IDENTITY — Choko** (v5 з 2026-10-03: гладка спина + кросівки, [[2026-10-03-Choko-Outfit-v5]]; до Choko завжди додавати `{NEG_CHOKO}` § 15; попередня v4 — § 15 «Було»):
+**IDENTITY — Choko** (v5.1 з 2026-10-03 — куртка **без жодних смуг**, ні спереду, ні ззаду, Santos після вибору спини Z-1; v5 з 2026-10-03: гладка спина + кросівки, [[2026-10-03-Choko-Outfit-v5]]; до Choko завжди додавати `{NEG_CHOKO}` § 15; попередня v4 — § 15 «Було»):
 ```
-young man, lean narrow face, long straight nose, grey-green eyes, thick curly dark-brown hair covering temples and ears; the whole back of the jacket is one smooth plain dusty-orange cloth panel with no stripe, no seam and no metal on the back; light fitted cloth jacket in muted dusty orange with a thin cream stripe and a high collar, sleeves to the wrists, cut for a fast acrobatic swordsman, with small sewn-on patches of fine gunmetal ring mesh on the shoulder caps and the outer forearms only; slate blue-grey trousers; low-top 2000s retro running sneakers, breathable mesh base with layered silver-grey synthetic overlays, chunky segmented light-grey midsole with a visible heel cage, light grey with muted orange accent panels on the heel tab, around the lace eyelets and on the outsole, the same dusty orange as the jacket, no logos, no brand marks, plain side panels; black leather gloves; large analog wristwatch on the left wrist; emerald-green pike-style sword with dark green wrapped grip and brass guard
+young man, lean narrow face, long straight nose, grey-green eyes, thick curly dark-brown hair covering temples and ears; the whole back of the jacket is one smooth plain dusty-orange cloth panel with no stripe, no seam and no metal on the back; light fitted cloth jacket in plain solid muted dusty orange with no stripes anywhere and a high collar, sleeves to the wrists, cut for a fast acrobatic swordsman, with small sewn-on patches of fine gunmetal ring mesh on the shoulder caps and the outer forearms only; slate blue-grey trousers; low-top 2000s retro running sneakers, breathable mesh base with layered silver-grey synthetic overlays, chunky segmented light-grey midsole with a visible heel cage, light grey with muted orange accent panels on the heel tab, around the lace eyelets and on the outsole, the same dusty orange as the jacket, no logos, no brand marks, plain side panels; black leather gloves; large analog wristwatch on the left wrist; emerald-green pike-style sword with dark green wrapped grip and brass guard
 ```
 
 **IDENTITY — Skea** (v2 з 2026-10-03, santos-va/nooneisreal#33; попередня — § 12 «Було»; до Skea завжди додавати `{NEG_SKEA}` і пози § 12):
@@ -248,7 +248,7 @@ lanky, very tall and thin young man of about twenty — for this character only,
 
 **`{NEG_CHOKO}`** (додається після `{NEG}` у кожному промпті Choko з людиною):
 ```
-No chain mail or metal rings on the back, chest or torso, no mail shirt, no armor vest, no stripe down the back of the jacket, no logos or brand marks on the shoes.
+No chain mail or metal rings on the back, chest or torso, no mail shirt, no armor vest, no stripes anywhere on the jacket, front or back, no logos or brand marks on the shoes.
 ```
 
 **Картка кросівок** `choko-item-sneakers-v1` — шаблон § 4, рядок ITEM «Choko's low-top 2000s retro running sneakers…».
@@ -297,5 +297,8 @@ gpt_image_2_5 high 2k. Референси в цьому порядку: 1) ку�
 {STYLE} Monogram design card on a flat mint-sage background (#B8CBB1): a single hand-lettered cursive capital letter C drawn like a calligraphy signature, with an opening loop at the top and a long tail that curls back on itself and then stretches out horizontally to the right, as a mark for the outer side panel of a sneaker. Show it four times: 1) large in the center in dark plum-graphite line on white, 2) filled in muted dusty orange #BD6133 on a light grey mesh swatch, 3) small on a plain light grey low-top sneaker side panel silhouette with no other marks, 4) a thin single-line version. Same letter shape in all four, sketchy hand-drawn line. No other letters, no words, no numbers, no title, no brand logos, no swoosh or stripe shapes, no watermark.
 ```
 
-## Related
+**Монограма «C» — канон Z-2 `327a6ef9`** (Santos). Застереження Santos: **«кросівки не ті — пам'ятай і не пропусти»**. Кросівка на картці
+Z-2 — лише силует-підкладка, не Choko. Береться **тільки літера**: декаль кладеться на кросівки V-1 `482bfc6d` (у 3D — на зовнішні
+бокові панелі). Форму кросівки зі Z-2 не брати ні в 2D, ні в 3D.
+
 - [[Style-Guide]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Prompts]] · [[Choko]] · [[Skea]] · [[Stage-River]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[2026-10-03-Skea-Redesign]]
