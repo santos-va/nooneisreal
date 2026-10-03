@@ -53,6 +53,21 @@
 | NC-C2 | Skea `embedded_image_handling=0` | smoke `FAIL skea_m1.glb: char1 has no albedo texture`; батарея **зелена** — гейт це не бачить |
 | NC-C3 | рядок налаштування видалено з `.import` (дефолт рушія) | smoke `FAIL … extracted`; `БАТАРЕЯ ЧЕРВОНА` |
 
+**Після аудиту Феміди** (`docs/Audit/2026-10-03-Launch-4-0.md` п. 7, santos-va/nooneisreal#81, YELLOW): у звичайному `--smoke` `mode = -1`, тож перевернутий
+`set_free_move` у `Main._ready` (її N3) лишав smoke зеленим. Тепер проводка винесена в `Main.apply_launch_args(args, state)`,
+а smoke ганяє її на свіжих копіях `GameState` для `["--plane"]`, `["--free-move"]`, `[]`. Після злиття з `main` `e548963`:
+`make check` → `ALL OK (95 checks)` (лічильник той самий, перевірка проводки йде в рядку launch flags), батарея зелена.
+
+| # | злам | результат |
+|---|---|---|
+| NC-D1 (= N3) | `set_free_move(mode == 0)` | `FAIL Main.apply_launch_args(["--plane"]) left free_move true, expected false` |
+| NC-D2 | рядок проводки → `pass` | `FAIL … (["--plane"]) left free_move true, expected false` |
+| NC-D3 | без `if mode != -1` | `FAIL GameState.free_move is false at boot, launch flags ["--smoke"] ask for true` |
+| NC-A3 | `Main._ready` оминає функцію, ставить `false` | `FAIL … is false at boot …` |
+
+Межа гарда: якщо `Main._ready` оминає `apply_launch_args` і має свою **умовну** перевернуту проводку, звичайний `--smoke` це не побачить
+(прапорця немає); побачить лише `-- --smoke --plane`.
+
 Предмет: для всіх запусків гри без прапорців — вільний рух; для всіх наборів аргументів — `--plane` → площина, `--free-move` → 3D, інакше дефолт;
 для всіх GLB героїв — текстура всередині GLB, а не окремим файлом і не загублена.
 
