@@ -2,9 +2,72 @@
 
 **Роль:** T6 Аполлон, 2026-10-03 · **План:** спринт «тверда арена, три карти день/ніч, VFX, меню» (T1, смуга C, PR santos-va/nooneisreal#107)
 · **Канон арен:** [[Cronshift]] § Нові арени · **Стиль:** [[Style-Guide]], [[ADR-007-Art-Style-Sketch-Cel]].
-**Статус:** промпти й ціни готові; стиль-проба згенерована (11 кр., § Журнал генерацій), чекає «стиль так». Генерація — лише після слова Santos на стелю (§ Кошторис).
+**Статус:** проба v1 — «занадто багато деталізацій» (Santos); **v2** — простіше, у стилі героїв, вирізками (§ v2), чекає слова на пробу v2. Генерація — лише після слова Santos на стелю (§ Кошторис).
 
-## Форма — 4 картки на арену (поки немає R11)
+## v2 — простіше, у стилі героїв (відгук Santos на пробу v1)
+
+Santos 2026-10-03 про пробу v1: «занадто багато деталізацій, треба, щоб було в стилі персонажів і відчувалось так. Перехожі,
+машини й шматочки будівель вийшли здраво — так і зараз». Що спрацювало там (порівняння промптів [[Menu-Skyline-Prompts]] § M2-E,
+M2-F, M2-K з § 6 [[Prompt-Library]]):
+
+| там (вийшло) | у v1 арен (не вийшло) |
+|---|---|
+| один предмет або один ряд, 3–4 названі елементи | ціла сцена, 8–10 елементів (фасади, дахи, вежі, міст, ліхтарі, відблиски) |
+| вирізка на прозорому тлі, неба й землі немає | повна ілюстрація з небом, світлом і атмосферою |
+| «flat colors with a single magenta-violet cel shadow» без опису світла | «late afternoon light, warm low sun, dusty-orange sky» — модель малює освітлення й глибину |
+| референс — затверджений арт у новому стилі | референс — `a2913501`, сам уже насичений деталями |
+
+**Що змінюю у v2:**
+1. **Референс манери — лист героя** `f21298f4` (Choko, канон 1a): лінія, заливка, одна тінь — ті самі, що в персонажів. Другий
+   референс — картки будівель `08c09625` (переможець M2-K): масштаб і форма «шматочків міста».
+2. **Формула STYLE героїв** ([[Prompt-Library]] § STYLE), переписана під тло: «великі прості форми, мало деталей, як фон
+   західного мультсеріалу».
+3. **Арена = вирізки, а не картини.** Кожен напрямок — 2 смуги на прозорому тлі: ближній ряд (3–5 будинків або пропів) і
+   далекий силует міста. Небо й світло (день/ніч) дає рушій. Так шви між напрямками зникають (у смуг прозорі краї), а ніч — це
+   світло рушія плюс шар вікон, а не нова картина.
+4. **Сцена — максимум 4 елементи.** Решту доповнюють пропи-картки й частинки (пара, вогні).
+
+**ARENA_STYLE_V2:**
+
+```
+Background cut-out art for a 2D/3D fighting game, drawn in exactly the same loose expressive western animation sketch style as the character in the first reference image, NOT anime: lively slightly sketchy line art in dark plum-graphite brown (not pure black), thicker outer contour and thinner inner lines with small line breaks, flat base colors with a single cel shadow tone hue-shifted toward magenta-violet, almost no highlights, no gradients, no gloss, no painted texture. Big simple shapes and few details, like a background in a western animated series: each building is a few flat color blocks with a handful of simple windows, rooftops as clean flat shapes, calm empty flat areas. Muted palette of terracotta, slate blue, deep teal and brass.
+```
+
+**STRIPS_V2:**
+
+```
+Transparent background. Two separate horizontal cut-out strips with clean edges and full transparency around them, matching the scale of the city pieces in the second reference image: the upper strip is {FAR}; the lower strip is {NEAR}, larger. No sky, no ground, no water, no light effects, no people, no cars, no letters or words, no logos, no neon.
+```
+
+`gpt_image_2_5`, high, 2k, 21:9, `background: "transparent"`, референси `f21298f4` + `08c09625` (`image_references`).
+Промпт: `{ARENA_STYLE_V2} {STRIPS_V2}`.
+
+| id | FAR | NEAR |
+|---|---|---|
+| `stage-river-n-strips` | `a low distant city silhouette with the twin domed clock towers in the middle` | `a row of four narrow brick and terracotta houses along a stone quay, with two simple iron street lamps` |
+| `stage-river-e-strips` | `a distant row of warehouse roofs and two thin chimneys` | `an arched stone bridge seen from the side, with one street lamp on it` |
+| `stage-river-s-strips` | `a distant row of rooftops with water tanks` | `wide stone steps going down from a quay, two moored flat barges and one tall iron lamp post` |
+| `stage-river-w-strips` | `distant factory chimneys` | `a riveted iron tram bridge on two brick pillars, seen from the side` |
+| `stage-bazaar-n-strips` | `the twin domed clock towers far away above a few rooftops` | `three market stalls under faded striped awnings with a string of lights between them` |
+| `stage-bazaar-e-strips` | `a few distant rooftops and a chimney` | `two narrow houses with balconies and a washing line between them, a staircase going up` |
+| `stage-bazaar-s-strips` | `a distant glass-and-iron market hall roof` | `the arched brick entrance of a covered market, stacked crates by the door, one street lamp` |
+| `stage-bazaar-w-strips` | `a few distant rooftops` | `stacked wooden crates and barrels, a hand cart and a spice stall with two hanging lanterns` |
+| `stage-fountain-n-strips` | `a very tall thin tower far away with a frame of big dark unlit letters near its top that cannot be read` | `a row of four calm town houses with flower boxes` |
+| `stage-fountain-e-strips` | `distant rooftops with overhead tram wires` | `a tram stop shelter with a curved roof and two iron wire poles` |
+| `stage-fountain-s-strips` | `a distant clock tower` | `the old town hall with a clock and a wide staircase, two gas lamps` |
+| `stage-fountain-w-strips` | `a few distant rooftops` | `two café terraces under awnings with folded chairs and one lamp post` |
+
+**Ніч у v2** — без нової картини: шар «вікна світяться» для кожної смуги (`NIGHT_WINDOWS`) + світло рушія.
+
+```
+Same cut-out strips as the reference image, identical shapes and line art, transparent background; only the windows and lamps are lit with flat warm yellow light, everything else fully transparent.
+```
+
+Якщо шар вікон не вийде чистим — запасний шлях: ніч редагуванням смуги (`NIGHT_EDIT` нижче), той самий кадр.
+
+## v1 (стиль-проба 2026-10-03 — «занадто деталізовано», лишаю як журнал)
+
+### Форма v1 — 4 картки на арену
 
 Фон більше не повертається з камерою, тож навколо кола 20 м потрібне оточення на всі 360°. Поки Архімед не дав R11
 (кільце карток чи панорама), готую **кільце з 4 карток: N / E / S / W**, кожна на 90°. Якщо R11 скаже «панорама», ті самі
@@ -127,14 +190,24 @@ Prop design sheet for a fighting game, on a flat muted mint-sage background (#B8
 Ощадний варіант: пакет 2 по 1 варіанту — 60.5 замість 121; смуга C — 152–156. Оцінку T1 «≈ 300 без Kling і 3D»
 смуга C не перевищує.
 
+## Кошторис v2 (`get_cost` 2026-10-03: transparent, 21:9, high 2k, референси `f21298f4` + `08c09625` → 2.75)
+
+| пакет | генерацій | кредити |
+|---|---|---|
+| **проба v2:** `stage-river-n-strips` ×2 + `stage-bazaar-n-strips` ×2 | 4 | **11** |
+| решта 10 напрямків, по 2 варіанти | 20 | 55 |
+| ніч: шар вікон на 12 напрямків, по 1 | 12 | 33 |
+| текстури, пропи, неон — як у v1 | 10 | 23 |
+| **арени v2 разом** | 46 | **122** (замість 155 у v1) |
+
 ## Журнал генерацій
 
 | дата | що | job id | розмір · URL | вибір |
 |---|---|---|---|---|
-| 2026-10-03 | стиль-проба `stage-river-n-day` · v1 | `1ac2d361-4ad0-4d64-b729-45d0eba08f88` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102633_1ac2d361-4ad0-4d64-b729-45d0eba08f88.png | чекає Santos |
-| 2026-10-03 | стиль-проба `stage-river-n-day` · v2 | `ba93fc22-b3d6-4d7b-8731-e10783392edf` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102632_ba93fc22-b3d6-4d7b-8731-e10783392edf.png | чекає Santos |
-| 2026-10-03 | стиль-проба `stage-river-n-night` · v1 | `a470d3e8-9422-4ab6-9ed0-2711e327f5d9` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102632_a470d3e8-9422-4ab6-9ed0-2711e327f5d9.png | чекає Santos |
-| 2026-10-03 | стиль-проба `stage-river-n-night` · v2 | `aa24a131-71be-4635-9f44-51266c89aab3` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102632_aa24a131-71be-4635-9f44-51266c89aab3.png | чекає Santos |
+| 2026-10-03 | проба v1 `stage-river-n-day` · v1 | `1ac2d361-4ad0-4d64-b729-45d0eba08f88` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102633_1ac2d361-4ad0-4d64-b729-45d0eba08f88.png | ні — «занадто деталізовано» |
+| 2026-10-03 | стиль-проба `stage-river-n-day` · v2 | `ba93fc22-b3d6-4d7b-8731-e10783392edf` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102632_ba93fc22-b3d6-4d7b-8731-e10783392edf.png | ні — «занадто деталізовано» |
+| 2026-10-03 | стиль-проба `stage-river-n-night` · v1 | `a470d3e8-9422-4ab6-9ed0-2711e327f5d9` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102632_a470d3e8-9422-4ab6-9ed0-2711e327f5d9.png | ні — «занадто деталізовано» |
+| 2026-10-03 | стиль-проба `stage-river-n-night` · v2 | `aa24a131-71be-4635-9f44-51266c89aab3` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102632_aa24a131-71be-4635-9f44-51266c89aab3.png | ні — «занадто деталізовано» |
 
 Слово Santos «Так» на стиль-пробу (11 кр.), 2026-10-03, у сесії T6. `gpt_image_2_5` high 2k 21:9, референс `a2913501`,
 `generate_image_batch` (4 запити). `balance` 5555.25 → 5544.25 (−11). Відхилення від § Блоки: ніч у пробі зроблена з `a2913501`
