@@ -25,3 +25,6 @@ __pycache__/
 *.pyc
 # Local-only memory (mirrors cookthesoup convention)
 data/local/
+# Raw sound library (Sonniss/Kenney packs, GBs): local only. Sonniss licence forbids passing the
+# sounds on "as they come", and this repo is public — only built game SFX get committed.
+tools/audio/nir-audio/

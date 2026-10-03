@@ -1,0 +1,106 @@
+# pack_glob	category	note
+# Which shelf each pack of the raw library sits on. catalog.py matches the pack folder name
+# (the level under the bundle: "Doex Studio - 90s Anime SFX Pack", or the bundle itself for Kenney)
+# case-insensitively, first row wins. A pack with no row lands in "unsorted" — add a row, rerun.
+# Categories are for people browsing tools/audio/nir-audio/_by-category/ and for recipe authors;
+# the builder ignores them.
+#
+# --- fight: what a hit, block, KO is made of
+Doex Studio - 90s Anime SFX Pack	combat	anime punch, power-up, laser beam, comedic
+Justsoundeffects - Melee Weapons	combat	shield block hits, axe flesh hits, blade scrapes
+Justsoundeffects - Gore Mini Pack	combat	bone breaks, flesh drops, splatter
+BluezoneCorp - Stone Impact	combat	stone and steel-bar impacts
+BluezoneCorp - Modern Cinematic Impact	combat	trailer impact, boom, percussion
+Jake Fielding - Haunted Metal Vol.1*	combat	metallic hit + boom + sub
+Mechanical Wave - Torturing Metal	combat	metal impact, rattle, screech, reversed metal
+Mechanical Wave - Cinematic Feel	combat	cinematic hit, horn, heavy sci-fi whoosh
+Mechanical Wave - Glass	combat	glass break, reverse glass, dark tone
+# --- destruction: explosions, collapses, debris
+DavidDumais - Explosion SFX Pack	destruction	car/nuclear/real explosions, wood crash
+BluezoneCorp - Alien Tripod	destruction	glass debris, rock collapse, black smoke, organic liquid
+Mechanical Wave - Lumberjack	destruction	chainsaw, tree crack and fall
+# --- energy: magic, electricity, sci-fi weapons
+BluezoneCorp - High Voltage	energy	electric arc, crackle, hum
+InMotionAudio - Electromagnesis	energy	EMF textures
+BluezoneCorp - Sci Fi Weapon	energy	cannon/gun shots, texture
+BluezoneCorp - Steampunk Weapon And Textures	energy	cannon, flare explosion, mechanism
+Chupapsound - Essential Scifi	energy	vortex in, roar, pass-by, low whoosh
+Bolt - ARP 2600*	energy	synth bass dive, cable thump, droid voice, glitches
+BluezoneCorp - Designed Water	energy	designed water impact/transition/underwater
+# --- cinematic: risers, tones, transitions, time
+Jake Fielding - Haunted Metal Vol.2*	cinematic	metallic risers, groans
+Jake Fielding - Haunted Metal Vol.3*	cinematic	metallic tones, deep hits, rattles
+Orbital Emitter - Cinematic Transitions*	cinematic	dragon reveal, strings riser, searing, gong
+InMotionAudio - Sinister Textures 3	cinematic	clock ticks, reversed and reverbed
+InMotionAudio - Sinister Textures*	cinematic	eerie room textures
+InMotionAudio - GEODRONE	cinematic	designed drones
+# --- ui: menus, HUD, feedback
+kenney_interface-sounds*	ui	100 short UI sounds (CC0)
+Doex Studio - Qantum UI	ui	select, impact, metal slide, dark drone
+BluezoneCorp - Futuristic User Interface	ui	alert, glitch, beep, transition
+BluezoneCorp - Alien Interface	ui	sci-fi textures and transitions
+BluezoneCorp - Retrofuturistic Computer	ui	alarm, button, data, glitch
+CB Sounddesign - Activation 2	ui	click, counter, feedback, zoom
+InMotionAudio - Morse Code	ui	morse, hum
+# --- mechanisms: gears, levers, steam
+BluezoneCorp - Steampunk Machines	mechanisms	mechanical sequences, heavy impact
+BluezoneCorp - Tiny Gears*	mechanisms	tiny gear clicks and spins
+BluezoneCorp - Industrial Lever Switch	mechanisms	lever switches
+Justsoundeffects - Steampunk Gadgets	mechanisms	steam release, tiny rotation, ricochet hits, factory hall
+Jake Fielding - Squeaky Gates	mechanisms	gate latch, hinge creaks
+Jake Fielding - Drill*	mechanisms	drill bursts and foley
+InMotionAudio - Broken Hair Dryer	mechanisms	switch, on/off, cable
+# --- foley: objects, cloth, paper
+InMotionAudio - Torn T-Shirt	foley	cotton rips (cloth whoosh material)
+InMotionAudio - Mask Foley	foley	mask/plastic movement
+InMotionAudio - Wood	foley	wood snap, scrape, drop, movement
+Mechanical Wave - Cardboard and Paper	foley	box impact/slide, book page turn, paper crumple
+Mechanical Wave - Sound Effects Collection	foley	metallic bell, ice sizzle, shears, cat
+Eiravaein Works - Flask	foley	flasks, cork, liquid slosh
+# --- voices and creatures
+CB Sounddesign - Sci-Fi Voices*	voices	robot/android announcer lines (English)
+DavidDumais - Robotic Creatures*	voices	creature growl, power-on, mech footsteps, scanner
+Jake Fielding - Red Kite	voices	bird of prey screech
+Mechanical Wave - Farm Animals	voices	pig, chicks, goose, rooster
+# --- ambience: city (Cronshift streets, stations, harbour, rooms)
+Bolt - Berlin Vignettes*	ambience-city	park walla, station, balcony
+InMotionAudio - Manchester Ambience	ambience-city	city ambience, tram pass-by
+InMotionAudio - UK Shops	ambience-city	shop interiors
+InMotionAudio - Train Station Ambience	ambience-city	station
+InMotionAudio - UK Construction Ambience	ambience-city	construction site
+InMotionAudio - UK Motorway	ambience-city	motorway day/night
+InMotionAudio - UK Train Interior Ambience	ambience-city	train interior
+InMotionAudio - UK Police Vehicle	ambience-city	workshop, cell door, van foley
+InMotionAudio - Lawn Mower Ambience	ambience-city	lawn mowing
+Jake Fielding - British Train Station*	ambience-city	boulevard entrance, underground
+Jake Fielding - Train Onboards	ambience-city	train door, brake squeal, tannoy
+Jake Fielding - Industrial Harbor	ambience-city	distant port, boats, water lapping on port
+Jake Fielding - Symphony of Steel*	ambience-city	warehouse, steel cutting, welding
+Jake Fielding - Chamber of Shadows*	ambience-city	morgue room tones
+Jake Fielding - Fridge Hums	ambience-city	appliance hums
+Jake Fielding - Neutral Interior Walla	ambience-city	hushed reverberant crowd
+Jake Fielding - Circus Ambiences	ambience-city	hammering, generator, ringmaster
+Jake Fielding - Sounds of Spain	ambience-city	town square, room tone, cicadas, bird
+Chupapsound - Traffic Car In Paris	ambience-city	Paris traffic (downmix, surround)
+# --- ambience: nature and water (river stage)
+Bolt - Backyard Rain & Thunder*	ambience-nature	rain, distant thunder
+Bolt - Immersive Creek*	ambience-nature	brook, waterfall (ambisonic)
+Nick McMahan - Cascadia Flowing Water	ambience-nature	brook, creek, stream loops
+Nick McMahan - Cascadia Shore Waves	ambience-nature	lake, ocean surf loops
+Justsoundeffects - Water in Motion	ambience-nature	drips, fizz, soft water movement, underwater
+InMotionAudio - Submerge	ambience-nature	drain, flow, water impact, rock movement
+InMotionAudio - Cave Design	ambience-nature	cave, underwater flow, drips
+Justsoundeffects - Forest Ambiences	ambience-nature	forest day/night
+Justsoundeffects - Forests of Norway	ambience-nature	birch forest, rain on leaves, wind
+InMotionAudio - The Forest	ambience-nature	forest
+InMotionAudio - Sound of the Corn	ambience-nature	corn leaves, wind in fields
+# --- vehicles and firearms (no use planned; kept for completeness)
+Dramatic Cat - Audi*	vehicles-guns	cars
+Dramatic Cat - Lake Boat*	vehicles-guns	boat engine
+Dramatic Cat - Magnum 7250	vehicles-guns	tractor
+Dramatic Cat - Saiga-12	vehicles-guns	shotgun
+Dramatic Cat - SVD Dragunov	vehicles-guns	rifle
+DavidDumais - ATV*	vehicles-guns	ATV
+Bryan Gold - 1967 Corvette*	vehicles-guns	car
+Cactuzz Sound - 1993 Suzuki*	vehicles-guns	motorbike
+Justsoundeffects - Renault R4	vehicles-guns	car, horn, tyres
