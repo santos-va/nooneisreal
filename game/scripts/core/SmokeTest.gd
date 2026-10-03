@@ -86,6 +86,14 @@ var _a2_seen: Array = []
 var _cr_log: Array = []              # 3c: the effect's [frame, move id] hits of the current run
 var _cr_case: int = 0                 # 3c: which point-blank / band / far run
 var _cr_hp: float = 0.0
+## 02 § Втома (В-1, Арес, PLACEHOLDER) as literals: on at 0.3; at 1.0 get-up 27 (18), walk × 0.9, dash × 1.25, grapple 3.6 s,
+## recovery + 2; actions in seconds of fight time; 300 s to full for both; 297 s of fight alone → 0.99.
+const GDD_FATIGUE := {"on": 0.3, "getup": [18, 27], "walk": 0.9, "dash": 1.25, "grapple_s": 3.6, "recovery": 2,
+	"dash_s": 1.5, "grapple_shot_s": 2.0, "skill_s": 1.0, "seconds": 300.0, "match_s": 297.0, "match_fatigue": 0.99}
+var _fz: int = 0                      # fatigue stage: which jab run (0 fresh, 1 tired)
+var _fz_log: Array = []               # per run: [hit frame, damage, idle frame] counted from the press
+var _fz_t0: int = -1                  # fatigue stage: frame the clock window started (-1 = not yet)
+var _fz_v0: float = 0.0               # P1 fatigue at that frame
 const GDD_CRYSTAL := [[0.5, 330.0], [1.5, 225.0], [6.0, 105.0]]   # 03 § Кристальна ульта, «Для Гефеста»: distance → total
 const GDD_CRYSTAL_BANDS := [225.0, 195.0, 165.0, 135.0, 105.0]
 const GDD_CRYSTAL_FRAMES := {"blast": 6, "ticks": [18, 24, 30, 36, 42, 48], "final": 62}   # 03 § Кристальна ульта (б)
@@ -701,6 +709,148 @@ func _check_hud() -> bool:
 	return true
 
 
+## Fatigue (02 § Втома, В-1): the clock, the actions, hits taken add nothing, the multipliers at 0 / 0.3 / 1.0, rounds keep it,
+## a rematch clears it; then Choko's jab on Skea fresh and tired — same hit frame and damage, two frames more recovery.
+func _stage_fatigue() -> void:
+	if _x0 != 2.0 and not (flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable()):
+		if _f > _f0 + 900:
+			_fail("fatigue: fighters never actionable (p1 %d, p2 %d)" % [p1.state, p2.state])
+		return
+	if _x0 == 0.0 and _fz == 0:
+		if p2._brain != null:
+			p2._brain.process_mode = Node.PROCESS_MODE_DISABLED
+		var bad := ""
+		# the round clock: 60 frames of FIGHT with no input add 60 frames' worth to the idle fighter
+		if _fz_t0 < 0:
+			_fz_t0 = _f
+			_fz_v0 = p1.fatigue
+			return
+		if _f < _fz_t0 + 60:
+			return
+		var clock := (p1.fatigue - _fz_v0) * GDD_FATIGUE.seconds
+		if absf(clock - 1.0) > 0.001:
+			bad += " 60 fight frames added %.4f s (want 1.0);" % clock
+		var f: Fighter = p1
+		var s: Fighter = p2
+		if absf(f.data.fatigue_seconds - GDD_FATIGUE.seconds) > 0.001 or absf(s.data.fatigue_seconds - GDD_FATIGUE.seconds) > 0.001:
+			bad += " fatigue_seconds %.0f / %.0f (want %.0f both);" % [f.data.fatigue_seconds, s.data.fatigue_seconds, GDD_FATIGUE.seconds]
+		# time alone over a whole match
+		f.fatigue = 0.0
+		for i in int(GDD_FATIGUE.match_s * 60.0):
+			f.tick_fatigue()
+		if absf(f.fatigue - GDD_FATIGUE.match_fatigue) > 0.001:
+			bad += " %.0f s of fight → %.4f (want %.2f);" % [GDD_FATIGUE.match_s, f.fatigue, GDD_FATIGUE.match_fatigue]
+		# own actions; a hit taken adds nothing
+		f.fatigue = 0.0
+		f.grapple._spend()
+		var after_shot := f.fatigue * GDD_FATIGUE.seconds
+		f.fatigue = 0.0
+		f._start_dash(1.0)
+		var after_dash := f.fatigue * GDD_FATIGUE.seconds
+		f.fatigue = 0.0
+		f._start_move(f.data.skill1, "skill1")
+		var after_skill := f.fatigue * GDD_FATIGUE.seconds
+		f.fatigue = 0.0
+		f._start_move(f.data.ultimate, "ultimate")
+		var after_ult := f.fatigue * GDD_FATIGUE.seconds
+		s.fatigue = 0.4
+		s.receive_hit(f, f.data.light)
+		var after_hit := s.fatigue
+		if absf(after_shot - GDD_FATIGUE.grapple_shot_s) > 0.001 or absf(after_dash - GDD_FATIGUE.dash_s) > 0.001 \
+				or absf(after_skill - GDD_FATIGUE.skill_s) > 0.001 or after_ult != 0.0 or after_hit != 0.4:
+			bad += " grapple shot %.2f s, dash %.2f s, skill %.2f s, ult %.2f s (want %.1f / %.1f / %.1f / 0), a hit taken moved 0.4 → %.4f;" % [after_shot, after_dash, after_skill, after_ult, GDD_FATIGUE.grapple_shot_s, GDD_FATIGUE.dash_s, GDD_FATIGUE.skill_s, after_hit]
+		# the multipliers: fresh, at the threshold, full
+		var light: MoveData = f.data.light
+		var got: Array = []
+		for fv in [0.0, GDD_FATIGUE.on, 1.0]:
+			f.fatigue = fv
+			s.fatigue = fv
+			f.speed_buff_frames = 0
+			s.dash_charges_left = s.data.dash_charges
+			s._start_flash(1.0)
+			got.append([f.getup_frames(), snappedf(f.speed_mult(), 0.0001), snappedf(s.dash_recharge_total / s.data.dash_recharge, 0.0001), snappedf(f.grapple._recharge(), 0.0001), f.move_end_frame(light) - light.total_frames()])
+		var want := [[GDD_FATIGUE.getup[0], 1.0, 1.0, 3.0, 0], [GDD_FATIGUE.getup[0], 1.0, 1.0, 3.0, 0], [GDD_FATIGUE.getup[1], GDD_FATIGUE.walk, GDD_FATIGUE.dash, GDD_FATIGUE.grapple_s, GDD_FATIGUE.recovery]]
+		if str(got) != str(want):
+			bad += " [get-up, walk, dash, grapple s, recovery +] at 0 / 0.3 / 1.0 = %s (want %s);" % [got, want]
+		# rounds keep it; the tired stance from 0.5
+		f.fatigue = 0.7
+		f.reset_for_round(-3.0, 1)
+		f.set_control(true)
+		var kept := f.fatigue
+		var rig := SkeletalRig.new()   # state_clip() reads only the fighter, so the stance is checked with the rig off too
+		var stance: String = rig.state_clip(f)
+		f.fatigue = 0.49
+		var fresh_stance: String = rig.state_clip(f)
+		f.fatigue = kept
+		rig.free()
+		if f.state != Fighter.State.IDLE or stance != "Idle_Tired_Loop" or fresh_stance != f.data.idle_clip:
+			bad += " idle (state %d) stance at 0.7 '%s' (want Idle_Tired_Loop), at 0.49 '%s' (want %s);" % [f.state, stance, fresh_stance, f.data.idle_clip]
+		if kept != 0.7:
+			bad += " a new round moved fatigue 0.7 → %.4f;" % kept
+		if bad != "":
+			_fail("fatigue (02 § Втома):" + bad)
+			return
+		_ok("fatigue (02 § Втома): 60 fight frames = 1 s, %.0f s alone → %.2f; shot %.1f / dash %.1f / skill %.1f s, ult and hits taken 0; at 1.0 get-up %d, walk ×%.1f, dash ×%.2f, grapple %.1f s, recovery +%d, none of it below 0.3; a new round keeps it (stance '%s')" % [GDD_FATIGUE.match_s, GDD_FATIGUE.match_fatigue, GDD_FATIGUE.grapple_shot_s, GDD_FATIGUE.dash_s, GDD_FATIGUE.skill_s, GDD_FATIGUE.getup[1], GDD_FATIGUE.walk, GDD_FATIGUE.dash, GDD_FATIGUE.grapple_s, GDD_FATIGUE.recovery, stance])
+		# clean slate for the jab runs
+		for x in [f, s]:
+			x.reset_for_round(-3.0 if x == f else 3.0, 1 if x == f else -1)
+			x.set_control(true)
+		_x0 = 1.0
+		_f0 = _f
+		return
+	# jab runs: Choko's light on Skea at 1.0 m, fresh then tired
+	if _x0 == 1.0:
+		var fv: float = 0.0 if _fz == 0 else 1.0
+		p1.fatigue = fv
+		p2.fatigue = 0.0
+		p1.global_position = Vector3(0.0, p1.global_position.y, 0.0)
+		p2.global_position = Vector3(1.0, p2.global_position.y, 0.0)
+		p1.forward = Vector3.RIGHT
+		p2.forward = Vector3.LEFT
+		p2.hp = p2.data.max_hp
+		p2.weak_marks.clear()
+		p2.armor_break_frames = 0
+		p1._mark_timer = 9999
+		_cr_hp = p2.hp
+		_fz_log.append([-1, 0.0, -1])
+		InputRouter.v_press(1, "light")
+		_y0 = _f
+		_x0 = 2.0
+		return
+	var rec: Array = _fz_log[_fz]
+	var t := _f - int(_y0)
+	if rec[0] < 0 and p2.hp < _cr_hp:
+		rec[0] = t
+		rec[1] = _cr_hp - p2.hp
+	if rec[0] >= 0 and rec[2] < 0 and p1.state == Fighter.State.IDLE:
+		rec[2] = t
+	if t > 120 or rec[2] >= 0:
+		if rec[0] < 0 or rec[2] < 0:
+			_fail("fatigue jab run %d: no hit or never idle (hit %d, idle %d)" % [_fz, rec[0], rec[2]])
+			return
+		_fz += 1
+		_x0 = 1.0
+		_f0 = _f
+		if _fz < 2:
+			return
+		var a: Array = _fz_log[0]
+		var b: Array = _fz_log[1]
+		if a[0] != b[0] or absf(a[1] - b[1]) > 0.01 or b[2] - a[2] != GDD_FATIGUE.recovery:
+			_fail("fatigue jab: [hit frame, damage, idle frame] fresh %s, tired %s — want the same hit frame and damage, idle %d frames later" % [a, b, GDD_FATIGUE.recovery])
+			return
+		# a rematch clears it
+		p1.fatigue = 0.5
+		flow.rematch()
+		if p1.fatigue != 0.0:
+			_fail("fatigue: a rematch kept %.2f" % p1.fatigue)
+			return
+		_ok("fatigue jab: fresh %s, tired %s ([hit frame, damage, idle frame]) — startup and damage unchanged, recovery +%d; a rematch clears it" % [a, b, GDD_FATIGUE.recovery])
+		_fz = 0
+		_fz_log = []
+		_fz_t0 = -1
+		_finish()
+
+
 ## ADR-018: [P1 share of frame height, P2 share, worst horizontal margin to the frame edge (fraction of width)].
 func _frame_metrics() -> Array:
 	var cam: Camera3D = arena.duel_camera.cam
@@ -862,7 +1012,7 @@ func _close_in(who: Fighter, target: Fighter, dist: float) -> void:
 func _duel_state() -> String:
 	var parts: Array[String] = []
 	for f: Fighter in [p1, p2]:
-		parts.append("%.5f,%.5f,%.5f|%.4f,%.4f|%.3f|%.3f|%d|%d|%d|%d|%d" % [f.global_position.x, f.global_position.y, f.global_position.z, f.forward.x, f.forward.z, f.hp, f.meter, f.state, f.combo_count, f.dot_frames, f.armor_break_frames, f.stats.hits])
+		parts.append("%.5f,%.5f,%.5f|%.4f,%.4f|%.3f|%.3f|%d|%d|%d|%d|%d|%.6f" % [f.global_position.x, f.global_position.y, f.global_position.z, f.forward.x, f.forward.z, f.hp, f.meter, f.state, f.combo_count, f.dot_frames, f.armor_break_frames, f.stats.hits, f.fatigue])
 	return "/".join(parts)
 
 
@@ -2935,7 +3085,9 @@ func _physics_process(_delta: float) -> void:
 					p2.hp = p2.data.max_hp
 					if _cr_case >= GDD_CRYSTAL.size():
 						_ok("3c crystal ult on Skea: 0.5 m → 330 (blast on frame 6, band 1 ticks 18…48, final 62), 1.5 m → 225, 6.0 m → 105")
-						_finish()
+						_next_to(142)
+		142:
+			_stage_fatigue()
 		# ---------------- wall splat (02 § Коло арени: 10 f, no damage, once per combo) -----------
 		80:
 			# phase 0: first combo → splat; phase 1: next combo → splat again, then a second launch in that

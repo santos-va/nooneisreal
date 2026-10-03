@@ -61,6 +61,8 @@ extends Resource
 @export_group("Grapple")
 @export var grapple_charges: int = 3
 @export var grapple_cooldown: float = 3.0
+## Seconds of fight time to full fatigue (docs/GDD/02-Combat-System.md § Втома, PLACEHOLDER 300 for both).
+@export var fatigue_seconds: float = 300.0
 @export var grapple_regen_all_at_once: bool = true   # true: 3 uses → 3 s → all back. false: one charge per 3 s.
 @export var grapple_range: float = 14.0
 ## Free movement (GameState.free_move): half-angle of the aim cone (yaw only) around the stick, or
