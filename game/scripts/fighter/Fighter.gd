@@ -116,6 +116,13 @@ var dash_recharge_left: float = 0.0
 var dash_recharge_total: float = 0.0
 ## 0…1 for the whole match; rounds do not reset it (02 § Втома (а)). MatchFlow adds the fight time, actions add the rest.
 var fatigue: float = 0.0
+## Body weight (CharacterData.ground_accel …): frames left of a jump's landing (no new action), and the visual squash
+## 0…1 the rig shows (presentation only: the hurtbox and the body collider never scale).
+var land_lag: int = 0
+var squash: float = 0.0
+const SQUASH_LAND := 1.0
+const SQUASH_HIT := 0.6
+const SQUASH_DECAY := 0.18        # per frame
 var flashing: bool = false
 var _water_grounded: bool = false
 var _splat_used: bool = false
@@ -236,6 +243,9 @@ func reset_for_round(x: float, face: int) -> void:
 	dash_charges_left = data.dash_charges
 	dash_recharge_left = 0.0
 	dash_recharge_total = data.dash_recharge
+	land_lag = 0
+	squash = 0.0
+	_apply_squash()
 	animator.set_frozen_tint(0.0)
 	animator.visible = true
 	hurt_shape.disabled = false
@@ -272,7 +282,7 @@ func hurtbox_enabled() -> bool:
 
 
 func is_actionable() -> bool:
-	return state in [State.IDLE, State.WALK, State.CROUCH, State.BLOCK] and not control_locked and frozen_frames <= 0
+	return state in [State.IDLE, State.WALK, State.CROUCH, State.BLOCK] and not control_locked and frozen_frames <= 0 and land_lag <= 0
 
 
 func speed_mult() -> float:
@@ -323,6 +333,9 @@ func _physics_process(delta: float) -> void:
 		hitstop_frames -= 1
 		animator.tick(delta, self, true)
 		return
+	if squash > 0.0:
+		squash = maxf(0.0, squash - SQUASH_DECAY)
+		_apply_squash()
 	if invulnerable_frames > 0:
 		invulnerable_frames -= 1
 	if record_marker != null and _record_slot != "" and not control_locked and state != State.KO \
@@ -470,6 +483,10 @@ func _skill_ready(slot: String) -> bool:
 # --- ground / air / signature movement -------------------------------------------------------
 func _tick_ground(delta: float, intent: Dictionary) -> void:
 	_update_facing()
+	if land_lag > 0:   # the body settles after a jump: no new action, it brakes
+		land_lag -= 1
+		_walk_physics(delta, 0.0)
+		return
 	crouching = intent.crouch
 	if _try_grapple(intent.crouch):
 		return
@@ -504,11 +521,11 @@ func _tick_ground(delta: float, intent: Dictionary) -> void:
 		return
 	if intent.block:
 		_set_state_if(State.BLOCK)
-		_ground_physics(delta, 0.0)
+		_walk_physics(delta, 0.0)
 		return
 	if crouching:
 		_set_state_if(State.CROUCH)
-		_ground_physics(delta, 0.0)
+		_walk_physics(delta, 0.0)
 		return
 	if _free():
 		if _wish.length() > 0.1:
@@ -519,10 +536,10 @@ func _tick_ground(delta: float, intent: Dictionary) -> void:
 		var fwd := signf(intent.axis) == float(facing)
 		var speed := (data.walk_speed if fwd else data.back_walk_speed) * speed_mult() * water_walk_mult()
 		_set_state_if(State.WALK)
-		_ground_physics(delta, intent.axis * speed)
+		_walk_physics(delta, intent.axis * speed)
 		return
 	_set_state_if(State.IDLE)
-	_ground_physics(delta, 0.0)
+	_walk_physics(delta, 0.0)
 
 
 ## Free movement walk: along the line to the opponent at walk/back-walk speed, across it = circling
@@ -536,13 +553,35 @@ func _walk_free(delta: float) -> void:
 	var r0 := -1.0
 	if opponent != null and side.length() > 0.1:
 		r0 = _flat(global_position - opponent.global_position).length() - along * (data.walk_speed if along >= 0.0 else data.back_walk_speed) * k * delta
-	_ground_physics(delta, v.x, v.z)
+	_walk_physics(delta, v.x, v.z)
 	if r0 > MIN_SEPARATION:
 		var d := _flat(global_position - opponent.global_position)
 		if d.length() > MIN_LINE:
 			d = d.normalized() * r0
 			global_position.x = opponent.global_position.x + d.x
 			global_position.z = opponent.global_position.z + d.z
+
+
+## The rig's squash (landing, taking a hit): wider and lower, back in SQUASH_DECAY steps. Only the pictures scale
+## (RigAnimator `$Rig`, the hero SkeletalRig) — never the hurtbox or the body collider.
+func _apply_squash() -> void:
+	var s := clampf(squash, 0.0, 1.6)
+	var k := Vector3(1.0 + 0.08 * s, 1.0 - 0.14 * s, 1.0 + 0.08 * s)
+	if animator != null:
+		animator.scale = k
+	if skeletal != null:
+		skeletal.scale = k
+
+
+## Walking and standing (Santos: start/stop weight): the horizontal speed moves toward the wish at ground_accel (speeding
+## up or turning) or ground_decel (braking) instead of jumping to it. Other states (attacks, dashes, stun, get-up) keep
+## _ground_physics, so frame data and combos are untouched.
+func _walk_physics(delta: float, vx: float, vz: float = 0.0) -> void:
+	var cur := Vector2(velocity.x, velocity.z if _free() else 0.0)
+	var want := Vector2(vx, vz if _free() else 0.0)
+	var rate := data.ground_accel if want.length() > cur.length() - 0.001 else data.ground_decel
+	var h := cur.move_toward(want, rate * delta)
+	_ground_physics(delta, h.x, h.y)
 
 
 func _ground_physics(delta: float, vx: float, vz: float = 0.0) -> void:
@@ -580,12 +619,15 @@ func _tick_air(delta: float, intent: Dictionary) -> void:
 		velocity.z = move_toward(velocity.z, _wish.z * data.walk_speed * speed_mult(), rate)
 	else:
 		velocity.x = move_toward(velocity.x, intent.axis * data.walk_speed * speed_mult(), data.air_control * data.walk_speed * 3.0 * delta)
-	velocity.y -= GRAVITY * delta
+	velocity.y -= GRAVITY * delta * (data.fall_gravity_mult if velocity.y < 0.0 else 1.0)   # heavier on the way down
 	move_and_slide()
 	if on_ground():
 		velocity.y = 0.0
 		Sfx.play("land", -14)
 		_update_facing()
+		land_lag = data.land_frames
+		squash = SQUASH_LAND
+		_apply_squash()
 		_set_state(State.IDLE)
 
 
@@ -969,6 +1011,8 @@ func receive_hit(attacker: Fighter, m: MoveData) -> void:
 	animator.flash()
 	Sfx.play(m.sfx_hit)
 	_apply_hitstop(attacker, m.hitstop + (3 if crit else 0))
+	squash = maxf(squash, SQUASH_HIT * clampf(m.damage / 60.0, 0.5, 1.6))   # the body gives under the blow (picture only)
+	_apply_squash()
 	hp_changed.emit(hp, data.max_hp)
 	hit_landed.emit(attacker, self, m, false)
 	if hp <= 0.0:

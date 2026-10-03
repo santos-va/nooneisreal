@@ -91,6 +91,7 @@ var _cr_hp: float = 0.0
 const GDD_FATIGUE := {"on": 0.3, "getup": [18, 27], "walk": 0.9, "dash": 1.25, "grapple_s": 3.6, "recovery": 2,
 	"dash_s": 1.5, "grapple_shot_s": 2.0, "skill_s": 1.0, "seconds": 300.0, "match_s": 297.0, "match_fatigue": 0.99}
 var _fb0: Dictionary = {}             # lane B: Flipbook.spawned at the start of a duel replay run
+var _wt: Dictionary = {}              # body weight stage: phase, frames, the fighter under test
 var _fz: int = 0                      # fatigue stage: which jab run (0 fresh, 1 tired)
 var _fz_log: Array = []               # per run: [hit frame, damage, idle frame] counted from the press
 var _fz_t0: int = -1                  # fatigue stage: frame the clock window started (-1 = not yet)
@@ -991,7 +992,114 @@ func _stage_fatigue() -> void:
 		_fz = 0
 		_fz_log = []
 		_fz_t0 = -1
-		_finish()
+		_next_to(143)
+
+
+## Body weight (Santos 2026-10-03; CharacterData ground_accel / ground_decel / fall_gravity_mult / land_frames, PLACEHOLDER until
+## T5 Арес): for Choko then Skea, on the live fighter with virtual input — walking speeds up and brakes over the frames the
+## data say (not at once), the jump falls faster than it rises, a landing holds land_frames with no action, and the rig
+## squashes while the hurtbox and collider never scale.
+func _stage_weight() -> void:
+	if _wt.is_empty():
+		if not (flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable()):
+			if _f > _f0 + 900:
+				_fail("weight: fighters never actionable")
+			return
+		for x in [p1, p2]:
+			if x._brain != null:
+				x._brain.process_mode = Node.PROCESS_MODE_DISABLED
+		_wt = {"who": 0, "phase": "settle", "t": 0, "log": []}
+	var f: Fighter = p1 if _wt.who == 0 else p2
+	var o: Fighter = p2 if _wt.who == 0 else p1
+	var pi: int = f.player_index
+	var spd := Vector2(f.velocity.x, f.velocity.z).length()
+	var top := f.data.walk_speed * f.speed_mult()
+	_wt.t += 1
+	match _wt.phase:
+		"settle":
+			InputRouter.v_clear(1)
+			InputRouter.v_clear(2)
+			f.global_position = Vector3(-6.0, f.global_position.y, 0.0)
+			o.global_position = Vector3(6.0, o.global_position.y, 0.0)
+			if _wt.t >= 20 and f.is_actionable() and spd < 0.01:
+				InputRouter.v_set(pi, "up", true)   # free movement: toward the foe
+				_wt.phase = "accel"
+				_wt.t = 0
+		"accel":
+			# the steady speed the stick asks for (toward the foe walk_speed, a circle 0.8 of it): the frame it stops growing
+			if _wt.t > 1 and spd > 0.5 and spd - float(_wt.get("prev", 0.0)) < 0.001:
+				_wt["accel_f"] = _wt.t - 1
+				_wt["top"] = spd
+				InputRouter.v_set(pi, "up", false)
+				_wt.phase = "decel"
+				_wt.t = 0
+			elif _wt.t > 120:
+				_fail("weight %s: never reached a steady walk (%.2f m/s)" % [f.data.id, spd])
+			_wt["prev"] = spd
+		"decel":
+			if spd < 0.01:
+				_wt["decel_f"] = _wt.t
+				_wt.phase = "jump_wait"
+				_wt.t = 0
+			elif _wt.t > 120:
+				_fail("weight %s: never stopped (%.2f m/s)" % [f.data.id, spd])
+		"jump_wait":
+			if _wt.t >= 10 and f.is_actionable():
+				InputRouter.v_press(pi, "jump")
+				_wt.phase = "rise"
+				_wt.t = 0
+		"rise":
+			if f.velocity.y <= 0.0 and _wt.t > 2:
+				_wt["rise_f"] = _wt.t
+				_wt.phase = "fall"
+				_wt.t = 0
+			elif _wt.t > 200:
+				_fail("weight %s: the jump never peaked" % f.data.id)
+		"fall":
+			if f.on_ground() and f.state != Fighter.State.JUMP:
+				_wt["fall_f"] = _wt.t
+				_wt["squash"] = f.squash
+				_wt["rig_y"] = f.animator.scale.y
+				_wt["hurt_ok"] = f.hurt_shape.global_transform.basis.get_scale().is_equal_approx(Vector3.ONE) and f.global_transform.basis.get_scale().is_equal_approx(Vector3.ONE)
+				_wt["lag"] = 0 if f.is_actionable() else 1   # the landing frame itself counts
+				_wt.phase = "land"
+				_wt.t = 0
+			elif _wt.t > 200:
+				_fail("weight %s: the jump never landed" % f.data.id)
+		"land":
+			if not f.is_actionable():
+				_wt.lag += 1
+			if f.is_actionable() or _wt.t > 30:
+				top = float(_wt.top)
+				var want_a := ceili(top / f.data.ground_accel * 60.0)
+				var want_d := ceili(top / f.data.ground_decel * 60.0)
+				var bad := ""
+				if absi(int(_wt.accel_f) - want_a) > 1:
+					bad += " speeds up in %d frames (want %d: %.1f m/s at %.0f m/s²);" % [_wt.accel_f, want_a, top, f.data.ground_accel]
+				if absi(int(_wt.decel_f) - want_d) > 1:
+					bad += " stops in %d frames (want %d at %.0f m/s²);" % [_wt.decel_f, want_d, f.data.ground_decel]
+				if int(_wt.fall_f) >= int(_wt.rise_f) or f.data.fall_gravity_mult <= 1.0:
+					bad += " falls in %d frames, rises in %d (want the fall shorter, mult %.2f);" % [_wt.fall_f, _wt.rise_f, f.data.fall_gravity_mult]
+				if int(_wt.lag) != f.data.land_frames:
+					bad += " landing held %d frames (want %d);" % [_wt.lag, f.data.land_frames]
+				if float(_wt.squash) <= 0.0 or float(_wt.rig_y) >= 1.0 or not bool(_wt.hurt_ok):
+					bad += " landing squash %.2f, rig y %.3f, hurtbox/body unscaled %s (want > 0, < 1, true);" % [_wt.squash, _wt.rig_y, _wt.hurt_ok];
+				if bad != "":
+					_fail("weight %s:%s" % [f.data.id, bad])
+					return
+				_wt.log.append("%s: walk to %.1f m/s in %d f / stop in %d f, jump rise %d f / fall %d f, landing %d f, squash %.2f" % [f.data.id, top, _wt.accel_f, _wt.decel_f, _wt.rise_f, _wt.fall_f, _wt.lag, _wt.squash])
+				InputRouter.v_clear(1)
+				InputRouter.v_clear(2)
+				if _wt.who == 0:
+					_wt.who = 1
+					_wt.phase = "settle"
+					_wt.t = 0
+					_wt.erase("accel_f")
+					_wt.erase("prev")
+					return
+				_ok("body weight: %s" % "; ".join(_wt.log))
+				_wt = {}
+				_finish()
 
 
 ## ADR-018: [P1 share of frame height, P2 share, worst horizontal margin to the frame edge (fraction of width)].
@@ -3249,6 +3357,8 @@ func _physics_process(_delta: float) -> void:
 						_next_to(142)
 		142:
 			_stage_fatigue()
+		143:
+			_stage_weight()
 		# ---------------- wall splat (02 § Коло арени: 10 f, no damage, once per combo) -----------
 		80:
 			# phase 0: first combo → splat; phase 1: next combo → splat again, then a second launch in that
