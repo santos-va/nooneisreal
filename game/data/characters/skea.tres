@@ -147,7 +147,7 @@ damage = -1.0
 effect = "grimoire"
 meter_cost = 100.0
 cancel_tier = 3
-description = "All numbers UNGROUNDED (no reference for unique skills, CN §3): feel, playtest. Variant B. No clip, RigAnimator book pose (C3). The book opens, pages orbit, and the grimoire throws three imprints of pages Skea has beaten within 3.6 m: imprint Blood Grip 60, imprint Cursed Burn 60, imprint Poison Knot 90 (ragdoll + Poison). All weak points exposed during the ultimate, so every strike crits: 315 total. Strikes land on the bass beat: move frames 62 (drop) / 72 / 82 (GrimoireFx 50/60/70). From the veil (veil_frames > 0 at start) the ult is long: active 676 (ends on frame 688, bass cut), 8 imprints on bar downbeats 62/148/235/321/408/494/580/667, 7x31 + 56 = 273 (26 % HP) -- see 03-Skills-Framework, all PLACEHOLDER; fields are Hefest's in launch 3b."
+description = "All numbers UNGROUNDED (no reference for unique skills, CN §3): feel, playtest. Variant B. No clip, RigAnimator book pose (C3). The book opens, pages orbit, and the grimoire throws three imprints of pages Skea has beaten within 3.6 m: imprint Blood Grip 52, imprint Cursed Burn 52, imprint Poison Knot 78 (ragdoll + Poison). All weak points exposed during the ultimate, so every strike crits: 273 total (26 % of Choko HP, Santos 2026-10-03). Strikes land on the bass beat: move frames 62 (drop) / 72 / 82 (GrimoireFx 50/60/70). From the veil (veil_frames > 0 at start) the ult is long: active 676 (ends on frame 688, bass cut), 8 imprints on bar downbeats 62/148/235/321/408/494/580/667, 7x31 + 56 = 273 (26 % HP) -- see 03-Skills-Framework, all PLACEHOLDER; fields are Hefest's in launch 3b."
 
 [sub_resource type="Resource" id="throw_move"]
 script = ExtResource("2")
