@@ -76,6 +76,8 @@ func _ready() -> void:
 	GameState.p1_character = "choko"
 	GameState.p2_character = "skea"
 	GameState.stage_index = 2   # back_alley (river is index 0)
+	if not _check_boot():
+		return
 	# free movement is the game's default now; the smoke starts with the 0.2 plane stages and switches
 	# to free movement itself at stage 40 (T4 audit 0.3-7 item 7)
 	GameState.set_free_move(false)
@@ -85,6 +87,54 @@ func _ready() -> void:
 			GameState.set_free_move(false)
 			_stage = 70
 	get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
+
+
+## Checks that need no arena: the shipped defaults and launch flags (T4 audit Launch 2, proposals 2 and 3)
+## and that the hero GLBs keep their texture inside (launch 4-0). false = already failed.
+func _check_boot() -> bool:
+	# Santos's word 2026-10-03: free movement is the default. Read it from a fresh, never-added copy of the
+	# autoload, not the live value — Main may already have applied `--plane`. (get_property_default_value
+	# returns null outside editor builds.)
+	var fresh: Node = GameState.get_script().new()
+	var def: Variant = fresh.free_move
+	fresh.free()
+	if def != true:
+		_fail("GameState.free_move defaults to %s — Santos's word is free movement by default (true)" % def)
+		return false
+	var main_script: GDScript = load("res://scripts/core/Main.gd")
+	# …and the boot path keeps it: after Main._ready the live value is what the flags say, else the default
+	var want: bool = main_script.free_move_arg(OS.get_cmdline_user_args()) != 0
+	if GameState.free_move != want:
+		_fail("GameState.free_move is %s at boot, launch flags %s ask for %s" % [GameState.free_move, OS.get_cmdline_user_args(), want])
+		return false
+	_ok("free_move defaults to true (Santos 2026-10-03), live at boot %s" % GameState.free_move)
+	var cases := [[["--plane"], 0], [["--free-move"], 1], [[], -1], [["--smoke", "--plane", "--free-move"], 0], [["--plane-off"], -1]]
+	for c in cases:
+		var got: int = main_script.free_move_arg(PackedStringArray(c[0]))
+		if got != c[1]:
+			_fail("Main.free_move_arg(%s) → %d, expected %d" % [c[0], got, c[1]])
+			return false
+	_ok("launch flags: --plane → plane, --free-move → free, none → default (%d cases)" % cases.size())
+	# Import with gltf/embedded_image_handling = embed: extracting writes *_Image_0.jpg next to the GLB
+	# (unregistered → `make gates` red), discarding loses the texture silently.
+	var heroes := ["res://assets/characters/models/choko_m0.glb", "res://assets/characters/models/skea_m1.glb"]
+	for path in heroes:
+		var root: Node = (load(path) as PackedScene).instantiate()
+		var meshes := root.find_children("*", "MeshInstance3D", true, false)
+		var bad := "no MeshInstance3D" if meshes.is_empty() else ""
+		for m in meshes:
+			var mat := (m as MeshInstance3D).mesh.surface_get_material(0) as BaseMaterial3D
+			var tex: Texture2D = mat.albedo_texture if mat != null else null
+			if tex == null:
+				bad = "%s has no albedo texture (discarded on import?)" % m.name
+			elif not tex.resource_path.begins_with(path + "::"):
+				bad = "%s texture is a separate file %s (extracted on import?)" % [m.name, tex.resource_path]
+		root.free()
+		if bad != "":
+			_fail("%s: %s" % [path.get_file(), bad])
+			return false
+	_ok("hero GLBs keep their textures embedded (%d models)" % heroes.size())
+	return true
 
 
 func _ok(msg: String) -> void:
