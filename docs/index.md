@@ -17,12 +17,13 @@ Santos і товариша (лідер команди [[Choko]] — контро
 | Бачення | [[01-Vision]] · [[Roadmap]] · [[Glossary]] |
 | Бій | [[02-Combat-System]] · [[03-Skills-Framework]] · [[04-Grapple-System]] · [[08-Balance]] |
 | **План виробництва** | [[2026-10-03-Production-Plan]] — старт нової сесії |
+| **Спринт арен** | [[2026-10-03-Sprint-Arenas-VFX]] — тверда арена, три карти день/ніч, VFX, меню (смуги A–I) |
 | **Prototype 0.3** | [[2026-10-03-Prototype-0.3-Free-Movement]] — вільний 3D-рух із lock-on |
 | **Меню «погляд з даху»** | [[2026-10-03-Main-Menu-Skyline]] · [[2026-10-03-Character-Select]] — ланцюжок issues у [[state]] |
 | Платформи та UI | [[05-Platforms-Input]] · [[06-UI-UX]] · [[07-Audio]] |
 | Персонажі | [[Choko]] · [[Skea]] · [[Roster]] |
-| Світ | [[Cronshift]] · [[Stage-River]] · [[Lore]] |
-| Арт | [[Style-Guide]] · [[Textures-Registry]] · [[Backgrounds]] · [[Pipeline-2D-to-3D]] · [[Prompts]] · [[VFX-Direction]] · [[Higgsfield-Pipeline]] · [[Asset-Manifest]] · [[Prompt-Library]] |
+| Світ | [[Cronshift]] · арени [[Stage-River]] · [[Stage-Bazaar]] · [[Stage-Fountain]] · [[Lore]] |
+| Арт | [[Style-Guide]] · [[Textures-Registry]] · [[Backgrounds]] · [[Pipeline-2D-to-3D]] · [[Prompts]] · [[VFX-Direction]] · [[Higgsfield-Pipeline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Arenas-360-Prompts]] |
 | Техніка | [[Architecture]] · [[Active-Ragdoll]] · [[Cel-Shading]] · [[Build-and-Run]] · [[Export-Platforms]] · [[Testing]] · [[Animation-Plan]] · [[Library]] |
 | Рішення | [[ADR-001-Engine-Godot]] · [[ADR-002-2.5D-First]] · [[ADR-003-Docs-As-Wiki]] · [[ADR-004-Physics-Is-Presentation]] · [[ADR-005-Grapple-Charges]] · [[ADR-006-Equal-Kit-Structure]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-008-Audio-Sourcing]] · [[ADR-009-Solo-Keyboard-Layout]] · [[ADR-010-City-Name-Cronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[ADR-013-License-Check-At-Release]] · [[ADR-014-Free-Movement-Layout]] · [[ADR-015-Solo-Camera-Behind-Fighter]] · [[ADR-016-Player-Decides-What-Body-Decides-How]] · [[ADR-017-Post-Ragdoll-Position]] · [[ADR-018-Camera-Frames-Fight-With-Air]] |
 | Ресерч | [[2026-10-02-Engine-Physics]] · [[2026-10-02-Animation-Assets-Pipeline]] · [[2026-10-02-Grapple-Input-UI]] |
