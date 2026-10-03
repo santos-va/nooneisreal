@@ -7,7 +7,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BG="$ROOT/game/assets/backgrounds"
 CARDS="$ROOT/game/assets/characters/cards"
-mkdir -p "$BG" "$CARDS"
+MODELS="$ROOT/game/assets/characters/models"
+mkdir -p "$BG" "$CARDS" "$MODELS"
 CDN="https://d8j0ntlcm91z4.cloudfront.net/user_3JiwWmSIzQvXHlHhmCxwWysInqU"
 
 fetch() { # url, dest
@@ -31,5 +32,11 @@ fetch "$CDN/hf_20261002_102352_f00d0272-1c4f-4d56-8607-c30fce7cb325.png" "$CARDS
 fetch "$CDN/hf_20261002_110646_b776f4f8-c0a8-46b1-8987-242907591958.png" "$CARDS/hands_choko.png"
 # Skeasse: the message listed the SAME URL as Choko's card. Replace when the real card link is known:
 # fetch "<SKEASSE_CARD_URL>" "$CARDS/card_skeasse_v1.png"
+
+
+# 3D heroes with Meshy rig (C2, Santos 2026-10-03 «M-0, M-1 — так»). Different Higgsfield user folder than $CDN above.
+CDN3D="https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO"
+fetch "$CDN3D/hf_20261003_034701_2488e146-f049-4469-9aad-4a512a810022.glb" "$MODELS/choko_m0.glb"
+fetch "$CDN3D/hf_20261003_034702_f7f95324-7686-48af-8d0c-3f4d5010502c.glb" "$MODELS/skea_m1.glb"
 
 echo "done. Now run: make check   (re-imports the new textures headlessly)"
