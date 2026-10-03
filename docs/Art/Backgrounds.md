@@ -1,6 +1,7 @@
 # Фони арен
 
-Чотири ілюстрації Cronshift (Higgsfield, GPT Image 2.5 «flare», 16:9, 2688×1520). У грі — квад
+Фони стадій у грі зараз (`ls game/assets/backgrounds/*.{jpg,webp}` → 5 файлів): чотири ілюстрації Cronshift
+(Higgsfield, GPT Image 2.5 «flare», 16:9, 2688×1520) і фон річки від Santos ([[Stage-River]]). У грі — квад
 54×30 м на z = −18 з шейдером `backdrop.gdshader` (віньєтка, паралакс 0.2 від камери). Без файлу —
 процедурний фолбек `backdrop_fallback.gdshader` (градієнт присмерку + силуети + вікна).
 
@@ -14,10 +15,14 @@
 
 Освітлення сцени (`Sun`, `WorldEnvironment`) підлаштовується під стадію в `Arena.gd`.
 
+**Ротація зі спринту 2026-10-03:** `river` · `bazaar` · `fountain`, кожна вдень і вночі ([[Cronshift]] § Ротація арен). Сторінки
+арен — [[Stage-River]] · [[Stage-Bazaar]] · [[Stage-Fountain]]. `market_street`, `back_alley`, `main_street` і
+`city_reference` поза ротацією; нове оточення 360° — [[Arenas-360-Prompts]].
+
 ## Плани
 
 - Outpaint до 21:9, щоб камера на відстані 15 м не бачила країв.
 - Image Decompose → шари; ближній шар із ліхтарями стає якорями гарпуна.
 
 ## Related
-- [[Cronshift]] · [[Textures-Registry]] · [[Style-Guide]] · [[Architecture]]
+- [[Cronshift]] · [[Stage-River]] · [[Stage-Bazaar]] · [[Stage-Fountain]] · [[Arenas-360-Prompts]] · [[Textures-Registry]] · [[Style-Guide]] · [[Architecture]] · [[index]]

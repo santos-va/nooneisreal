@@ -31,6 +31,9 @@ var _picks_p: Dictionary = {}
 ## Design numbers as written in docs/GDD/02-Combat-System.md § «Поле → значення → джерело» (T5 Арес).
 ## Literals on purpose (T4 Феміда, audit 0.3-7 п. 8): the smoke must not compare the code with its own
 ## constants, or a number drifting away from the GDD would never turn it red.
+## Whole-run timeout, physics frames (each stage also has its own `_f > _f0 + N`). T1 2026-10-03: ×2 (was 19000), with
+## Makefile's `--quit-after` (40000) above it, so the named in-smoke timeout fires first (T4 Launch 5/6 п. 4, proposal 5).
+const FRAME_BUDGET := 38000
 const GDD_ARENA_RADIUS := 20.0          # 02 § Коло арени, Арес 2026-10-03 (Р4), was 12.5
 const GDD_YAW_CLAMP_DEG := 3.0
 const GDD_PULLBACK_LAG_DEG := 15.0
@@ -385,6 +388,41 @@ func _check_free_layout() -> bool:
 	return true
 
 
+## Sprint A1 (docs/Plans/2026-10-03-Sprint-Arenas-VFX.md): the world stands still — over half a turn of the side camera
+## (P2 placed around P1, 1.25°/tick) no backdrop card moves in the world, the camera ends up facing another card, and
+## the ring has no gaps (each card wider than 2 × its distance from the centre).
+func _stage_a1_fixed_world() -> void:
+	var bd: Backdrop = arena.backdrop
+	var cam: Camera3D = arena.duel_camera.cam
+	var t := _f - _f0 - 1
+	if t == 0:
+		_fr = {"xf": bd.cards.map(func(c: MeshInstance3D) -> Transform3D: return c.global_transform), "moved": 0.0}
+		p1.global_position = Vector3(0.0, p1.global_position.y, 0.0)
+	if t <= 40 + 144:
+		_place(p2, p1, 4.0, float(maxi(t - 40, 0)) * 1.25)
+		if t == 40:
+			_fr["card0"] = bd.facing_card(cam)
+		for i in bd.cards.size():
+			var x0: Transform3D = _fr.xf[i]
+			_fr.moved = maxf(_fr.moved, x0.origin.distance_to(bd.cards[i].global_transform.origin) + (x0.basis.z - bd.cards[i].global_transform.basis.z).length())
+		return
+	if t < 40 + 144 + 60:
+		return   # let the rate-limited yaw finish the half turn
+	var card1 := bd.facing_card(cam)
+	var gap := ""
+	for c in bd.cards:
+		var w: float = (c.mesh as QuadMesh).size.x
+		var d := Vector2(c.global_position.x, c.global_position.z).length()
+		if w < 2.0 * d - 0.01:
+			gap = "card %.1f m wide at %.1f m (want ≥ %.1f)" % [w, d, 2.0 * d]
+	if bd.cards.size() < 4 or _fr.moved > 0.001 or card1 == _fr.card0 or gap != "":
+		_fail("A1 fixed world: %d cards (want ≥ 4, T1 handoff), cards moved %.4f (want 0), facing card %d → %d after 180° (want another), %s" % [bd.cards.size(), _fr.moved, _fr.card0, card1, gap])
+		return
+	_ok("A1 fixed world: ring of %d cards, none moved while the camera turned 180° (facing card %d → %d), no gaps at the corners" % [bd.cards.size(), _fr.card0, card1])
+	_fr = {}
+	_next_to(140)
+
+
 ## ADR-018: [P1 share of frame height, P2 share, worst horizontal margin to the frame edge (fraction of width)].
 func _frame_metrics() -> Array:
 	var cam: Camera3D = arena.duel_camera.cam
@@ -422,6 +460,7 @@ func _finish() -> void:
 	GameState.set_free_move(false)
 	GameState.skeletal_rig = false
 	print("[smoke] ALL OK (%d checks) in %d frames" % [_oks.size(), _f])
+	print("[smoke] budget used %d / %d frames (%.0f %%)" % [_f, FRAME_BUDGET, 100.0 * float(_f) / float(FRAME_BUDGET)])
 	get_tree().quit(0)
 
 
@@ -802,7 +841,7 @@ func _physics_process(_delta: float) -> void:
 	if _done:
 		return
 	_f += 1
-	if _f > 19000:
+	if _f > FRAME_BUDGET:
 		_fail("timeout at stage %d (p1 %d, p2 %d)" % [_stage, p1.state if p1 else -1, p2.state if p2 else -1])
 		return
 	if arena == null:
@@ -2513,7 +2552,9 @@ func _physics_process(_delta: float) -> void:
 				return
 			_ok("pull-back cap (side, +30 %%): sep 4 arm %.2f → %.2f m, share %.1f %%; sep 8 %.2f → %.2f m (cap 12.47), %.1f %%; sep 20 %.2f m unchanged" % [r4[0], r4[1], r4[2] * 100, r8[0], r8[1], r8[2] * 100, r20[1]])
 			_fr = {}
-			_next_to(140)
+			_next_to(137)
+		137:
+			_stage_a1_fixed_world()
 		# ---------------- 3c: crystal ult (03 § Кристальна ульта Choko, Ares 3c-1) ----------------
 		140:
 			if not (flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable()):
