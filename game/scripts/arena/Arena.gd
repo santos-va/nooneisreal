@@ -60,6 +60,10 @@ func _ready() -> void:
 		(f as Fighter).hit_landed.connect(_on_hit)
 		(f as Fighter).knocked_out.connect(_on_ko)
 	hud.bind(p1, p2, flow)
+	var director := FxDirector.new()   # lane B: painted flipbooks; reads the fighters, writes nothing
+	director.name = "FxDirector"
+	add_child(director)
+	director.setup(p1, p2)
 	if GameState.water != null:
 		var water := Water.new()
 		water.name = "Water"
@@ -150,10 +154,14 @@ func _spawn(idx: int, char_id: String, x: float, face: int, cpu: bool) -> Fighte
 func _on_hit(attacker: Fighter, victim: Fighter, move: MoveData, blocked: bool) -> void:
 	var crit := victim.last_hit_crit
 	_shake(0.06 if blocked else clampf(move.damage / 420.0 + (0.15 if crit else 0.0), 0.1, 0.6))
+	if not Fx.enabled:
+		return
+	var at := victim.global_position + Vector3(0.0, 1.15, 0.35)
+	var sheet := FxDirector.hit_spark(self, at, attacker, move.damage, blocked, crit) != null
 	var spark := HitSpark.new()
 	fx_root.add_child(spark)
-	spark.global_position = victim.global_position + Vector3(0.0, 1.15, 0.35)
-	spark.setup(blocked, attacker.data.accent_color, move.damage, crit)
+	spark.global_position = at
+	spark.setup(blocked, attacker.data.accent_color, move.damage, crit, sheet)
 
 
 func _on_ko(_f: Fighter) -> void:

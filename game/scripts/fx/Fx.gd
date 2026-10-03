@@ -2,6 +2,10 @@ class_name Fx
 extends RefCounted
 ## Shared helpers for presentation-only effects. Nothing here decides a hit.
 
+## false = Flipbook, FxDirector and the arena's hit spark spawn nothing. The smoke flips it for one duel replay run to prove
+## the painted effects change nothing in the fight (T4 audit Lane I-2, proposal 2).
+static var enabled: bool = true
+
 
 static func root(n: Node) -> Node:
 	var cs := n.get_tree().current_scene

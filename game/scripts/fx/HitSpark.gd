@@ -15,7 +15,9 @@ var _line_len: float = 1.0
 const INK := Color(0.169, 0.133, 0.188)   # #2B2230, Style-Guide line colour
 
 
-func setup(blocked: bool, color: Color, damage: float, crit: bool = false) -> void:
+## sheet = true: the painted spark_hit sheet draws the star (FxDirector.hit_spark), so the procedural quad stays hidden;
+## the light flash and the ink impact lines stay.
+func setup(blocked: bool, color: Color, damage: float, crit: bool = false, sheet: bool = false) -> void:
 	_dur = 0.14 if blocked else clampf(0.14 + damage / 900.0, 0.16, 0.34)
 	_base_scale = 0.6 if blocked else clampf(0.9 + damage / 160.0, 0.9, 2.4)
 	var c := Color(0.75, 0.9, 1.0) if blocked else color.lightened(0.35)
@@ -29,6 +31,7 @@ func setup(blocked: bool, color: Color, damage: float, crit: bool = false) -> vo
 	_quad.mesh = qm
 	_quad.material_override = FxShader.spark(c, 8 if crit else 4)
 	_quad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_quad.visible = not sheet
 	add_child(_quad)
 	_light = OmniLight3D.new()
 	_light.light_color = c
