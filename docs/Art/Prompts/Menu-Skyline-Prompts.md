@@ -320,7 +320,7 @@ nano_banana_pro 2k 3:4 і 1:1 — 2 · image_decompose — 2 · flux_2_pro_outpa
 | N-6 | K1 `skea-item-sneakers-v1` | `d2ac65b6-c764-41a5-b8ac-8aa5b0b40599` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022127_d2ac65b6-c764-41a5-b8ac-8aa5b0b40599.png | чекає вибору Santos |
 | N-7 | P1 `sprite-pedestrian-lady-walk` | `b4cc96ad-0d95-42e6-a2e7-23d7c4d6ba8c` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022151_b4cc96ad-0d95-42e6-a2e7-23d7c4d6ba8c.png | чекає вибору Santos |
 | N-8 | P1 `sprite-pedestrian-courier-walk` | `76fac42d-05a0-43a2-b900-3cb9ac705be0` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022149_76fac42d-05a0-43a2-b900-3cb9ac705be0.png | чекає вибору Santos |
-| N-9 | P1 `sprite-pedestrian-elder-walk` | `ccc3ca6e-5e08-4673-baf2-e34dbd197351` | 2688×1520 · URL — після завершення роботи | чекає вибору Santos |
+| N-9 | P1 `sprite-pedestrian-elder-walk` | `ccc3ca6e-5e08-4673-baf2-e34dbd197351` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022150_ccc3ca6e-5e08-4673-baf2-e34dbd197351.png | чекає вибору Santos |
 
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
