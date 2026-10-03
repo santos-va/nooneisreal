@@ -3,9 +3,11 @@
 
 Image models draw the 4 x 4 grid by eye: frames drift off the 512 px cells and big
 frames cross the cell borders, so `hframes = vframes = 4` in Godot slices them apart.
-This finds the model's own gaps between frames (empty bands in the alpha projection),
-cuts each frame on those gaps and pastes it into a clean cell, all frames scaled by
-ONE factor so the animation keeps its size and center.
+When the model's grid is already exact (no content on the nominal cell lines), the nominal
+cells are used as they are. Otherwise it finds the model's own gaps between frames (empty
+bands in the alpha projection), cuts each frame on those gaps and pastes it into a clean
+cell. Either way all frames share ONE scale factor so the animation keeps its size and center.
+An empty frame (the effect has fully vanished) is allowed and only reported.
 
     python3 tools/art/repack_flipbook.py in.png out.png [--grid 4] [--cell 512] [--margin 8]
     python3 tools/art/repack_flipbook.py in.png --check     # only report, write nothing
@@ -34,6 +36,20 @@ def _cuts(profile, parts):
     if len(runs) < parts - 1:
         return None
     return sorted(mid for _, mid in sorted(runs, reverse=True)[: parts - 1])
+
+
+def nominal(alpha, grid):
+    """Nominal cell boxes when no content touches the nominal cell lines, else None."""
+    w, h = alpha.size
+    px = alpha.load()
+    for k in range(1, grid):
+        x, y = round(k * w / grid), round(k * h / grid)
+        for d in (-1, 0, 1):
+            if any(px[x + d, t] > ALPHA_ON for t in range(h)) or any(px[t, y + d] > ALPHA_ON for t in range(w)):
+                return None
+    xs = [round(k * w / grid) for k in range(grid + 1)]
+    ys = [round(k * h / grid) for k in range(grid + 1)]
+    return [(xs[c], ys[r], xs[c + 1], ys[r + 1]) for r in range(grid) for c in range(grid)]
 
 
 def split(alpha, grid):
@@ -69,7 +85,9 @@ def main():
 
     im = Image.open(a.src).convert("RGBA")
     alpha = im.getchannel("A")
-    boxes = split(alpha, a.grid)
+    boxes, mode = nominal(alpha, a.grid), "nominal grid"
+    if boxes is None:
+        boxes, mode = split(alpha, a.grid), "model gaps"
     if boxes is None:
         print(f"FAIL {a.src}: no {a.grid}x{a.grid} gaps between frames — re-roll the sheet")
         return 1
@@ -80,22 +98,26 @@ def main():
     for l, t, r, b in boxes:
         bb = alpha.crop((l, t, r, b)).point(lambda v: 255 if v > ALPHA_ON else 0).getbbox()
         if bb is None:
-            print(f"FAIL {a.src}: empty frame at {l},{t}")
-            return 1
+            print(f"note {a.src}: frame {len(frames) + 1} is empty")
+            frames.append(((l, t, r, b), None))
+            continue
         frames.append(((l, t, r, b), (l + bb[0], t + bb[1], l + bb[2], t + bb[3])))
     # one scale for all frames: the largest half-extent from a region center must fit the cell
     half = a.cell / 2 - a.margin
     reach = max(
         max(cx - c[0], c[2] - cx, cy - c[1], c[3] - cy)
         for i, (_, c) in enumerate(frames)
+        if c is not None
         for cx, cy in [((i % a.grid + 0.5) * nom, (i // a.grid + 0.5) * nom)]
     )
     scale = min(1.0, half / reach)
-    print(f"OK {a.src}: {len(frames)} frames, scale {scale:.3f}, widest reach {reach:.0f} px")
+    print(f"OK {a.src}: {len(frames)} frames ({mode}), scale {scale:.3f}, widest reach {reach:.0f} px")
     if a.check or not a.dst:
         return 0
     out = Image.new("RGBA", (a.cell * a.grid, a.cell * a.grid), (0, 0, 0, 0))
     for i, (_, c) in enumerate(frames):
+        if c is None:
+            continue
         cx, cy = (i % a.grid + 0.5) * nom, (i // a.grid + 0.5) * nom
         piece = im.crop(c)
         if scale < 1.0:
