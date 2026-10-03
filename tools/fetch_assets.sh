@@ -65,4 +65,9 @@ fetch "$CDN3D/hf_20261003_022150_ccc3ca6e-5e08-4673-baf2-e34dbd197351.png" "$SPR
 fetch "$CDN3D/hf_20261003_013334_bd9797c1-11f4-4ef3-9e32-a26aef2dc1ca.png" "$VFX/vfx_steam_puff_v1.png"
 fetch "$CDN3D/hf_20261003_013436_e9fd9e33-beaa-43b7-8e1c-573c12691253.png" "$PROPS/drone_heavy_v1.png"
 
+# T6·C (Santos 2026-10-03 «даю добро на все»): Choko's printer device and helper drone, canon H13–H14. 11 credits.
+# docs/Art/Prompts/Prompt-Library.md § 16–17.
+fetch "$CDN3D/hf_20261003_160102_e74e5c35-1c47-4581-ad11-22c471a1a8a5.png" "$CARDS/choko_printer_v1.png"
+fetch "$CDN3D/hf_20261003_160106_d829cadc-41cf-480c-836c-0681c85024ac.png" "$CARDS/choko_drone_helper_v1.png"
+
 echo "done. Now run: make check   (re-imports the new textures headlessly)"
