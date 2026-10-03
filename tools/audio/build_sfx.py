@@ -206,8 +206,10 @@ def main() -> int:
         lines = text.split("\n")
         paths = {r[0] for r in rows}
         lines = [ln for ln in lines if not any(f"`{p}`" in ln for p in paths)]
-        # insert after the last row of the "На диску" table
-        anchor = max(i for i, ln in enumerate(lines) if "`game/assets/" in ln)
+        # insert after the last row of the "На диску" table — only table rows above "## Заплановано"
+        # (that heading itself mentions `game/assets/`, so a bare substring match lands below it)
+        planned = next((i for i, ln in enumerate(lines) if ln.startswith("## Заплановано")), len(lines))
+        anchor = max(i for i, ln in enumerate(lines[:planned]) if ln.startswith("| ") and "`game/assets/" in ln)
         new = [f"| sfx-lib-{Path(p).stem.replace('_', '-')} | `{p}` | build_sfx.sh: {src_} | бібліотека | {lic} | "
                f"`Sfx.play(\"{name}\")` |" for p, src_, lic, name in rows]
         lines[anchor + 1:anchor + 1] = new
