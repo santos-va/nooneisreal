@@ -24,6 +24,11 @@ const RING_MIN_PX := Vector2(RING_INK, RING_CREAM)
 const RING_MIN_SCALE := 0.25
 const SKEW := 0.25
 const ROUND_WON := Color(1.0, 0.85, 0.4)
+## S1 / S2 cooldown icons by character id (Textures-Registry ui-icon-*; Hud.gd was their planned landing spot).
+const SKILL_ICONS := {
+	"choko": ["res://assets/ui/icons/icon_choko_record.png", "res://assets/ui/icons/icon_choko_timestop.png"],
+	"skea": ["res://assets/ui/icons/icon_skea_kunai.png", "res://assets/ui/icons/icon_skea_veil.png"],
+}
 
 var p1: Fighter
 var p2: Fighter
@@ -36,6 +41,7 @@ var _meter: Dictionary = {}
 var _pips: Dictionary = {}
 var _charges: Dictionary = {}
 var _cool: Dictionary = {}
+var _cool_icons: Dictionary = {}
 var _dash: Dictionary = {}
 var _status: Dictionary = {}
 var _names: Dictionary = {}
@@ -205,9 +211,14 @@ func _player_panel(f: Fighter, mirrored: bool) -> Control:
 	_charges[idx] = []
 	for i in f.data.grapple_charges:
 		charges.add_child(_cell(Vector2(10, 10), f.data.accent_color, _charges[idx]))
-	var cool := _label("S1 ✓  S2 ✓", FONT_SMALL, HORIZONTAL_ALIGNMENT_RIGHT if mirrored else HORIZONTAL_ALIGNMENT_LEFT)
-	cool.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 0.85))
-	_cool[idx] = cool
+	var icons: Array = SKILL_ICONS.get(f.data.id, [])
+	var cool := HBoxContainer.new()
+	cool.add_theme_constant_override("separation", 10)
+	var s1 := _skill_slot(icons[0] if icons.size() > 0 else "")
+	var s2 := _skill_slot(icons[1] if icons.size() > 1 else "")
+	cool.add_child(s1.box)
+	cool.add_child(s2.box)
+	_cool[idx] = [s1.label, s2.label]
 	if mirrored:
 		res.add_child(cool)
 		res.add_child(charges)
@@ -237,6 +248,23 @@ func _player_panel(f: Fighter, mirrored: bool) -> Control:
 		row2.add_child(st)
 	box.add_child(row2)
 	return box
+
+
+## One S1/S2 cooldown slot: the skill icon (missing → no icon, text only) and its countdown label.
+func _skill_slot(icon_path: String) -> Dictionary:
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	if icon_path != "" and ResourceLoader.exists(icon_path):
+		var icon := TextureRect.new()
+		icon.texture = load(icon_path) as Texture2D
+		icon.custom_minimum_size = Vector2(18, 18)
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(icon)
+	var lbl := _label("✓", FONT_SMALL, HORIZONTAL_ALIGNMENT_LEFT)
+	lbl.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 0.85))
+	box.add_child(lbl)
+	return {"box": box, "label": lbl}
 
 
 func _bar(fill: Color, bg: Color, mirrored: bool) -> ProgressBar:
@@ -425,9 +453,9 @@ func _on_grapple(idx: int, c: int, cd: float, mc: int) -> void:
 func _on_cooldowns(idx: int, cd: Dictionary) -> void:
 	var s1: float = cd.get("skill1", 0.0)
 	var s2: float = cd.get("skill2", 0.0)
-	var t1 := "✓" if s1 <= 0.0 else "%.1f" % s1
-	var t2 := "✓" if s2 <= 0.0 else "%.1f" % s2
-	(_cool[idx] as Label).text = "S1 %s  S2 %s" % [t1, t2]
+	var labels: Array = _cool[idx]
+	(labels[0] as Label).text = "✓" if s1 <= 0.0 else "%.1f" % s1
+	(labels[1] as Label).text = "✓" if s2 <= 0.0 else "%.1f" % s2
 
 
 func _on_dash(idx: int, c: int, r: float, _mc: int) -> void:

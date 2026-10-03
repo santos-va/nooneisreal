@@ -17,6 +17,11 @@ var mode_btn: Button   # MODE 2.5D / 3D (docs/GDD/06-UI-UX.md § Кнопка «
 var _foot: Label
 var _card1: TextureRect
 var _card2: TextureRect
+var _portrait1: TextureRect
+var _portrait2: TextureRect
+## Select-screen portraits (Textures-Registry ui-portrait-*; no CharacterSelect.tscn yet — [[2026-10-03-Character-Select]]
+## В3 — so they sit next to the P1/P2 picker here until that screen exists).
+const PORTRAITS := {"choko": "res://assets/ui/portraits/portrait_choko.png", "skea": "res://assets/ui/portraits/portrait_skea.png"}
 
 
 func _ready() -> void:
@@ -66,8 +71,20 @@ func _ready() -> void:
 	fight.focus_entered.connect(_set_hint.bind(true))
 	training.focus_entered.connect(_set_hint.bind(true))
 	versus.focus_entered.connect(_set_hint.bind(false))
-	_p1_btn = _add(center, "", func(): GameState.cycle_character(1, 1); _refresh())
-	_p2_btn = _add(center, "", func(): GameState.cycle_character(2, 1); _refresh())
+	var p1_row := HBoxContainer.new()
+	p1_row.add_theme_constant_override("separation", 10)
+	p1_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	center.add_child(p1_row)
+	_portrait1 = _portrait_rect()
+	p1_row.add_child(_portrait1)
+	_p1_btn = _add(p1_row, "", func(): GameState.cycle_character(1, 1); _refresh())
+	var p2_row := HBoxContainer.new()
+	p2_row.add_theme_constant_override("separation", 10)
+	p2_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	center.add_child(p2_row)
+	_p2_btn = _add(p2_row, "", func(): GameState.cycle_character(2, 1); _refresh())
+	_portrait2 = _portrait_rect()
+	p2_row.add_child(_portrait2)
 	stage_btn = _add(center, "", func(): step_stage(1))
 	time_btn = _add(center, "", func(): toggle_time())
 	_keys_btn = _add(center, "", func(): InputRouter.cycle_profile(); _refresh())
@@ -148,6 +165,8 @@ func _refresh() -> void:
 	if _card1:
 		_card1.texture = _card_tex(c1)
 		_card2.texture = _card_tex(c2)
+	_set_portrait(_portrait1, c1)
+	_set_portrait(_portrait2, c2)
 
 
 func _set_hint(vs_cpu: bool) -> void:
@@ -199,6 +218,21 @@ func _card_tex(c: CharacterData) -> Texture2D:
 	if c != null and c.card_path != "" and ResourceLoader.exists(c.card_path):
 		return load(c.card_path) as Texture2D
 	return null
+
+
+func _portrait_rect() -> TextureRect:
+	var t := TextureRect.new()
+	t.custom_minimum_size = Vector2(44, 44)
+	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return t
+
+
+func _set_portrait(rect: TextureRect, c: CharacterData) -> void:
+	if rect == null:
+		return
+	var p: String = PORTRAITS.get(c.id, "") if c != null else ""
+	rect.texture = load(p) as Texture2D if p != "" and ResourceLoader.exists(p) else null
 
 
 func _go() -> void:
