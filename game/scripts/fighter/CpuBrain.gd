@@ -68,7 +68,7 @@ func _physics_process(_delta: float) -> void:
 	if not fighter.is_actionable() and fighter.state != Fighter.State.JUMP:
 		return
 	# Shadow Veil / smoke: the CPU loses track and wanders
-	if o.veil_frames > 0 or _in_smoke():
+	if (o.veil_frames > 0 and o.revealed_frames <= 0) or _in_smoke():
 		InputRouter.v_set(p, toward if _rng.randf() < 0.5 else away, true)
 		return
 	if GameState.free_move and _free_move_choice(p, o, dist):
