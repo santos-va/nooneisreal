@@ -76,6 +76,17 @@
 **3D-меш меча №1 через Meshy — RED, 3c не блокує.** Кандидат — `meshy_image_to_3d` з кропу меча №1 з картки (`should_texture`, без
 ригу). **Ціна — 30 кр.** (`generate_3d` з `get_cost: true`, `meshy_image_to_3d`, `should_texture`, референс картки `d41babe1` → `30`, 2026-10-03) + 2.75 за картку з одним мечем №1 (`gpt_image_2_5` high 2k, `get_cost` → `2.75`): разом **32.75**. Перше записане тут «`get_cost` недоступний» було помилкою T6 — це параметр самих `generate_*`, він кредитів не бере ([[2026-10-03-Apollon-Sprint-C-Prompts]]). Без слова — нуль викликів `generate_*`.
 
+## Смуга D спринту — мальовані флипбуки (T6·B, 2026-10-03)
+
+Промпти, формат аркуша (4 × 4, 512 px, прозоре тло), палітри з `.tres` і кошторис — [[VFX-Sheets-Prompts]]. Дим, пил,
+сліди Chrono Step і Flash Step, лінії швидкості, іскри влучання (4 кольори) і металу, електро, декаль TIME STOP, спіраль
+перемотки, стікер RECORD. Беруть T2·B (смуга B). Пакет 76.25 кр. — RED, чекає слова Santos.
+
+### Тест Kling
+
+Питання: чи виходить флипбук із прозорим тлом. До кредитів (`models_explore` 2026-10-03): параметра альфи немає ні в Kling,
+ні в іншій відеомоделі каталогу. Перевіряється чисте чорне тло → `BLEND_MODE_ADD` або luma-key. Висновок — сюди після кліпу.
+
 ## Далі (фаза 2–3)
 
 - Справжні меші: смір-меші / blend shapes на 1–2 кадри, `Trail3D` (Godot 4.8) для кунаїв і меча.
@@ -85,4 +96,4 @@
 - Hit spark зараз квадратний плейсхолдер. Його замінить зірка або спрайт-шит з Higgsfield AutoSprite.
 
 ## Related
-- [[Style-Guide]] · [[Skea]] · [[Choko]] · [[Active-Ragdoll]] · [[Cel-Shading]] · [[2026-10-03-Crystal-Ult-Arena-Fatigue]] · [[03-Skills-Framework]] · [[2026-10-03-Apollon-3c-2-Gold]]
+- [[Style-Guide]] · [[Skea]] · [[Choko]] · [[Active-Ragdoll]] · [[Cel-Shading]] · [[2026-10-03-Crystal-Ult-Arena-Fatigue]] · [[03-Skills-Framework]] · [[2026-10-03-Apollon-3c-2-Gold]] · [[VFX-Sheets-Prompts]]
