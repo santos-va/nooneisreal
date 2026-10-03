@@ -416,5 +416,19 @@ X-0 і X-3 промптились ще з мечем в IDENTITY; Santos (дош
 | Z-2 | G1 `choko-monogram-c-v1` · v1 | `327a6ef9-d037-43d9-a115-3d50093f3165` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031228_327a6ef9-d037-43d9-a115-3d50093f3165.png | **переможець** (Santos) — «але кросівки не ті — пам'ятай це й не пропусти»: береться лише літера |
 | Z-3 | G1 `choko-monogram-c-v1` · v2 | `8e72fa1a-8e8b-4bcb-9466-9d78438fb749` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031227_8e72fa1a-8e8b-4bcb-9466-9d78438fb749.png | не обрано |
 
+### Choko v5.2 — кросівки v2 за P-6000 (2026-10-03, #38)
+
+Santos: V-1 «не ті» (варіант «б») → «так» на 11 кр.: картка ×2 зараз, T-пози front/¾ без смуг ×2 — після вибору. Промпт — [[Prompt-Library]] § 15c,
+референс — лише гліф Z-2 `327a6ef9`. `get_cost` 16:9 з 1 референсом → 2.75.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C2v2 картка кросівок ×2 | 5754.5 | 5749 | 5.5 (з 11) |
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| K-0 | C2v2 `choko-item-sneakers-v2` · v1 | `face408d-13b4-4255-91d1-a379df09049d` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031833_face408d-13b4-4255-91d1-a379df09049d.png | чекає вибору Santos |
+| K-1 | C2v2 `choko-item-sneakers-v2` · v2 | `597d9600-7911-43cf-b5a8-8000dcc63e8e` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031832_597d9600-7911-43cf-b5a8-8000dcc63e8e.png | чекає вибору Santos |
+
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
