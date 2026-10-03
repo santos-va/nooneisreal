@@ -412,7 +412,7 @@ X-0 і X-3 промптились ще з мечем в IDENTITY; Santos (дош
 | мітка | партія | job-id | розмір · CDN-URL | результат |
 |---|---|---|---|---|
 | Z-0 | C4r2 `choko-tpose-back-v5` · 3 | `18eb4161-06ce-4ef5-b3d4-abfc482a5c2b` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031228_18eb4161-06ce-4ef5-b3d4-abfc482a5c2b.png | не обрано |
-| Z-1 | C4r2 `choko-tpose-back-v5` · 4 | `50734236-25b0-4062-8ea5-515483926f17` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031229_50734236-25b0-4062-8ea5-515483926f17.png | **переможець** (Santos) — «тоді й в курточці просто без полосок зроби» |
+| Z-1 | C4r2 `choko-tpose-back-v5` · 4 | `50734236-25b0-4062-8ea5-515483926f17` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031229_50734236-25b0-4062-8ea5-515483926f17.png | **переможець** (Santos) — «тоді й в курточці просто без полосок зроби» ; Santos (дошка, «взуття»): «ззаду не видно літер "C" на кросах» |
 | Z-2 | G1 `choko-monogram-c-v1` · v1 | `327a6ef9-d037-43d9-a115-3d50093f3165` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031228_327a6ef9-d037-43d9-a115-3d50093f3165.png | **переможець** (Santos) — «але кросівки не ті — пам'ятай це й не пропусти»: береться лише літера |
 | Z-3 | G1 `choko-monogram-c-v1` · v2 | `8e72fa1a-8e8b-4bcb-9466-9d78438fb749` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031227_8e72fa1a-8e8b-4bcb-9466-9d78438fb749.png | не обрано |
 
@@ -442,8 +442,8 @@ Z-1 малювався з кросівками V-1 — на спині видн�
 
 | мітка | партія | job-id | розмір · CDN-URL | результат |
 |---|---|---|---|---|
-| F-0 | C4v2 `choko-tpose-front-v5` · 2 | `600fa251-4ff7-4105-bcc4-3cda8dae5195` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_032101_600fa251-4ff7-4105-bcc4-3cda8dae5195.png | чекає вибору Santos |
-| F-1 | C4v2 `choko-tpose-34-v5` · 2 | `9ea38aaf-fa2f-458e-880c-54bf599eff52` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_032101_9ea38aaf-fa2f-458e-880c-54bf599eff52.png | чекає вибору Santos |
+| F-0 | C4v2 `choko-tpose-front-v5` · 2 | `600fa251-4ff7-4105-bcc4-3cda8dae5195` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_032101_600fa251-4ff7-4105-bcc4-3cda8dae5195.png | **так** (Santos, дошка) — канон front замість X-0 |
+| F-1 | C4v2 `choko-tpose-34-v5` · 2 | `9ea38aaf-fa2f-458e-880c-54bf599eff52` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_032101_9ea38aaf-fa2f-458e-880c-54bf599eff52.png | **без рішення** (Santos: «—») |
 
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
