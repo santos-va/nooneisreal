@@ -23,6 +23,7 @@ var _river_min_gap: float = 99.0
 var _river3d_runs: Array = []
 const DUEL_FRAMES := 1110   # the last ultimate (t 820) must ragdoll, land and get up inside the trace
 var _duel_runs: Array = []
+var _splat_phase: int = 0
 var _duel_trace: Array = []
 var _duel_first_trace: Array = []
 var _zdiff: float = 0.0
@@ -329,6 +330,12 @@ func _river_script(t: int) -> void:
 		InputRouter.v_press(2, "dash")
 	if t == 460:
 		InputRouter.v_press(2, "jump")
+
+
+## Jump to stage `st` (resets the stage clock and virtual input, like _next()).
+func _next_to(st: int) -> void:
+	_stage = st - 1
+	_next()
 
 
 func _next() -> void:
@@ -1294,4 +1301,61 @@ func _physics_process(_delta: float) -> void:
 					GameState.set_free_move(true)
 					_load_arena(2, 70)
 				else:
-					_finish()
+					_splat_phase = 0
+					_next_to(80)
+		# ---------------- wall splat (02 § Коло арени: 10 f, no damage, once per combo) -----------
+		80:
+			# phase 0: first combo → splat; phase 1: next combo → splat again, then a second launch in that
+			# same combo must not splat
+			if p1.is_actionable() and p2.is_actionable() and _f > _f0 + 20:
+				InputRouter.v_clear(1)
+				InputRouter.v_clear(2)
+				var n := Vector3(1.0, 0.0, 0.0)
+				p2.global_position = n * (12.5 - 1.0)
+				p1.global_position = n * (12.5 - 4.0)
+				p2.hp = p2.data.max_hp
+				_x0 = p2.hp
+				_n0 = int(p2.stats.get("splats", 0))
+				_run = 0
+				p2._enter_ragdoll(Vector3(16.0, 4.0, 0.0))
+				_next()
+			elif _f > _f0 + 600:
+				_fail("wall splat: fighters never actionable (p1 %d, p2 %d)" % [p1.state, p2.state])
+		81:
+			if p2.state == Fighter.State.WALL_SPLAT:
+				_run += 1
+				if _run == 1:
+					var r := _flat(p2.global_position).length()
+					var face := p2.forward.dot(-_flat(p2.global_position).normalized())
+					if p2.hp != _x0 or r < 12.5 - 0.05 or face < 0.9 or int(p2.stats.get("splats", 0)) != _n0 + 1:
+						_fail("wall splat: hp %.1f → %.1f (want no damage), radius %.2f (want 12.5), facing the centre %.2f, splats %d → %d" % [_x0, p2.hp, r, face, _n0, p2.stats.get("splats", 0)])
+						return
+				if _splat_phase == 0 and _run == 4:
+					_shot("15_free_wall_splat")
+				if _splat_phase == 1 and _run == 3:
+					# same combo, follow-up launcher into the same wall while splatted
+					p2._enter_ragdoll(Vector3(16.0, 4.0, 0.0))
+					_next_to(82)
+			elif _run > 0:
+				if _run != 10 or p2.state != Fighter.State.KNOCKDOWN:
+					_fail("wall splat lasted %d frames then state %d (want 10, then KNOCKDOWN)" % [_run, p2.state])
+					return
+				_ok("wall splat: ragdoll at the edge stuck to the wall for %d frames, no damage (hp %.0f), facing the centre, then knockdown" % [_run, p2.hp])
+				_splat_phase = 1
+				_next_to(80)
+			elif _f > _f0 + 200:
+				_fail("wall splat: the launched fighter never splatted (state %d, at radius %.2f)" % [p2.state, _flat(p2.global_position).length()])
+		82:
+			# the second launch of the same combo flies into the wall again but must not splat
+			if p2.state == Fighter.State.WALL_SPLAT:
+				_fail("wall splat twice in one combo (splats %d → %d)" % [_n0, p2.stats.get("splats", 0)])
+				return
+			if p2.state == Fighter.State.GETUP or p2.is_actionable():
+				var got := int(p2.stats.get("splats", 0)) - _n0
+				if got != 1:
+					_fail("wall splat: %d splats in the second combo (want 1)" % got)
+					return
+				_ok("wall splat once per combo: the next combo splatted again, a second launch into the wall in that combo did not (%d ragdoll frames, splats +%d)" % [_f - _f0, got])
+				_finish()
+			elif _f > _f0 + 400:
+				_fail("wall splat: second launch never settled (state %d)" % p2.state)

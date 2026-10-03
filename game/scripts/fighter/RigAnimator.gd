@@ -342,6 +342,18 @@ func _compute_target(f: Fighter, delta: float) -> void:
 			_pose_set("shin_l", Vector3(0, 0, -1.3))
 			_pose_set("shin_r", Vector3(0, 0, -1.0))
 			_pose_set("torso", Vector3(0, 0, 0.2))
+		Fighter.State.WALL_SPLAT:
+			# flattened against the wall: back arched into it, arms thrown wide, head snapped back
+			_pose_set("torso", Vector3(0, 0, -0.45))
+			_pose_set("head", Vector3(0, 0, -0.5))
+			_pose_set("upper_arm_l", Vector3(0, 0, -1.9))
+			_pose_set("upper_arm_r", Vector3(0, 0, -1.7))
+			_pose_set("forearm_l", Vector3(0, 0, 0.3))
+			_pose_set("forearm_r", Vector3(0, 0, 0.4))
+			_pose_set("thigh_l", Vector3(0, 0, 0.2))
+			_pose_set("thigh_r", Vector3(0, 0, -0.25))
+			_pose_set("shin_l", Vector3(0, 0, -0.5))
+			target_root_offset = Vector3(-0.15, -0.1, 0)
 		Fighter.State.KNOCKDOWN, Fighter.State.KO:
 			_pose_set("pelvis", Vector3(0, 0, -PI / 2.0))
 			target_root_offset = Vector3(0, -0.75, 0)
