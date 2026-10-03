@@ -115,6 +115,7 @@ var _track_left: float = 0.0       # free_move: radians the current attack may s
 @onready var hitbox_debug: MeshInstance3D = $HitboxDebug
 @onready var grapple: GrappleHook = $GrappleHook
 
+var skeletal: SkeletalRig = null   # C1 mannequin, only with GameState.skeletal_rig
 var _ragdoll: Ragdoll = null
 var _brain: CpuBrain = null
 var _hit_query := PhysicsShapeQueryParameters3D.new()
@@ -140,6 +141,11 @@ func _ready() -> void:
 	hurtbox.collision_layer = 4
 	hurtbox.collision_mask = 0
 	animator.setup(data)
+	if GameState.skeletal_rig:
+		skeletal = SkeletalRig.new()
+		skeletal.name = "SkeletalRig"
+		add_child(skeletal)
+		skeletal.setup(self)
 	grapple.setup(self)
 	grapple.changed.connect(_on_grapple_changed)
 	_hit_query.shape = _hit_box
