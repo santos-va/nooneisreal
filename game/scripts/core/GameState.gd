@@ -67,9 +67,9 @@ func save_free_move(on: bool) -> void:
 
 ## The saved MODE choice, or the default (free movement) when nothing is saved. Main applies it at boot before
 ## the launch flags, which win for that run only; the smoke never reads it.
-static func saved_free_move(default_on: bool) -> bool:
+static func saved_free_move(default_on: bool, path: String = InputRouter.SETTINGS_PATH) -> bool:
 	var cfg := ConfigFile.new()
-	if cfg.load(InputRouter.SETTINGS_PATH) != OK:
+	if cfg.load(path) != OK:
 		return default_on
 	return bool(cfg.get_value("gameplay", "free_move", default_on))
 
