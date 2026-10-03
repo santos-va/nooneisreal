@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/arena/Arena.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/arena/FightCamera.gd" id="2"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/arena/MatchFlow.gd" id="4"]
 [ext_resource type="Script" path="res://scripts/ui/Hud.gd" id="5"]
 [ext_resource type="Shader" path="res://shaders/toon.gdshader" id="6"]
+[ext_resource type="Script" path="res://scripts/arena/DuelCamera.gd" id="7_duelcam"]
 
 [sub_resource type="Environment" id="env"]
 background_mode = 1
@@ -132,6 +133,18 @@ script = ExtResource("2")
 
 [node name="Camera3D" type="Camera3D" parent="CameraRig"]
 current = true
+fov = 48.0
+near = 0.1
+far = 200.0
+
+[node name="DuelRig" type="Node3D" parent="."]
+script = ExtResource("7_duelcam")
+
+[node name="SpringArm3D" type="SpringArm3D" parent="DuelRig"]
+spring_length = 9.0
+margin = 0.2
+
+[node name="Camera3D" type="Camera3D" parent="DuelRig/SpringArm3D"]
 fov = 48.0
 near = 0.1
 far = 200.0

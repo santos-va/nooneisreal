@@ -29,6 +29,10 @@ enum Kind { NORMAL, SKILL, ULTIMATE, THROW }
 @export var meter_cost: float = 0.0
 @export var cooldown: float = 0.0                     # seconds, skills only
 @export var forward_step: float = 0.0                 # metres moved forward during startup+active
+## Free movement (GameState.free_move): during startup the attack turns toward the opponent by at
+## most this many degrees in total. PLACEHOLDER — 30° is the angle from the 0.3-1 check in
+## docs/Plans/2026-10-03-Prototype-0.3-Free-Movement.md; per-move values come from T5 Арес (#25).
+@export var tracking_deg: float = 30.0
 ## Skill effect fired at the first active frame (damage = -1 → no hitbox of its own):
 ##   record · time_stop · sword_storm · kunai_rain · shadow_veil · grimoire
 ## On-hit effect for synthetic hits: armor_break · bleed · poison
