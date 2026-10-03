@@ -14,6 +14,8 @@
 - Стиль — Sketch-Cel ([[ADR-007-Art-Style-Sketch-Cel]]): «надіслане на початку» = листи-референси манери.
 - Хвиля 1 об'єднує лист Choko, фон річки й панораму меню — одне рішення Santos про стиль.
 - Генерує сесія T6 зі словом Santos у ній; issue santos-va/nooneisreal#14.
+- Локальні зміни на Mac Santos (`git status --short`): 8 картинок, скачаних `tools/fetch_assets.sh`, і `tools/audio/nir-audio/`. Santos: картинки **комітимо**, 8 рядків [[Textures-Registry]] перенесено з «Заплановано» в «На диску» (файл Аполлона, правка механічна, зі слова Santos).
+- Звукові паки знайшлись у `tools/audio/nir-audio/`, а не в `~/Downloads/nir-audio/`; переносимо туди, де їх чекає крок 1.2 [[2026-10-03-Production-Plan]], і в git не кладемо.
 
 ## Що виміряно в цій сесії
 - `balance` → 6010, Ultra.
