@@ -294,5 +294,33 @@ nano_banana_pro 2k 3:4 і 1:1 — 2 · image_decompose — 2 · flux_2_pro_outpa
 | 6 | S2b `skea-item-backpack-v2` · v1 | `84849343-bdbe-46b5-83f5-ae95b0994f8a` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015043_84849343-bdbe-46b5-83f5-ae95b0994f8a.png | **переможець** (Santos, дошка 2026-10-03) |
 | 7 | S2b `skea-item-backpack-v2` · v2 | `241dd472-ac05-46f7-8f96-e7f577349973` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015042_241dd472-ac05-46f7-8f96-e7f577349973.png | не обрано |
 
+### Одяг v4/v3 + перехожі (2026-10-03, #14, #33, #36)
+
+Слово Santos: «перехожих більше звісно й оновлюй все інше… давай будемо на gpt». Обсяг — мій кошторис у чаті (перехожі ×3,
+пакет Choko v4, пакет Skea v3). **Крок 1** (цей): листи + картки + перехожі; **крок 2** — поворот і 4 T-пози кожного героя
+з референсом переможця кроку 1 (≈ 27.5 кр., `get_cost` 3:4 = 2.75) — після вибору Santos. Промпти — [[Prompt-Library]] § 13–14.
+Фото худі від Santos у репо й у Higgsfield не кладемо — лише опис. Референси: Choko — `f21298f4`; Skea — `f21298f4` (манера) +
+`dcdef91d` (обличчя S-1); перехожі — `73ee9806` (панорама) + `cc4637e4` (проба робітника). Мітки `N-n` — номери галереї цього кроку.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C1 лист Choko v4 ×2 + куртка | 5834.25 | 5826 | 8.25 |
+| K1 лист Skea v3 ×2 + худі + кросівки | 5826 | 5815 | 11 |
+| P1 перехожі ×3 | 5815 | 5806.75 | 8.25 |
+| **Разом** | **5834.25** | **5806.75** | **27.5** |
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| N-0 | C1 `choko-sheet-v4` · v1 | `80480e9f-91d3-4595-a816-2790b5dc78be` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022042_80480e9f-91d3-4595-a816-2790b5dc78be.png | чекає вибору Santos |
+| N-1 | C1 `choko-sheet-v4` · v2 | `d6841a7a-329e-406b-806b-2006ce15b209` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022041_d6841a7a-329e-406b-806b-2006ce15b209.png | чекає вибору Santos |
+| N-2 | C1 `choko-item-jacket-v4` | `a2bf79a1-d459-4381-a268-14b76ee9d13d` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022041_a2bf79a1-d459-4381-a268-14b76ee9d13d.png | чекає вибору Santos |
+| N-3 | K1 `skea-sheet-v3` · v1 | `8af7b7f5-6254-47bf-86d1-619330618786` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022128_8af7b7f5-6254-47bf-86d1-619330618786.png | чекає вибору Santos |
+| N-4 | K1 `skea-sheet-v3` · v2 | `f30eeab4-c64c-4fa8-a128-8c490d794ced` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022127_f30eeab4-c64c-4fa8-a128-8c490d794ced.png | чекає вибору Santos |
+| N-5 | K1 `skea-item-hoodie-v3` | `ab80973c-4d74-4467-a8be-de2371bc6f31` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022129_ab80973c-4d74-4467-a8be-de2371bc6f31.png | чекає вибору Santos |
+| N-6 | K1 `skea-item-sneakers-v1` | `d2ac65b6-c764-41a5-b8ac-8aa5b0b40599` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022127_d2ac65b6-c764-41a5-b8ac-8aa5b0b40599.png | чекає вибору Santos |
+| N-7 | P1 `sprite-pedestrian-lady-walk` | `b4cc96ad-0d95-42e6-a2e7-23d7c4d6ba8c` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022151_b4cc96ad-0d95-42e6-a2e7-23d7c4d6ba8c.png | чекає вибору Santos |
+| N-8 | P1 `sprite-pedestrian-courier-walk` | `76fac42d-05a0-43a2-b900-3cb9ac705be0` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_022149_76fac42d-05a0-43a2-b900-3cb9ac705be0.png | чекає вибору Santos |
+| N-9 | P1 `sprite-pedestrian-elder-walk` | `ccc3ca6e-5e08-4673-baf2-e34dbd197351` | 2688×1520 · URL — після завершення роботи | чекає вибору Santos |
+
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
