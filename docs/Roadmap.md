@@ -26,12 +26,14 @@ headless smoke-тест, ролі агентів, вікі.
 
 ## Фаза 3 — Арена як у Storm (≈ 20–30 год)
 
-- Вільний 3D-рух із lock-on, камера на SpringArm, гарпун у 3D (якорі на фасадах Kronshift).
+- Вільний 3D-рух із lock-on, камера на SpringArm, гарпун у 3D (якорі на фасадах Kronshift). **Перенесено вперед:**
+  Prototype 0.3 на капсулах, до 3D-персонажів ([[2026-10-03-Prototype-0.3-Free-Movement]], Santos 2026-10-03).
 - Паралакс-фони з Image Decompose; стадія-прoпси; руйновані елементи для регдолу.
 - VFX: speed lines, smear-меші, hit-sparks у стилі аніме.
 
 ## Фаза 4 — Платформи (≈ 10–20 год + процеси)
 
+- **Перед першою публічною збіркою:** ліцензійний аудит усіх рядків [[Textures-Registry]] — T3 + T4 ([[ADR-013-License-Check-At-Release]]).
 - Експорти macOS/Windows/Linux; Android/iOS з VirtualJoystick і touch-лейаутом ([[Export-Platforms]]).
 - W4 Consoles оцінка; статус розробника Sony/Microsoft.
 - Онлайн: лише якщо бій лишиться детермінованим без фізики в авторитетному шляху.
