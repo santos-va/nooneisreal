@@ -1,5 +1,7 @@
-# zip_glob	licence	source_url	attribution
-# One row per downloaded pack. build_sfx.py refuses to touch a zip that has no row here (R1/R7:
+# pack_glob	licence	source_url	attribution
+# One row per downloaded pack (a .zip or its unpacked folder under tools/audio/nir-audio/, which is
+# gitignored: raw library files never go into this public repo). build_sfx.py refuses to touch a pack
+# that has no row here (R1/R7:
 # every shipped sound needs a licence we actually read on the download page).
 # Licence values we accept without extra steps: CC0, Sonniss-GDC-royalty-free. Anything with BY/NC/SA
 # needs a decision from Santos first (docs/GDD/07-Audio.md).
@@ -8,3 +10,11 @@
 # kenney_impact-sounds*.zip	CC0	https://kenney.nl/assets/impact-sounds	Kenney (not required)
 # Sonniss*GDC*.zip	Sonniss-GDC-royalty-free	https://gdc.sonniss.com	not required
 # swishes*.zip	CC0	https://opengameart.org/content/swishes-sound-pack	not required
+#
+# Read 2026-10-03 on the Mac from the files that ship inside each pack:
+#  - Sonniss: "License - GDC Game Audio.pdf" — use and modify in commercial projects, no attribution;
+#    may not sell the sounds "as they come"; NO AI training/usage of the raw sounds (never upload them
+#    to a generator). Shipped game SFX are built (cut, layered, mastered) from them, never raw copies.
+#  - Kenney Interface Sounds 1.0: "License.txt" — CC0 1.0.
+Sonniss.com-GDC2024-GameAudioBundle*	Sonniss-GDC-royalty-free	https://gdc.sonniss.com	not required
+kenney_interface-sounds*	CC0	https://kenney.nl/assets/interface-sounds	Kenney (not required)

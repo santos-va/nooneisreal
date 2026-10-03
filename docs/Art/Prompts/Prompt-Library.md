@@ -29,9 +29,9 @@ No anime style, no glossy eyes, no 3D render look, no gradients, no realistic sk
 young man, lean narrow face, long straight nose, grey-green eyes, thick curly dark-brown hair covering temples and ears; fitted jacket of fine gunmetal chainmail rings with muted dusty-orange leather panels and a thin cream stripe, high collar, sleeves to the wrists; slate blue-grey trousers; black leather gloves; large analog wristwatch on the left wrist; emerald-green pike-style sword with dark green wrapped grip and brass guard
 ```
 
-**IDENTITY — Skea:**
+**IDENTITY — Skea** (v2 з 2026-10-03, santos-va/nooneisreal#33; попередня — § 12 «Було»; до Skea завжди додавати `{NEG_SKEA}` і пози § 12):
 ```
-wiry young man, messy curly brown hair, wide grey eyes, a manic toothy grin with dental braces, freckles; purple hoodie with the hood down, sleeves in a teal-green camouflage pattern, crossed leather straps; loose black cargo pants with kunai holstered on the thighs; shins wrapped in bandages like a Muay Thai fighter; black-and-purple sneakers; a book-shaped backpack with a glowing purple infinity-eight sigil; tattoo on the forearm
+lanky, very tall and thin young man of about twenty — for this character only, head about one sixth to one seventh of his height (taller and thinner than the usual proportions), long thin fingers; sharp cheekbones, hollow cheeks, dark magenta-violet shadows under the eyes; pale grey eyes with tiny pinpoint pupils that almost never blink — the eyes stay calm and cold and take no part in the smile; an unnaturally wide smile whose corners reach slightly past where the cheeks should end, too many teeth, thin dark dental braces with a faint violet glint, the smile stays frozen while the rest of the face moves; faint, barely visible freckles; messy curly brown hair falling over the forehead; purple hoodie with the hood down, sleeves in a teal-green camouflage pattern, crossed leather straps; loose black cargo pants with kunai holstered on the thighs; shins wrapped in bandages like a Muay Thai fighter; black-and-purple sneakers; a book-shaped backpack, an old leather grimoire, whose glowing purple infinity-eight sigil sits centered on the back panel only, nothing on its sides; tattoo on the forearm; slack, slouching posture, head tilted, shoulders dropped, standing unnervingly still
 ```
 
 ## 2. Turnaround — `<ch>-turn-v1`
@@ -60,7 +60,7 @@ nano_banana_pro 2k, 3:4. Чотири окремі запуски: `front`, `lef
 | Choko's large analog wristwatch with a cracked glass and glowing green hands | dial close-up; clasp |
 | Skea's set of three kunai held in a knuckle-ring grip, plus one single kunai | ring grip; blade with purple wrap |
 | Skea's grimoire: heavy old leather book with iron corners and a glowing purple infinity-eight sigil | open pages with sealed villain silhouettes; spine and clasp |
-| Skea's book-shaped backpack with straps | sigil plate; strap buckles |
+| Skea's backpack: an old heavy leather grimoire-book worn as a backpack, with iron corners and shoulder straps; a glowing purple infinity-eight sigil (#9E4CF2) centered on the back panel only, facing away from the wearer, nothing on the sides, straps, flap or spine; the sigil is a plain infinity-eight shape with no face, no eyes, no teeth, no mouth; only the back view shows the sigil | the sigil on the back panel with a faint neon trail drifting off it and dissolving into sparks; strap buckles |
 | Choko's ultimate sword: the leftmost sword of the reference sheet, keep its shape and colors (reference image: `weapons-choko-ult`) | crossguard and grip; blade tip |
 | Choko's fitted jacket of fine gunmetal chainmail rings with muted dusty-orange leather panels, a thin cream stripe and a high collar | chainmail ring weave; collar and leather panel seam |
 | Skea's purple hoodie with the hood down and sleeves in a teal-green camouflage pattern | camouflage sleeve pattern; hood and drawstrings |
@@ -112,5 +112,76 @@ COLOR: `warm cream` (звичайний) · `violet #9E4CF2` (крит Skea) · 
 
 Окремий файл — [[Menu-Skyline-Prompts]] (панорама, передній план, перехожі, парові машини, пара, пози прольоту).
 
+## 9. Лист поз з двома референсами (хвиля 2, `skea-sheet-v1`)
+
+Шаблон § 1 з одною зміною: референсів два — затверджений лист Choko `f21298f4` (манера) і стара картка Skea
+`4cf75fc8` (ідентичність). Фраза «Keep the identity, outfit and colors of the reference image:» замінена на
+«Match the drawing style, line and shading of the first reference image exactly; keep the identity, outfit and colors of the character in the second reference image:».
+Turnaround, T-pose і картки предметів хвилі 2 — шаблони § 2–4 байт-у-байт, референс = затверджений лист персонажа
+(Choko `f21298f4`, Skea `9c0b4476`); ульт-меч — другий референс `d41babe1` (`weapons_choko_ultimate.png`).
+
+## 10. Пропси-якорі — `props-anchors-v1` ([[ADR-011-Diegetic-Grapple-Anchors]])
+
+gpt_image_2_5 high 2k 16:9, референс — переможець річки `a2913501`.
+
+```
+Prop design sheet for a fighting game, on a flat muted mint-sage background (#B8CBB1), hand-drawn in a loose expressive western animation sketch style, not anime: lively plum-graphite inked lines with small line breaks, flat colors with a single magenta-violet cel shadow tone, no gradients, no gloss. Four grappling-hook anchor props of the old European-industrial city of Cronshift, matching the architecture and dusk palette of the reference image, each shown twice — front view and three-quarter view — in two rows with even spacing: 1) a big heavy wrought-iron street lamp with a thick curled arm and a caged lantern; 2) a large billboard on a riveted steel frame with legs, the board showing a simple painted picture with no letters at all (a steaming teacup under a smiling sun); 3) an industrial brick-and-iron chimney stack with a service ladder and heavy iron clamps; 4) a tall rooftop ventilation pipe column with a cowl, bolted collars and a valve wheel. On every prop a sturdy iron ring or hook point where a grappling line can catch, clearly visible. Same scale reference, small hand-written numbers by each prop. No people, no letters or words anywhere on the billboard or props, no logos, no watermark.
+```
+
+## 11. Важкий дрон — `drone-heavy-v1` ([[ADR-011-Diegetic-Grapple-Anchors]])
+
+gpt_image_2_5 high 2k 16:9, референс — переможець річки `a2913501`.
+
+```
+Prop design sheet for a fighting game, on a flat muted mint-sage background (#B8CBB1), hand-drawn in a loose expressive western animation sketch style, not anime: lively plum-graphite inked lines with small line breaks, flat colors with a single magenta-violet cel shadow tone, no gradients, no gloss. A heavy, almost silent cargo drone of the old European-industrial city of Cronshift, matching the dusk palette of the reference image: a riveted brass and dark-teal hull like a small airship gondola, four enclosed ducted rotors in round iron cages, a strong winch with a big iron hook hanging under its belly, small warm lamps. The same drone shown in five panels with even spacing and the same scale: 1) hovering calm and level; 2) tilting hard toward a pull from the lower left, the hook cable taut, rotors straining; 3) sagging down under a heavy load, hull slightly squashed, small vibration lines, rotor rims glowing warmer; 4) recovering back to level with a small wobble; 5) a small silhouette seen from directly below. Small hand-written numbers by each panel. No people, no letters or words, no logos, no watermark.
+```
+
+Тайли води (§ 5) у хвилі 2 — з референсом річки `a2913501`. Outpaint річки (§ 6) — промпт «Continue the same hand-drawn
+sketch-style dusk river city seamlessly to the left and right…» — не пройшов (422), див. [[Menu-Skyline-Prompts]] § Хвиля 2.
+
+## 12. Skea — психопат із надприродною посмішкою (santos-va/nooneisreal#33)
+
+Бриф — [[2026-10-03-Skea-Redesign]]. `{STYLE}` і `{NEG}` — без змін (§ 0); IDENTITY Skea в § 1 замінено на v2.
+**Конфлікт, який закриваємо явно:** `{STYLE}` каже «head about one fifth of body height» (це пропорції Choko); у
+IDENTITY v2 стоїть «for this character only, head about one sixth to one seventh» — модель отримує обидва, перевага в
+пізнішого й конкретнішого. Якщо на пробі Skea вийде з головою 1/5 — правка `{STYLE}` окремим словом Santos.
+
+**`{NEG_SKEA}`** (додається після `{NEG}` у кожному промпті Skea):
+```
+Not cute, not chibi, not goofy, not comedic, not kawaii, not wholesome, not childlike, no round baby face, no big sparkly eyes, no cheerful grin; unsettling and quietly menacing, yet still the same flat hand-drawn sketch style — no horror realism, no gore, no blood.
+```
+
+**Пози листа Skea** (заміна поз § 1 для Skea):
+```
+1) head tilted about thirty degrees, staring straight at the viewer with the frozen smile, 2) crouched low on his heels, a kunai spinning on one finger, 3) standing perfectly straight, arms hanging loose, the smile, 4) laughing with the head thrown back, 5) mid flash-step with a fading violet ghost of himself left behind, 6) the grimoire open in his hands, his face lit from below in violet, 7) back view, looking over the shoulder with the smile, the sigil glowing on the back of the backpack, 8) fingers drumming on his lips, eyes sliding to the side
+```
+
+### 12a. Лист поз Skea v2 — `skea-sheet-v2`
+
+gpt_image_2_5 high 2k 16:9. Референси: 1) лист Choko `f21298f4` (манера), 2) стара картка Skea `4cf75fc8` (одяг, кольори).
+
+```
+{STYLE} Character pose sheet on a flat muted mint-sage background (#B8CBB1), eight full-body poses of the same original character in two rows of four, evenly spaced, no frames: {POSES_SKEA}. Match the drawing style, line and shading of the first reference image exactly; take only the outfit and colors from the second reference image, not its face or proportions: {IDENTITY_SKEA_V2}. Small title "SKEA" in the top-left corner in hand-lettered marker. {NEG} {NEG_SKEA}
+```
+
+### 12b. Лист облич Skea — `skea-faces-v1`
+
+gpt_image_2_5 high 2k 16:9, ті самі два референси. Основа для 3D: обличчя моделі — намальований атлас виразів ([[2026-10-03-Skea-Redesign]] § Як посмішка переживе 3D).
+
+```
+{STYLE} Expression sheet on a flat muted mint-sage background (#B8CBB1): eight head-and-shoulders portraits of the same original character in two rows of four, all in the same three-quarter angle and the same scale, small hand-written numbers: 1) calm, a blank cold stare, mouth closed; 2) his base smile, eyes not smiling; 3) the smile stretched impossibly too wide, corners past the cheeks; 4) laughing, head thrown slightly back; 5) rage, teeth bared through the braces; 6) boredom, half-lidded eyes; 7) predatory interest, head tilted, eyes locked on the viewer; 8) the supernatural moment: a faint violet glow behind the teeth and deep in the pinpoint pupils. Match the drawing style of the first reference image exactly; outfit colors from the second reference image: {IDENTITY_SKEA_V2}. Title "SKEA FACES". {NEG} {NEG_SKEA}
+```
+
+### 12c. Картка рюкзака v2 — `skea-item-backpack-v2` (S2b)
+
+Шаблон § 4 з новим рядком ITEM рюкзака (вісімка лише ззаду). Референси: лист Choko `f21298f4`, стара картка Skea `4cf75fc8`.
+Загальний `{NEG}` «no infinity symbol unless specified» лишається: тепер сигіл specified, з місцем.
+
+### 12d. Було (v1, хвиля 2 — «дитячий» Skea)
+
+```
+wiry young man, messy curly brown hair, wide grey eyes, a manic toothy grin with dental braces, freckles; purple hoodie with the hood down, sleeves in a teal-green camouflage pattern, crossed leather straps; loose black cargo pants with kunai holstered on the thighs; shins wrapped in bandages like a Muay Thai fighter; black-and-purple sneakers; a book-shaped backpack with a glowing purple infinity-eight sigil; tattoo on the forearm
+```
+
 ## Related
-- [[Style-Guide]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Prompts]] · [[Choko]] · [[Skea]] · [[Stage-River]]
+- [[Style-Guide]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Prompts]] · [[Choko]] · [[Skea]] · [[Stage-River]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[2026-10-03-Skea-Redesign]]
