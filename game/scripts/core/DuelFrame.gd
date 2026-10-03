@@ -11,6 +11,11 @@ extends RefCounted
 const MIN_LINE := 0.05
 
 var right: Vector3 = Vector3.RIGHT
+## ADR-015: solo vs CPU the camera stands behind P1. Then P1's stick is read in that camera's frame: y = toward
+## the opponent along `line`, x = screen right (circling). P2 (CPU / pad) keeps the side frame. Set by Arena.
+var behind: bool = false
+## Unit P1 → P2 on the ground, never sign-flipped (behind P1 the view always looks at P2). Held like `right`.
+var line: Vector3 = Vector3.RIGHT
 var _frame: int = -1
 var _hold: int = 0
 
@@ -23,6 +28,7 @@ func hold(frames: int) -> void:
 
 func reset() -> void:
 	right = Vector3.RIGHT
+	line = Vector3.RIGHT   # `behind` stays: it is the match's camera mode, not round state
 	_frame = -1
 	_hold = 0
 
@@ -42,6 +48,7 @@ func sync(p1_pos: Vector3, p2_pos: Vector3, frame: int) -> void:
 	if d.length() < MIN_LINE:
 		return
 	d = d.normalized()
+	line = d
 	right = d if d.dot(right) >= 0.0 else -d
 
 
@@ -51,5 +58,8 @@ func depth() -> Vector3:
 
 
 ## Camera-relative stick → world direction on the ground plane (x = screen right, y = screen up).
-func to_world(move: Vector2) -> Vector3:
+## `player` 1 with `behind`: the camera behind P1 looks along `line`, so up = toward P2, right = line × up.
+func to_world(move: Vector2, player: int = 0) -> Vector3:
+	if behind and player == 1:
+		return line.cross(Vector3.UP) * move.x + line * move.y
 	return right * move.x + depth() * move.y

@@ -54,6 +54,31 @@ func set_free_move(on: bool) -> void:
 	InputRouter.apply_profile(InputRouter.profile, false)
 
 
+## Menu MODE row (docs/GDD/06-UI-UX.md § Кнопка «РЕЖИМ 2.5D / 3D»): switch and remember the player's choice in
+## user://settings.cfg → [gameplay] free_move. load() first, so [input] survives.
+func save_free_move(on: bool) -> void:
+	set_free_move(on)
+	var cfg := ConfigFile.new()
+	cfg.load(InputRouter.SETTINGS_PATH)
+	cfg.set_value("gameplay", "free_move", on)
+	cfg.save(InputRouter.SETTINGS_PATH)
+
+
+## The saved MODE choice, or the default (free movement) when nothing is saved. Main applies it at boot before
+## the launch flags, which win for that run only; the smoke never reads it.
+static func saved_free_move(default_on: bool) -> bool:
+	var cfg := ConfigFile.new()
+	if cfg.load(InputRouter.SETTINGS_PATH) != OK:
+		return default_on
+	return bool(cfg.get_value("gameplay", "free_move", default_on))
+
+
+## ADR-015: free movement against the CPU (FIGHT, TRAINING) puts the camera behind P1; VERSUS keeps the shared
+## side-on camera.
+func camera_behind() -> bool:
+	return free_move and p2_is_cpu
+
+
 func load_character(id: String) -> CharacterData:
 	var path: String = CHARACTER_PATHS.get(id, CHARACTER_PATHS["choko"])
 	var res: Resource = load(path)

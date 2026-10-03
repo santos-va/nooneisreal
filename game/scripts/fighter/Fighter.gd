@@ -327,7 +327,7 @@ func _read_intent() -> Dictionary:
 		return i
 	i.axis = InputRouter.axis(player_index)
 	if _free():
-		_wish = GameState.duel.to_world(InputRouter.move(player_index))
+		_wish = GameState.duel.to_world(InputRouter.move(player_index), player_index)
 	i.crouch = InputRouter.held(player_index, "crouch")
 	i.block = InputRouter.held(player_index, "block")
 	i.grapple_held = InputRouter.held(player_index, "grapple")
