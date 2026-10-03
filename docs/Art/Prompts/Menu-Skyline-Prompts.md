@@ -363,8 +363,25 @@ S-1 `dcdef91d`, N-5 `ab80973c`, N-6 `d2ac65b6`, S-5 `36ace5cf`. Чи модел�
 
 | мітка | партія | job-id | розмір · CDN-URL | результат |
 |---|---|---|---|---|
-| W-0 | C3 `choko-turn-v5` · v1 | `4091fd4d-67d3-45b2-8f52-f39fa617026c` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025259_4091fd4d-67d3-45b2-8f52-f39fa617026c.png | чекає вибору Santos |
-| W-1 | C3 `choko-turn-v5` · v2 | `d048c40f-ef80-4d8d-a9c8-35b5b7838bac` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025259_d048c40f-ef80-4d8d-a9c8-35b5b7838bac.png | чекає вибору Santos |
+| W-0 | C3 `choko-turn-v5` · v1 | `4091fd4d-67d3-45b2-8f52-f39fa617026c` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025259_4091fd4d-67d3-45b2-8f52-f39fa617026c.png | не обрано |
+| W-1 | C3 `choko-turn-v5` · v2 | `d048c40f-ef80-4d8d-a9c8-35b5b7838bac` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025259_d048c40f-ef80-4d8d-a9c8-35b5b7838bac.png | **переможець** (Santos, дошка) |
+
+### Choko v5 — T-пози (2026-10-03, #38, план v5 крок 4)
+
+Те саме слово Santos. Поворот — **W-1 `d048c40f`** (вибір Santos). Промпт — [[Prompt-Library]] § 15a; референси: W-1, куртка N-2 `a2bf79a1`,
+кросівки V-1 `482bfc6d` (без старого листа). `get_cost` 3:4 з 3 референсами → 2.75.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C4 T-пози Choko v5 ×4 | 5782 | 5771 | 11 |
+| **Слово «поворот + T-пози»** | **5787.5** | **5771** | **16.5** (стеля 16.5) |
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| X-0 | C4 `choko-tpose-front-v5` | `b529a3bd-4e3a-4dfc-bbbd-d6a90ead9e75` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_b529a3bd-4e3a-4dfc-bbbd-d6a90ead9e75.png | чекає вибору Santos |
+| X-1 | C4 `choko-tpose-side-v5` | `1cb13491-cfd6-46c4-aaeb-b1364af992e0` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_1cb13491-cfd6-46c4-aaeb-b1364af992e0.png | чекає вибору Santos |
+| X-2 | C4 `choko-tpose-back-v5` | `da24265e-c6d6-4dfd-8530-2bb49772b3ed` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_da24265e-c6d6-4dfd-8530-2bb49772b3ed.png | чекає вибору Santos |
+| X-3 | C4 `choko-tpose-34-v5` | `5b045b7a-b48f-4014-a7e7-011d60f2d5e8` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_5b045b7a-b48f-4014-a7e7-011d60f2d5e8.png | чекає вибору Santos |
 
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
