@@ -22,7 +22,8 @@
   `bash tools/audio/build_sfx.sh --list`, підігнати глоби в `sfx_recipes.tsv`, зібрати.
 - Бризки, плавучість регдола, слід за флешем Skea на воді — після фази 2 (VFX).
 - Дзеркальні краї фону річки — до outpaint (фаза 2, партія 2.6).
-- Відкрите з плану: KRONSHIFT чи CRONSHIFT на неоновій вежі.
+- ~~KRONSHIFT чи CRONSHIFT на неоновій вежі~~ → **CRONSHIFT** (Santos, 2026-10-03). Оновлено план, Style-Guide, Asset-Manifest, Prompt-Library, Kronshift.
+- Фаза 2: Santos — «що завгодно, як буде краще нам». Це не слово на конкретну партію, тож генерацію не запускаю: спершу `balance` і ціна партії в чат, далі «так» на неї.
 
 ## Дії
 - [ ] Santos · послухати `make run` → стадія River: удари, whoosh, блок

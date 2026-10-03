@@ -40,10 +40,10 @@
 | id | що | модель | шт | кредитів |
 |---|---|---|---|---|
 | `stage-bazaar-plate-v1` | ринкова вулиця Кроншифту 21:9, вечір, порожня підлога | gpt_image_2_5 high 2k | 2–4 | ≈ 5.5–11 |
-| `stage-fountain-plate-night-v1` | площа з фонтаном уночі, вдалині вежа з неоновим KRONSHIFT | gpt_image_2_5 high 2k | 2–4 | ≈ 5.5–11 |
+| `stage-fountain-plate-night-v1` | площа з фонтаном уночі, вдалині вежа з неоновим CRONSHIFT | gpt_image_2_5 high 2k | 2–4 | ≈ 5.5–11 |
 | `stage-fountain-plate-dusk-v1` | та сама площа в сутінках, неон вимкнений (для денних раундів) | gpt_image_2_5 high 2k (той самий кадр як референс) | 1–2 | ≈ 2.75–5.5 |
 | `stage-*-layers` | шари для паралаксу | image_decompose | 3 | 6 |
-| `tex-neon-sign` | окремий шар напису KRONSHIFT на прозорому фоні (для світіння в грі) | gpt_image_2_5 `background:transparent` | 1–2 | ≈ 2.75–5.5 |
+| `tex-neon-sign` | окремий шар напису CRONSHIFT на прозорому фоні (для світіння в грі) | gpt_image_2_5 `background:transparent` | 1–2 | ≈ 2.75–5.5 |
 | `tex-clouds` | хмари, що пропливають перед вежею | gpt_image_2_5 transparent | 1–2 | ≈ 2.75–5.5 |
 | **Разом** | | | | **≈ 25–45** |
 
