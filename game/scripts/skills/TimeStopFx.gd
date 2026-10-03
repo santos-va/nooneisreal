@@ -9,9 +9,10 @@ const RADIUS := 4.2
 var owner_f: Fighter
 var duration: int = 72
 var _f: int = 0
-var _sphere_mat: StandardMaterial3D
+var _sphere_mat: ShaderMaterial
 var _sphere: MeshInstance3D
 var _rect: ColorRect
+var _screen: ShaderMaterial   # fx_chrono_screen: grey-blue drain + clock-tick ring (look only)
 
 
 static func spawn(f: Fighter, frames: int) -> TimeStopFx:
@@ -37,7 +38,7 @@ static func freezes(pos: Vector3, caster: Node) -> bool:
 
 func _ready() -> void:
 	add_to_group("time_stop_fields")
-	_sphere_mat = Fx.mat(Color(0.6, 0.75, 1.0, 0.16), true)
+	_sphere_mat = FxShader.stroke(Color(0.6, 0.75, 1.0), 0.16, true, 0.0, 1.0)
 	var sm := SphereMesh.new()
 	sm.radius = RADIUS
 	sm.height = RADIUS * 2.0
@@ -48,7 +49,8 @@ func _ready() -> void:
 	layer.layer = 2
 	add_child(layer)
 	_rect = ColorRect.new()
-	_rect.color = Color(0.5, 0.6, 0.8, 0.0)
+	_screen = FxShader.chrono_screen()
+	_rect.material = _screen
 	_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(_rect)
@@ -69,7 +71,8 @@ func _physics_process(_delta: float) -> void:
 	var grow := minf(1.0, float(_f) / 8.0)
 	_sphere.scale = Vector3.ONE * grow
 	var fade := 1.0 - clampf(float(_f - duration + 10) / 10.0, 0.0, 1.0)
-	_sphere_mat.albedo_color.a = 0.16 * fade
-	_rect.color.a = 0.22 * fade * grow
+	_sphere_mat.set_shader_parameter("alpha", 0.16 * fade)
+	_screen.set_shader_parameter("strength", 0.8 * fade * grow)
+	_screen.set_shader_parameter("ring", minf(1.2, float(_f) / 20.0))
 	if _f >= duration:
 		queue_free()

@@ -2,9 +2,9 @@ class_name Afterimage
 extends Node3D
 ## A frozen, translucent copy of a fighter's pose (from RigAnimator.part_snapshot).
 ## Used for Skea's flash-step ghosts, Choko's rewind trail, veil shimmer and Grimoire shadows.
-## Fades in steps (12 fps feel) so it reads as a drawn frame, not a motion-blur smear.
+## Burns away in steps (12 fps feel, fx_glow / fx_ink dissolve) so it reads as a drawn frame, not a motion-blur smear.
 
-var _mat: StandardMaterial3D
+var _mat: ShaderMaterial
 var _life: float = 0.3
 var _left: float = 0.3
 var _alpha: float = 0.5
@@ -25,7 +25,8 @@ func _build(snapshot: Array, color: Color, life: float, alpha: float, additive: 
 	_left = _life
 	_alpha = alpha
 	_drift = drift
-	_mat = Fx.mat(Color(color.r, color.g, color.b, alpha), additive)
+	# additive ghosts get a fresnel rim (a drawn outline of the pose); the ink double stays a flat silhouette
+	_mat = FxShader.stroke(color, alpha, additive, 0.0, 1.0 if additive else 0.0)
 	if snapshot.is_empty():
 		return
 	var center: Vector3 = (snapshot[0].transform as Transform3D).origin
@@ -47,5 +48,7 @@ func _process(delta: float) -> void:
 	if _left <= 0.0:
 		queue_free()
 		return
-	_mat.albedo_color.a = _alpha * Fx.stepped(_left / _life)
+	var k := Fx.stepped(_left / _life)
+	FxShader.fade(_mat, k)
+	_mat.set_shader_parameter("alpha", _alpha * (0.5 + 0.5 * k))
 	position += _drift * delta
