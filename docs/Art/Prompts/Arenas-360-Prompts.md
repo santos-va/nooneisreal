@@ -2,7 +2,7 @@
 
 **Роль:** T6 Аполлон, 2026-10-03 · **План:** спринт «тверда арена, три карти день/ніч, VFX, меню» (T1, смуга C, PR santos-va/nooneisreal#107)
 · **Канон арен:** [[Cronshift]] § Нові арени · **Стиль:** [[Style-Guide]], [[ADR-007-Art-Style-Sketch-Cel]].
-**Статус:** промпти й ціни готові, **кредитів не витрачено**. Генерація — лише після слова Santos на стелю (§ Кошторис).
+**Статус:** промпти й ціни готові; стиль-проба згенерована (11 кр., § Журнал генерацій), чекає «стиль так». Генерація — лише після слова Santos на стелю (§ Кошторис).
 
 ## Форма — 4 картки на арену (поки немає R11)
 
@@ -126,6 +126,20 @@ Prop design sheet for a fighting game, on a flat muted mint-sage background (#B8
 
 Ощадний варіант: пакет 2 по 1 варіанту — 60.5 замість 121; смуга C — 152–156. Оцінку T1 «≈ 300 без Kling і 3D»
 смуга C не перевищує.
+
+## Журнал генерацій
+
+| дата | що | job id | розмір · URL | вибір |
+|---|---|---|---|---|
+| 2026-10-03 | стиль-проба `stage-river-n-day` · v1 | `1ac2d361-4ad0-4d64-b729-45d0eba08f88` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102633_1ac2d361-4ad0-4d64-b729-45d0eba08f88.png | чекає Santos |
+| 2026-10-03 | стиль-проба `stage-river-n-day` · v2 | `ba93fc22-b3d6-4d7b-8731-e10783392edf` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102632_ba93fc22-b3d6-4d7b-8731-e10783392edf.png | чекає Santos |
+| 2026-10-03 | стиль-проба `stage-river-n-night` · v1 | `a470d3e8-9422-4ab6-9ed0-2711e327f5d9` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102632_a470d3e8-9422-4ab6-9ed0-2711e327f5d9.png | чекає Santos |
+| 2026-10-03 | стиль-проба `stage-river-n-night` · v2 | `aa24a131-71be-4635-9f44-51266c89aab3` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102632_aa24a131-71be-4635-9f44-51266c89aab3.png | чекає Santos |
+
+Слово Santos «Так» на стиль-пробу (11 кр.), 2026-10-03, у сесії T6. `gpt_image_2_5` high 2k 21:9, референс `a2913501`,
+`generate_image_batch` (4 запити). `balance` 5555.25 → 5544.25 (−11). Відхилення від § Блоки: ніч у пробі зроблена з `a2913501`
+паралельно з днем, а не редагуванням денної картки — щоб не чекати вибору дня. У пакеті 2 ніч робиться з обраного дня.
+T6 у хмарі картинок не бачив (CDN → 403); відбір — оком Santos.
 
 ## Related
 - [[Cronshift]] · [[Prompt-Library]] · [[Menu-Skyline-Prompts]] · [[Style-Guide]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[Textures-Registry]] · [[Prompts]] · [[2026-10-03-Apollon-Sprint-C-Prompts]]
