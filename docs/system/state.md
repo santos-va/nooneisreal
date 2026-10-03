@@ -1,6 +1,6 @@
 # state — поточна правда
 
-**Оновлено:** 2026-10-03, T1 Дедал (ADR-013 ліцензія на реліз; Prototype 0.3 — вільний 3D-рух, #23–#27).
+**Оновлено:** 2026-10-03, T1 Дедал (Skea — переробка під психопата, #33; ADR-013; план 0.3, #23–#27).
 **Фаза:** Prototype 0.2 грається на Mac. Гефест виконує фазу 1 [[2026-10-03-Production-Plan]]; далі — [[2026-10-03-Main-Menu-Skyline]].
 
 ## Ланцюжок — бери перший рядок своєї ролі, чиї залежності закриті
@@ -12,6 +12,7 @@
 | #6 | T6 Аполлон | М2 промпти + кошторис меню (RED) | — | промпти й кошторис готові ([[Menu-Skyline-Prompts]], 57.5–61.46 кр.); **чекає слова Santos** на партії |
 | #14 | T6 Аполлон | Х2 2a–2k + Х3a — [[2026-10-03-Wave-2]] | — | **згенеровано** 44 + проба 2g, `balance` 5971 → 5856.25 (−114.75 зі стелі 135); outpaint річки — 422; Х3a ціни в [[Higgsfield-Pipeline]]; **чекає вибору Santos** у галереї й оцінки петлі 2g |
 | #19 | Арес → Аполлон → Гефест | якорі — ліхтарі/білборди/труби; над річкою — дрони, що тримають ([[ADR-011-Diegetic-Grapple-Anchors]]) | крок Гефеста — після #9 | Арес вільно; арт 2i/2j згенеровано, чекає вибору; рецепти звуку дрона — `tools/audio/sfx_recipes.tsv` (glob-и звузити на Mac) |
+| #33 | Кліо → Аполлон | Skea — психопат із надприродною посмішкою: канон, нові промпти, проба ×4 + обличчя ×2 + рюкзак ×2 з ∞8 лише ззаду (RED ≈ 22 кр.), далі T-пози з референсом ([[2026-10-03-Skea-Redesign]]); **3D Skea з нинішніх T-поз не робити** | слово Santos у сесії T6 | **в роботі** — T6 Аполлон, гілка `claude/practical-hopper-rmfgi4` |
 | #24 | T3 Архімед | 0.3-A: числа бою з джерелами + референси 3D-руху/камери ([[2026-10-03-Prototype-0.3-Free-Movement]]); ліцензія — на реліз ([[ADR-013-License-Check-At-Release]]) | — | вільно — **брати зараз** |
 | — | T1 Дедал | план хвиль, ADR-011/012/013, план 0.3 ([[2026-10-03-Prototype-0.3-Free-Movement]]) | — | плани approved |
 | #25 | T5 Арес | 0.3-B: правила 3D-бою в [[02-Combat-System]] (обхід, трекінг, блок під кутом, коло, скіли в 3D) | — | вільно |
@@ -60,4 +61,4 @@
 - Консолі — W4 Consoles + статус розробника.
 
 ## Related
-- [[index]] · [[constitution]] · [[2026-10-03-Production-Plan]] · [[2026-10-02-Art-Direction-and-Pipeline]] · [[Roadmap]] · [[2026-10-03-Main-Menu-Skyline]] · [[2026-10-03-Main-Menu-and-Chain]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[ADR-013-License-Check-At-Release]] · [[2026-10-03-Prototype-0.3-Free-Movement]]
+- [[index]] · [[constitution]] · [[2026-10-03-Production-Plan]] · [[2026-10-02-Art-Direction-and-Pipeline]] · [[Roadmap]] · [[2026-10-03-Main-Menu-Skyline]] · [[2026-10-03-Main-Menu-and-Chain]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[ADR-013-License-Check-At-Release]] · [[2026-10-03-Prototype-0.3-Free-Movement]] · [[2026-10-03-Skea-Redesign]]
