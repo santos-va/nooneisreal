@@ -17,6 +17,8 @@ var max_charges: int = 3
 var charges: int = 3
 var cooldown: float = 3.0
 var cooldown_left: float = 0.0
+## The full wait the current charge started from (fatigue stretches it, 02 § Втома); the HUD fills against it.
+var cooldown_total: float = 3.0
 var regen_all: bool = false
 var range_m: float = 14.0
 var reel_speed: float = 9.0
@@ -40,6 +42,7 @@ func setup(f: Fighter) -> void:
 	max_charges = f.data.grapple_charges
 	charges = max_charges
 	cooldown = f.data.grapple_cooldown
+	cooldown_total = cooldown
 	regen_all = f.data.grapple_regen_all_at_once
 	range_m = f.data.grapple_range
 	cone_deg = f.data.grapple_cone_deg
@@ -80,7 +83,7 @@ func tick_regen(delta: float, tethered: bool) -> void:
 	cooldown_left -= delta
 	if cooldown_left <= 0.0:
 		charges = max_charges if regen_all else charges + 1
-		cooldown_left = cooldown if charges < max_charges else 0.0
+		cooldown_left = _recharge() if charges < max_charges else 0.0
 		Sfx.play("ui_move", -12)
 		changed.emit(charges, cooldown_left, max_charges)
 
@@ -121,9 +124,16 @@ func fire(prefer_enemy: bool) -> int:
 
 func _spend() -> void:
 	charges -= 1
+	fighter.add_fatigue(Fighter.FATIGUE_GRAPPLE_S)   # every shot, whichever of the three verbs (02 § Втома (б))
 	if cooldown_left <= 0.0:
-		cooldown_left = cooldown
+		cooldown_left = _recharge()
 	changed.emit(charges, cooldown_left, max_charges)
+
+
+## One charge's recharge now: the data's cooldown × the fighter's fatigue.
+func _recharge() -> float:
+	cooldown_total = cooldown * fighter.fatigue_mult(Fighter.FATIGUE_GRAPPLE)
+	return cooldown_total
 
 
 ## Free movement: the cone axis — the camera-relative stick when it is deflected, else where the

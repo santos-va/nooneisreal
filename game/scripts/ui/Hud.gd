@@ -15,6 +15,13 @@ const CREAM := Color("#FAEDD9")
 const WELL := Color("#141018")
 const RING_INK := 2
 const RING_CREAM := 1
+## On a small window the canvas shrinks (`canvas_items` stretch from 1600×900; 844×390 → ×0.43), and a 1-unit cream ring
+## turns into half a pixel and breaks up (06-UI-UX § Контраст HUD, п. 7). So each ring is never thinner on screen than its
+## unit width is at ×1: ink ≥ 2 px, cream ≥ 1 px. At ×1 and above the widths stay exactly RING_INK / RING_CREAM.
+const RING_MIN_PX := Vector2(RING_INK, RING_CREAM)
+## Widening stops below this scale (a 400×225 window; the smallest target, a phone at 844×390, is ×0.43). A headless run's
+## 64×36 window would otherwise ask for 50-unit rings.
+const RING_MIN_SCALE := 0.25
 const SKEW := 0.25
 const ROUND_WON := Color(1.0, 0.85, 0.4)
 
@@ -42,6 +49,8 @@ var _pause: PanelContainer
 var _paused: bool = false
 ## Every ink ring the HUD built (the smoke reads them).
 var outlines: Array[PanelContainer] = []
+## Ring widths in canvas units for the current window (`ring_widths`): x = ink, y = cream.
+var ring_units := Vector2i(RING_INK, RING_CREAM)
 
 
 func bind(a: Fighter, b: Fighter, f: MatchFlow) -> void:
@@ -70,6 +79,8 @@ func bind(a: Fighter, b: Fighter, f: MatchFlow) -> void:
 
 
 func _build() -> void:
+	ring_units = ring_widths(canvas_scale())
+	get_viewport().size_changed.connect(_on_viewport_resized)
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -252,15 +263,50 @@ func _outlined(inner: Control, skew: float = 0.0) -> PanelContainer:
 	var ink := PanelContainer.new()
 	ink.name = "Ink"
 	ink.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ink.add_theme_stylebox_override("panel", _ring(INK, RING_INK, skew))
+	ink.add_theme_stylebox_override("panel", _ring(INK, ring_units.x, skew))
 	var cream := PanelContainer.new()
 	cream.name = "Cream"
 	cream.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cream.add_theme_stylebox_override("panel", _ring(CREAM, RING_CREAM, skew))
+	cream.add_theme_stylebox_override("panel", _ring(CREAM, ring_units.y, skew))
 	ink.add_child(cream)
 	cream.add_child(inner)
 	outlines.append(ink)
 	return ink
+
+
+## How many screen pixels one HUD canvas unit covers in this window (1.0 at 1600×900, ≈ 0.43 at 844×390).
+func canvas_scale() -> float:
+	var w := get_viewport() as Window
+	if w == null or w.content_scale_size.x <= 0 or w.content_scale_size.y <= 0:
+		return 1.0
+	var base := Vector2(w.content_scale_size)
+	return minf(w.size.x / base.x, w.size.y / base.y) * w.content_scale_factor
+
+
+## Ring widths (ink, cream) in canvas units at canvas scale `s`: the ×1 widths, widened so neither ring drops below
+## RING_MIN_PX on screen.
+static func ring_widths(s: float) -> Vector2i:
+	s = maxf(s, RING_MIN_SCALE)
+	return Vector2i(maxi(RING_INK, ceili(RING_MIN_PX.x / s - 0.001)), maxi(RING_CREAM, ceili(RING_MIN_PX.y / s - 0.001)))
+
+
+func _on_viewport_resized() -> void:
+	set_ring_units(ring_widths(canvas_scale()))
+
+
+## Re-width every ring already built (window resized, or the smoke checking a phone-sized scale).
+func set_ring_units(u: Vector2i) -> void:
+	if u == ring_units:
+		return
+	ring_units = u
+	for ink in outlines:
+		_rewidth(ink.get_theme_stylebox("panel") as StyleBoxFlat, u.x)
+		_rewidth((ink.get_child(0) as PanelContainer).get_theme_stylebox("panel") as StyleBoxFlat, u.y)
+
+
+static func _rewidth(sb: StyleBoxFlat, width: int) -> void:
+	sb.set_border_width_all(width)
+	sb.set_content_margin_all(width)
 
 
 func _ring(col: Color, width: int, skew: float) -> StyleBoxFlat:
@@ -372,7 +418,7 @@ func _on_grapple(idx: int, c: int, cd: float, mc: int) -> void:
 		if i < c:
 			frac = 1.0
 		elif i == c and cd > 0.0:
-			frac = 1.0 - cd / maxf(d.grapple_cooldown, 0.001)
+			frac = 1.0 - cd / maxf((p1 if idx == 1 else p2).grapple.cooldown_total, 0.001)
 		_fill_cell(pips[i] as ColorRect, frac, d.accent_color)
 
 
@@ -388,7 +434,7 @@ func _on_dash(idx: int, c: int, r: float, _mc: int) -> void:
 	var pips: Array = _dash[idx]
 	var d: CharacterData = (p1 if idx == 1 else p2).data
 	# all spent charges return together dash_recharge s after the last use, so they fill together
-	var back := 1.0 - r / maxf(d.dash_recharge, 0.001) if r > 0.0 else 0.0
+	var back := 1.0 - r / maxf((p1 if idx == 1 else p2).dash_recharge_total, 0.001) if r > 0.0 else 0.0
 	for i in pips.size():
 		_fill_cell(pips[i] as ColorRect, 1.0 if i < c else back, dash_color(d))
 

@@ -65,6 +65,9 @@ func _physics_process(delta: float) -> void:
 				p2.set_control(true)
 				phase_changed.emit(int(phase))
 		Phase.FIGHT:
+			if not GameState.training_mode:   # fatigue: only while a real round runs (02 § Втома (б))
+				p1.tick_fatigue()
+				p2.tick_fatigue()
 			if GameState.training_mode:
 				if p2.hp < p2.data.max_hp * 0.4 and p2.is_actionable():
 					p2.heal_full()
@@ -126,6 +129,8 @@ func _match_end() -> void:
 
 
 func rematch() -> void:
+	p1.fatigue = 0.0   # fatigue lasts the match, not longer
+	p2.fatigue = 0.0
 	wins = {1: 0, 2: 0}
 	round_no = 0
 	_start_round()

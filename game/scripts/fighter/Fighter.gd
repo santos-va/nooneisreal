@@ -23,6 +23,20 @@ const ARENA_HALF_WIDTH := 12.5
 const MIN_SEPARATION := 0.95
 const KNOCKDOWN_FRAMES := 40
 const GETUP_FRAMES := 18
+## Fatigue (docs/GDD/02-Combat-System.md § Втома, В-1, all PLACEHOLDER): the body only, never input. The effect starts at
+## FATIGUE_ON and grows linearly to the caps below at fatigue 1.0. Startup, active, damage, hitstun, blockstun — unchanged.
+const FATIGUE_ON := 0.3
+const FATIGUE_GETUP := 0.5        # get-up × 1.5 → 27 frames
+const FATIGUE_WALK := 0.1         # walk / run speed × 0.9
+const FATIGUE_DASH := 0.25        # dash / Flash Step recharge × 1.25
+const FATIGUE_GRAPPLE := 0.2      # grapple recharge × 1.2
+const FATIGUE_RECOVERY := 2       # own attacks' recovery + 2 frames at most (rounded down)
+## Seconds of fight time each own action is worth (02 § Втома (б)); hits taken add nothing.
+const FATIGUE_DASH_S := 1.5
+const FATIGUE_GRAPPLE_S := 2.0
+const FATIGUE_SKILL_S := 1.0
+## Stance from this fatigue on: the tired idle (02 § Втома (г)).
+const FATIGUE_TIRED := 0.5
 const MAX_METER := 100.0
 const COMBO_SCALING := 0.1
 const HIT_FRICTION := 30.0
@@ -98,6 +112,10 @@ var last_hit_crit: bool = false
 var record_marker: RecordMarker = null
 var dash_charges_left: int = 0
 var dash_recharge_left: float = 0.0
+## The full recharge the current dash wait started from (fatigue stretches it); the HUD fills against it.
+var dash_recharge_total: float = 0.0
+## 0…1 for the whole match; rounds do not reset it (02 § Втома (а)). MatchFlow adds the fight time, actions add the rest.
+var fatigue: float = 0.0
 var flashing: bool = false
 var _water_grounded: bool = false
 var _splat_used: bool = false
@@ -217,6 +235,7 @@ func reset_for_round(x: float, face: int) -> void:
 	record_marker = null
 	dash_charges_left = data.dash_charges
 	dash_recharge_left = 0.0
+	dash_recharge_total = data.dash_recharge
 	animator.set_frozen_tint(0.0)
 	animator.visible = true
 	hurt_shape.disabled = false
@@ -257,7 +276,32 @@ func is_actionable() -> bool:
 
 
 func speed_mult() -> float:
-	return SPEED_MULT if speed_buff_frames > 0 else 1.0
+	return (SPEED_MULT if speed_buff_frames > 0 else 1.0) * (1.0 - FATIGUE_WALK * fatigue_effect())
+
+
+## 0 below FATIGUE_ON, then linear to 1 at fatigue 1.0.
+func fatigue_effect() -> float:
+	return clampf((fatigue - FATIGUE_ON) / (1.0 - FATIGUE_ON), 0.0, 1.0)
+
+
+## `seconds` of fight time on this fighter's own clock (data.fatigue_seconds = fatigue 1.0).
+func add_fatigue(seconds: float) -> void:
+	fatigue = minf(1.0, fatigue + seconds / maxf(data.fatigue_seconds, 0.001))
+
+
+## One frame of the round going (MatchFlow, FIGHT phase only).
+func tick_fatigue() -> void:
+	add_fatigue(1.0 / 60.0)
+
+
+## How much fatigue slows the body: 1.0 fresh, 1 + k at fatigue 1.0.
+func fatigue_mult(k: float) -> float:
+	return 1.0 + k * fatigue_effect()
+
+
+## The frame an own attack ends on: its data plus up to FATIGUE_RECOVERY frames of tired recovery.
+func move_end_frame(m: MoveData) -> int:
+	return m.total_frames() + floori(float(FATIGUE_RECOVERY) * fatigue_effect())
 
 
 # --- main tick ---------------------------------------------------------------------------------
@@ -547,7 +591,11 @@ func _tick_air(delta: float, intent: Dictionary) -> void:
 
 func _start_dash(axis: float) -> bool:
 	if data.dash_style == "flash":
-		return _start_flash(axis)
+		var ok := _start_flash(axis)
+		if ok:
+			add_fatigue(FATIGUE_DASH_S)
+		return ok
+	add_fatigue(FATIGUE_DASH_S)
 	dash_dir = int(signf(axis)) if absf(axis) > 0.1 else facing
 	if _free():
 		_aim_dash()
@@ -568,7 +616,8 @@ func _start_flash(axis: float) -> bool:
 		Sfx.play("grapple_denied", -4)
 		return false
 	dash_charges_left -= 1
-	dash_recharge_left = data.dash_recharge
+	dash_recharge_total = data.dash_recharge * fatigue_mult(FATIGUE_DASH)
+	dash_recharge_left = dash_recharge_total
 	dash_changed.emit(dash_charges_left, dash_recharge_left, data.dash_charges)
 	dash_dir = int(signf(axis)) if absf(axis) > 0.1 else facing
 	_flash_from = global_position
@@ -678,6 +727,8 @@ func _start_move(m: MoveData, slot: String = "") -> void:
 	if m.meter_cost > 0.0:
 		meter = maxf(0.0, meter - m.meter_cost)
 		meter_changed.emit(meter, MAX_METER)
+	if slot in ["skill1", "skill2"]:
+		add_fatigue(FATIGUE_SKILL_S)
 	if m.cooldown > 0.0 and slot in ["skill1", "skill2"] and m.effect != "record":
 		cooldowns[slot] = m.cooldown
 		cooldowns_changed.emit(cooldowns)
@@ -741,7 +792,7 @@ func _tick_attack(delta: float) -> void:
 		if _try_cancel(m):
 			return
 	move_frame += 1
-	if move_frame >= m.total_frames():
+	if move_frame >= move_end_frame(m):
 		current_move = null
 		if airborne_attack and not on_ground():
 			_set_state(State.JUMP)
@@ -1476,7 +1527,7 @@ func water_walk_mult() -> float:
 
 
 func getup_frames() -> int:
-	return GETUP_FRAMES + (WATER_GETUP_EXTRA if GameState.water != null else 0)
+	return roundi(GETUP_FRAMES * fatigue_mult(FATIGUE_GETUP)) + (WATER_GETUP_EXTRA if GameState.water != null else 0)
 
 
 ## A swell knocks an unsteady fighter off balance: only on its first frame, only grounded

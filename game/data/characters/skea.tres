@@ -255,6 +255,7 @@ vfx_primary = Color(0.62, 0.3, 0.95, 1)
 vfx_secondary = Color(0.24, 0.48, 0.42, 1)
 grapple_charges = 3
 grapple_cooldown = 3.0
+fatigue_seconds = 300.0
 grapple_regen_all_at_once = false
 grapple_range = 14.0
 passive_id = "weak_point"

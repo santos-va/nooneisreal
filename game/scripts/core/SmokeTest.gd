@@ -86,6 +86,15 @@ var _a2_seen: Array = []
 var _cr_log: Array = []              # 3c: the effect's [frame, move id] hits of the current run
 var _cr_case: int = 0                 # 3c: which point-blank / band / far run
 var _cr_hp: float = 0.0
+## 02 § Втома (В-1, Арес, PLACEHOLDER) as literals: on at 0.3; at 1.0 get-up 27 (18), walk × 0.9, dash × 1.25, grapple 3.6 s,
+## recovery + 2; actions in seconds of fight time; 300 s to full for both; 297 s of fight alone → 0.99.
+const GDD_FATIGUE := {"on": 0.3, "getup": [18, 27], "walk": 0.9, "dash": 1.25, "grapple_s": 3.6, "recovery": 2,
+	"dash_s": 1.5, "grapple_shot_s": 2.0, "skill_s": 1.0, "seconds": 300.0, "match_s": 297.0, "match_fatigue": 0.99}
+var _fb0: Dictionary = {}             # lane B: Flipbook.spawned at the start of a duel replay run
+var _fz: int = 0                      # fatigue stage: which jab run (0 fresh, 1 tired)
+var _fz_log: Array = []               # per run: [hit frame, damage, idle frame] counted from the press
+var _fz_t0: int = -1                  # fatigue stage: frame the clock window started (-1 = not yet)
+var _fz_v0: float = 0.0               # P1 fatigue at that frame
 const GDD_CRYSTAL := [[0.5, 330.0], [1.5, 225.0], [6.0, 105.0]]   # 03 § Кристальна ульта, «Для Гефеста»: distance → total
 const GDD_CRYSTAL_BANDS := [225.0, 195.0, 165.0, 135.0, 105.0]
 const GDD_CRYSTAL_FRAMES := {"blast": 6, "ticks": [18, 24, 30, 36, 42, 48], "final": 62}   # 03 § Кристальна ульта (б)
@@ -525,13 +534,14 @@ func _stage_a2_arenas() -> void:
 		_load_arena(GameState.stage_index_of(variants[_a2_k][0]), 138)
 		return
 	GameState.night = false
-	# menu rows (06-UI-UX § Арена й час доби в меню), on the player's settings file — backed up and restored
-	var path := InputRouter.SETTINGS_PATH
-	var had := FileAccess.file_exists(path)
-	var before := FileAccess.get_file_as_string(path) if had else ""
+	# menu rows (06-UI-UX § Арена й час доби в меню) on a temp settings file — the player's is never touched (T4 Lane I-2,
+	# proposal 4)
+	var path := "user://smoke_menu_settings.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	var idx0 := GameState.stage_index
 	GameState.set_stage("river")
 	var menu: Control = load("res://scripts/ui/MainMenu.gd").new()
+	menu.settings_path = path
 	get_tree().root.add_child(menu)
 	var shown: Array = []
 	for i in 3:
@@ -545,12 +555,7 @@ func _stage_a2_arenas() -> void:
 	cfg.load(path)
 	var saved := [cfg.get_value("gameplay", "stage", null), cfg.get_value("gameplay", "time_of_day", null)]
 	menu.free()
-	if had:
-		var f := FileAccess.open(path, FileAccess.WRITE)
-		f.store_string(before)
-		f.close()
-	else:
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	# pure round trip on a temp file; launch flags win for the run; the smoke never reads settings
 	var main_script: GDScript = load("res://scripts/core/Main.gd")
 	var tmp := "user://smoke_stage_settings.cfg"
@@ -570,14 +575,18 @@ func _stage_a2_arenas() -> void:
 	var gs5: Node = GameState.get_script().new()
 	gs5.set_stage("back_alley")
 	var non_rot: String = gs5.stage_id()
-	for n in [gs, gs2, gs3, gs4, gs5]:
+	# the boot wiring itself (T4 Lane I-2, proposal 3): Main.boot() with saved fountain/night and `--stage bazaar` → bazaar
+	var gs6: Node = GameState.get_script().new()
+	main_script.boot(PackedStringArray(["--stage", "bazaar"]), gs6, tmp)
+	var booted: String = gs6.stage_id()
+	for n in [gs, gs2, gs3, gs4, gs5, gs6]:
 		n.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))
 	GameState.stage_index = idx0
-	if shown != ["bazaar", "fountain", "river"] or times != [true, false] or saved != ["river", "day"] or back != ["fountain", true] or not smoke_ignores or flags != ["bazaar", true] or non_rot != "river":
-		_fail("A2 menu/save: STAGE ×3 %s (want bazaar, fountain, river), TIME ×2 %s, saved %s, temp round trip %s, smoke ignores saved %s, --stage bazaar --night %s, back_alley → %s (want river)" % [shown, times, saved, back, smoke_ignores, flags, non_rot])
+	if shown != ["bazaar", "fountain", "river"] or times != [true, false] or saved != ["river", "day"] or back != ["fountain", true] or not smoke_ignores or flags != ["bazaar", true] or non_rot != "river" or booted != "bazaar":
+		_fail("A2 menu/save: STAGE ×3 %s (want bazaar, fountain, river), TIME ×2 %s, saved %s, temp round trip %s, smoke ignores saved %s, --stage bazaar --night %s, back_alley → %s (want river), Main.boot over saved fountain with --stage bazaar → %s (want bazaar)" % [shown, times, saved, back, smoke_ignores, flags, non_rot, booted])
 		return
-	_ok("A2 arenas: %s — each with its own light, night ≠ day, CRONSHIFT neon only on fountain/night; menu STAGE cycles river → bazaar → fountain only, TIME day ↔ night, saved as ids, --stage/--night for the run, smoke ignores settings" % ", ".join(_a2_seen))
+	_ok("A2 arenas: %s — each with its own light, night ≠ day, CRONSHIFT neon only on fountain/night; menu STAGE cycles river → bazaar → fountain only, TIME day ↔ night, saved as ids (menu on a temp file), --stage/--night for the run and win over the saved choice in Main.boot, smoke ignores settings" % ", ".join(_a2_seen))
 	_a2_k = -1
 	_a2_seen = []
 	_next_to(139)
@@ -641,10 +650,128 @@ func _stage_a3_anchors_cover() -> void:
 	_ok("A3 anchors + cover (04 § Якорі й укриття): %s; passage walkable, stall blocks a fighter and a line of sight" % "; ".join(_a2_seen))
 	if not _check_hud():   # fountain at night: the darkest arena behind the HUD
 		return
+	if not _check_flipbook():
+		return
 	_a2_k = -1
 	_a2_seen = []
 	_load_arena(2, 140)   # back to an arena without cover: the 3c stage puts the fighters at the centre (fountain bowl)
 
+
+
+## Flipbook.spawned minus a snapshot: {sheet: how many since}.
+func _flipbooks_since(snap: Dictionary) -> Dictionary:
+	var out := {}
+	for k in Flipbook.spawned:
+		var n := int(Flipbook.spawned[k]) - int(snap.get(k, 0))
+		if n > 0:
+			out[k] = n
+	return out
+
+
+## Lane B: every sheet FxDirector plays is a 4 × 4 sheet of 512 px cells; a Flipbook steps through its cells at 12 fps
+## (one cell per 5 physics frames), honours its delay and frees itself; with Fx.enabled false it spawns nothing.
+func _check_flipbook() -> bool:
+	var sheets := ["spark_hit", "slash_choko", "slash_heavy_choko", "slash_air_choko", "ko_burst", "trail_chrono", "trail_flash",
+		"grapple_launch", "dust_land", "ground_crack", "water_splash", "smoke_veil", "armor_break", "choko_timestop"]
+	for id in sheets:
+		var t := Flipbook.texture_for(id)
+		if t == null or t.get_width() != 2048 or t.get_height() != 2048:
+			_fail("lane B: sheet '%s' is %s, want a 2048 × 2048 texture (4 × 4 cells of 512 px)" % [id, "missing" if t == null else "%d × %d" % [t.get_width(), t.get_height()]])
+			return false
+	var dt := 1.0 / 60.0
+	var fb := Flipbook.play(p1, "dust_land", p1.global_position, 1.0)
+	var cells: Array = []        # the cell after each physics step, while alive
+	var steps: Array = []        # 12 fps at 60 Hz: one cell per 5 steps
+	for i in 16 * 5 + 2:
+		if fb.is_queued_for_deletion():
+			break
+		fb._process(dt)
+		if not fb.is_queued_for_deletion():
+			cells.append(fb.cell())
+			steps.append((i + 1) / 5)
+	var late := Flipbook.play(p1, "spark_hit", p1.global_position, 1.0, {"first": 4, "count": 4, "delay": 0.25})
+	var hidden := not late.visible and late.cell() == -1
+	for i in 16:
+		late._process(dt)
+	var shown := late.visible and late.cell() == 0 and is_equal_approx(late._mat.uv1_offset.y, 0.25)
+	late.queue_free()
+	Fx.enabled = false
+	var none := Flipbook.play(p1, "spark_hit", p1.global_position, 1.0)
+	Fx.enabled = true
+	if cells != steps or cells.size() != 16 * 5 - 1 or not fb.is_queued_for_deletion() or not hidden or not shown or none != null:
+		_fail("lane B flipbook: cells per step %s (want %s: 0…15, one per 5 steps, freed on step 80), freed %s, delayed hidden %s / shown on row 2 %s, Fx off spawned %s" % [cells, steps, fb.is_queued_for_deletion(), hidden, shown, none != null])
+		return false
+	_ok("lane B flipbook: %d sheets are 2048 × 2048; cells 0…15 at 12 fps, then freed; a delayed row-2 spark waits 0.25 s; Fx off spawns nothing" % sheets.size())
+	return _check_flipbook_part2()
+
+
+## Lane B part 2: the art inside the skill scripts (Printer and RECORD stickers, weak marks) and the director's rarer events
+## (Seen, Patch, Spring, rewind) — driven straight through the same functions, since a duel may not reach them.
+func _check_flipbook_part2() -> bool:
+	var bad := ""
+	# Printer: the sticker is the art on a flat plane, and it is still the pick-up anchor
+	var pr: Printer = p1.printer
+	if pr == null:
+		bad += " Choko has no Printer;"
+	else:
+		var at := Vector3(2.0, 0.0, -1.0)
+		pr._make_disc("patch", at)
+		var mi := pr._disc
+		var tex: Texture2D = (mi.material_override as StandardMaterial3D).albedo_texture if mi != null else null
+		if not (mi != null and mi.mesh is PlaneMesh and tex == Flipbook.texture_for("sticker_patch") and pr.sticker_position().is_equal_approx(at + Vector3(0.0, 0.02, 0.0))):
+			bad += " Printer sticker is %s (want a PlaneMesh with sticker_patch at the pick-up point);" % (mi.mesh if mi != null else null)
+		pr._remove_sticker()
+	# RECORD: the sticker on the floor
+	var rm := RecordMarker.spawn(p1)
+	var rec_ok := rm._sticker_mat != null and rm._sticker_mat.albedo_texture == Flipbook.texture_for("choko_record_sticker")
+	rm.free()
+	if not rec_ok:
+		bad += " RECORD marker has no choko_record_sticker;"
+	# weak marks: looping weak_mark sheets, one per zone
+	var wm: WeakMarks = null
+	for c in p2.get_children():
+		if c is WeakMarks:
+			wm = c
+	var loops := 0
+	if wm != null:
+		for z in wm._rings:
+			if wm._rings[z] is Flipbook and (wm._rings[z] as Flipbook).loop and (wm._rings[z] as Flipbook).id == "weak_mark":
+				loops += 1
+	if loops != WeakMarks.ZONES.size():
+		bad += " weak marks: %d looping weak_mark sheets (want %d);" % [loops, WeakMarks.ZONES.size()]
+	# the director's rarer events
+	var dir: FxDirector = arena.get_node("FxDirector")
+	var snap := Flipbook.spawned.duplicate()
+	var base := FxDirector._snap(p1)
+	var seen_on := base.duplicate()
+	seen_on[7] = 30
+	dir._events(p1, base, seen_on)
+	var mark: Flipbook = dir._seen.get(p1, null)
+	var seen_ok := mark != null and mark.loop
+	dir._events(p1, seen_on, base)
+	seen_ok = seen_ok and not dir._seen.has(p1) and mark.is_queued_for_deletion()
+	dir._on_picked(p1, "patch")
+	var air := base.duplicate()
+	air[1] = false
+	air[0] = Fighter.State.JUMP
+	var spring_before := air.duplicate()
+	spring_before[8] = 200
+	dir._events(p1, spring_before, air)
+	var marker_before := base.duplicate()
+	marker_before[9] = true
+	marker_before[10] = p1.global_position + Vector3(3.0, 0.0, 0.0)
+	dir._events(p1, marker_before, base)
+	var drawn := _flipbooks_since(snap)
+	for k in ["seen_mark", "patch_heal", "spring_jump", "choko_rewind"]:
+		if int(drawn.get(k, 0)) != 1:
+			bad += " %s drawn %d times (want 1);" % [k, int(drawn.get(k, 0))]
+	if not seen_ok:
+		bad += " the Seen mark did not loop over the head or did not go when Seen ended;"
+	if bad != "":
+		_fail("lane B part 2:" + bad)
+		return false
+	_ok("lane B part 2: Printer sticker = sticker_patch on a plane at the pick-up point, RECORD sticker, %d looping weak marks; Seen over the head while it lasts, Patch, Spring and rewind each drawn once" % loops)
+	return true
 
 
 ## 06-UI-UX § Контраст HUD, Santos's variant 2: no plate; every bar, round pip, grapple charge and dash cell wears an ink
@@ -658,16 +785,25 @@ func _check_hud() -> bool:
 	if hud.outlines.size() != want:
 		_fail("HUD: %d outlined elements, want %d (HP + meter + round pips + grapple charges + dash, both players)" % [hud.outlines.size(), want])
 		return false
-	for ink in hud.outlines:
-		var cream := ink.get_child(0) as PanelContainer if ink.get_child_count() == 1 else null
-		var so := ink.get_theme_stylebox("panel") as StyleBoxFlat
-		var si := cream.get_theme_stylebox("panel") as StyleBoxFlat if cream != null else null
-		if so == null or si == null or so.draw_center or si.draw_center \
-				or so.border_color != Hud.INK or so.border_width_top != 2 or so.border_width_left != 2 or so.content_margin_top != 2.0 \
-				or si.border_color != Hud.CREAM or si.border_width_top != 1 or si.border_width_left != 1 or si.content_margin_top != 1.0 \
-				or so.skew != si.skew:
-			_fail("HUD: %s is not an ink 2 + cream 1 ring, clear inside, slanted alike (outer %s, inner %s)" % [ink.get_path(), so, si])
+	var here_scale := hud.canvas_scale()
+	if hud.ring_units != Hud.ring_widths(here_scale) or not _check_hud_rings(hud, hud.ring_units, "this window ×%.3f" % here_scale):
+		if hud.ring_units != Hud.ring_widths(here_scale):
+			_fail("HUD: rings %s at window scale %.3f, want %s" % [hud.ring_units, here_scale, Hud.ring_widths(here_scale)])
+		return false
+	# 06-UI-UX п. 7: on a phone-sized window the rings widen so neither drops below its ×1 width in screen pixels
+	var widths := {1.2: Vector2i(2, 1), 1.0: Vector2i(2, 1), 0.8: Vector2i(3, 2), 0.4333: Vector2i(5, 3), 0.25: Vector2i(8, 4), 0.04: Vector2i(8, 4)}
+	for sc: float in widths:
+		var u := Hud.ring_widths(sc)
+		var px := Vector2(u) * sc
+		if u != widths[sc] or (sc >= Hud.RING_MIN_SCALE and (px.x < 2.0 - 0.001 or px.y < 1.0 - 0.001)):
+			_fail("HUD: ring widths at canvas scale %.4f = %s units = %s px (want %s units, ink ≥ 2 px, cream ≥ 1 px)" % [sc, u, px, widths[sc]])
 			return false
+	var here := hud.ring_units
+	hud.set_ring_units(Hud.ring_widths(0.4333))
+	var phone_ok := _check_hud_rings(hud, Vector2i(5, 3), "844×390 (×0.433)")
+	hud.set_ring_units(here)
+	if not phone_ok or not _check_hud_rings(hud, here, "back to this window"):
+		return false
 	for idx in [1, 2]:
 		for bar in [hud._hp_trail[idx], hud._meter[idx]]:
 			var bg := (bar as ProgressBar).get_theme_stylebox("background") as StyleBoxFlat
@@ -697,8 +833,165 @@ func _check_hud() -> bool:
 	if not g_ok or not d_ok:
 		_fail("HUD: grapple [charge ¼ into cooldown, next, colour] = %s (want [0.75, 0, %s]); Skea dash [full, half back, colour] = %s (want [1, 0.5, b679f5])" % [g_seen, d1.accent_color.to_html(false), d_seen])
 		return false
-	_ok("HUD variant 2 (06-UI-UX § Рішення Santos): %d elements in ink 2 + cream 1 rings, no plate, wells %s, cooldowns fill from the bottom, Skea dash #b679f5" % [want, Hud.WELL.to_html(false)])
+	_ok("HUD variant 2 (06-UI-UX § Рішення Santos): %d elements in ink 2 + cream 1 rings (5 + 3 at phone ×0.433; this window ×%.3f → %s), no plate, wells %s, cooldowns fill from the bottom, Skea dash #b679f5" % [want, here_scale, hud.ring_units, Hud.WELL.to_html(false)])
 	return true
+
+
+## Every HUD ring is ink `u.x` outside cream `u.y`, both clear inside and slanted alike.
+func _check_hud_rings(hud: Hud, u: Vector2i, where: String) -> bool:
+	for ink in hud.outlines:
+		var cream := ink.get_child(0) as PanelContainer if ink.get_child_count() == 1 else null
+		var so := ink.get_theme_stylebox("panel") as StyleBoxFlat
+		var si := cream.get_theme_stylebox("panel") as StyleBoxFlat if cream != null else null
+		if so == null or si == null or so.draw_center or si.draw_center \
+				or so.border_color != Hud.INK or so.border_width_top != u.x or so.border_width_left != u.x or so.content_margin_top != float(u.x) \
+				or si.border_color != Hud.CREAM or si.border_width_top != u.y or si.border_width_left != u.y or si.content_margin_top != float(u.y) \
+				or so.skew != si.skew:
+			_fail("HUD (%s): %s is not an ink %d + cream %d ring, clear inside, slanted alike (outer %s, inner %s)" % [where, ink.get_path(), u.x, u.y, so, si])
+			return false
+	return true
+
+
+## Fatigue (02 § Втома, В-1): the clock, the actions, hits taken add nothing, the multipliers at 0 / 0.3 / 1.0, rounds keep it,
+## a rematch clears it; then Choko's jab on Skea fresh and tired — same hit frame and damage, two frames more recovery.
+func _stage_fatigue() -> void:
+	if _x0 != 2.0 and not (flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable()):
+		if _f > _f0 + 900:
+			_fail("fatigue: fighters never actionable (p1 %d, p2 %d)" % [p1.state, p2.state])
+		return
+	if _x0 == 0.0 and _fz == 0:
+		if p2._brain != null:
+			p2._brain.process_mode = Node.PROCESS_MODE_DISABLED
+		var bad := ""
+		# the round clock: 60 frames of FIGHT with no input add 60 frames' worth to the idle fighter
+		if _fz_t0 < 0:
+			_fz_t0 = _f
+			_fz_v0 = p1.fatigue
+			return
+		if _f < _fz_t0 + 60:
+			return
+		var clock := (p1.fatigue - _fz_v0) * GDD_FATIGUE.seconds
+		if absf(clock - 1.0) > 0.001:
+			bad += " 60 fight frames added %.4f s (want 1.0);" % clock
+		var f: Fighter = p1
+		var s: Fighter = p2
+		if absf(f.data.fatigue_seconds - GDD_FATIGUE.seconds) > 0.001 or absf(s.data.fatigue_seconds - GDD_FATIGUE.seconds) > 0.001:
+			bad += " fatigue_seconds %.0f / %.0f (want %.0f both);" % [f.data.fatigue_seconds, s.data.fatigue_seconds, GDD_FATIGUE.seconds]
+		# time alone over a whole match
+		f.fatigue = 0.0
+		for i in int(GDD_FATIGUE.match_s * 60.0):
+			f.tick_fatigue()
+		if absf(f.fatigue - GDD_FATIGUE.match_fatigue) > 0.001:
+			bad += " %.0f s of fight → %.4f (want %.2f);" % [GDD_FATIGUE.match_s, f.fatigue, GDD_FATIGUE.match_fatigue]
+		# own actions; a hit taken adds nothing
+		f.fatigue = 0.0
+		f.grapple._spend()
+		var after_shot := f.fatigue * GDD_FATIGUE.seconds
+		f.fatigue = 0.0
+		f._start_dash(1.0)
+		var after_dash := f.fatigue * GDD_FATIGUE.seconds
+		f.fatigue = 0.0
+		f._start_move(f.data.skill1, "skill1")
+		var after_skill := f.fatigue * GDD_FATIGUE.seconds
+		f.fatigue = 0.0
+		f._start_move(f.data.ultimate, "ultimate")
+		var after_ult := f.fatigue * GDD_FATIGUE.seconds
+		s.fatigue = 0.4
+		s.receive_hit(f, f.data.light)
+		var after_hit := s.fatigue
+		if absf(after_shot - GDD_FATIGUE.grapple_shot_s) > 0.001 or absf(after_dash - GDD_FATIGUE.dash_s) > 0.001 \
+				or absf(after_skill - GDD_FATIGUE.skill_s) > 0.001 or after_ult != 0.0 or after_hit != 0.4:
+			bad += " grapple shot %.2f s, dash %.2f s, skill %.2f s, ult %.2f s (want %.1f / %.1f / %.1f / 0), a hit taken moved 0.4 → %.4f;" % [after_shot, after_dash, after_skill, after_ult, GDD_FATIGUE.grapple_shot_s, GDD_FATIGUE.dash_s, GDD_FATIGUE.skill_s, after_hit]
+		# the multipliers: fresh, at the threshold, full
+		var light: MoveData = f.data.light
+		var got: Array = []
+		for fv in [0.0, GDD_FATIGUE.on, 1.0]:
+			f.fatigue = fv
+			s.fatigue = fv
+			f.speed_buff_frames = 0
+			s.dash_charges_left = s.data.dash_charges
+			s._start_flash(1.0)
+			got.append([f.getup_frames(), snappedf(f.speed_mult(), 0.0001), snappedf(s.dash_recharge_total / s.data.dash_recharge, 0.0001), snappedf(f.grapple._recharge(), 0.0001), f.move_end_frame(light) - light.total_frames()])
+		var want := [[GDD_FATIGUE.getup[0], 1.0, 1.0, 3.0, 0], [GDD_FATIGUE.getup[0], 1.0, 1.0, 3.0, 0], [GDD_FATIGUE.getup[1], GDD_FATIGUE.walk, GDD_FATIGUE.dash, GDD_FATIGUE.grapple_s, GDD_FATIGUE.recovery]]
+		if str(got) != str(want):
+			bad += " [get-up, walk, dash, grapple s, recovery +] at 0 / 0.3 / 1.0 = %s (want %s);" % [got, want]
+		# rounds keep it; the tired stance from 0.5
+		f.fatigue = 0.7
+		f.reset_for_round(-3.0, 1)
+		f.set_control(true)
+		var kept := f.fatigue
+		var rig := SkeletalRig.new()   # state_clip() reads only the fighter, so the stance is checked with the rig off too
+		var stance: String = rig.state_clip(f)
+		f.fatigue = 0.49
+		var fresh_stance: String = rig.state_clip(f)
+		f.fatigue = kept
+		rig.free()
+		if f.state != Fighter.State.IDLE or stance != "Idle_Tired_Loop" or fresh_stance != f.data.idle_clip:
+			bad += " idle (state %d) stance at 0.7 '%s' (want Idle_Tired_Loop), at 0.49 '%s' (want %s);" % [f.state, stance, fresh_stance, f.data.idle_clip]
+		if kept != 0.7:
+			bad += " a new round moved fatigue 0.7 → %.4f;" % kept
+		if bad != "":
+			_fail("fatigue (02 § Втома):" + bad)
+			return
+		_ok("fatigue (02 § Втома): 60 fight frames = 1 s, %.0f s alone → %.2f; shot %.1f / dash %.1f / skill %.1f s, ult and hits taken 0; at 1.0 get-up %d, walk ×%.1f, dash ×%.2f, grapple %.1f s, recovery +%d, none of it below 0.3; a new round keeps it (stance '%s')" % [GDD_FATIGUE.match_s, GDD_FATIGUE.match_fatigue, GDD_FATIGUE.grapple_shot_s, GDD_FATIGUE.dash_s, GDD_FATIGUE.skill_s, GDD_FATIGUE.getup[1], GDD_FATIGUE.walk, GDD_FATIGUE.dash, GDD_FATIGUE.grapple_s, GDD_FATIGUE.recovery, stance])
+		# clean slate for the jab runs
+		for x in [f, s]:
+			x.reset_for_round(-3.0 if x == f else 3.0, 1 if x == f else -1)
+			x.set_control(true)
+		_x0 = 1.0
+		_f0 = _f
+		return
+	# jab runs: Choko's light on Skea at 1.0 m, fresh then tired
+	if _x0 == 1.0:
+		var fv: float = 0.0 if _fz == 0 else 1.0
+		p1.fatigue = fv
+		p2.fatigue = 0.0
+		p1.global_position = Vector3(0.0, p1.global_position.y, 0.0)
+		p2.global_position = Vector3(1.0, p2.global_position.y, 0.0)
+		p1.forward = Vector3.RIGHT
+		p2.forward = Vector3.LEFT
+		p2.hp = p2.data.max_hp
+		p2.weak_marks.clear()
+		p2.armor_break_frames = 0
+		p1._mark_timer = 9999
+		_cr_hp = p2.hp
+		_fz_log.append([-1, 0.0, -1])
+		InputRouter.v_press(1, "light")
+		_y0 = _f
+		_x0 = 2.0
+		return
+	var rec: Array = _fz_log[_fz]
+	var t := _f - int(_y0)
+	if rec[0] < 0 and p2.hp < _cr_hp:
+		rec[0] = t
+		rec[1] = _cr_hp - p2.hp
+	if rec[0] >= 0 and rec[2] < 0 and p1.state == Fighter.State.IDLE:
+		rec[2] = t
+	if t > 120 or rec[2] >= 0:
+		if rec[0] < 0 or rec[2] < 0:
+			_fail("fatigue jab run %d: no hit or never idle (hit %d, idle %d)" % [_fz, rec[0], rec[2]])
+			return
+		_fz += 1
+		_x0 = 1.0
+		_f0 = _f
+		if _fz < 2:
+			return
+		var a: Array = _fz_log[0]
+		var b: Array = _fz_log[1]
+		if a[0] != b[0] or absf(a[1] - b[1]) > 0.01 or b[2] - a[2] != GDD_FATIGUE.recovery:
+			_fail("fatigue jab: [hit frame, damage, idle frame] fresh %s, tired %s — want the same hit frame and damage, idle %d frames later" % [a, b, GDD_FATIGUE.recovery])
+			return
+		# a rematch clears it
+		p1.fatigue = 0.5
+		flow.rematch()
+		if p1.fatigue != 0.0:
+			_fail("fatigue: a rematch kept %.2f" % p1.fatigue)
+			return
+		_ok("fatigue jab: fresh %s, tired %s ([hit frame, damage, idle frame]) — startup and damage unchanged, recovery +%d; a rematch clears it" % [a, b, GDD_FATIGUE.recovery])
+		_fz = 0
+		_fz_log = []
+		_fz_t0 = -1
+		_finish()
 
 
 ## ADR-018: [P1 share of frame height, P2 share, worst horizontal margin to the frame edge (fraction of width)].
@@ -862,7 +1155,7 @@ func _close_in(who: Fighter, target: Fighter, dist: float) -> void:
 func _duel_state() -> String:
 	var parts: Array[String] = []
 	for f: Fighter in [p1, p2]:
-		parts.append("%.5f,%.5f,%.5f|%.4f,%.4f|%.3f|%.3f|%d|%d|%d|%d|%d" % [f.global_position.x, f.global_position.y, f.global_position.z, f.forward.x, f.forward.z, f.hp, f.meter, f.state, f.combo_count, f.dot_frames, f.armor_break_frames, f.stats.hits])
+		parts.append("%.5f,%.5f,%.5f|%.4f,%.4f|%.3f|%.3f|%d|%d|%d|%d|%d|%.6f" % [f.global_position.x, f.global_position.y, f.global_position.z, f.forward.x, f.forward.z, f.hp, f.meter, f.state, f.combo_count, f.dot_frames, f.armor_break_frames, f.stats.hits, f.fatigue])
 	return "/".join(parts)
 
 
@@ -2054,6 +2347,7 @@ func _physics_process(_delta: float) -> void:
 		# ---------------- 0.3-6: same input twice → same hash, in both modes ----------------------
 		70:
 			if flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable():
+				_fb0 = Flipbook.spawned.duplicate()
 				_duel_trace = []
 				_f0 = _f
 				_next()
@@ -2076,6 +2370,23 @@ func _physics_process(_delta: float) -> void:
 				if p1.stats.hits + p2.stats.hits < 3 or p1.stats.ragdolls + p2.stats.ragdolls < 1:
 					_fail("duel replay %s: the script did not exercise combat (%s)" % [mode, used])
 					return
+				var fb := _flipbooks_since(_fb0)
+				if GameState.free_move and _duel_runs.size() % 2 == 1:
+					# lane B guard (T4 Lane I-2, proposal 2): run 1 draws the painted effects, run 2 has them off — same hash below
+					var want := ["spark_hit", "slash_choko"]
+					if p1.stats.ragdolls + p2.stats.ragdolls > 0:
+						want.append("ground_crack")   # a ragdoll settled: dust + the crack decal
+					for k in want:
+						if int(fb.get(k, 0)) < 1:
+							_fail("lane B: the free duel drew no '%s' (flipbooks %s)" % [k, fb])
+							return
+					print("[smoke] lane B flipbooks in the free duel: ", fb)
+					Fx.enabled = false
+				elif GameState.free_move:
+					Fx.enabled = true
+					if not fb.is_empty():
+						_fail("lane B: Fx.enabled false still spawned %s" % fb)
+						return
 				if _duel_runs.size() % 2 == 1:
 					_duel_first_trace = _duel_trace.duplicate()
 					_load_arena(2, 70)
@@ -2086,7 +2397,7 @@ func _physics_process(_delta: float) -> void:
 						at += 1
 					_fail("duel replay %s: runs differ, first at frame %d:\n  %s\n  %s" % [mode, at * 30, _duel_first_trace[at], _duel_trace[at]])
 					return
-				_ok("duel replay %s: deterministic — same input twice, same hash %d (%d checkpoints)" % [mode, h, _duel_trace.size()])
+				_ok("duel replay %s: deterministic — same input twice, same hash %d (%d checkpoints)%s" % [mode, h, _duel_trace.size(), "; run 1 with the painted effects, run 2 without (Fx.enabled false) — effects change nothing" if GameState.free_move else ""])
 				if not GameState.free_move:
 					GameState.set_free_move(true)
 					_load_arena(2, 70)
@@ -2719,7 +3030,7 @@ func _physics_process(_delta: float) -> void:
 			var txt := ""
 			for sep in seps:
 				var r2: Array = _fr[sep]
-				txt += " sep %.0f — P1 %.0f–%.0f %%, P2 %.0f–%.0f %%, margin ≥ %.0f %%;" % [sep, r2[0] * 100, r2[1] * 100, r2[2] * 100, r2[3] * 100, r2[4] * 100]
+				txt += " sep %.0f — P1 %.1f–%.1f %%, P2 %.1f–%.1f %%, margin ≥ %.1f %%;" % [sep, r2[0] * 100, r2[1] * 100, r2[2] * 100, r2[3] * 100, r2[4] * 100]
 			_ok("ADR-018 frame %s, 180° at 1.25°/tick, sep 1/4/6:%s" % ["behind" if behind_mode else "side", txt])
 			if _stage == 132:
 				GameState.p2_is_cpu = false
@@ -2935,7 +3246,9 @@ func _physics_process(_delta: float) -> void:
 					p2.hp = p2.data.max_hp
 					if _cr_case >= GDD_CRYSTAL.size():
 						_ok("3c crystal ult on Skea: 0.5 m → 330 (blast on frame 6, band 1 ticks 18…48, final 62), 1.5 m → 225, 6.0 m → 105")
-						_finish()
+						_next_to(142)
+		142:
+			_stage_fatigue()
 		# ---------------- wall splat (02 § Коло арени: 10 f, no damage, once per combo) -----------
 		80:
 			# phase 0: first combo → splat; phase 1: next combo → splat again, then a second launch in that

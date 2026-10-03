@@ -2,7 +2,7 @@
 
 **Роль:** T6 Аполлон (T6·B), 2026-10-03 · **План:** [[2026-10-03-Sprint-Arenas-VFX]], смуга D · **Напрям:** [[VFX-Direction]] ·
 **Стиль:** [[Style-Guide]], [[ADR-007-Art-Style-Sketch-Cel]] · **Бюджет смуги:** ≈ 400 кр. (поділ T1 у стелі 1000).
-**Статус:** промпти й ціни готові, **кредитів не витрачено**. Генерація — лише після слова Santos (§ Кошторис).
+**Статус:** смуга D згенерована повністю — D1 (Santos «Генеруй давай!!», 21.25 кр.) і D2 (Santos «yes» на «стиль так», 55 кр.); 13 файлів у `game/assets/vfx/`. Потім D3 (Santos «go, … готуй матеріал», 66 кр.): +11 файлів. Потім D4 (Santos «D4», 55 кр.): +10. Разом **197.25** з ≈ 400, у `game/assets/vfx/` 34 файли смуги D.
 
 ## Навіщо і для кого
 
@@ -23,8 +23,13 @@
 | змішування | дим і пил — `BLEND_MODE_MIX` з альфою; іскри, електро, сліди — можна `BLEND_MODE_ADD` |
 | шлях | `game/assets/vfx/<id без vfx->.png`, рядок у [[Textures-Registry]] тим самим заходом |
 
-Модель малює сітку «на око»: клітинки можуть вийти нерівними. Перевірка після генерації — нарізати на 16 і подивитись,
-чи нічого не перетинає межу (`ffmpeg -i sheet.png -vf "crop=iw/4:ih/4:X:Y"`). Не ріжеться — аркуш не береться.
+Модель малює сітку «на око»: у D1 великі кадри диму заходили за межу 512 px (`smoke_a` — 476 px на лініях сітки).
+Тому кожен аркуш проходить **`python3 tools/art/repack_flipbook.py in.png out.png`**: знаходить справжні проміжки між кадрами,
+ріже по них і кладе кадри в рівні клітинки 512 px з одним масштабом на весь аркуш (центр — номінальний центр клітинки, щоб
+не тремтіло). `--check` лише звітує. Немає 4 × 4 проміжків → `FAIL`, аркуш перегенеровується.
+У D2 більшість аркушів уже лягла рівно на номінальну сітку (0 px на лініях 512) — тоді інструмент бере номінальні клітинки як є
+(режим `nominal grid`); пошук проміжків на рідких іскрах ловив не ті щілини й давав масштаб 0.4. Порожній останній кадр
+(ефект зник) — не помилка, а `note`.
 
 ## Блоки (англійською, байт-у-байт у кожному промпті)
 
@@ -108,7 +113,7 @@ No characters, no hands, no faces, no weapons, no background scenery, no ground,
 | виклик | `get_cost` → |
 |---|---|
 | `gpt_image_2_5` high 2k 1:1 transparent | **2.75** |
-| те саме з `count: 2` | 2.75 (*не ясно, чи це ціна за варіант, — рахую ×2, як гірший випадок*) |
+| те саме з `count: 2` | 2.75 у `get_cost`; batch D1 списав по 2.75 за **кожне** зображення (баланс −21.25 на 5 зображень + кліп) |
 | `kling3_0` std 5 с sound off 1:1 | **7.5** |
 | `kling3_0` std 3 с sound off | 4.5 · `kling3_0` pro 5 с — 8.75 · `kling3_0_turbo` 720p 3 с — 4.5 |
 | `balance` перед кошторисом | **5544.25** (ultra) |
@@ -123,11 +128,64 @@ No characters, no hands, no faces, no weapons, no background scenery, no ground,
 Від бюджету ≈ 400 лишається ≈ 324. Пропозиція T6: не витрачати «на пробу». Якщо тест Kling вийде — другий кліп (змах
 меча, 7.5); перегенерації аркушів, що не ріжуться на 16; решту віддати смузі C або в запас спринту — рядком для Santos у PR.
 
+## D3 — те, чого в грі ще немає (Santos 2026-10-03: «не стій без роботи, готуй матеріал»)
+
+Звідки список: ефекти, що є в коді без арту або в [[Asset-Manifest]] § C без ассета. Формат, блоки й перепаковка — ті самі.
+Кольори стікерів — `Printer.gd:20` `COLORS` (`patch` (0.35, 0.85, 0.45) → `#59D973`, `seen` (0.65, 0.4, 1.0) → `#A666FF`,
+`spring` (1.0, 0.82, 0.25) → `#FFD140`); стікери малюються з референсом стікера RECORD `35bf0bfb`, щоб усі чотири були однієї серії.
+
+| # | id | звідки потреба | опис (слот, англійською) |
+|---|---|---|---|
+| 13 | `vfx-sticker-patch` | `Printer.gd:8` «placeholder disc until T6 art»; Латка +30 HP | одне зображення: `A single die-cut vinyl sticker from the same series as the reference sticker, lying flat and seen straight from above: a round badge with a chunky crossed adhesive bandage in fresh green (#59D973) and a small plus sign, thick white sticker border, one corner slightly peeled up showing the paper backing.` |
+| 14 | `vfx-sticker-seen` | той самий; «Побачено» — мітка суперника на 4 с | одне зображення: `… a round badge with a wide-open stylized watchful eye in bright violet (#A666FF) with a small dark pupil and a few radiating lines, thick white sticker border, one corner slightly peeled up …` |
+| 15 | `vfx-sticker-spring` | той самий; Пружина — зайвий стрибок | одне зображення: `… a round badge with a bouncy coiled metal spring in warm yellow (#FFD140) with two small motion arcs above it, thick white sticker border, one corner slightly peeled up …` |
+| 16 | `vfx-slash-choko` | [[Asset-Manifest]] `vfx-slash-arcs`; меч Choko | `A crescent sword slash arc sweeping from upper left to lower right, a thick emerald-green (#33E68C) blade trail with a pale cream (#EFEED4) leading edge and a dark green (#1E7A5A) shadow side: frames 1-3 a thin sharp sliver appears, frames 4-7 it widens into a full crescent, frames 8-12 the crescent thins and splits into ribbon strips, frames 13-16 small chips fade out by breaking apart.` |
+| 17 | `vfx-slash-skea` | той самий; кунаї Skea | `Two quick crossing kunai slash marks forming an X, thin sharp violet (#9E4CF2) slash trails with plum-graphite ink edges and tiny ink droplets: frames 1-4 the first slash cuts across, frames 5-8 the second slash crosses it, frames 9-16 both slashes split into thin shards and ink specks that drop away.` |
+| 18 | `vfx-water-splash` | [[Asset-Manifest]] `vfx-splash`; арена `river` | `A splash of river water seen from the side as a foot lands in shallow water: deep teal water (#1F4D5A base, #2E3A5C magenta-indigo shadow) with flat cream foam (#EFEED4) edges: frames 1-3 a flat ring splash at the bottom, frames 4-9 a crown of water rises with droplets flying out, frames 10-16 droplets fall back and the ring flattens into small foam rings. The bottom edge of every frame is a straight invisible water line. Match the drawing style of the reference water texture.` (референс — `b0a9189d`, `tex_water_foam`) |
+| 19 | `vfx-grimoire-page` | `GrimoireFx.gd:4` — 12 спектральних сторінок навколо Skea | `One torn spectral grimoire page fluttering and turning in the air, old parchment (#D9C9A8, shadow #A88B9C) with faint violet (#9E4CF2) glowing edges and small dark ink silhouettes of sealed figures printed on it, no readable text: the 16 frames show one full turn of the page, flipping and curling in steps, then the page edge starts to burn away into violet sparks in the last 4 frames.` |
+| 20 | `vfx-sigil-imprint` | ульта Skea: 8 відбитків під бас ([[03-Skills-Framework]] § Ульта Skea під бас) | `A glowing violet (#9E4CF2) infinity-eight sigil stamped flat on the ground, seen straight from above: a plain figure-eight infinity shape with a thin outer ring and small tick marks, no face, no eyes, no mouth: frames 1-3 it slams in as a bright flash, frames 4-8 it burns steady with crisp inked edges, frames 9-16 it cracks and crumbles into flat violet embers. Top-down orthographic, centered.` |
+| 21 | `vfx-weak-mark` | `WeakMarks.gd` — фіолетові кільця на зонах жертви (зараз процедурні) | `A small targeting mark for a weak point: a violet (#9E4CF2) reticle of two broken concentric rings with four short inward ticks and a tiny diamond in the center, inked outline: a looping pulse — frames 1-8 the rings contract and brighten in steps, frames 9-16 they expand and dim back to the start pose so the loop is seamless.` |
+| 22 | `vfx-armor-break` | Armor Break від KUNAI RAIN | `An armor break burst: a flat plate of pale lilac glassy armor (#C9B8E0, shadow #8A6FA8) cracks with dark ink lines and shatters outward into angular shards with a violet (#9E4CF2) flash behind: frames 1-3 cracks spread across the plate, frames 4-6 a violet flash, frames 7-12 shards fly outward and spin, frames 13-16 small shards fall and vanish.` |
+| 23 | `vfx-ground-crack` | важке приземлення, вибух кристальної ульти в упор | `A ground impact crack decal seen straight from above: dark plum-graphite (#2B2230) jagged crack lines radiating from a central crater on a transparent background, with small flat stone chips (#7A6A73, shadow #4E3E52): frames 1-4 the cracks shoot out from the center, frames 5-8 chips pop up and land, frames 9-16 the cracks stay and slowly fade by losing branches, not by transparency.` |
+
+**№ 14, перегенерація (варіанти c/d).** Перший промпт дав фіолетовий диск зі зрачком і рисками — ока не видно, на землі
+плутається з годинником RECORD. Робочий промпт: `… a round badge with a light cream face, and in the middle one big clearly
+readable almond-shaped open eye drawn as a simple icon: an upper and a lower eyelid line meeting in sharp corners, three short
+lashes on top, a bright violet (#A666FF) round iris and a small dark pupil, like a 'watching you' warning icon …` + у NEG
+`no clock, no tick marks`. Урок: «stylized eye» без опису повік модель малює як диск; іконку треба описувати лініями.
+
+Ціна — та сама модель і параметри, що D1/D2 (`gpt_image_2_5` high 2k 1:1 transparent → 2.75): 11 видів × 2 варіанти = **22 × 2.75 = 60.5**.
+
+## D4 — бій і Printer (Santos 2026-10-03: «D4»)
+
+Шлейф ∞8 з рюкзака Skea **не генерується**: «емісивний декаль + частинки, не з генерації» ([[2026-10-03-Skea-Redesign-Brief]], рядок 18).
+
+| # | id | звідки потреба | опис (слот, англійською) |
+|---|---|---|---|
+| 24 | `vfx-kunai-fall` | `KunaiRain.gd:85` — кунай зараз `PrismMesh` + `BoxMesh` | `A single kunai falling straight down point first, dark steel blade (#4A4458, shadow #2E2638) with a violet (#9E4CF2) wrapped grip and a ring pommel, a thin violet speed streak above it: frames 1-12 it drops in steps from the top of the cell to the bottom with the streak stretching, frames 13-16 it is stuck in an invisible floor at the bottom with a tiny violet spark and two ink specks. Side view.` |
+| 25 | `vfx-kunai-impact` | той самий, точка падіння (вид згори) | `A small top-down impact mark where a kunai hits the ground: a violet (#9E4CF2) flash star, a ring of short ink cracks and a few flat stone chips (#7A6A73): frames 1-3 flash, frames 4-8 cracks and chips spread, frames 9-16 the flash is gone and the cracks thin out. Top-down orthographic, centered.` |
+| 26 | `vfx-slash-air-choko` | повітряні удари (`air_light`, [[02-Combat-System]]) | `A rising anti-air sword slash arc sweeping from lower left up over the top to the right, a thick emerald-green (#33E68C) blade trail with a pale cream (#EFEED4) leading edge and a dark green (#1E7A5A) shadow side: frames 1-3 a thin sliver, frames 4-7 a full rising crescent, frames 8-12 it thins into ribbon strips, frames 13-16 chips break apart.` |
+| 27 | `vfx-slash-heavy-choko` | важкі удари Choko | `A wide heavy horizontal sword sweep, a very thick emerald-green (#33E68C) crescent band with a pale cream (#EFEED4) edge, a dark green (#1E7A5A) shadow side and a few ink speed lines behind it: frames 1-3 a sharp line, frames 4-8 a huge flat crescent across the cell, frames 9-12 it tears into three thick ribbons, frames 13-16 small chips and specks.` |
+| 28 | `vfx-skid-dust` | гальмування, ковзання вздовж стіни арени ([[02-Combat-System]] § М'яка стіна) | `A trail of skid dust kicked up along the floor by feet sliding to the right, side view: warm grey-terracotta dust (#A88B7A base, #7A5C66 shadow) in low rolling clumps with inked outlines: frames 1-4 a small burst at the right, frames 5-10 a long low streak of clumps stretches to the left, frames 11-16 the clumps break into dust balls and specks that settle. Low and wide, the bottom edge of every frame is a straight invisible floor line.` |
+| 29 | `vfx-grapple-launch` | постріл гарпуна (`GrappleHook.gd`) | `A short compressed-air and steam burst from a launcher muzzle pointing to the right: a cone of cream-white steam puffs (#EFEED4, shadow #B8A9B8) with a brass-yellow (#D9A441) spark flash at the tip and ink speed lines: frames 1-3 a bright flash and a tight cone, frames 4-9 puffs roll out to the right and expand, frames 10-16 puffs break into small curls and vanish by breaking apart.` |
+| 30 | `vfx-seen-mark` | «Побачено» — суперник позначений 4 с (`revealed_frames`) | `A floating marker icon above a head: a bold almond-shaped open eye icon with eyelid lines, three short lashes, a bright violet (#A666FF) iris and a dark pupil, inside a thin violet diamond outline: a looping pulse — frames 1-8 it bobs up slightly and the diamond brightens in steps, frames 9-16 it bobs back down and dims so the loop is seamless.` |
+| 31 | `vfx-patch-heal` | підбір Латки, +30 HP | `A small healing burst: fresh green (#59D973) plus signs of different sizes and short sparkle strokes rising upward from the bottom center, inked outlines: frames 1-4 a green flash ring at the bottom, frames 5-12 the plus signs float up and wobble in steps, frames 13-16 they shrink and pop into tiny dots.` |
+| 32 | `vfx-spring-jump` | Пружина — зайвий стрибок у повітрі | `A burst under feet on a mid-air double jump, side view: a warm yellow (#FFD140) coiled spring shape that snaps from compressed to stretched, with two curved motion arcs and a flat yellow shock ring below it: frames 1-3 compressed coil, frames 4-7 it snaps up and the ring flashes, frames 8-16 the coil breaks into yellow chips and the ring spreads and breaks apart.` |
+| 33 | `vfx-ko-burst` | фінальний удар раунду | `A huge final-blow impact burst: a big jagged ink-black (#2B2230) splash star with a cream-white (#EFEED4) core and thick violet-magenta (#B04C9E) shadow shards, heavy ink speed lines radiating out: frames 1-2 a white flash, frames 3-6 the giant splash star at full size, frames 7-12 shards and ink drops fly outward, frames 13-16 only scattered ink drops remain.` |
+
+Ціна та сама: 10 видів × 2 = **20 × 2.75 = 55**.
+
 ## Журнал запусків
 
 | пакет | job-id | результат | `balance` до → після |
 |---|---|---|---|
-| — | — | генерацій ще не було | 5544.25 |
+| D1 стиль-проба + кадр Kling (`generate_image_batch`, 5 × 2.75) | дим `3b728cd6` (a), `40c23ea4` (b) · іскри `427c7774` (a), `6473ae78` (b) · кадр електро `10f078bc` | у гру — дим **b** (чистіша лінія, 35 px на лініях сітки проти 476 у a; після перепаковки запас 8 px) і іскри **b** (0 px на лініях, масштаб 1.000); a — відкинуто, лишаються в історії Higgsfield. Альфа справжня: прозорих 55–84 % пікселів | 5478.25 → |
+| D1 тест Kling (`kling3_0` std 5 с, без звуку) | `52a1ea68` | 960×960, 24 fps, 121 кадр; висновок — [[VFX-Direction]] § Тест Kling | → **5457** (−21.25, як у кошторисі) |
+| D2 партія 1 (`generate_image_batch`, 12 × 2.75): дим вуалі, пил, Chrono, Flash, лінії, метал — по a/b | `e8e28039`/`c444986c` · `d60b12b8`/`66c1ff6b` · `724adb23`/`98020776` · `6d67fb8b`/`243f7e00` · `8515fb44`/`37c79b0f` · `204a5842`/`d0da8518` | у гру — усі **b** (переможці й масштаб перепаковки — [[Textures-Registry]] рядки `vfx-*`) | 5457 → |
+| D2 партія 2 (8 × 2.75): електро, TIME STOP, перемотка, стікер — по a/b | `72f920ef`/`8fbc7de8` · `8d1a6cf5`/`40e1d193` · `51e0ca4a`/`6f2526bd` · `3fa2e2fc`/`35bf0bfb` | у гру — електро **a**, TIME STOP **b**, перемотка **a** (менше стиснення: 0.883 проти 0.790), стікер **b** (світлий циферблат читається на бруківці, темний a зливається) | → **5402** (−55, як у кошторисі) |
+| D3 (`generate_image_batch` 10 + 12): стікери, дуги, сплеск, сторінка, ∞8, мітка, Armor Break, тріщина — по a/b | 22 job-id — [[Textures-Registry]] рядки `vfx-*` (обраний і відкинутий); 2 перші заявки сплеску відхилені до запуску (короткий id референсу `b0a9189d` замість UUID), 0 кр. | у гру — 10; «Побачено» — ока не видно в a/b | 5402 → |
+| D3, перегенерація № 14 (2 × 2.75) | `3376a9c1` (c), `1d9e50b8` (d) | у гру — c | → **5336** (−66 = 60.5 + 5.5) |
+| D4 (`generate_image_batch` 12 + 8): кунай, удар кунаю, дуги Choko повітряна й важка, пил ковзання, постріл гарпуна, «Побачено» над головою, Латка, Пружина, KO — по a/b | 20 job-id — [[Textures-Registry]] рядки `vfx-*` | у гру — 10. «Побачено»: модель домалювала під оком тінь (a) і вихор (b) — у a тінь прибрано скриптом (у кожній клітинці знайдено найширший порожній проміжок між іконкою й тінню, усе нижче — прозоре), без перегенерації. Кунай: модель не «роняє» його по клітинці, кожен кадр на місці — це навіть краще, бо рух дає код | 5336 → **5281** (−55, як у кошторисі) |
 
 ## Related
 - [[2026-10-03-Sprint-Arenas-VFX]] · [[VFX-Direction]] · [[Style-Guide]] · [[Prompt-Library]] · [[Textures-Registry]] ·

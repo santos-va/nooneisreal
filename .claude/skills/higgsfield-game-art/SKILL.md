@@ -48,3 +48,12 @@ lighting, no perspective, no objects»; перевірка швів — `pipelin
 ## Після генерації
 1 результат на слот → `game/assets/<розділ>/<snake_name>.<ext>` → рядок у `docs/Art/Textures-Registry.md`
 (id, шлях, URL, модель, промпт-лінк, ліцензія, використання) → промпт у `docs/Art/Prompts/` → `make gates`.
+
+**Флипбуки (VFX, спрайт-шити):** модель малює сітку на око → кожен аркуш через
+`python3 tools/art/repack_flipbook.py in.png out.png` (рівні клітинки 512 px, один масштаб; `FAIL` → перегенерувати).
+Формат і блоки — `docs/Art/Prompts/VFX-Sheets-Prompts.md`. Іконку (око, пружина) описувати лініями, а не словом «stylized».
+Референс у `medias` — **повний UUID**, короткий id відхиляється. Відео з альфою в каталозі немає: Kling лише для світних
+ефектів на чорному під `BLEND_MODE_ADD`.
+
+**Перед кожним пушем у гілку з PR:** `gh pr view <N> --json state`. MERGED → нова гілка від `origin/main` і новий PR
+(2026-10-03: коміти, запушені в уже змерджену гілку, у `main` не потрапили).
