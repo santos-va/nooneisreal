@@ -48,6 +48,8 @@ fetch "$CDN3D/hf_20261003_034702_f7f95324-7686-48af-8d0c-3f4d5010502c.glb" "$MOD
 # 0 credits — docs/Art/Prompts/Arenas-360-Prompts.md, docs/Art/Prompts/Menu-Skyline-Prompts.md rows 24, 25, 38 and 1b.
 fetch "$CDN3D/hf_20261003_005206_a2913501-694d-4bbc-9908-66892760bf7e.png" "$BG/stage_river_plate_v1.png"
 fetch "$CDN3D/hf_20261003_013154_b0a9189d-0b0a-435f-b5a5-459b105374ce.png" "$TEX/tex_water_foam.png"
+# v2 (T6, Santos «go» 2026-10-03): v1 has a smeared city-reflection band at 55–87 % height; v2 has no reference image. 2 credits.
+fetch "$CDN3D/hf_20261003_174931_3e04a378-87e8-4796-b918-f8ba2fbe784d.png" "$TEX/tex_water_foam_v2.png"
 fetch "$CDN3D/hf_20261003_013154_bb5e3e44-27c1-478c-9b2d-2252bf2e9339.png" "$TEX/tex_water_ripple.png"
 fetch "$CDN3D/hf_20261003_013416_c5900952-f4f0-4728-8ada-5b30d641be3a.png" "$PROPS/props_anchors_v1.png"
 
