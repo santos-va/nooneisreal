@@ -94,5 +94,40 @@
 - деш Skea лишає фіолетовий рваний слід, постріл гарпуна — клуб пари;
 - регдол лягає з пилом і тріщиною на підлозі.
 
+## Частина 2 (після мержу #129, той самий день)
+
+**Звірка.** Стікер Printer — це не лише картинка: `Printer.sticker_position()` читає `_disc.global_position`, і за ним рахується
+підбір. Тому вузол лишився, змінився лише його вигляд. Стікер і RECORD не залежать від `Fx.enabled`: вузол-якір існує завжди.
+
+**Що зроблено.**
+- `Flipbook`: прив'язка до батька (`parent`), `loop` (+ `seconds`), `hold` (один кадр, прибирає власник), `set_alpha()`,
+  `sticker_mesh()` — ціле зображення на `PlaneMesh` (для стікерів, без сітки 4 × 4).
+
+  | де | було | стало |
+  |---|---|---|
+  | `Printer.gd` | диск кольору предмета | `sticker_patch` / `sticker_seen` / `sticker_spring` на площині 0.8 м; диск — лише якщо файлу немає |
+  | `RecordMarker.gd` | тор | `choko_record_sticker` 1.5 м, блимає разом зі стрілкою |
+  | `KunaiRain.gd` | призма + смуга | кадр 5 аркуша `kunai_fall` (біллборд); удар об землю — декаль `kunai_impact` |
+  | `GrimoireFx.gd` | 12 блідих квадів | 12 сторінок `grimoire_page` по колу, цикл з перших 12 кадрів, кожна зі своїм зсувом фази; згасають разом із хвостом |
+  | `GrimoireFx.gd` | ∞8 із двох торів | декаль `sigil_imprint` 2.2 м |
+  | `WeakMarks.gd` | пульсуючі тори | `weak_mark` у циклі, по одному на зону |
+  | `FxDirector` | — | «Побачено» → `seen_mark` над головою, поки триває; Латка → `patch_heal`; пружина в повітрі → `spring_jump`; перемотка RECORD → `choko_rewind` |
+
+**Перевірка.**
+- `make check` → `[smoke] OK  lane B part 2: Printer sticker = sticker_patch on a plane at the pick-up point, RECORD sticker, 3 looping weak marks; Seen over the head while it lasts, Patch, Spring and rewind each drawn once`; `ALL OK (160 checks) in 19374 frames`.
+- Гард «ефекти лише картинка» тримає нове: у вільній дуелі тепер `kunai_fall 120`, `kunai_impact 120`, `grimoire_page 12`,
+  `sigil_imprint 3` — і хеш той самий з ефектами й без.
+- `make gates` → `БАТАРЕЯ ЗЕЛЕНА`.
+- **Негатив** — 5/5 червоні:
+  - Printer лишає диск → `Printer sticker is CylinderMesh`;
+  - мітки без циклу → `0 looping weak_mark sheets`;
+  - «Побачено» не зникає → `did not go when Seen ended`;
+  - перемотку не малює → `choko_rewind drawn 0 times`;
+  - RECORD лишає тор → `has no choko_record_sticker`.
+
+**Не перевірено.** Кунаї, гримуар, сигіли й стікери на екрані не бачив: у знімках `--screenshot` (CPU проти CPU, кадри 140–420)
+їх немає. Їх перевірено лише в smoke: який аркуш і скільки разів. Лишились поза грою: `smoke_puff`, `skid_dust`, `speed_lines`,
+`spark_metal`, `electro_arc*`, `slash_skea` — для них ще немає подій у бою (ковзання вздовж стіни, електро — розвилки інших ролей).
+
 ## Related
 - [[VFX-Direction]] · [[VFX-Sheets-Prompts]] · [[2026-10-03-Sprint-Arenas-VFX]] · [[2026-10-03-sprint-lane-b-vfx]] · [[2026-10-03-Sprint-Lane-I-2]] · [[Textures-Registry]] · [[state]]

@@ -5,7 +5,7 @@ extends Node3D
 ## Choko picks it up by walking through it; the opponent tears it by stepping on it (no effect). A sticker
 ## lasts 8 s; at most one lies on the floor. Fixed queue, no RNG: Patch → Seen → Spring → Patch …
 ## Everything counts physics frames from the moment the fight starts, so smoke and replays repeat.
-## Numbers are PLACEHOLDER (Ares). The sticker is a placeholder disc until T6 art.
+## Numbers are PLACEHOLDER (Ares). The sticker is T6·B's art (sticker_<kind>.png, lane D); the disc is only the fallback.
 
 const FPS := 60
 const FIRST_PRINT_FRAMES := 8 * FPS     # PLACEHOLDER
@@ -130,9 +130,16 @@ func _apply(kind: String) -> void:
 	Sfx.play("grapple_hit", -6)
 
 
-# --- placeholder visual (a flat disc in the item colour) ------------------------------------------
+# --- the sticker on the floor: T6·B's sticker art (a flat plane), or a disc in the item colour if the file is missing.
+# The node is the pick-up anchor (sticker_position), so it exists whatever Fx.enabled says.
+const STICKER_M := 0.8
 func _make_disc(kind: String, at: Vector3) -> void:
 	_remove_disc()
+	_disc = Flipbook.sticker_mesh("sticker_" + kind, STICKER_M)
+	if _disc != null:
+		add_child(_disc)
+		_disc.global_position = at + Vector3(0.0, 0.02, 0.0)
+		return
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = 0.32
 	cyl.bottom_radius = 0.32

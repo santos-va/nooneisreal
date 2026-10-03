@@ -92,11 +92,18 @@ func _ready() -> void:
 	sigil.position = Vector3(0, 0.08, 0)
 	_book.add_child(sigil)
 	for i in PAGES:
-		var q := QuadMesh.new()
-		q.size = Vector2(0.26, 0.36)
-		var p := Fx.mesh(q, _page_mat)
-		add_child(p)
-		_pages.append(p)
+		# T6·B's grimoire_page sheet: one page turning, looped over its first 12 cells (the last 4 burn away);
+		# the pale quad only when the sheet is missing. Pages are pictures: the imprints below never read them.
+		var p: Node3D = null
+		if Flipbook.texture_for("grimoire_page") != null:
+			p = Flipbook.play(self, "grimoire_page", Vector3.ZERO, 0.55, {"parent": self, "count": 12, "loop": true, "first": (i * 5) % 12})
+		else:
+			var q := QuadMesh.new()
+			q.size = Vector2(0.26, 0.36)
+			p = Fx.mesh(q, _page_mat)
+			add_child(p)
+		if p != null:
+			_pages.append(p)
 	var v := owner_f.opponent
 	if v != null:
 		v.armor_break_frames = maxi(v.armor_break_frames, move.active + 50)
@@ -141,6 +148,9 @@ func _physics_process(_delta: float) -> void:
 	if _ended:
 		_tail += 1
 		_page_mat.albedo_color.a = 0.7 * Fx.stepped(float(TAIL - _tail) / float(TAIL))
+		for p in _pages:
+			if p is Flipbook:
+				(p as Flipbook).set_alpha(Fx.stepped(float(TAIL - _tail) / float(TAIL)))
 		if _trail_mat != null:
 			_trail_mat.albedo_color.a = 0.9 * Fx.stepped(float(TAIL - _tail) / float(TAIL))
 		if _tail >= TAIL:
@@ -160,8 +170,8 @@ func _physics_process(_delta: float) -> void:
 		# weak points stay exposed for the ult's own clock: a time stop pauses it, the timer must not run out
 		v.armor_break_frames = maxi(v.armor_break_frames, move.active - _f + 50)
 	var open := minf(1.0, float(_f) / 20.0)
-	for i in PAGES:
-		var p: MeshInstance3D = _pages[i]
+	for i in _pages.size():
+		var p: Node3D = _pages[i]
 		var ang := float(i) / float(PAGES) * TAU + float(_f) * 0.09
 		var r := 0.4 + 1.3 * open
 		p.position = Vector3(cos(ang) * r, 1.4 + sin(ang * 2.0) * 0.35 * open, sin(ang) * r * 0.5)
@@ -230,8 +240,12 @@ func _stroke(k: int) -> void:
 		owner_f.beat_flash(v.global_position + _right * x - _fwd * FLASH_GAP)
 
 
-## ∞8 on the ground under Skea for each imprint (two rings), fades in 40 frames.
+## ∞8 on the ground under Skea for each imprint: T6·B's sigil_imprint sheet (slams in, burns, crumbles); the two rings
+## that fade in 40 frames only when the sheet is missing.
 func _sign() -> void:
+	if Flipbook.texture_for("sigil_imprint") != null:
+		Flipbook.play(owner_f, "sigil_imprint", owner_f.global_position + Vector3(0, 0.03, 0), 2.2, {"mode": Flipbook.Mode.FLOOR, "additive": true})
+		return
 	var mat := Fx.mat(Color(owner_f.data.vfx_primary, 0.8), true)
 	var root := Node3D.new()
 	root.top_level = true

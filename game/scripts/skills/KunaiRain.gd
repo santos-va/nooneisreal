@@ -74,6 +74,7 @@ func _physics_process(delta: float) -> void:
 		if n.position.y <= 0.15:
 			n.position.y = 0.15
 			k.stuck = true
+			Flipbook.play(self, "kunai_impact", n.global_position + Vector3(0, 0.03, 0), 0.9, {"mode": Flipbook.Mode.FLOOR, "additive": true})
 	if _f >= FIRST and (_f - FIRST) % EVERY == 0 and _ticks < TICKS:
 		_ticks += 1
 		_hit()
@@ -82,17 +83,23 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 
 
+## A kunai: a still of T6·B's kunai_fall sheet (cell KUNAI_CELL — blade down, streak above) as a billboard; the
+## procedural prism + streak only when the sheet is missing. The node moves; the drawing does not decide the hit.
+const KUNAI_CELL := 5
 func _spawn_kunai() -> void:
 	var root := Node3D.new()
-	var blade := Fx.mesh(PrismMesh.new(), _steel)
-	(blade.mesh as PrismMesh).size = Vector3(0.09, 0.32, 0.03)
-	blade.rotation.z = PI
-	root.add_child(blade)
-	var tail := Fx.mesh(BoxMesh.new(), _glow)
-	(tail.mesh as BoxMesh).size = Vector3(0.02, 0.5, 0.02)
-	tail.position = Vector3(0, 0.38, 0)
-	root.add_child(tail)
 	add_child(root)
+	if Flipbook.texture_for("kunai_fall") != null:
+		Flipbook.play(self, "kunai_fall", Vector3(0, 0.25, 0), 1.0, {"parent": root, "first": KUNAI_CELL, "hold": true})
+	else:
+		var blade := Fx.mesh(PrismMesh.new(), _steel)
+		(blade.mesh as PrismMesh).size = Vector3(0.09, 0.32, 0.03)
+		blade.rotation.z = PI
+		root.add_child(blade)
+		var tail := Fx.mesh(BoxMesh.new(), _glow)
+		(tail.mesh as BoxMesh).size = Vector3(0.02, 0.5, 0.02)
+		tail.position = Vector3(0, 0.38, 0)
+		root.add_child(tail)
 	root.position = Vector3(_rng.randf_range(-RADIUS, RADIUS), _rng.randf_range(6.5, 8.5), _rng.randf_range(-0.5, 0.6))
 	if GameState.free_move:
 		root.position.z = _rng.randf_range(-RADIUS, RADIUS)   # the circle has depth now

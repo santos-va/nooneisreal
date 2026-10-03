@@ -10,6 +10,9 @@ extends Node
 ##   K.O. → ko_burst · a dash → trail_chrono (Choko) / trail_flash (Skea's Flash Step) · a grapple shot → grapple_launch
 ##   landing from a jump → dust_land (water_splash on the river) · a ragdoll settles → dust_land + ground_crack
 ##   SHADOW VEIL → smoke_veil · TIME STOP → choko_timestop under Choko · armor break → armor_break
+##   «Seen» on a fighter → seen_mark over the head while it lasts · Printer Patch picked → patch_heal
+##   Spring spent in the air → spring_jump · RECORD rewind → choko_rewind where Choko lands
+## (Printer stickers, the RECORD sticker, kunai, grimoire pages, ult sigils and weak marks draw inside their own scripts.)
 
 const SLASH := {"light": "slash_choko", "crouch_light": "slash_choko", "heavy": "slash_heavy_choko", "air_light": "slash_air_choko"}
 const CHEST := 1.15
@@ -17,7 +20,8 @@ const CHEST := 1.15
 const SPARK_ROW := {"normal": 0, "crit": 1, "choko": 2, "blocked": 3}
 
 var fighters: Array[Fighter] = []
-var _prev: Dictionary = {}   # fighter → [state, on_ground, veil_frames, armor_break_frames, frozen_frames, grapple charges, dash charges]
+var _prev: Dictionary = {}   # fighter → see _snap()
+var _seen: Dictionary = {}   # fighter → the seen_mark Flipbook over its head
 
 
 func setup(a: Fighter, b: Fighter) -> void:
@@ -25,11 +29,22 @@ func setup(a: Fighter, b: Fighter) -> void:
 	for f in fighters:
 		f.move_started.connect(_on_move_started)
 		f.knocked_out.connect(_on_ko)
+		if f.printer != null:
+			var who := f
+			f.printer.picked.connect(func(kind: String) -> void: _on_picked(who, kind))
 		_prev[f] = _snap(f)
 
 
+## [state, on_ground, veil, armor break, frozen, grapple charges, dash charges, revealed, spring, RECORD marker alive, position]
 static func _snap(f: Fighter) -> Array:
-	return [f.state, f.on_ground(), f.veil_frames, f.armor_break_frames, f.frozen_frames, f.grapple.charges, f.dash_charges_left]
+	var marker := f.record_marker != null and is_instance_valid(f.record_marker)
+	return [f.state, f.on_ground(), f.veil_frames, f.armor_break_frames, f.frozen_frames, f.grapple.charges, f.dash_charges_left,
+		f.revealed_frames, f.spring_frames, marker, f.global_position]
+
+
+func _on_picked(f: Fighter, kind: String) -> void:
+	if kind == "patch":
+		Flipbook.play(f, "patch_heal", f.global_position + Vector3.UP * 0.9, 1.8)
 
 
 ## The hit spark (Arena._on_hit calls it next to HitSpark's lines and flash).
@@ -89,6 +104,25 @@ func _events(f: Fighter, p: Array, now: Array) -> void:
 	# armor break lands on this fighter
 	if now[3] > 0 and p[3] == 0:
 		Flipbook.play(f, "armor_break", pos + Vector3.UP * CHEST, 2.2, {"additive": true})
+	# «Seen»: the eye over the head for as long as it lasts (refreshes keep the same mark)
+	if now[7] > 0:
+		var mark: Flipbook = _seen.get(f, null)
+		if mark == null or not is_instance_valid(mark):
+			mark = Flipbook.play(f, "seen_mark", pos + Vector3.UP * 2.3, 0.6, {"loop": true})
+			_seen[f] = mark
+		if mark != null:
+			mark.global_position = pos + Vector3.UP * 2.3
+	elif _seen.has(f):
+		var old: Flipbook = _seen[f]
+		if old != null and is_instance_valid(old):
+			old.queue_free()
+		_seen.erase(f)
+	# Spring spent: the counter drops to 0 at once (not by running out) in the air, outside a hit
+	if p[8] > 1 and now[8] == 0 and not now[1] and now[0] != Fighter.State.HITSTUN and now[0] != Fighter.State.LAUNCHED:
+		Flipbook.play(f, "spring_jump", Vector3(pos.x, pos.y + 0.2, pos.z), 1.4)
+	# RECORD rewind: the marker is gone and the body jumped back to it this frame
+	if p[9] and not now[9] and (now[10] as Vector3).distance_to(p[10]) > 0.3:
+		Flipbook.play(f, "choko_rewind", pos + Vector3.UP * 1.0, 2.4, {"additive": true})
 	# TIME STOP froze this fighter: the dial cracks on the ground under the one who stopped time
 	if now[4] > 0 and p[4] == 0 and f.opponent != null:
 		var o := f.opponent.global_position

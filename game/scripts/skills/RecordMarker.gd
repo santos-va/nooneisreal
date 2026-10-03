@@ -10,6 +10,7 @@ var recorded_hp: float = 0.0
 var left: int = LIFE
 var _hand: MeshInstance3D
 var _ring_mat: StandardMaterial3D
+var _sticker_mat: StandardMaterial3D   # the RECORD sticker on the floor (lane D art); null → the ring
 
 
 static func spawn(f: Fighter) -> RecordMarker:
@@ -29,9 +30,15 @@ func _ready() -> void:
 	tm.outer_radius = 0.68
 	tm.rings = 32
 	tm.ring_segments = 4
-	var ring := Fx.mesh(tm, _ring_mat)
-	ring.position = Vector3(0, 0.03, 0)
-	add_child(ring)
+	var sticker := Flipbook.sticker_mesh("choko_record_sticker", 1.5)
+	if sticker != null:
+		_sticker_mat = sticker.material_override as StandardMaterial3D
+		sticker.position = Vector3(0, 0.03, 0)
+		add_child(sticker)
+	else:
+		var ring := Fx.mesh(tm, _ring_mat)
+		ring.position = Vector3(0, 0.03, 0)
+		add_child(ring)
 	var pillar_mat := Fx.mat(Color(c, 0.18), true)
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = 0.42
@@ -57,5 +64,7 @@ func _physics_process(_delta: float) -> void:
 	left -= 1
 	_hand.rotation.y = -TAU * (1.0 - float(left) / float(LIFE))
 	_ring_mat.albedo_color.a = 0.85 if left > 60 or (left / 6) % 2 == 0 else 0.25
+	if _sticker_mat != null:
+		_sticker_mat.albedo_color.a = 1.0 if left > 60 or (left / 6) % 2 == 0 else 0.3
 	if left <= 0:
 		owner_f.rewind()
