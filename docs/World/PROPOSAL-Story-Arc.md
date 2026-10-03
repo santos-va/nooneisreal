@@ -5,6 +5,9 @@
 > The canon lives in [[Lore]], [[Skea]] and [[Choko]]. **Nothing here becomes canon until Santos answers "yes" to an
 > item by its number**; then Klio moves that item into [[Lore]] with a meeting log, and strikes it here.
 >
+> **Status (2026-10-03, latest):** Santos — «H12–H14 — у канон» → H12-A, H13, H14-A are canon too ([[Lore]] § Портрет,
+> пристрій і помічник). Still a proposal: H8 (open), the arc table, endings (Q6), § 5.
+>
 > **Status (2026-10-03, later):** Santos — «H1–H11 — у канон». H1–H7 and H9–H11 are now **canon** with Klio's recommended
 > options, written in [[Lore]] § Канон із пропозиції Кліо; H8 had no proposal and stays open. H15 is decided (A + B).
 > Still a proposal: H12–H14, the arc table, endings (Q6), small things (§ 5).
@@ -187,7 +190,7 @@ more later. Klio does **not** pick the character, only notes a fit to check:
 - **Arcade frame:** *"Echo Trial"* — the Eight test the squad against echoes so they can tell shadow from friend.
 - Fits [[Roster]]: Mirage's "ghost double" and hand mirror.
 
-### H12. The portrait sticker — how do they get a clear picture of a man nobody saw? [P] [?]
+### H12. The portrait sticker — how do they get a clear picture of a man nobody saw? [P] [?] — **CANON 2026-10-03** (A — Skea's half-memory; name from the amulet teammate; see [[Lore]])
 
 Canon: a clear picture of the curser goes into the book; maybe the name comes through dialogue. Klio proposes:
 
@@ -203,7 +206,7 @@ Canon: a clear picture of the curser goes into the book; maybe the name comes th
   only one of the 12 still "theirs", the only one who would say it. Alternatives: Shaper lets it slip while taunting;
   the curser says it himself at the clock tower.
 
-### H13. Choko's device and his AI [P] [?]
+### H13. Choko's device and his AI [P] [?] — **CANON 2026-10-03** (brass printer box + AI in the watch; the wink is not canon; see [[Lore]])
 
 Canon: technician, talks to an AI, a device invented "ahead" that creates, visualises and prints pictures. Cronshift is
 Arcane-like, **not cyberpunk** ([[Kronshift]]), so Klio proposes the device looks like the city:
@@ -216,7 +219,7 @@ Arcane-like, **not cyberpunk** ([[Kronshift]]), so Klio proposes the device look
 - Small wink, only if Santos likes it: the game's own art is generated from descriptions — in the world, Choko does the
   same thing with a machine he built too early.
 
-### H14. Choko's assistant [P] [?]
+### H14. Choko's assistant [P] [?] — **CANON 2026-10-03** (A — brass drone, the AI's body; name not chosen; see [[Lore]])
 
 Canon: an assistant goes with him. Options:
 
@@ -319,10 +322,10 @@ intros/endings now. Stages are the ones that already exist or are planned on [[K
 | Q8 | The old building — clock tower? | yes (H9) → **canon 2026-10-03** |
 | Q9 | Squad purpose and name (H7)? | investigates disappearances; name — Santos → **canon 2026-10-03** |
 | Q10 | Title meaning (H10) and why heroes fight each other (H11)? | as proposed → **canon 2026-10-03** |
-| Q11 | How does the device get the curser's face — Skea's half-memory or the Eight (H12)? | Skea's half-memory; wrong prints first |
-| Q12 | Who tells them the name in dialogue (H12)? | the teammate from the amulet |
-| Q13 | Device look; does the AI live in Choko's watch (H13)? | brass printer box + AI in the watch |
-| Q14 | Who is the assistant — drone, person, or only the AI (H14)? | A — a small brass drone |
+| Q11 | How does the device get the curser's face — Skea's half-memory or the Eight (H12)? | Skea's half-memory; wrong prints first → **canon 2026-10-03** |
+| Q12 | Who tells them the name in dialogue (H12)? | the teammate from the amulet → **canon 2026-10-03** |
+| Q13 | Device look; does the AI live in Choko's watch (H13)? | brass printer box + AI in the watch → **canon 2026-10-03** |
+| Q14 | Who is the assistant — drone, person, or only the AI (H14)? | A — a small brass drone → **canon 2026-10-03** |
 | Q15 | Printed items: in-world only or also new art? Which of A–D goes to Ares (H15)? | **answered:** A + B; story and art |
 
 ---
