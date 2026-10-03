@@ -84,7 +84,28 @@
 - [ ] Архімед · R10 · `bash tools/gates/run_gates.sh` → rc=0
 - [ ] Арес · В-1 втома · `bash tools/gates/run_gates.sh` → rc=0
 
+## Четверта частина: як запустити гру, термінали, спринт 3–4 години
+
+- **Запуск.** PR #105 змерджено: `skeletal_rig = true`, тож `make run` показує героїв, а капсули — `-- --capsules`.
+- **Термінали** (`list_sessions`): t2 працює; t6, T8 і t3 стоять із питанням «стежити за PR?», t3 — з 06:59.
+  Ресерчу A Архімеда в `docs/Research/` немає.
+- **Нові факти.** Аудит Феміди [[2026-10-03-Launch-5-6]] — RED п. 3 (`side` на `sep` 6 — 14.84 %), рішення за Аресом.
+  Межа smoke — 18843 із 19000 кадрів. Фон у 3D крутиться з камерою: `Backdrop.gd:56-58`. Баланс Higgsfield — 5555.25.
+- **Santos хоче** (його словами): світ не гуляє з героями; три карти з днем і ніччю, ліхтарями, текстурами; меню; T6
+  малює ефекти руху, дим, ефекти Choko, текстури, пачкою; Kling для ефектів; один стиль; підписи й wikilinks;
+  issues закриваються при мержі; PR одразу ready; паралельні термінали; 3–4 години.
+
+### Вирішили (четверта частина)
+- План [[2026-10-03-Sprint-Arenas-VFX]] (approved): смуги A–I на окремі термінали з окремими файлами.
+- Три карти в ротації — `river`, `bazaar`, `fountain` (канон [[Cronshift]]); три старі вулиці виходять із ротації.
+- Межу smoke — ×2, малий PR T2·Mac першим.
+- Правила: PR не draft, `Closes #N`, один стиль, реєстр і wikilink на кожен ассет.
+- Закрито виконані issues #9, #23, #25, #27 (PR #18, #31, #48, аудит #53).
+
+### Відкрите
+- Стеля кредитів на спринт — слово Santos (оцінка T1 без Kling і 3D ≈ 300).
+
 ## Related
 - [[state]] · [[2026-10-03-Crystal-Ult-Arena-Fatigue]] · [[2026-10-03-launch-3b-ult-bass]] · [[2026-10-03-Path-to-First-Fight]] ·
   [[2026-10-03-Living-Combat]] · [[2026-10-03-Fight-Craft-Research]] · [[03-Skills-Framework]] · [[Choko]] · [[Skea]] ·
-  [[ADR-018-Camera-Frames-Fight-With-Air]] · [[ADR-015-Solo-Camera-Behind-Fighter]] · [[2026-10-03-Online-Play]]
+  [[ADR-018-Camera-Frames-Fight-With-Air]] · [[ADR-015-Solo-Camera-Behind-Fighter]] · [[2026-10-03-Online-Play]] · [[2026-10-03-Sprint-Arenas-VFX]]
