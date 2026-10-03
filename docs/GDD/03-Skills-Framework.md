@@ -189,4 +189,4 @@ Skea в довгій ульті (Santos «так»), а тік — ні.
 - Контроль (стан/фриз) не довше 0.8 с і не частіше 1 раз на 10 с на бійця.
 
 ## Related
-- [[02-Combat-System]] · [[2026-10-03-Crystal-Ult-Arena-Fatigue]] · [[ADR-006-Equal-Kit-Structure]] · [[04-Grapple-System]] · [[2026-10-02-Characters-Interview]] · [[Roster]] · [[2026-10-03-Skea-Ult-Bass]] · [[2026-10-03-Apollon-Ult-Bass-Cut]]
+- [[02-Combat-System]] · [[09-Tricks-And-Style]] · [[2026-10-03-Crystal-Ult-Arena-Fatigue]] · [[ADR-006-Equal-Kit-Structure]] · [[04-Grapple-System]] · [[2026-10-02-Characters-Interview]] · [[Roster]] · [[2026-10-03-Skea-Ult-Bass]] · [[2026-10-03-Apollon-Ult-Bass-Cut]]

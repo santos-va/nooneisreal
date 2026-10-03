@@ -121,6 +121,7 @@ var fatigue: float = 0.0
 var land_lag: int = 0
 var squash: float = 0.0
 const SQUASH_LAND := 1.0
+const AIR_ATTACK_LAND_FRAMES := 3   # PLACEHOLDER (T5 Арес, docs/GDD/09-Tricks-And-Style.md § Вага тіла)
 const SQUASH_HIT := 0.6
 const SQUASH_DECAY := 0.18        # per frame
 var flashing: bool = false
@@ -795,7 +796,7 @@ func _tick_attack(delta: float) -> void:
 		_set_state(State.IDLE)
 		return
 	if airborne_attack:
-		velocity.y -= GRAVITY * delta
+		velocity.y -= GRAVITY * delta * (data.fall_gravity_mult if velocity.y < 0.0 else 1.0)   # T5: no floating while striking
 	else:
 		var window := m.startup + m.active
 		if _free() and move_frame < m.startup:
@@ -812,6 +813,9 @@ func _tick_attack(delta: float) -> void:
 	if airborne_attack and on_ground():
 		velocity = Vector3.ZERO
 		current_move = null
+		land_lag = AIR_ATTACK_LAND_FRAMES   # T5 (09 § Вага тіла): an air attack lands heavier than a jump
+		squash = SQUASH_LAND
+		_apply_squash()
 		_set_state(State.IDLE)
 		return
 	if move_frame == m.startup:
