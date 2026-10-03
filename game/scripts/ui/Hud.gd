@@ -7,6 +7,16 @@ extends CanvasLayer
 const FONT_BIG := 64
 const FONT_MID := 26
 const FONT_SMALL := 16
+## Contrast on day and night arenas (06-UI-UX § Контраст HUD, Santos's variant 2): no plate behind the HUD; every
+## non-text element wears a double outline — an ink ring outside, a cream ring inside — so one of the two rings stands
+## out on any background. Bars keep a dark well; pips, charges and dash are clear inside and fill from the bottom.
+const INK := Color("#2B2230")
+const CREAM := Color("#FAEDD9")
+const WELL := Color("#141018")
+const RING_INK := 2
+const RING_CREAM := 1
+const SKEW := 0.25
+const ROUND_WON := Color(1.0, 0.85, 0.4)
 
 var p1: Fighter
 var p2: Fighter
@@ -30,6 +40,8 @@ var _result: PanelContainer
 var _result_label: Label
 var _pause: PanelContainer
 var _paused: bool = false
+## Every ink ring the HUD built (the smoke reads them).
+var outlines: Array[PanelContainer] = []
 
 
 func bind(a: Fighter, b: Fighter, f: MatchFlow) -> void:
@@ -148,12 +160,7 @@ func _player_panel(f: Fighter, mirrored: bool) -> Control:
 	pips.add_theme_constant_override("separation", 6)
 	_pips[idx] = []
 	for i in GameState.rounds_to_win:
-		var pip := ColorRect.new()
-		pip.custom_minimum_size = Vector2(18, 18)
-		pip.color = Color(0.25, 0.22, 0.28)
-		pip.rotation = 0.0
-		pips.add_child(pip)
-		_pips[idx].append(pip)
+		pips.add_child(_cell(Vector2(14, 14), ROUND_WON, _pips[idx]))
 	if mirrored:
 		name_row.add_child(pips)
 		name_row.add_child(nm)
@@ -163,41 +170,39 @@ func _player_panel(f: Fighter, mirrored: bool) -> Control:
 	box.add_child(name_row)
 	# HP: trail bar (pale) behind the live bar
 	var hp_stack := Control.new()
-	hp_stack.custom_minimum_size = Vector2(0, 26)
-	var trail := _bar(Color(0.95, 0.75, 0.6, 0.9), Color(0.12, 0.1, 0.14), mirrored)
+	hp_stack.custom_minimum_size = Vector2(0, 20)
+	var trail := _bar(Color(0.95, 0.75, 0.6, 0.9), WELL, mirrored)
 	trail.set_anchors_preset(Control.PRESET_FULL_RECT)
 	var live := _bar(Color(0.95, 0.88, 0.35) if idx == 1 else Color(0.5, 0.95, 0.75), Color(0, 0, 0, 0), mirrored)
 	live.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hp_stack.add_child(trail)
 	hp_stack.add_child(live)
-	box.add_child(hp_stack)
+	box.add_child(_outlined(hp_stack, -SKEW if mirrored else SKEW))
 	_hp[idx] = live
 	_hp_trail[idx] = trail
 	# resources row: meter + grapple pips + cooldowns
 	var res := HBoxContainer.new()
 	res.add_theme_constant_override("separation", 10)
-	var meter := _bar(f.data.accent_color, Color(0.12, 0.1, 0.14), mirrored)
-	meter.custom_minimum_size = Vector2(220, 12)
-	meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var meter := _bar(f.data.accent_color, WELL, mirrored)
+	meter.custom_minimum_size = Vector2(214, 8)
 	_meter[idx] = meter
+	var meter_ring := _outlined(meter, -SKEW if mirrored else SKEW)
+	meter_ring.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	meter_ring.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var charges := HBoxContainer.new()
 	charges.add_theme_constant_override("separation", 4)
 	_charges[idx] = []
 	for i in f.data.grapple_charges:
-		var c := ColorRect.new()
-		c.custom_minimum_size = Vector2(14, 14)
-		c.color = f.data.accent_color
-		charges.add_child(c)
-		_charges[idx].append(c)
+		charges.add_child(_cell(Vector2(10, 10), f.data.accent_color, _charges[idx]))
 	var cool := _label("S1 ✓  S2 ✓", FONT_SMALL, HORIZONTAL_ALIGNMENT_RIGHT if mirrored else HORIZONTAL_ALIGNMENT_LEFT)
 	cool.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 0.85))
 	_cool[idx] = cool
 	if mirrored:
 		res.add_child(cool)
 		res.add_child(charges)
-		res.add_child(meter)
+		res.add_child(meter_ring)
 	else:
-		res.add_child(meter)
+		res.add_child(meter_ring)
 		res.add_child(charges)
 		res.add_child(cool)
 	box.add_child(res)
@@ -208,11 +213,7 @@ func _player_panel(f: Fighter, mirrored: bool) -> Control:
 	dash.add_theme_constant_override("separation", 3)
 	_dash[idx] = []
 	for i in f.data.dash_charges:
-		var d := ColorRect.new()
-		d.custom_minimum_size = Vector2(22, 7)
-		d.color = f.data.vfx_primary
-		dash.add_child(d)
-		_dash[idx].append(d)
+		dash.add_child(_cell(Vector2(18, 5), dash_color(f.data), _dash[idx]))
 	var st := _label("", FONT_SMALL, HORIZONTAL_ALIGNMENT_RIGHT if mirrored else HORIZONTAL_ALIGNMENT_LEFT)
 	st.add_theme_color_override("font_color", f.data.vfx_primary.lightened(0.35))
 	st.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -236,14 +237,80 @@ func _bar(fill: Color, bg: Color, mirrored: bool) -> ProgressBar:
 	b.fill_mode = ProgressBar.FILL_END_TO_BEGIN if mirrored else ProgressBar.FILL_BEGIN_TO_END
 	var sb_bg := StyleBoxFlat.new()
 	sb_bg.bg_color = bg
-	sb_bg.set_corner_radius_all(3)
+	sb_bg.skew = Vector2(-SKEW if mirrored else SKEW, 0.0)
 	var sb_fill := StyleBoxFlat.new()
 	sb_fill.bg_color = fill
-	sb_fill.set_corner_radius_all(3)
-	sb_fill.skew = Vector2(-0.25 if mirrored else 0.25, 0.0)
+	sb_fill.skew = Vector2(-SKEW if mirrored else SKEW, 0.0)
 	b.add_theme_stylebox_override("background", sb_bg)
 	b.add_theme_stylebox_override("fill", sb_fill)
 	return b
+
+
+## The double outline around `inner`: ink ring RING_INK outside, cream ring RING_CREAM inside, both clear in the middle
+## (no plate) and slanted alike (`skew`). Returns the outer ring; add it where `inner` would go.
+func _outlined(inner: Control, skew: float = 0.0) -> PanelContainer:
+	var ink := PanelContainer.new()
+	ink.name = "Ink"
+	ink.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ink.add_theme_stylebox_override("panel", _ring(INK, RING_INK, skew))
+	var cream := PanelContainer.new()
+	cream.name = "Cream"
+	cream.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cream.add_theme_stylebox_override("panel", _ring(CREAM, RING_CREAM, skew))
+	ink.add_child(cream)
+	cream.add_child(inner)
+	outlines.append(ink)
+	return ink
+
+
+func _ring(col: Color, width: int, skew: float) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.draw_center = false
+	sb.border_color = col
+	sb.set_border_width_all(width)
+	sb.set_content_margin_all(width)
+	sb.skew = Vector2(skew, 0.0)
+	return sb
+
+
+## A round pip / grapple charge / dash cell: clear inside its outline; its Fill rises from the bottom (_fill_cell).
+## The Fill goes into `into`; the outlined cell is returned.
+func _cell(size: Vector2, col: Color, into: Array) -> PanelContainer:
+	var inner := Control.new()
+	inner.custom_minimum_size = size
+	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fill := ColorRect.new()
+	fill.name = "Fill"
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inner.add_child(fill)
+	_fill_cell(fill, 0.0, col)
+	into.append(fill)
+	return _outlined(inner)
+
+
+## 0 = empty (clear), 1 = full; in between = a cooldown filling up from the bottom.
+static func _fill_cell(fill: ColorRect, frac: float, col: Color) -> void:
+	frac = clampf(frac, 0.0, 1.0)
+	fill.color = col
+	fill.visible = frac > 0.0
+	fill.anchor_left = 0.0
+	fill.anchor_right = 1.0
+	fill.anchor_bottom = 1.0
+	fill.anchor_top = 1.0 - frac
+	fill.offset_left = 0.0
+	fill.offset_right = 0.0
+	fill.offset_top = 0.0
+	fill.offset_bottom = 0.0
+
+
+## How full a Fill is (the smoke reads it).
+static func cell_frac(fill: ColorRect) -> float:
+	return 1.0 - fill.anchor_top if fill.visible else 0.0
+
+
+## The dash cells' colour: vfx_primary lightened 0.25 (Skea `#9E4CF2` → `#B679F5`, 06-UI-UX § Рішення Santos п. 5).
+static func dash_color(d: CharacterData) -> Color:
+	return d.vfx_primary.lightened(0.25)
 
 
 func _label(text: String, size: int, align: int) -> Label:
@@ -299,15 +366,14 @@ func _on_meter(idx: int, m: float, mx: float) -> void:
 
 func _on_grapple(idx: int, c: int, cd: float, mc: int) -> void:
 	var pips: Array = _charges[idx]
-	var accent: Color = (p1 if idx == 1 else p2).data.accent_color
+	var d: CharacterData = (p1 if idx == 1 else p2).data
 	for i in pips.size():
-		var pip := pips[i] as ColorRect
+		var frac := 0.0
 		if i < c:
-			pip.color = accent
+			frac = 1.0
 		elif i == c and cd > 0.0:
-			pip.color = accent.darkened(0.55)
-		else:
-			pip.color = Color(0.22, 0.2, 0.26)
+			frac = 1.0 - cd / maxf(d.grapple_cooldown, 0.001)
+		_fill_cell(pips[i] as ColorRect, frac, d.accent_color)
 
 
 func _on_cooldowns(idx: int, cd: Dictionary) -> void:
@@ -320,9 +386,11 @@ func _on_cooldowns(idx: int, cd: Dictionary) -> void:
 
 func _on_dash(idx: int, c: int, r: float, _mc: int) -> void:
 	var pips: Array = _dash[idx]
-	var col: Color = (p1 if idx == 1 else p2).data.vfx_primary
+	var d: CharacterData = (p1 if idx == 1 else p2).data
+	# all spent charges return together dash_recharge s after the last use, so they fill together
+	var back := 1.0 - r / maxf(d.dash_recharge, 0.001) if r > 0.0 else 0.0
 	for i in pips.size():
-		(pips[i] as ColorRect).color = col if i < c else (col.darkened(0.6) if r > 0.0 else Color(0.22, 0.2, 0.26))
+		_fill_cell(pips[i] as ColorRect, 1.0 if i < c else back, dash_color(d))
 
 
 func _on_timer(t: int) -> void:
@@ -338,9 +406,9 @@ func _on_announce(text: String, seconds: float) -> void:
 
 func _on_round_won(player: int, w1: int, w2: int) -> void:
 	for i in (_pips[1] as Array).size():
-		(_pips[1][i] as ColorRect).color = Color(1.0, 0.85, 0.4) if i < w1 else Color(0.25, 0.22, 0.28)
+		_fill_cell(_pips[1][i] as ColorRect, 1.0 if i < w1 else 0.0, ROUND_WON)
 	for i in (_pips[2] as Array).size():
-		(_pips[2][i] as ColorRect).color = Color(1.0, 0.85, 0.4) if i < w2 else Color(0.25, 0.22, 0.28)
+		_fill_cell(_pips[2][i] as ColorRect, 1.0 if i < w2 else 0.0, ROUND_WON)
 
 
 func _on_match_over(winner: int, n1: String, n2: String) -> void:
