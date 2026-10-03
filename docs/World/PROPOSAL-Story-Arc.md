@@ -222,6 +222,38 @@ Canon: an assistant goes with him. Options:
 - **B — a person:** an apprentice from [[Roster]] who runs the device while Choko fights.
 - **C — no body:** the AI is only a voice from the watch; the "assistant" is the printing box itself.
 
+### H15. Printed items in the game — "maybe as a skill" [P] [?]
+
+Santos (2026-10-03): the device must **print items too**, and they should get **into the game somehow, maybe as a
+skill**. The kit belongs to **T5 Ares**; Klio only frames the lore and lists options. Hard limit from
+[[03-Skills-Framework]]: slots are fixed (2 skills + ult + passive + signature move + grapple), **9 actions is the
+ceiling**, there is **no free button**. Choko's RECORD, TIME STOP and SWORD STORM come from Santos's own description.
+
+| option | what it is | buttons | lore fit |
+|---|---|---|---|
+| **A — RECORD is a printed sticker (recommended, visual only)** | The RECORD glyph on the floor becomes a sticker the assistant prints and slaps down. Mechanics unchanged. | +0 | canon: Choko's glyphs "record" strikes ([[Lore]]) |
+| **B — passive "Printer" (recommended, mechanics)** | Every so often the assistant prints **one item** and drops it near Choko; he picks it up by walking over it. Replaces **Chrono Guard**, which is still only a proposal (interview B2.3). | +0 | the assistant prints, Choko fights |
+| **C — Skill slot** | A skill that prints an item on press. Only by replacing RECORD or TIME STOP. | ±0, loses a Santos skill | strong, but costs canon |
+| **D — arena items** | The drone prints pickups for **both** fighters between rounds — a mode rule, not Choko's kit. | +0 | world-level, Smash-style |
+
+Item ideas, **names only — numbers are Ares's**: a **patch** sticker (small heal or armour), a **"seen" sticker** that
+marks the opponent and **reveals an echo** (ties H11 and H12 — the printer that can tell real from shadow), a **spring**
+sticker (one extra jump or dash).
+
+**[?] Q15** — Items in-world only (printed by the device), or do you also mean new item art from Higgsfield? Which of
+A–D for Ares to work on?
+
+**Start message for a T5 Ares session (copy if you want it):**
+
+```
+T5 Арес. Santos хоче, щоб айтеми з принтера Choko потрапили в гру, можливо скілом.
+Спершу git checkout main && git pull. Прочитай CLAUDE.md, docs/system/state.md, roles/t5-ares.md,
+docs/World/PROPOSAL-Story-Arc.md § H15 (варіанти A–D, не канон), docs/Characters/Choko.md, docs/GDD/03-Skills-Framework.md.
+Обмеження: 9 дій — стеля, вільної кнопки немає; RECORD, TIME STOP, SWORD STORM — від Santos, не прибирати без його слова.
+Запропонуй слот (рекомендація Кліо: A — RECORD як надрукований стікер, B — пасивка «Printer» замість Chrono Guard), 2–3 айтеми з числами PLACEHOLDER.
+Пиши в 03-Skills-Framework і 08-Balance; .tres — лише після «так» Santos. Гейти rc=0, push у гілку claude/…, draft PR.
+```
+
 ---
 
 ## 4. Proposed arc [P]
@@ -273,12 +305,13 @@ intros/endings now. Stages are the ones that already exist or are planned on [[K
 | Q12 | Who tells them the name in dialogue (H12)? | the teammate from the amulet |
 | Q13 | Device look; does the AI live in Choko's watch (H13)? | brass printer box + AI in the watch |
 | Q14 | Who is the assistant — drone, person, or only the AI (H14)? | A — a small brass drone |
+| Q15 | Printed items: in-world only or also new art? Which of A–D goes to Ares (H15)? | A + B |
 
 ---
 
 ## 7. What happens next
 
-- Santos answers by ID (H1–H14) or by question (Q1–Q14). "In essence" approval (2026-10-03) already covers the
+- Santos answers by ID (H1–H15) or by question (Q1–Q15). "In essence" approval (2026-10-03) already covers the
   direction of H1–H11; word-for-word canon still needs a "yes" per item.
 - Klio moves each "yes" into [[Lore]] / [[Skea]] / [[Choko]] with a meeting log in `docs/Meetings/`, and strikes it
   here. Anything about the kit goes to T5 Ares; anything visual (Shaper's look, the curser) — to T6 Apollon after
