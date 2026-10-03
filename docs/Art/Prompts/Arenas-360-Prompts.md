@@ -57,6 +57,12 @@ Transparent background. Two separate horizontal cut-out strips with clean edges 
 | `stage-fountain-s-strips` | `a distant clock tower` | `the old town hall with a clock and a wide staircase, two gas lamps` |
 | `stage-fountain-w-strips` | `a few distant rooftops` | `two café terraces under awnings with folded chairs and one lamp post` |
 
+**THIRD_V2** (крок 1, після вибору проби): третій референс — обрана смуга тієї ж арени (`river` → `9d96757d`, `bazaar` → `bc50c97d`, `fountain` → `9d96757d`); промпт `{ARENA_STYLE_V2} {STRIPS_V2} {THIRD_V2}`:
+
+```
+Match the hand, line, colors and level of detail of the third reference image exactly: it is an approved strip of this same city.
+```
+
 **Ніч у v2** — без нової картини: шар «вікна світяться» для кожної смуги (`NIGHT_WINDOWS`) + світло рушія.
 
 ```
@@ -212,6 +218,29 @@ Prop design sheet for a fighting game, on a flat muted mint-sage background (#B8
 | 2026-10-03 | стиль-проба v2 `stage-river-n-strips` · v2 | `9d96757d-da5c-4491-9134-311113be796a` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_103524_9d96757d-da5c-4491-9134-311113be796a.png | **так** (Santos «і там і там v2») |
 | 2026-10-03 | стиль-проба v2 `stage-bazaar-n-strips` · v1 | `d523c637-2140-488d-ac6f-b4878ad21d8e` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_103524_d523c637-2140-488d-ac6f-b4878ad21d8e.png | ні |
 | 2026-10-03 | стиль-проба v2 `stage-bazaar-n-strips` · v2 | `bc50c97d-27f6-41d5-be65-3799cb4a45d1` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_103525_bc50c97d-27f6-41d5-be65-3799cb4a45d1.png | **так** (Santos «і там і там v2») |
+
+| 2026-10-03 | крок 1 `stage-river-e-strips` · v1 | `9353d0e1-3a6a-4ae6-8e26-fee3dd3bb945` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105012_9353d0e1-3a6a-4ae6-8e26-fee3dd3bb945.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-river-e-strips` · v2 | `6a0d67d3-9ee7-43df-b1c7-f62b8f3e0b6c` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105011_6a0d67d3-9ee7-43df-b1c7-f62b8f3e0b6c.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-river-s-strips` · v1 | `8dfc14ec-fe34-42b8-911f-2755bd8cb4ef` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105012_8dfc14ec-fe34-42b8-911f-2755bd8cb4ef.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-river-s-strips` · v2 | `bdd6f0ea-a09b-4598-91bf-ddf533713bf8` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105010_bdd6f0ea-a09b-4598-91bf-ddf533713bf8.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-river-w-strips` · v1 | `a3fc26af-3d60-4f3e-b567-79d4683640ea` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105012_a3fc26af-3d60-4f3e-b567-79d4683640ea.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-river-w-strips` · v2 | `58ae71af-8b94-4c48-b9e4-bbc408737744` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105011_58ae71af-8b94-4c48-b9e4-bbc408737744.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-bazaar-e-strips` · v1 | `839c0ef8-71dc-41bf-bca3-3764b11d7364` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105013_839c0ef8-71dc-41bf-bca3-3764b11d7364.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-bazaar-e-strips` · v2 | `9a1f06b2-6661-4fef-8ba5-773eb89cc3a9` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105011_9a1f06b2-6661-4fef-8ba5-773eb89cc3a9.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-bazaar-s-strips` · v1 | `f328309b-0116-4052-a5e8-4e5f224c43e2` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105012_f328309b-0116-4052-a5e8-4e5f224c43e2.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-bazaar-s-strips` · v2 | `19181cec-e4bc-4a4e-b299-590d33622f90` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105012_19181cec-e4bc-4a4e-b299-590d33622f90.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-bazaar-w-strips` · v1 | `039a422b-0076-48ed-b186-73ee3b0faffd` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105013_039a422b-0076-48ed-b186-73ee3b0faffd.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-bazaar-w-strips` · v2 | `d5f907dd-67c1-4fcf-a04a-22311efcaeff` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105013_d5f907dd-67c1-4fcf-a04a-22311efcaeff.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-fountain-n-strips` · v1 | `c766678a-1cef-4667-bcb0-0ef7065b5ad9` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105056_c766678a-1cef-4667-bcb0-0ef7065b5ad9.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-fountain-n-strips` · v2 | `c190a897-5057-417e-ac06-bebf3f3fba18` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105057_c190a897-5057-417e-ac06-bebf3f3fba18.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-fountain-e-strips` · v1 | `3b78eacc-4038-4c13-b876-f5e6d6b1fec0` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105056_3b78eacc-4038-4c13-b876-f5e6d6b1fec0.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-fountain-e-strips` · v2 | `5876d02c-2a49-467c-b954-6c869f6eb103` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105056_5876d02c-2a49-467c-b954-6c869f6eb103.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-fountain-s-strips` · v1 | `39b433fa-becf-4c77-a05d-48b97b12bed2` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105055_39b433fa-becf-4c77-a05d-48b97b12bed2.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-fountain-s-strips` · v2 | `01da3a84-707d-4512-8082-b436180ec066` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105057_01da3a84-707d-4512-8082-b436180ec066.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-fountain-w-strips` · v1 | `df3b68bb-5041-41ad-a7e8-fcc1ca8e2931` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105056_df3b68bb-5041-41ad-a7e8-fcc1ca8e2931.png | чекає Santos |
+| 2026-10-03 | крок 1 `stage-fountain-w-strips` · v2 | `dd8800b8-1722-4675-b257-2d522497b5d4` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_105057_dd8800b8-1722-4675-b257-2d522497b5d4.png | чекає Santos |
+
+Крок 1: слово Santos «Go», 2026-10-03, у сесії T6. 20 генерацій (10 напрямків × 2), референси `f21298f4` + `08c09625` + обрана смуга арени (`THIRD_V2`); `get_cost` 3 референси → 2.75; `balance` 5533.25 → 5478.25 (−55).
 
 Проба v2: слово Santos «GO!», 2026-10-03, у сесії T6. `gpt_image_2_5` high 2k 21:9 transparent, референси `f21298f4` + `08c09625`; промпт зібрано скриптом із блоків § v2 байт-у-байт. `balance` 5544.25 → 5533.25 (−11).
 
