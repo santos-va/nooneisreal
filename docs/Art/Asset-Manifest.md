@@ -57,6 +57,22 @@
 | `ui-portraits` | портрети для HUD і вибору | gpt_image_2_5 | ≈ 6–11 |
 | `ui-menu-kit` | рамки, плашки, кнопки в стилі «скетч» | recraft_v4_1 vector | оцінити |
 
+## D. Головне меню «Погляд з даху» (santos-va/nooneisreal#6, поза стелею 600)
+
+Промпти — [[Menu-Skyline-Prompts]]. Ціни — `get_cost` 2026-10-03 (за 1 зображення; × кількість — оцінка).
+
+| id | що | модель | шт | кредитів |
+|---|---|---|---|---|
+| `menu-skyline-plate-v1` | панорама з даху, 21:9, присмерк | gpt_image_2_5 high 4k | 4 | 17 |
+| `menu-roof-edge-v1` | передній план (парапет, бак, край хмарочоса), прозорий | gpt_image_2_5 high 2k transparent | 2 | 5.5 |
+| `menu-skyline-layers` | шари паралаксу | image_decompose | 1 | 2 |
+| `menu-skyline-outpaint` | за потреби | flux_2_pro_outpaint | 0–1 | 0–3.96 |
+| `sprite-pedestrian-<type>-walk` | цикл ходи, 4 силуети, вид згори | gpt_image_2_5 high 2k transparent | 4 | 11 |
+| `sprite-steamcar-a/b` | дві парові машини | gpt_image_2_5 high 2k transparent | 2 | 5.5 |
+| `vfx-steam-puff` | клуб пари, 6 кадрів | gpt_image_2_5 high 2k transparent | 2 | 5.5 |
+| `<ch>-flyby-poses-v1` | замах / політ / відпуск, після `<ch>-sheet-v1` | gpt_image_2_5 high 2k transparent | 2×2 | 11 |
+| **Разом** | | | | **57.5–61.46** |
+
 ## Загальний бюджет (затверджено Santos 2026-10-03)
 
 Santos: «беремо стільки, скільки потрібно для старту й реалізації плану: два герої й мапи». Оцінка:
@@ -72,4 +88,4 @@ Santos. Звук — 0 кредитів ([[ADR-008-Audio-Sourcing]]).
 5. Арени: річка → базарчик → площа з фонтаном; потім VFX, UI.
 
 ## Related
-- [[Higgsfield-Pipeline]] · [[Prompt-Library]] · [[Style-Guide]] · [[Stage-River]] · [[Textures-Registry]] · [[2026-10-03-Production-Plan]]
+- [[Higgsfield-Pipeline]] · [[Prompt-Library]] · [[Menu-Skyline-Prompts]] · [[Style-Guide]] · [[Stage-River]] · [[Textures-Registry]] · [[2026-10-03-Production-Plan]]
