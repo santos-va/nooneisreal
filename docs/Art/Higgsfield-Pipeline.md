@@ -50,7 +50,7 @@
 
 - `flux_2_pro_outpaint`: `get_cost` працює (вимагає `input_width/height`), сабміт → `422` на кожному варіанті параметрів (5 спроб). Обхід — не знайдено.
 - `image_decompose`: сабміт вимагає `prompt` і приймає `mode` (`standard`/`granular`); результат `completed`, але URL шарів не повертає жоден інструмент MCP.
-- `nano_banana_pro` у результатах записаний як `nano_banana_2` (ціна 2 = `get_cost`).
+- `nano_banana_pro` у результатах записаний як `nano_banana_2` (ціна 2 = `get_cost`). `models_explore get` (2026-10-03, #33): це **дві різні моделі каталогу** — `nano_banana_pro` «Nano Banana Pro», «Ultimate quality», роль лише `image_references`, дефолт 2k; `nano_banana_2` «Nano Banana 2», «Fast, next-gen», ролі `image_references` + `mask`, параметр `is_inpaint`, дефолт 1k. Тобто сервер виконав (або записав) іншу модель, ніж замовлено; чому — **не перевірено**. Для S3 (T-пози Skea) — gpt_image_2_5 або перевіряти `model` у результаті одразу.
 - `autosprite`: у хвилі 2 не пробувався (план 2g — на gpt_image_2_5).
 
 ## Що можна і що не можна брати з Higgsfield

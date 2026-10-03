@@ -267,5 +267,32 @@ nano_banana_pro 2k 3:4 і 1:1 — 2 · image_decompose — 2 · flux_2_pro_outpa
 | 43 | 2k `menu-depth-cards-v1` · v1 | `08c09625-7766-4984-81c8-f03d9bae618f` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013449_08c09625-7766-4984-81c8-f03d9bae618f.png | чекає вибору Santos |
 | 44 | 2k `menu-depth-cards-v1` · v2 | `134a6b14-a16c-48cc-9912-cf833230da72` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_013448_134a6b14-a16c-48cc-9912-cf833230da72.png | чекає вибору Santos |
 
+### Skea v2 (2026-10-03, santos-va/nooneisreal#33, [[2026-10-03-Skea-Redesign]] S2 + S2b)
+
+Слово Santos: «лист Skea ×4 + лист облич ×2 + картка рюкзака ×2 (вісімка лише ззаду), до 25 кредитів». Промпти —
+[[Prompt-Library]] § 12. Референси всіх 8: лист Choko `f21298f4` (манера) + стара картка Skea `4cf75fc8`
+(= `card_skea_v1.jpg`, імпорт raw-GitHub у хвилі 2). У картці рюкзака `{NEG_SKEA}` не додавався (предмет, не обличчя).
+`get_cost` gpt_image_2_5 high 2k 16:9 з двома референсами → 2.75 за шт.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| S2a лист Skea v2 ×4 | 5856.25 | 5845.25 | 11 |
+| S2a лист облич ×2 | 5845.25 | 5839.75 | 5.5 |
+| S2b картка рюкзака ×2 | 5839.75 | 5834.25 | 5.5 |
+| **Разом** | **5856.25** | **5834.25** | **22** (стеля 25) |
+
+8 робіт `completed`, 0 failed. Стиль, вік, посмішку і місце вісімки **не перевірено мною** — CDN із хмари закритий.
+
+| № | партія · варіант | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| 0 | S2a `skea-sheet-v2` · v1 | `9190fcfa-46f2-41c2-918e-6d871c68ec98` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_014952_9190fcfa-46f2-41c2-918e-6d871c68ec98.png | чекає вибору Santos |
+| 1 | S2a `skea-sheet-v2` · v2 | `dcdef91d-396f-4334-875b-035b07452457` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_014953_dcdef91d-396f-4334-875b-035b07452457.png | чекає вибору Santos |
+| 2 | S2a `skea-sheet-v2` · v3 | `d56e2671-ba09-4766-8d1a-b04087e1cb14` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_014952_d56e2671-ba09-4766-8d1a-b04087e1cb14.png | чекає вибору Santos |
+| 3 | S2a `skea-sheet-v2` · v4 | `ca895e35-1d8d-4851-9a0e-42b58f72b029` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_014954_ca895e35-1d8d-4851-9a0e-42b58f72b029.png | чекає вибору Santos |
+| 4 | S2a `skea-faces-v1` · v1 | `f4a48750-2e45-4709-a7ff-066452179e15` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015024_f4a48750-2e45-4709-a7ff-066452179e15.png | чекає вибору Santos |
+| 5 | S2a `skea-faces-v1` · v2 | `36ace5cf-6698-45d7-bc08-9fdc49737ff1` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015023_36ace5cf-6698-45d7-bc08-9fdc49737ff1.png | чекає вибору Santos |
+| 6 | S2b `skea-item-backpack-v2` · v1 | `84849343-bdbe-46b5-83f5-ae95b0994f8a` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015043_84849343-bdbe-46b5-83f5-ae95b0994f8a.png | чекає вибору Santos |
+| 7 | S2b `skea-item-backpack-v2` · v2 | `241dd472-ac05-46f7-8f96-e7f577349973` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_015042_241dd472-ac05-46f7-8f96-e7f577349973.png | чекає вибору Santos |
+
 ## Related
-- [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]]
+- [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
