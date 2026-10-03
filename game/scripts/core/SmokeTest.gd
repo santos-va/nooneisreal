@@ -17,6 +17,9 @@ var _oks: Array[String] = []
 var _done: bool = false
 var _shots_dir: String = ""
 var _profile0: String = ""
+var _old_arena: Node = null
+var _river_runs: Array = []
+var _river_min_gap: float = 99.0
 
 
 func _ready() -> void:
@@ -96,6 +99,38 @@ func _key(code: Key, down: bool) -> void:
 	Input.parse_input_event(ev)
 
 
+## (Re)loads the arena on the river stage; the main loop re-acquires it and resumes at stage 30.
+func _load_river() -> void:
+	_old_arena = arena
+	arena = null
+	InputRouter.v_clear(1)
+	InputRouter.v_clear(2)
+	GameState.stage_index = 0   # river
+	_stage = 30
+	_f0 = _f
+	get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
+
+
+## The same scripted inputs on every river run (frame t from FIGHT start), so runs can be compared.
+func _river_script(t: int) -> void:
+	InputRouter.v_set(1, "right", t < 50 or (t > 420 and t < 470))
+	InputRouter.v_set(2, "left", t < 30)
+	InputRouter.v_set(2, "block", t > 200 and t < 260)
+	InputRouter.v_set(1, "crouch", t > 500 and t < 530)
+	if t in [80, 300]:
+		InputRouter.v_press(1, "jump")
+	if t in [140, 152, 400]:
+		InputRouter.v_press(1, "light")
+	if t in [180, 350]:
+		InputRouter.v_press(2, "light")
+	if t == 240:
+		InputRouter.v_press(1, "heavy")
+	if t == 320:
+		InputRouter.v_press(2, "dash")
+	if t == 460:
+		InputRouter.v_press(2, "jump")
+
+
 func _next() -> void:
 	_stage += 1
 	_f0 = _f
@@ -119,12 +154,12 @@ func _physics_process(_delta: float) -> void:
 	if _done:
 		return
 	_f += 1
-	if _f > 5200:
+	if _f > 9000:
 		_fail("timeout at stage %d (p1 %d, p2 %d)" % [_stage, p1.state if p1 else -1, p2.state if p2 else -1])
 		return
 	if arena == null:
 		var cs := get_tree().current_scene
-		if cs == null or cs.name != "Arena":
+		if cs == null or cs.name != "Arena" or cs == _old_arena or not cs.is_inside_tree():
 			return
 		arena = cs
 		p1 = arena.p1
@@ -368,8 +403,80 @@ func _physics_process(_delta: float) -> void:
 			if p2.state == Fighter.State.ATTACK and p1.state != Fighter.State.ATTACK:
 				_ok("SHARED: key K → P2 %s (P1 idle)" % p2.current_move.id)
 				InputRouter.apply_profile(_profile0, false)
-				_finish()
+				_load_river()
 			elif _f > _f0 + 20:
 				_fail("SHARED: K did not start a P2 attack (p1 state %d, p2 state %d)" % [p1.state, p2.state])
+		# ---------------- river stage (docs/World/Stage-River.md § Перевірка) -------------------
+		30:
+			if flow.phase == MatchFlow.Phase.FIGHT and GameState.water != null:
+				_ok("river run %d: water stage live (stage %s, swell every %.0f–%.0f s)" % [_river_runs.size() + 1, GameState.stage().id, GameState.water.swell_every_min, GameState.water.swell_every_max])
+				_river_min_gap = 99.0
+				_next()
+		31:
+			var t := _f - _f0
+			_river_script(t)
+			for f: Fighter in [p1, p2]:
+				var gap := f.global_position.y - GameState.water.height(f.global_position.x)
+				_river_min_gap = minf(_river_min_gap, gap)
+				if gap < -0.05:
+					_fail("river: P%d sank (y %.3f, surface %.3f, frame %d, state %d)" % [f.player_index, f.global_position.y, f.global_position.y - gap, t, f.state])
+					return
+			if t == 600:
+				_river_runs.append([p1.global_position, p2.global_position, p1.hp, p2.hp, GameState.water.height(0.0)])
+				_ok("river run %d: nobody sank in 600 frames (min gap %.3f m); p1 x %.4f y %.4f, p2 x %.4f y %.4f" % [_river_runs.size(), _river_min_gap, p1.global_position.x, p1.global_position.y, p2.global_position.x, p2.global_position.y])
+				if _river_runs.size() == 1:
+					_load_river()
+				else:
+					var a: Array = _river_runs[0]
+					var b: Array = _river_runs[1]
+					var d: float = (a[0] as Vector3).distance_to(b[0]) + (a[1] as Vector3).distance_to(b[1]) + absf(a[2] - b[2]) + absf(a[3] - b[3]) + absf(a[4] - b[4])
+					if d > 1e-5:
+						_fail("river: two runs differ at frame 600 (Σ|Δ| %.6f): %s vs %s" % [d, str(a), str(b)])
+						return
+					_ok("river: deterministic — both runs identical at frame 600 (Σ|Δ| %.6f)" % d)
+					_next()
+		32:
+			# both made unsteady; P1 guards, P2 stands idle; a 0.7 swell must topple only P2
+			if p1.is_actionable() and p2.is_actionable() and p1.on_ground() and p2.on_ground():
+				p1.data = p1.data.duplicate()
+				p2.data = p2.data.duplicate()
+				p1.data.water_balance = 0.55
+				p2.data.water_balance = 0.55
+				_next()
+		33:
+			InputRouter.v_set(1, "block", _f < _f0 + 9 + GameState.water.stumble_frames + 4)   # _next() clears virtual input
+			if _f == _f0 + 6:
+				_n0 = int(p1.stats.get("stumbles", 0))
+				GameState.water.force_swell_next(0.7)
+			if _f == _f0 + 9:
+				if p2.state != Fighter.State.STUMBLE:
+					_fail("swell 0.7 did not topple P2 with balance 0.55 (state %d)" % p2.state)
+					return
+				if p1.state == Fighter.State.STUMBLE or int(p1.stats.get("stumbles", 0)) != _n0:
+					_fail("P1 stumbled while guarding (held %s, stumbles %s → %s)" % [InputRouter.held(1, "block"), _n0, p1.stats.get("stumbles", 0)])
+					return
+				InputRouter.v_press(2, "light")
+			if _f == _f0 + 12:
+				if p2.state == Fighter.State.ATTACK:
+					_fail("P2 attacked out of a stumble")
+					return
+				_ok("swell 0.7: P2 (balance 0.55) STUMBLE, can't attack; P1 guarding stays %d (BLOCK)" % p1.state)
+			if _f == _f0 + 9 + GameState.water.stumble_frames + 4:
+				if p2.state == Fighter.State.STUMBLE:
+					_fail("stumble did not end after %d frames" % GameState.water.stumble_frames)
+					return
+				InputRouter.v_clear(1)
+				p1.data.water_balance = 0.85
+				p2.data.water_balance = 0.85
+				_next()
+		34:
+			if _f == _f0 + 6:
+				GameState.water.force_swell_next(0.7)
+			if _f == _f0 + 10:
+				if p1.state == Fighter.State.STUMBLE or p2.state == Fighter.State.STUMBLE:
+					_fail("balance 0.85 stumbled on a 0.7 swell")
+					return
+				_ok("swell 0.7 vs balance 0.85: both stay up")
+				_finish()
 			elif _f > _f0 + 400:
 				_fail("round 3 never started")

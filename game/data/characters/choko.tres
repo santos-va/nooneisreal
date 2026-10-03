@@ -161,6 +161,7 @@ dash_frames = 12
 jump_velocity = 11.0
 air_control = 0.6
 weight = 1.0
+water_balance = 0.85
 primary_color = Color(0.74, 0.38, 0.2, 1)
 secondary_color = Color(0.3, 0.36, 0.46, 1)
 accent_color = Color(0.16, 0.78, 0.46, 1)

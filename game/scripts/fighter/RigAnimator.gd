@@ -17,6 +17,7 @@ var walk_phase: float = 0.0
 var idle_time: float = 0.0
 var flash_time: float = 0.0
 var spin: float = 0.0
+var water_tilt: float = 0.0      # river stage sway (radians, rig-local), visual only
 
 # second-order spring for flinch (x = backward tilt, y = bob, z = twist)
 var flinch_x: Vector3 = Vector3.ZERO
@@ -197,6 +198,7 @@ func tick(delta: float, f: Fighter, frozen: bool) -> void:
 	idle_time += delta
 	rotation.y = 0.0 if f.facing == 1 else PI
 	_compute_target(f, delta)
+	_water_sway(f)
 	var k := 1.0 - pow(0.0001, delta)  # fast exponential smoothing (≈ 10-14 frames to settle)
 	for n in parts.keys():
 		pose[n] = (pose[n] as Vector3).lerp(target_pose[n], k)
@@ -204,6 +206,18 @@ func tick(delta: float, f: Fighter, frozen: bool) -> void:
 	_integrate_flinch(delta)
 	_apply_pose()
 	_update_flash(delta)
+
+
+## Stage-River: the pelvis follows the wave slope, amplified for unsteady fighters
+## (tilt = atan(slope) × (1.6 − water_balance)). Presentation only — hitboxes don't move.
+func _water_sway(f: Fighter) -> void:
+	var w := GameState.water
+	var target := 0.0
+	if w != null and f.on_ground() and f.state != Fighter.State.KNOCKDOWN and f.state != Fighter.State.KO:
+		target = atan(w.slope(f.global_position.x)) * (1.6 - f.data.water_balance) * float(f.facing)
+		if w.swell_started_now():
+			flinch_v.x += (1.6 - f.data.water_balance) * 3.0 * (1.0 if target >= 0.0 else -1.0)
+	water_tilt = lerpf(water_tilt, target, 0.25)
 
 
 func _update_flash(delta: float) -> void:
@@ -308,7 +322,7 @@ func _compute_target(f: Fighter, delta: float) -> void:
 			_pose_set("pelvis", Vector3(0, 0, -PI / 2.0))
 			target_root_offset = Vector3(0, -0.75, 0)
 		Fighter.State.GETUP:
-			var t := clampf(float(f.frame_in_state) / float(Fighter.GETUP_FRAMES), 0.0, 1.0)
+			var t := clampf(float(f.frame_in_state) / float(f.getup_frames()), 0.0, 1.0)
 			_pose_set("pelvis", Vector3(0, 0, -PI / 2.0 * (1.0 - t)))
 			_crouch_t(1.0 - t)
 			target_root_offset = Vector3(0, -0.75 * (1.0 - t), 0)
@@ -501,6 +515,7 @@ func _apply_pose() -> void:
 			e.z += flinch_x.x * 0.6
 		elif n == "pelvis":
 			e.y += spin
+			e.z += water_tilt
 		pv.rotation = e
 	var root: Node3D = parts["pelvis"]["pivot"]
 	root.position = Vector3(0, 0.95, 0) + root_offset + Vector3(0, flinch_x.y * 0.08, 0)

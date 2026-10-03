@@ -175,7 +175,7 @@ func drive(delta: float, held: bool) -> void:
 	f.move_and_slide()
 	_draw_rope(f.global_position + HAND, anchor_point)
 	var reached := (anchor_point - (f.global_position + HAND)).length() < 1.4
-	var landed := f.is_on_floor() and f.velocity.y <= 0.0 and _frames > 8
+	var landed := f.on_ground() and f.velocity.y <= 0.0 and _frames > 8
 	if reached or landed or (not held and not zipping):
 		_release(reached)
 

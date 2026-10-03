@@ -16,7 +16,7 @@ signal move_started(fighter: Fighter, move: MoveData)
 signal dash_changed(charges: int, recharge_left: float, max_charges: int)
 signal status_changed(text: String)
 
-enum State { INTRO, IDLE, WALK, CROUCH, JUMP, DASH, ATTACK, BLOCK, HITSTUN, BLOCKSTUN, LAUNCHED, KNOCKDOWN, GETUP, GRAPPLE, KO }
+enum State { INTRO, IDLE, WALK, CROUCH, JUMP, DASH, ATTACK, BLOCK, HITSTUN, BLOCKSTUN, LAUNCHED, KNOCKDOWN, GETUP, GRAPPLE, KO, STUMBLE }
 
 const GRAVITY := 24.0
 const ARENA_HALF_WIDTH := 12.5
@@ -47,6 +47,7 @@ const PERFECT_BLOCK_WINDOW := 8
 const PERFECT_FREEZE := 24
 const REWIND_HEAL_CAP := 0.15
 const TIME_STOP_FRAMES := 72
+const WATER_GETUP_EXTRA := 6      # Stage-River: getting up out of the water is slower (PLACEHOLDER)
 
 @export var player_index: int = 1
 @export var data: CharacterData
@@ -90,6 +91,7 @@ var record_marker: RecordMarker = null
 var dash_charges_left: int = 0
 var dash_recharge_left: float = 0.0
 var flashing: bool = false
+var _water_grounded: bool = false
 
 @onready var animator: RigAnimator = $Rig
 @onready var hurtbox: Area3D = $Hurtbox
@@ -238,6 +240,7 @@ func _physics_process(delta: float) -> void:
 			and InputRouter.buffered(player_index, _record_slot):
 		rewind()
 	var intent := _read_intent()
+	_check_swell(intent)
 	match state:
 		State.INTRO:
 			_ground_physics(delta, 0.0)
@@ -261,6 +264,8 @@ func _physics_process(delta: float) -> void:
 			_tick_dash(delta)
 		State.JUMP:
 			_tick_air(delta, intent)
+		State.STUMBLE:
+			_tick_stumble(delta, intent)
 		_:
 			_tick_ground(delta, intent)
 	_post_move()
@@ -404,7 +409,7 @@ func _tick_ground(delta: float, intent: Dictionary) -> void:
 		return
 	if absf(intent.axis) > 0.1:
 		var forward := signf(intent.axis) == float(facing)
-		var speed := (data.walk_speed if forward else data.back_walk_speed) * speed_mult()
+		var speed := (data.walk_speed if forward else data.back_walk_speed) * speed_mult() * water_walk_mult()
 		_set_state_if(State.WALK)
 		_ground_physics(delta, intent.axis * speed)
 		return
@@ -416,7 +421,7 @@ func _ground_physics(delta: float, vx: float) -> void:
 	velocity.x = vx
 	velocity.y -= GRAVITY * delta
 	move_and_slide()
-	if is_on_floor():
+	if on_ground():
 		velocity.y = 0.0
 
 
@@ -432,7 +437,7 @@ func _tick_air(delta: float, intent: Dictionary) -> void:
 	velocity.x = move_toward(velocity.x, intent.axis * data.walk_speed * speed_mult(), data.air_control * data.walk_speed * 3.0 * delta)
 	velocity.y -= GRAVITY * delta
 	move_and_slide()
-	if is_on_floor():
+	if on_ground():
 		velocity.y = 0.0
 		Sfx.play("land", -14)
 		_update_facing()
@@ -522,13 +527,13 @@ func _tick_flash(delta: float) -> void:
 			return
 		if _pressed("dash") and _start_flash(InputRouter.axis(player_index) if not control_locked else 0.0):
 			return
-		if not is_on_floor():
+		if not on_ground():
 			velocity.y -= GRAVITY * delta * 0.5
 		velocity.x = move_toward(velocity.x, 0.0, 40.0 * delta)
 		move_and_slide()
 	if dash_frames_left <= 0:
 		flashing = false
-		_set_state(State.IDLE if is_on_floor() else State.JUMP)
+		_set_state(State.IDLE if on_ground() else State.JUMP)
 
 
 # --- attacks ------------------------------------------------------------------------------------
@@ -551,7 +556,7 @@ func _start_move(m: MoveData, slot: String = "") -> void:
 	current_slot = slot
 	move_frame = 0
 	has_hit = false
-	airborne_attack = not is_on_floor()
+	airborne_attack = not on_ground()
 	_set_state(State.ATTACK)
 	move_started.emit(self, m)
 	if m.kind == MoveData.Kind.ULTIMATE:
@@ -573,7 +578,7 @@ func _tick_attack(delta: float) -> void:
 			velocity.x = move_toward(velocity.x, 0.0, 40.0 * delta)
 		velocity.y -= GRAVITY * delta
 	move_and_slide()
-	if airborne_attack and is_on_floor():
+	if airborne_attack and on_ground():
 		velocity = Vector3.ZERO
 		current_move = null
 		_set_state(State.IDLE)
@@ -594,7 +599,7 @@ func _tick_attack(delta: float) -> void:
 	move_frame += 1
 	if move_frame >= m.total_frames():
 		current_move = null
-		if airborne_attack and not is_on_floor():
+		if airborne_attack and not on_ground():
 			_set_state(State.JUMP)
 		else:
 			_set_state(State.IDLE)
@@ -731,7 +736,7 @@ func receive_hit(attacker: Fighter, m: MoveData) -> void:
 	if hp <= 0.0:
 		_die(attacker, m)
 		return
-	if m.launcher or m.knockdown or not is_on_floor():
+	if m.launcher or m.knockdown or not on_ground():
 		_enter_ragdoll(kb * m.ragdoll_impulse)
 		return
 	stun_frames = m.hitstun
@@ -827,12 +832,12 @@ func _tick_hitstun(delta: float) -> void:
 	velocity.x = move_toward(velocity.x, 0.0, HIT_FRICTION * delta)
 	velocity.y -= GRAVITY * delta
 	move_and_slide()
-	if is_on_floor():
+	if on_ground():
 		velocity.y = 0.0
 	if stun_frames <= 0:
 		combo_count = 0
 		_update_facing()
-		_set_state(State.IDLE if is_on_floor() else State.JUMP)
+		_set_state(State.IDLE if on_ground() else State.JUMP)
 
 
 func _tick_blockstun(delta: float, intent: Dictionary) -> void:
@@ -915,7 +920,7 @@ func rewind() -> void:
 		cooldowns_changed.emit(cooldowns)
 	Sfx.play("rewind")
 	_update_facing()
-	_set_state(State.IDLE if is_on_floor() or global_position.y < 0.05 else State.JUMP)
+	_set_state(State.IDLE if on_ground() or global_position.y < floor_y() + 0.05 else State.JUMP)
 
 
 func begin_veil() -> void:
@@ -994,7 +999,7 @@ func _tick_knockdown(delta: float) -> void:
 
 func _tick_getup(delta: float) -> void:
 	_ground_physics(delta, 0.0)
-	if frame_in_state >= GETUP_FRAMES:
+	if frame_in_state >= getup_frames():
 		_set_state(State.IDLE)
 
 
@@ -1042,7 +1047,7 @@ func _try_grapple(prefer_enemy: bool) -> bool:
 func _tick_grapple(intent: Dictionary) -> void:
 	grapple.drive(get_physics_process_delta_time(), intent.grapple_held)
 	if not grapple.attached:
-		_set_state(State.JUMP if not is_on_floor() else State.IDLE)
+		_set_state(State.JUMP if not on_ground() else State.IDLE)
 
 
 func _on_grapple_changed(charges: int, cooldown_left: float, max_charges: int) -> void:
@@ -1058,17 +1063,77 @@ func _update_facing() -> void:
 		facing = 1 if dx > 0.0 else -1
 
 
+# --- water (river stage) -------------------------------------------------------------------------
+## Height of whatever the fighter stands on: the wave surface on water stages, else 0.
+func floor_y() -> float:
+	return GameState.water.height(global_position.x) if GameState.water != null else 0.0
+
+
+## Grounded test that also works on water, where there is no collider under the feet.
+func on_ground() -> bool:
+	if is_on_floor():
+		return true
+	if GameState.water == null:
+		return false
+	return global_position.y <= floor_y() + 0.002 or (_water_grounded and velocity.y <= 0.0)
+
+
+func water_walk_mult() -> float:
+	return 0.85 + 0.15 * data.water_balance if GameState.water != null else 1.0
+
+
+func getup_frames() -> int:
+	return GETUP_FRAMES + (WATER_GETUP_EXTRA if GameState.water != null else 0)
+
+
+## A swell knocks an unsteady fighter off balance: only on its first frame, only grounded
+## idle/walk/crouch fighters that are not holding block, only if balance < swell strength.
+func _check_swell(intent: Dictionary) -> void:
+	var w := GameState.water
+	if w == null or not w.swell_started_now() or control_locked:
+		return
+	if not state in [State.IDLE, State.WALK, State.CROUCH] or intent.block:
+		return
+	if data.water_balance < w.swell_strength:
+		stun_frames = w.stumble_frames
+		stats.stumbles = int(stats.get("stumbles", 0)) + 1
+		animator.flinch(Vector3(-facing, 0.0, 0.0), 40.0, facing)
+		_set_state(State.STUMBLE)
+
+
+## Can't attack while stumbling, but can raise a guard (which ends the stumble).
+func _tick_stumble(delta: float, intent: Dictionary) -> void:
+	if intent.block:
+		_set_state(State.BLOCK)
+		_ground_physics(delta, 0.0)
+		return
+	stun_frames -= 1
+	_ground_physics(delta, -facing * 0.6)
+	if stun_frames <= 0:
+		_set_state(State.IDLE)
+
+
 func _post_move() -> void:
 	global_position.x = clampf(global_position.x, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH)
 	global_position.z = 0.0
-	if global_position.y < 0.0:
+	if GameState.water != null:
+		# stand on the waves: never below the surface, and stay glued to it while grounded
+		var fy := floor_y()
+		if global_position.y < fy or (_water_grounded and velocity.y <= 0.0 and global_position.y - fy < 0.25):
+			global_position.y = fy
+			if velocity.y < 0.0:
+				velocity.y = 0.0
+			_water_grounded = true
+		else:
+			_water_grounded = false
+	elif global_position.y < 0.0:
 		global_position.y = 0.0
 	if opponent == null or flashing or opponent.flashing:
 		return
 	if state == State.LAUNCHED or state == State.KO or opponent.state == State.LAUNCHED or opponent.state == State.KO:
 		return
 	var dx := global_position.x - opponent.global_position.x
-	if absf(dx) < MIN_SEPARATION and is_on_floor() and opponent.is_on_floor():
+	if absf(dx) < MIN_SEPARATION and on_ground() and opponent.on_ground():
 		var push := (MIN_SEPARATION - absf(dx)) * 0.5
 		var dir := 1.0 if dx >= 0.0 else -1.0
 		if dx == 0.0:
