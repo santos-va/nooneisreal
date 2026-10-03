@@ -281,9 +281,7 @@ func _overlay() -> PanelContainer:
 
 
 func _hint_text() -> String:
-	if GameState.p2_is_cpu:
-		return "P1  A/D move · W/Space jump · S crouch · F light · G heavy · LShift guard · Q/E skills · R grapple (S+R pull) · C dash/flash · V ultimate   |   Tab hitboxes · Esc pause"
-	return "P1  A/D · W · F light · G heavy · LShift guard · Q/E · R grapple · C dash · V ult        P2  ←/→ · ↑ · K light · L heavy · RShift guard · ; ' · I grapple · . dash · , ult"
+	return InputRouter.hint_text(GameState.p2_is_cpu)
 
 
 # --- updates --------------------------------------------------------------------------------

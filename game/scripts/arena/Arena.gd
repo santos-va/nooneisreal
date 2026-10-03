@@ -12,6 +12,7 @@ const FIGHTER_SCENE := preload("res://scenes/fighter/Fighter.tscn")
 @onready var backdrop: Backdrop = $Backdrop
 @onready var sun: DirectionalLight3D = $Sun
 @onready var world_env: WorldEnvironment = $WorldEnvironment
+@onready var ground: StaticBody3D = $Ground
 
 var p1: Fighter
 var p2: Fighter
@@ -24,6 +25,15 @@ func _ready() -> void:
 	sun.light_color = st.sun
 	if world_env.environment:
 		world_env.environment.ambient_light_color = st.ambient
+	GameState.water = null
+	var water_path: String = st.get("water", "")
+	if water_path != "" and ResourceLoader.exists(water_path):
+		GameState.water = (load(water_path) as WaveField).duplicate()
+		GameState.water.reset(1)
+		# fighters stand on the waves; the stone floor sinks below the deepest trough (it still
+		# catches ragdolls) and its mesh is hidden under the water
+		ground.position.y = GameState.water.min_height() - 0.1
+		(ground.get_node("Mesh") as MeshInstance3D).visible = false
 	p1 = _spawn(1, GameState.p1_character, -3.0, 1, false)
 	p2 = _spawn(2, GameState.p2_character, 3.0, -1, GameState.p2_is_cpu)
 	p1.opponent = p2
@@ -33,6 +43,12 @@ func _ready() -> void:
 		(f as Fighter).hit_landed.connect(_on_hit)
 		(f as Fighter).knocked_out.connect(_on_ko)
 	hud.bind(p1, p2, flow)
+	if GameState.water != null:
+		var water := Water.new()
+		water.name = "Water"
+		add_child(water)
+		water.setup(GameState.water, [p1, p2] as Array[Fighter])
+		flow.round_started.connect(water.on_round_started)
 	flow.setup(p1, p2)
 
 

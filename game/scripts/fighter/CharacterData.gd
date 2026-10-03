@@ -14,6 +14,9 @@ extends Resource
 @export var jump_velocity: float = 11.0
 @export var air_control: float = 0.6
 @export var weight: float = 1.0                  # scales knockback received (lighter flies further)
+## 0…1, how steadily the fighter stands on water (river stage). Lower = more sway, slower walk,
+## stumbles on weaker swells. PLACEHOLDER; Santos 2026-10-03: Choko and Skea both 0.85.
+@export_range(0.0, 1.0) var water_balance: float = 0.85
 
 @export_group("Placeholder rig & HUD colors")
 @export var primary_color: Color = Color(0.72, 0.38, 0.2)

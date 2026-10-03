@@ -1,0 +1,18 @@
+# name	variants	layer	file_glob	gain_db	offset_ms	max_ms
+# One row per layer. Layers of one name are summed (amix, no auto-normalise), then
+# compressor (attack 1 ms, 4:1) -> limiter -1 dBFS -> <name>.ogg, <name>_2.ogg ...
+# Variant v of a layer takes the v-th file matching file_glob (sorted, wraps around), so a pack
+# with 5 impacts gives 5 different hits. Globs are matched case-insensitively against paths inside
+# the unzipped packs. Edit the globs to the real file names after unzipping once (--list).
+hit_light	3	whoosh	*swish*	-14	0	90
+hit_light	3	transient	*metal*hit*	-6	2	40
+hit_light	3	body	*punch*	-3	2	150
+hit_light	3	sub	*impact*heavy*	-8	3	180
+hit_heavy	3	transient	*metal*hit*	-4	0	50
+hit_heavy	3	body	*impact*heavy*	0	1	200
+hit_heavy	3	sub	*impact*heavy*	-4	2	260
+block	3	transient	*metal*hit*	0	0	80
+block	3	body	*punch*	-12	1	80
+kunai	2	transient	*metal*hit*	-2	0	60
+kunai	2	body	*punch*	-6	1	120
+whoosh	3	whoosh	*swish*	-6	0	260
