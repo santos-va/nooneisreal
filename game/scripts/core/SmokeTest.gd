@@ -81,6 +81,8 @@ var _w_max: float = 0.0               # launch 6: worst |yaw turn| per tick (deg
 var _head_low: float = -1e9           # launch 6: worst (P2 head screen y − P1 head screen y), px; > 0 = P2 lower
 var _w_prev: float = 0.0
 var _fr: Dictionary = {}              # launch 6, ADR-018: worst frame share / margin per (mode, sep)
+var _a2_k: int = -1                   # sprint A2: index of the arena variant on screen (-1 = not started)
+var _a2_seen: Array = []
 var _cr_log: Array = []              # 3c: the effect's [frame, move id] hits of the current run
 var _cr_case: int = 0                 # 3c: which point-blank / band / far run
 var _cr_hp: float = 0.0
@@ -420,7 +422,91 @@ func _stage_a1_fixed_world() -> void:
 		return
 	_ok("A1 fixed world: ring of %d cards, none moved while the camera turned 180° (facing card %d → %d), no gaps at the corners" % [bd.cards.size(), _fr.card0, card1])
 	_fr = {}
+	_next_to(138)
+
+## Sprint A2: the three rotation arenas × day/night load and get their own light; night differs from day; the CRONSHIFT
+## neon only on Fountain Square at night; then the menu STAGE/TIME rows, their save and the launch flags.
+func _stage_a2_arenas() -> void:
+	var variants := [["river", false], ["river", true], ["bazaar", false], ["bazaar", true], ["fountain", false], ["fountain", true]]
+	if _a2_k >= 0:
+		var v: Array = variants[_a2_k]
+		var entry: Dictionary = GameState.STAGES[GameState.stage_index_of(v[0])]
+		var src: Dictionary = entry.get("night", GameState.RIVER_NIGHT) if v[1] else entry
+		var want_neon: bool = v[0] == "fountain" and v[1]
+		var has_neon: bool = arena.backdrop.neon != null and arena.backdrop.neon.visible
+		var day_sun: Color = entry.sun
+		var tp: Variant = (arena.backdrop.quad.material_override as ShaderMaterial).get_shader_parameter("tint") if arena.backdrop.using_texture else null
+		var tint: Color = tp if tp is Color else Color.WHITE   # unset = the shader's default white
+		if v[1] and arena.backdrop.using_texture and tint.get_luminance() >= 0.95:
+			_fail("A2 %s night: the painted card is not darkened (tint %s)" % [v[0], tint])
+			return
+		if arena.sun.light_color != (src.sun as Color) or (v[1] and (src.sun as Color) == day_sun) or has_neon != want_neon or arena.backdrop.cards.is_empty():
+			_fail("A2 %s %s: sun %s (want %s, night ≠ day), neon %s (want %s)" % [v[0], "night" if v[1] else "day", arena.sun.light_color, src.sun, has_neon, want_neon])
+			return
+		_a2_seen.append("%s/%s" % [v[0], "night" if v[1] else "day"])
+	_a2_k += 1
+	if _a2_k < variants.size():
+		GameState.night = variants[_a2_k][1]
+		_load_arena(GameState.stage_index_of(variants[_a2_k][0]), 138)
+		return
+	GameState.night = false
+	# menu rows (06-UI-UX § Арена й час доби в меню), on the player's settings file — backed up and restored
+	var path := InputRouter.SETTINGS_PATH
+	var had := FileAccess.file_exists(path)
+	var before := FileAccess.get_file_as_string(path) if had else ""
+	var idx0 := GameState.stage_index
+	GameState.set_stage("river")
+	var menu: Control = load("res://scripts/ui/MainMenu.gd").new()
+	get_tree().root.add_child(menu)
+	var shown: Array = []
+	for i in 3:
+		menu.stage_btn.pressed.emit()
+		shown.append(GameState.stage_id())
+	var times: Array = []
+	for i in 2:
+		menu.time_btn.pressed.emit()
+		times.append(GameState.night)
+	var cfg := ConfigFile.new()
+	cfg.load(path)
+	var saved := [cfg.get_value("gameplay", "stage", null), cfg.get_value("gameplay", "time_of_day", null)]
+	menu.free()
+	if had:
+		var f := FileAccess.open(path, FileAccess.WRITE)
+		f.store_string(before)
+		f.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	# pure round trip on a temp file; launch flags win for the run; the smoke never reads settings
+	var main_script: GDScript = load("res://scripts/core/Main.gd")
+	var tmp := "user://smoke_stage_settings.cfg"
+	var gs: Node = GameState.get_script().new()
+	gs.set_stage("fountain")
+	gs.night = true
+	gs.save_stage_time(tmp)
+	var gs2: Node = GameState.get_script().new()
+	main_script.apply_saved_stage(PackedStringArray(), gs2, tmp)
+	var back := [gs2.stage_id(), gs2.night]
+	var gs3: Node = GameState.get_script().new()
+	main_script.apply_saved_stage(PackedStringArray(["--smoke"]), gs3, tmp)
+	var smoke_ignores: bool = gs3.stage_id() == "river" and not gs3.night
+	var gs4: Node = GameState.get_script().new()
+	main_script.apply_launch_args(PackedStringArray(["--stage", "bazaar", "--night"]), gs4)
+	var flags := [gs4.stage_id(), gs4.night]
+	var gs5: Node = GameState.get_script().new()
+	gs5.set_stage("back_alley")
+	var non_rot: String = gs5.stage_id()
+	for n in [gs, gs2, gs3, gs4, gs5]:
+		n.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))
+	GameState.stage_index = idx0
+	if shown != ["bazaar", "fountain", "river"] or times != [true, false] or saved != ["river", "day"] or back != ["fountain", true] or not smoke_ignores or flags != ["bazaar", true] or non_rot != "river":
+		_fail("A2 menu/save: STAGE ×3 %s (want bazaar, fountain, river), TIME ×2 %s, saved %s, temp round trip %s, smoke ignores saved %s, --stage bazaar --night %s, back_alley → %s (want river)" % [shown, times, saved, back, smoke_ignores, flags, non_rot])
+		return
+	_ok("A2 arenas: %s — each with its own light, night ≠ day, CRONSHIFT neon only on fountain/night; menu STAGE cycles river → bazaar → fountain only, TIME day ↔ night, saved as ids, --stage/--night for the run, smoke ignores settings" % ", ".join(_a2_seen))
+	_a2_k = -1
+	_a2_seen = []
 	_next_to(140)
+
 
 
 ## ADR-018: [P1 share of frame height, P2 share, worst horizontal margin to the frame edge (fraction of width)].
@@ -708,7 +794,7 @@ func _river_script(t: int) -> void:
 
 ## "" when the code's design numbers equal the GDD literals above; else the first mismatch.
 func _gdd_mismatch() -> String:
-	var got := {"Fighter.ARENA_RADIUS": [Fighter.ARENA_RADIUS, GDD_ARENA_RADIUS], "DuelCamera.YAW_CLAMP_DEG": [DuelCamera.YAW_CLAMP_DEG, GDD_YAW_CLAMP_DEG], "DuelCamera.PULLBACK_LAG_DEG": [DuelCamera.PULLBACK_LAG_DEG, GDD_PULLBACK_LAG_DEG], "DuelCamera.PULLBACK_MAX": [DuelCamera.PULLBACK_MAX, GDD_PULLBACK_MAX], "DuelCamera.YAW_ACCEL_DEG": [DuelCamera.YAW_ACCEL_DEG, GDD_YAW_ACCEL_DEG], "DuelCamera.BEHIND_DIST": [DuelCamera.BEHIND_DIST, 5.0], "DuelCamera.BEHIND_DIST_PER_M": [DuelCamera.BEHIND_DIST_PER_M, 0.35], "DuelCamera.BEHIND_DIST_MAX": [DuelCamera.BEHIND_DIST_MAX, 9.0], "DuelCamera.BEHIND_HEIGHT_NEAR": [DuelCamera.BEHIND_HEIGHT_NEAR, 3.8], "DuelCamera.BEHIND_HEIGHT_FAR": [DuelCamera.BEHIND_HEIGHT_FAR, 3.0], "DuelCamera.BEHIND_SHOULDER": [DuelCamera.BEHIND_SHOULDER, 1.0], "DuelCamera.BEHIND_FOCUS": [DuelCamera.BEHIND_FOCUS, 0.5], "DuelCamera.SIDE_DIST": [DuelCamera.SIDE_DIST, 6.0], "DuelCamera.SIDE_DIST_PER_M": [DuelCamera.SIDE_DIST_PER_M, 0.7], "DuelCamera.PULLBACK_CAP_M": [DuelCamera.PULLBACK_CAP_M, 12.47], "DuelCamera.SIDE_DIST_MIN": [DuelCamera.SIDE_DIST_MIN, 8.0], "DuelCamera.SIDE_DIST_MAX": [DuelCamera.SIDE_DIST_MAX, 24.0], "DuelCamera.FOV_DEG": [DuelCamera.FOV_DEG, 60.0], "camera fov": [arena.duel_camera.cam.fov if arena.duel_camera else 60.0, 60.0], "Fighter.WALL_SPLAT_FRAMES": [float(Fighter.WALL_SPLAT_FRAMES), float(GDD_WALL_SPLAT_FRAMES)]}
+	var got := {"Fighter.ARENA_RADIUS": [Fighter.ARENA_RADIUS, GDD_ARENA_RADIUS], "DuelCamera.YAW_CLAMP_DEG": [DuelCamera.YAW_CLAMP_DEG, GDD_YAW_CLAMP_DEG], "DuelCamera.PULLBACK_LAG_DEG": [DuelCamera.PULLBACK_LAG_DEG, GDD_PULLBACK_LAG_DEG], "DuelCamera.PULLBACK_MAX": [DuelCamera.PULLBACK_MAX, GDD_PULLBACK_MAX], "DuelCamera.YAW_ACCEL_DEG": [DuelCamera.YAW_ACCEL_DEG, GDD_YAW_ACCEL_DEG], "DuelCamera.BEHIND_DIST": [DuelCamera.BEHIND_DIST, 5.0], "DuelCamera.BEHIND_DIST_PER_M": [DuelCamera.BEHIND_DIST_PER_M, 0.35], "DuelCamera.BEHIND_DIST_MAX": [DuelCamera.BEHIND_DIST_MAX, 9.0], "DuelCamera.BEHIND_HEIGHT_NEAR": [DuelCamera.BEHIND_HEIGHT_NEAR, 3.8], "DuelCamera.BEHIND_HEIGHT_FAR": [DuelCamera.BEHIND_HEIGHT_FAR, 3.0], "DuelCamera.BEHIND_SHOULDER": [DuelCamera.BEHIND_SHOULDER, 1.0], "DuelCamera.BEHIND_FOCUS": [DuelCamera.BEHIND_FOCUS, 0.5], "DuelCamera.SIDE_DIST": [DuelCamera.SIDE_DIST, 6.0], "DuelCamera.SIDE_DIST_PER_M": [DuelCamera.SIDE_DIST_PER_M, 0.68], "DuelCamera.PULLBACK_CAP_M": [DuelCamera.PULLBACK_CAP_M, 12.47], "DuelCamera.SIDE_DIST_MIN": [DuelCamera.SIDE_DIST_MIN, 8.0], "DuelCamera.SIDE_DIST_MAX": [DuelCamera.SIDE_DIST_MAX, 24.0], "DuelCamera.FOV_DEG": [DuelCamera.FOV_DEG, 60.0], "camera fov": [arena.duel_camera.cam.fov if arena.duel_camera else 60.0, 60.0], "Fighter.WALL_SPLAT_FRAMES": [float(Fighter.WALL_SPLAT_FRAMES), float(GDD_WALL_SPLAT_FRAMES)]}
 	for f: Fighter in [p1, p2]:
 		var d := f.data
 		got["%s.block_arc_deg" % d.id] = [d.block_arc_deg, GDD_BLOCK_ARC_DEG]
@@ -1255,7 +1341,7 @@ func _physics_process(_delta: float) -> void:
 				if gdd != "":
 					_fail("design numbers drifted from docs/GDD/02: " + gdd)
 					return
-				_ok("design numbers = GDD 02 literals: radius 20, camera K-1 (fov 60, behind 5/3.8→3.0/1.0, side 6+0.7·sep ∈ [8, 24], pull-back cap 12.47 m), yaw clamp 3°, pull-back 15°/30 %, block arc 70°, circling 0.8, cone 30°, wall splat 10 f, tracking and back-hit per move class")
+				_ok("design numbers = GDD 02 literals: radius 20, camera K-1 (fov 60, behind 5/3.8→3.0/1.0, side 6+0.68·sep ∈ [8, 24], pull-back cap 12.47 m), yaw clamp 3°, pull-back 15°/30 %, block arc 70°, circling 0.8, cone 30°, wall splat 10 f, tracking and back-hit per move class")
 				_ang0 = _bearing(p1, p2)
 				_d0 = _flat(p1.global_position - p2.global_position).length()
 				_swept = 0.0
@@ -2432,10 +2518,7 @@ func _physics_process(_delta: float) -> void:
 			for sep in seps:
 				var r: Array = _fr[sep]
 				var p2_min := 0.125 if behind_mode and sep >= 6.0 else 0.15   # Гермес 06 § Розмір бійця на телефоні: 12.5 %, stricter than Ares's 12 %
-				# side at sep 6: GDD 02's slope 0.7 (Арес) gives 15.3 % by its centre-distance formula, but the real projection of
-				# a fighter 3 m off the frame centre, from a camera lifted 1.8 m, measures 14.84 %; slope 0.68 measures ≥ 15 %.
-				# Handed back to T5 Арес (docs/Fix/2026-10-03-launch-6-controls-camera.md § Після #99) — held at 14.8 % meanwhile
-				var p1_min := 0.148 if not behind_mode and sep >= 6.0 else 0.15   # P1 only: P2 keeps GDD's 0.15 (T4 Launch 5/6 п. 3)
+				var p1_min := 0.15   # GDD 02: 15 % for both (side slope 0.68 closes T4 Launch 5/6 RED п. 3)
 				if r[0] < p1_min or r[1] > 0.30 or r[2] < p2_min or r[3] > 0.30 or r[4] < 0.15:
 					bad += " sep %.0f: P1 %.2f–%.2f %%, P2 %.2f–%.2f %% (want 15–30, P2 ≥ %.0f), margin %.0f %% (want ≥ 15);" % [sep, r[0] * 100, r[1] * 100, r[2] * 100, r[3] * 100, p2_min * 100, r[4] * 100]
 			if bad != "":
@@ -2555,6 +2638,8 @@ func _physics_process(_delta: float) -> void:
 			_next_to(137)
 		137:
 			_stage_a1_fixed_world()
+		138:
+			_stage_a2_arenas()
 		# ---------------- 3c: crystal ult (03 § Кристальна ульта Choko, Ares 3c-1) ----------------
 		140:
 			if not (flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable()):

@@ -16,7 +16,8 @@ func _ready() -> void:
 	GameState.p2_is_cpu = true
 	GameState.p1_character = "choko"
 	GameState.p2_character = "skea"
-	GameState.stage_index = 0
+	if not "--stage" in OS.get_cmdline_user_args():
+		GameState.stage_index = 0   # sprint A2: `-- --stage <id> [--night]` picks the arena for the shot
 	get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
 
 

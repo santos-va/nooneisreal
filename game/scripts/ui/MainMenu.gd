@@ -5,7 +5,8 @@ extends Control
 var _buttons: Array[Button] = []
 var _p1_btn: Button
 var _p2_btn: Button
-var _stage_btn: Button
+var stage_btn: Button   # STAGE / TIME rows (06-UI-UX § Арена й час доби в меню); the smoke presses them
+var time_btn: Button
 var _keys_btn: Button
 ## Bottom hint follows the focus (06-UI-UX § Кнопка «РЕЖИМ», «підказка внизу меню», T8): FIGHT/TRAINING → solo vs
 ## CPU, VERSUS → two players; every other row keeps the last of the three. Starts on FIGHT.
@@ -65,11 +66,12 @@ func _ready() -> void:
 	versus.focus_entered.connect(_set_hint.bind(false))
 	_p1_btn = _add(center, "", func(): GameState.cycle_character(1, 1); _refresh())
 	_p2_btn = _add(center, "", func(): GameState.cycle_character(2, 1); _refresh())
-	_stage_btn = _add(center, "", func(): GameState.cycle_stage(1); _refresh())
+	stage_btn = _add(center, "", func(): step_stage(1))
+	time_btn = _add(center, "", func(): toggle_time())
 	_keys_btn = _add(center, "", func(): InputRouter.cycle_profile(); _refresh())
 	mode_btn = _add(center, "", toggle_mode)
 	_add(center, "QUIT", func(): get_tree().quit())
-	for b in [_p1_btn, _p2_btn, _stage_btn, _keys_btn, mode_btn]:
+	for b in [_p1_btn, _p2_btn, stage_btn, time_btn, _keys_btn, mode_btn]:
 		b.gui_input.connect(_cycle_input.bind(b))
 	_card1 = _card_rect(Vector2(24, 470))
 	_card2 = _card_rect(Vector2(-504, 470))
@@ -118,8 +120,12 @@ func _cycle_input(event: InputEvent, b: Button) -> void:
 	elif b == mode_btn:
 		toggle_mode()
 		return
+	elif b == time_btn:
+		toggle_time()
+		return
 	else:
-		GameState.cycle_stage(dir)
+		step_stage(dir)
+		return
 	Sfx.play("ui_move", -10)
 	_refresh()
 	get_viewport().set_input_as_handled()
@@ -130,7 +136,8 @@ func _refresh() -> void:
 	var c2 := GameState.load_character(GameState.p2_character)
 	_p1_btn.text = "P1:  ◂ %s ▸" % (c1.display_name if c1 else GameState.p1_character)
 	_p2_btn.text = "P2:  ◂ %s ▸" % (c2.display_name if c2 else GameState.p2_character)
-	_stage_btn.text = "STAGE:  ◂ %s ▸" % GameState.stage().name
+	stage_btn.text = "STAGE:  ◂ %s ▸" % GameState.stage().get("label", GameState.stage().name)
+	time_btn.text = "TIME:  ◂ %s ▸" % ("NIGHT" if GameState.night else "DAY")
 	var solo := InputRouter.profile == InputRouter.PROFILE_SOLO
 	_keys_btn.text = "KEYBOARD:  ◂ %s ▸" % ("SOLO (P2 on gamepad)" if solo else "SHARED (two on one keyboard)")
 	mode_btn.text = "MODE:  ◂ %s ▸" % ("3D (free move)" if GameState.free_move else "2.5D (plane)")
@@ -145,6 +152,26 @@ func _set_hint(vs_cpu: bool) -> void:
 	hint_vs_cpu = vs_cpu
 	if _foot:
 		_foot.text = InputRouter.hint_text(hint_vs_cpu)
+
+
+## STAGE row: the next rotation arena, remembered in settings.cfg [gameplay] stage (id, not index).
+func step_stage(dir: int) -> void:
+	GameState.cycle_stage(dir)
+	GameState.save_stage_time()
+	Sfx.play("ui_move", -10)
+	_refresh()
+	if is_inside_tree():
+		get_viewport().set_input_as_handled()
+
+
+## TIME row: day ↔ night, remembered in settings.cfg [gameplay] time_of_day.
+func toggle_time() -> void:
+	GameState.night = not GameState.night
+	GameState.save_stage_time()
+	Sfx.play("ui_move", -10)
+	_refresh()
+	if is_inside_tree():
+		get_viewport().set_input_as_handled()
 
 
 ## MODE row: 2.5D ↔ 3D, remembered in user://settings.cfg; the keyboard re-binds and the hint updates at once.
