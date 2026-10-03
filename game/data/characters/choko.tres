@@ -25,7 +25,7 @@ hitbox_size = Vector3(1.2, 0.9, 1.0)
 meter_gain_hit = 8.0
 cancel_tier = 0
 sfx_hit = "hit_light"
-description = "Frames and hitstun/blockstun/hitstop within reference ranges (Combat-Numbers-Grounding §3-4, 02 § Кадри нормалей); damage PLACEHOLDER (feel, playtest). Clip: Sword_Regular_A + _A_Rec (C3). Quick sword poke; chains twice, cancels into heavy/skills."
+description = "Frames and hitstun/blockstun/hitstop within reference ranges (Combat-Numbers-Grounding §3-4, 02 § Кадри нормалей); damage PLACEHOLDER (feel, playtest). Clip: Sword_Light_A + _Rec (UAL Source, 4a). Quick sword poke; chains twice, cancels into heavy/skills."
 
 [sub_resource type="Resource" id="heavy"]
 script = ExtResource("2")
@@ -50,7 +50,7 @@ meter_gain_hit = 12.0
 forward_step = 0.5
 cancel_tier = 1
 sfx_hit = "hit_heavy"
-description = "Frames and hitstun/blockstun/hitstop within reference ranges (Combat-Numbers-Grounding §3-4, 02 § Кадри нормалей); damage PLACEHOLDER (feel, playtest). Clip: Sword_Regular_C (C3). Wide overhead slash with a step-in; cancels into skills and ultimate."
+description = "Frames and hitstun/blockstun/hitstop within reference ranges (Combat-Numbers-Grounding §3-4, 02 § Кадри нормалей); damage PLACEHOLDER (feel, playtest). Clip: Sword_Heavy_C + _Rec (UAL Source, 4a). Wide overhead slash with a step-in; cancels into skills and ultimate."
 
 [sub_resource type="Resource" id="crouch_light"]
 script = ExtResource("2")
@@ -72,12 +72,12 @@ hitbox_offset = Vector3(1.0, 0.6, 0)
 hitbox_size = Vector3(1.3, 0.7, 1.0)
 cancel_tier = 0
 sfx_hit = "hit_light"
-description = "Frames and hitstun/blockstun/hitstop within reference ranges (Combat-Numbers-Grounding §3-4, 02 § Кадри нормалей); damage PLACEHOLDER (feel, playtest). Clip: none in UAL Standard, RigAnimator pose (C3). Crouching poke (held S + light)."
+description = "Frames and hitstun/blockstun/hitstop within reference ranges (Combat-Numbers-Grounding §3-4, 02 § Кадри нормалей); damage PLACEHOLDER (feel, playtest). Clip: layered, lower Crouch_Idle_Loop + upper Sword_Light_A + _Rec (UAL Source, 4a). Crouching poke (held S + light)."
 
 [sub_resource type="Resource" id="air_light"]
 script = ExtResource("2")
 id = "air_light"
-display_name = "Dive Kick"
+display_name = "Dive Cut"
 kind = 0
 tracking_deg = 10.0
 backhit_hitstun_bonus = 2
@@ -94,7 +94,7 @@ hitbox_offset = Vector3(0.9, 0.7, 0)
 hitbox_size = Vector3(1.2, 1.1, 1.0)
 cancel_tier = 1
 sfx_hit = "hit_light"
-description = "Startup/active within reference ranges; hitstun/blockstun/hitstop PLACEHOLDER (only aerial heavies grounded, CN §3); damage PLACEHOLDER. Clip: none in UAL Standard, RigAnimator pose (C3). Jumping kick; also usable right after a grapple release."
+description = "Startup/active within reference ranges; hitstun/blockstun/hitstop PLACEHOLDER (only aerial heavies grounded, CN §3); damage PLACEHOLDER. Clip: Sword_Aerial_A + _Rec (UAL Source, 4a, approximate: a sword cut, not a kick). Diving cut; also usable right after a grapple release."
 
 [sub_resource type="Resource" id="skill1"]
 script = ExtResource("2")
@@ -145,7 +145,7 @@ damage = -1.0
 effect = "sword_storm"
 meter_cost = 100.0
 cancel_tier = 3
-description = "All numbers UNGROUNDED (CN §3): feel, playtest. Clip: none in UAL Standard, RigAnimator sword-up pose (C3). Eight spectral emerald blades rise behind Choko and rain down in a 5.4 m line in front: 6 hits x 26 + final 100 (ragdoll). Ultimate hits ignore combo scaling: 256 total."
+description = "All numbers UNGROUNDED (CN §3): feel, playtest. Clip: Sword_Heavy_D whole over 92 f (UAL Source, 4a, approximate). Eight spectral emerald blades rise behind Choko and rain down in a 5.4 m line in front: 6 hits x 26 + final 100 (ragdoll). Ultimate hits ignore combo scaling: 256 total."
 [sub_resource type="Resource" id="throw_move"]
 script = ExtResource("2")
 id = "hook_pull"
@@ -162,7 +162,7 @@ hitstun = 22
 cancel_tier = 1
 sfx_hit = "grapple_hit"
 sfx_whiff = "grapple_fire"
-description = "Numbers PLACEHOLDER: no comparable reference (CN §3). Clip: OverhandThrow (C3). Grapple verb 3: pull the enemy to you (crouch + grapple). Spends a grapple charge; no damage; opponent is stunned 22 f."
+description = "Numbers PLACEHOLDER: no comparable reference (CN §3). Clip: OverhandThrow (UAL Source). Grapple verb 3: pull the enemy to you (crouch + grapple). Spends a grapple charge; no damage; opponent is stunned 22 f."
 
 [resource]
 script = ExtResource("1")
