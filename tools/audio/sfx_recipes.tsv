@@ -77,10 +77,10 @@ sword	3	cut	*long two-handed axe flesh hit*	-9	0	200	2590,4975,7410
 # --- UI -----------------------------------------------------------------------------------------
 ui_move	1	blip	*kenney*/select_001.ogg	0	0	80
 ui_confirm	1	chime	*kenney*/confirmation_001.ogg	0	0	300
-# --- drone anchor ------------------------------------------------------------------------------
-# Drone anchor (ADR-011, #19): soft low hum + thin rising strain. Globs are a first guess — the packs live on
-# Santos's Mac and were not inspected; run `bash tools/audio/build_sfx.sh --list | grep -iE 'hum|drone|motor|engine|servo|whir'`
-# and narrow them. A layer with no match is skipped. The hum is cut + faded, so the engine loops it with a crossfade.
+# --- drone anchor (ADR-011, #19) -----------------------------------------------------------------
+# Soft low hum + thin rising strain. Globs are a first guess, NOT fitted to the packs (T6 had no access to
+# them from the cloud); narrow with `bash tools/audio/build_sfx.sh --list | grep -iE 'hum|drone|motor|engine|servo|whir'`.
+# A layer with no match is skipped. The hum is cut + faded, so the engine loops it with a crossfade.
 drone_hum	2	body	*hum*	-10	0	4000
 drone_hum	2	air	*whir*	-18	0	4000
 drone_strain	2	body	*servo*	-8	0	1200
