@@ -53,5 +53,18 @@
 1. Меню: `STAGE` гортає лише River → Bazaar → Fountain Square; під ним `TIME: DAY / NIGHT`. Вийди й зайди — вибір той самий.
 2. Кожна арена вдень і вночі: уночі місто темне й холодне; на Fountain Square вночі в небі рожевий неон CRONSHIFT (покрутись — він з одного боку).
 
+## Після аудиту Феміди ([[2026-10-03-Sprint-Lane-I-2]], пропозиції 1, 3, 4)
+
+- **П. 1.** Рядок `ADR-018 frame` друкує частки з `%.1f`: тепер `sep 6 — P1 15.0–15.3 %`, а не «15–15 %».
+- **П. 3, A5n.** Порядок завантаження винесено в `Main.boot(args, state, cfg_path)`: спершу збережене, потім прапорці; `_ready` викликає
+  саме його. Smoke викликає `Main.boot(["--stage", "bazaar"], …)` на свіжій копії `GameState` і тимчасовому cfg із «fountain/night» і
+  чекає `bazaar`. Злам A5n (прапорці перед збереженим) → `FAIL A2 menu/save: … Main.boot over saved fountain with --stage bazaar →
+  fountain`.
+- **П. 4.** `MainMenu.settings_path`: smoke ставить тимчасовий `user://smoke_menu_settings.cfg`, тож стадія 138 більше не пише у
+  `settings.cfg` гравця (бекап і відновлення прибрано). Злам «меню пише у файл гравця» → `FAIL … saved [<null>, <null>]`.
+- Розвилка Гермеса з п. 3 — `--day` / `--stage` скидає ніч — не чіпав: зараз `--stage river` при збереженій ночі лишає ніч.
+- Рядок MODE (стадія 415) досі пише `settings.cfg` гравця з бекапом. Це не пропозиція 4, не чіпав.
+- `make check` → `[smoke] ALL OK (156 checks) in 19190 frames`; `make gates` → `БАТАРЕЯ ЗЕЛЕНА`.
+
 ## Related
 - [[2026-10-03-Sprint-Arenas-VFX]] · [[06-UI-UX]] · [[Cronshift]] · [[2026-10-03-sprint-a1-fixed-world]] · [[02-Combat-System]] · [[Backgrounds]] · [[state]]

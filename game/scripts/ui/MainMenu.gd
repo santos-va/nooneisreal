@@ -7,6 +7,8 @@ var _p1_btn: Button
 var _p2_btn: Button
 var stage_btn: Button   # STAGE / TIME rows (06-UI-UX § Арена й час доби в меню); the smoke presses them
 var time_btn: Button
+## Where STAGE/TIME are remembered; the smoke points it at a temp file so the player's settings.cfg is never written.
+var settings_path: String = InputRouter.SETTINGS_PATH
 var _keys_btn: Button
 ## Bottom hint follows the focus (06-UI-UX § Кнопка «РЕЖИМ», «підказка внизу меню», T8): FIGHT/TRAINING → solo vs
 ## CPU, VERSUS → two players; every other row keeps the last of the three. Starts on FIGHT.
@@ -157,7 +159,7 @@ func _set_hint(vs_cpu: bool) -> void:
 ## STAGE row: the next rotation arena, remembered in settings.cfg [gameplay] stage (id, not index).
 func step_stage(dir: int) -> void:
 	GameState.cycle_stage(dir)
-	GameState.save_stage_time()
+	GameState.save_stage_time(settings_path)
 	Sfx.play("ui_move", -10)
 	_refresh()
 	if is_inside_tree():
@@ -167,7 +169,7 @@ func step_stage(dir: int) -> void:
 ## TIME row: day ↔ night, remembered in settings.cfg [gameplay] time_of_day.
 func toggle_time() -> void:
 	GameState.night = not GameState.night
-	GameState.save_stage_time()
+	GameState.save_stage_time(settings_path)
 	Sfx.play("ui_move", -10)
 	_refresh()
 	if is_inside_tree():

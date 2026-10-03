@@ -525,13 +525,14 @@ func _stage_a2_arenas() -> void:
 		_load_arena(GameState.stage_index_of(variants[_a2_k][0]), 138)
 		return
 	GameState.night = false
-	# menu rows (06-UI-UX § Арена й час доби в меню), on the player's settings file — backed up and restored
-	var path := InputRouter.SETTINGS_PATH
-	var had := FileAccess.file_exists(path)
-	var before := FileAccess.get_file_as_string(path) if had else ""
+	# menu rows (06-UI-UX § Арена й час доби в меню) on a temp settings file — the player's is never touched (T4 Lane I-2,
+	# proposal 4)
+	var path := "user://smoke_menu_settings.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	var idx0 := GameState.stage_index
 	GameState.set_stage("river")
 	var menu: Control = load("res://scripts/ui/MainMenu.gd").new()
+	menu.settings_path = path
 	get_tree().root.add_child(menu)
 	var shown: Array = []
 	for i in 3:
@@ -545,12 +546,7 @@ func _stage_a2_arenas() -> void:
 	cfg.load(path)
 	var saved := [cfg.get_value("gameplay", "stage", null), cfg.get_value("gameplay", "time_of_day", null)]
 	menu.free()
-	if had:
-		var f := FileAccess.open(path, FileAccess.WRITE)
-		f.store_string(before)
-		f.close()
-	else:
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	# pure round trip on a temp file; launch flags win for the run; the smoke never reads settings
 	var main_script: GDScript = load("res://scripts/core/Main.gd")
 	var tmp := "user://smoke_stage_settings.cfg"
@@ -570,14 +566,18 @@ func _stage_a2_arenas() -> void:
 	var gs5: Node = GameState.get_script().new()
 	gs5.set_stage("back_alley")
 	var non_rot: String = gs5.stage_id()
-	for n in [gs, gs2, gs3, gs4, gs5]:
+	# the boot wiring itself (T4 Lane I-2, proposal 3): Main.boot() with saved fountain/night and `--stage bazaar` → bazaar
+	var gs6: Node = GameState.get_script().new()
+	main_script.boot(PackedStringArray(["--stage", "bazaar"]), gs6, tmp)
+	var booted: String = gs6.stage_id()
+	for n in [gs, gs2, gs3, gs4, gs5, gs6]:
 		n.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))
 	GameState.stage_index = idx0
-	if shown != ["bazaar", "fountain", "river"] or times != [true, false] or saved != ["river", "day"] or back != ["fountain", true] or not smoke_ignores or flags != ["bazaar", true] or non_rot != "river":
-		_fail("A2 menu/save: STAGE ×3 %s (want bazaar, fountain, river), TIME ×2 %s, saved %s, temp round trip %s, smoke ignores saved %s, --stage bazaar --night %s, back_alley → %s (want river)" % [shown, times, saved, back, smoke_ignores, flags, non_rot])
+	if shown != ["bazaar", "fountain", "river"] or times != [true, false] or saved != ["river", "day"] or back != ["fountain", true] or not smoke_ignores or flags != ["bazaar", true] or non_rot != "river" or booted != "bazaar":
+		_fail("A2 menu/save: STAGE ×3 %s (want bazaar, fountain, river), TIME ×2 %s, saved %s, temp round trip %s, smoke ignores saved %s, --stage bazaar --night %s, back_alley → %s (want river), Main.boot over saved fountain with --stage bazaar → %s (want bazaar)" % [shown, times, saved, back, smoke_ignores, flags, non_rot, booted])
 		return
-	_ok("A2 arenas: %s — each with its own light, night ≠ day, CRONSHIFT neon only on fountain/night; menu STAGE cycles river → bazaar → fountain only, TIME day ↔ night, saved as ids, --stage/--night for the run, smoke ignores settings" % ", ".join(_a2_seen))
+	_ok("A2 arenas: %s — each with its own light, night ≠ day, CRONSHIFT neon only on fountain/night; menu STAGE cycles river → bazaar → fountain only, TIME day ↔ night, saved as ids (menu on a temp file), --stage/--night for the run and win over the saved choice in Main.boot, smoke ignores settings" % ", ".join(_a2_seen))
 	_a2_k = -1
 	_a2_seen = []
 	_next_to(139)
@@ -2719,7 +2719,7 @@ func _physics_process(_delta: float) -> void:
 			var txt := ""
 			for sep in seps:
 				var r2: Array = _fr[sep]
-				txt += " sep %.0f — P1 %.0f–%.0f %%, P2 %.0f–%.0f %%, margin ≥ %.0f %%;" % [sep, r2[0] * 100, r2[1] * 100, r2[2] * 100, r2[3] * 100, r2[4] * 100]
+				txt += " sep %.0f — P1 %.1f–%.1f %%, P2 %.1f–%.1f %%, margin ≥ %.1f %%;" % [sep, r2[0] * 100, r2[1] * 100, r2[2] * 100, r2[3] * 100, r2[4] * 100]
 			_ok("ADR-018 frame %s, 180° at 1.25°/tick, sep 1/4/6:%s" % ["behind" if behind_mode else "side", txt])
 			if _stage == 132:
 				GameState.p2_is_cpu = false
