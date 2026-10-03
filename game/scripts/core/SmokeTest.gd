@@ -2317,10 +2317,10 @@ func _physics_process(_delta: float) -> void:
 				_fail("camera side: round never started")
 		# ---------------- launch 6, ADR-018: the pair framed with air, behind (132) and side-on (133) --------
 		132, 133:
-			# P2 walks a full circle around P1 at sep 1, 4, 6 m (placed 2°/tick); every tick both fighters must take
+			# P2 walks a full circle around P1 at sep 1, 4, 6 m (placed 2.5°/tick); every tick both fighters must take
 			# 15–30 % of the frame height (P2 behind at sep 6: ≥ 12 %) with ≥ 15 % of the width to the edge
 			var seps := [1.0, 4.0, 6.0]
-			var per := 60 + 180
+			var per := 40 + 144   # settle, then 360° at 2.5°/tick
 			var t := _f - _f0 - 5
 			if t < 0:
 				if p2._brain != null:
@@ -2331,9 +2331,9 @@ func _physics_process(_delta: float) -> void:
 			if k < seps.size():
 				var sep: float = seps[k]
 				var u := t % per
-				_place(p2, p1, sep, float(maxi(u - 60, 0)) * 2.0)
+				_place(p2, p1, sep, float(maxi(u - 40, 0)) * 2.5)
 				p1.global_position = Vector3(0.0, p1.global_position.y, 0.0) if u == 0 else p1.global_position
-				if u > 60 + 10:
+				if u > 40 + 10:
 					var m := _frame_metrics()
 					var key := sep
 					var cur: Array = _fr.get(key, [1.0, 0.0, 1.0, 0.0, 1.0])
@@ -2343,7 +2343,7 @@ func _physics_process(_delta: float) -> void:
 			var bad := ""
 			for sep in seps:
 				var r: Array = _fr[sep]
-				var p2_min := 0.12 if behind_mode and sep >= 6.0 else 0.15
+				var p2_min := 0.125 if behind_mode and sep >= 6.0 else 0.15   # Гермес 06 § Розмір бійця на телефоні: 12.5 %, stricter than Ares's 12 %
 				# GDD 02's own side formula (6 + 0.75·6 = 10.5 m) gives 14–15 % at sep 6, under its smoke's 15 %:
 				# a GDD inconsistency handed to T5 Арес (docs/Fix/2026-10-03-launch-6-controls-camera.md) — held at 14 % meanwhile
 				var p1_min := 0.14 if not behind_mode and sep >= 6.0 else 0.15
@@ -2411,7 +2411,26 @@ func _physics_process(_delta: float) -> void:
 				_fail("anchors on the 20 m circle: at %s the nearest anchor is %.1f m away (grapple_range %.0f)" % [worst_at, worst, reach])
 				return
 			_ok("anchors on the %.0f m circle: from all %d grid points an anchor within %.1f m ≤ grapple_range %.0f" % [GDD_ARENA_RADIUS, pts, worst, reach])
-			_next_to(140)
+			_next_to(135)
+		135:
+			# 20 m circle, T1 handoff п. 3(б): a fighter walking out along +x at z = 0 reaches the circle's edge — the
+			# plane's invisible WallL/WallR (x = ±13.5, layer 1, fighters mask 1) must not stop it at ≈ 13
+			if _f == _f0 + 1:
+				p2.global_position = Vector3(5.0, p2.global_position.y, 0.0)
+				p1.global_position = Vector3(11.0, p1.global_position.y, 0.0)
+				_rmax = 0.0
+			if _f > _f0 + 1:
+				var away := (p1.global_position.x - p2.global_position.x) * GameState.duel.right.x > 0.0
+				InputRouter.v_set(1, "right", away)
+				InputRouter.v_set(1, "left", not away)
+				_rmax = maxf(_rmax, p1.global_position.x)
+			if _f > _f0 + 150:
+				InputRouter.v_clear(1)
+				if _rmax < GDD_ARENA_RADIUS - 0.1:
+					_fail("20 m circle: walking out along +x from x = 11 stopped at x %.2f (want the edge %.0f) — a plane wall in the way?" % [_rmax, GDD_ARENA_RADIUS])
+					return
+				_ok("20 m circle: walking out along +x from x = 11 reaches x %.2f — no plane wall in 3D" % _rmax)
+				_next_to(140)
 		# ---------------- 3c: crystal ult (03 § Кристальна ульта Choko, Ares 3c-1) ----------------
 		140:
 			if not (flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable()):
@@ -2440,6 +2459,11 @@ func _physics_process(_delta: float) -> void:
 				_fail("3c crystal ult shape: " + bad)
 				return
 			# Skea under his (armored) ult: a rain tick lands as armored damage; the blast breaks the ult (Santos «так»)
+			# no spell already on him (Printer's «Seen» sticker, DoT, armor break, time stop) — the blast alone must break it
+			p2.revealed_frames = 0
+			p2.dot_frames = 0
+			p2.armor_break_frames = 0
+			p2.frozen_frames = 0
 			p2.current_move = p2.data.ultimate
 			p2._set_state(Fighter.State.ATTACK)
 			p2.move_frame = p2.data.ultimate.startup + 2
