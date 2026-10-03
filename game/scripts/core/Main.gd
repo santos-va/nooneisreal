@@ -3,7 +3,9 @@ extends Node
 
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
-	if "--free-move" in args:
+	if "--plane" in args:
+		GameState.set_free_move(false)   # the 0.2 side-on fight
+	elif "--free-move" in args:
 		GameState.set_free_move(true)
 	if "--smoke" in args:
 		var t := SmokeTest.new()

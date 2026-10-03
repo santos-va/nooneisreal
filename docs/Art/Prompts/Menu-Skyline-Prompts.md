@@ -492,5 +492,23 @@ only turn him to a three-quarter front view». Референси 2–3 — K-0 
 | M-0 | Choko | `2488e146-f049-4469-9aad-4a512a810022` | https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_034701_2488e146-f049-4469-9aad-4a512a810022.glb | `completed`; чекає ока Santos |
 | M-1 | Skea | `f7f95324-7686-48af-8d0c-3f4d5010502c` | https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_034702_f7f95324-7686-48af-8d0c-3f4d5010502c.glb | `completed`; чекає ока Santos |
 
+
+### Ціна кліпів для дір C3 (Арес) — `get_cost`, 0 кредитів
+
+`balance` 5668 до замірів. Після замірів `balance` не знято: класифікатор дозволів відхилив виклик. `get_cost` нічого не подає, тож списання не було.
+Виклик: `generate_3d` `model: 3d_rigging`, `enable_animation: true`, `get_cost: true`, `model_url` — GLB з таблиці C2 вище.
+
+| дірка ([[02-Combat-System]] § Кліп → удар) | герой · GLB | `animation_action_id` | ціна |
+|---|---|---|---|
+| `air_light` | Choko · M-0 | 94 `Flying_Fist_Kick` | 8 |
+| `sword_up` | Choko · M-0 | 242 `Charged_Slash` | 8 |
+| сальто | Choko · M-0 | 601 `Backflip_inplace` | 8 |
+| `roundhouse` | Skea · M-1 | 649 `Lunge_Roundhouse_Kick_inplace` | 8 |
+| `low_kick` | Skea · M-1 | 217 `Sweeping_Kick` | 8 |
+| `flying_knee` | Skea · M-1 | 211 `Boxing_Guard_Step_Knee_Strike` | 8 |
+
+Разом 6 × 8 = **48** кр. Запасні id (422, 102, 452, 207, 455) не міряв. Генерація — RED, слово Santos.
+Що повертає виклик (GLB з одним кліпом чи увесь риг заново) — **не перевірено**, побачимо на першому запуску.
+
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Cronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
