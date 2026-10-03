@@ -59,6 +59,25 @@
 **Питання до Santos:** звідки 9 FBX Creative Trio — з creativetrio.art безкоштовно чи куплені в сторі (Sketchfab / ArtStation / Fab)?
 Якщо стор або «не пам'ятаю» — прибрати їх із публічної гілки (RED, лише твоє слово).
 
+## Третя частина — Creative Trio прибрано з гілки (того ж дня)
+
+**Питання Santos:** «Тоді шо робимо?» T1 запропонував робити далі без Creative Trio: на критичному шляху їх немає, а палітр до
+них у Santos немає (журнал [[2026-10-03-T1-Repo-Cleanup-Packs]]). Що робити з 9 FBX на публічній гілці — опитування, 4 варіанти.
+
+**Рішення Santos:** «Прибрати повністю» — з верхівки й з історії гілки (RED, слово Santos в опитуванні).
+
+**Що зроблено (команда → вихід):**
+- Тільки `textures/santos-pack` містила старі коміти: `git merge-base --is-ancestor 7ce1ba3|6210890 <кожна віддалена гілка>` → лише вона; тегів 0.
+- Перезбірка у тимчасовому worktree у scratchpad від `f94f0c8`: KayKit-коміт без FBX (`46da3e6`, автор і дата Santos), далі
+  cherry-pick MegaKit (`6bd36a2`).
+- Перевірка до пушу: `git diff --name-status <стара верхівка> <нова>` → рівно 9 `D` (FBX); `git log f94f0c8..HEAD -- '*.fbx'` → 0.
+- `git push --force-with-lease=refs/heads/textures/santos-pack:6210890` → `+ 6210890...6bd36a2 (forced update)`;
+  `git ls-tree -r origin/textures/santos-pack tools/packs | grep -c '\.fbx$'` → 0; worktree знесено.
+- Не перевірено: чи GitHub ще віддає старі коміти за SHA.
+
+**Наслідок для Mac:** локальна `textures/santos-pack` має стару історію. Вирівнювати `git reset --hard origin/textures/santos-pack`,
+**не** `git pull` — pull поверне FBX. Команди в плані § Як закинути пак оновлено.
+
 ## Related
 - [[2026-10-03-Santos-Packs-Arenas]] · [[2026-10-03-Pack-Licenses]] · [[2026-10-03-T1-Repo-Cleanup-Packs]] · [[2026-10-03-Sprint-Arenas-VFX]] · [[2026-10-03-Free-Cartoon-Texture-Sources]] ·
   [[2026-10-03-Arena-360-Textures]] · [[Textures-Registry]] · [[Stage-River]] · [[state]]

@@ -22,7 +22,7 @@
 
 | що | команда | вихід |
 |---|---|---|
-| паки Santos | `git log --oneline origin/main..origin/textures/santos-pack` | 1 коміт `7ce1ba3` «Prop packs from Santos: KayKit Dungeon EXTRA + FBX props», 10 файлів у `tools/packs/`; у `main` не змерджено, PR немає |
+| паки Santos | `git log --oneline origin/main..origin/textures/santos-pack` | 1 коміт `7ce1ba3` «Prop packs from Santos: KayKit Dungeon EXTRA + FBX props», 10 файлів у `tools/packs/`; у `main` не змерджено, PR немає. **Після переписування** (Santos «прибрати повністю», 2026-10-03): `46da3e6` KayKit + `6bd36a2` MegaKit, FBX — 0 |
 | KayKit Dungeon 1.1 EXTRA | `unzip` → `License.txt` | **CC0 1.0**, Kay Lousberg, «free to use in personal, educational and commercial projects» (файл відкрито в цій сесії) |
 | скільки моделей KayKit | `ls Assets/gltf/*.gltf \| wc -l` | **283**; формати: gltf, fbx, fbx(unity), obj |
 | текстура KayKit | `Assets/textures/dungeon_texture.png` (PNG-заголовок) | **одна палітра-атлас 1024×1024**: 8×4 плашки-градієнти; ще 6 альтернатив (`Golden`, `BlackAndWhite`, `SepiaA/B`, `NightA/B`). Деталей у текстурі немає — «чіткість» KayKit дає наш toon + контур, не роздільність |
@@ -86,13 +86,14 @@
 |---|---|---|---|---|
 | KayKit Dungeon 1.1 EXTRA | **CC0 1.0** | `License.txt` у zip, відкрито в сесії T1 | так | так |
 | Quaternius Fantasy Props MegaKit [Standard] | **CC0 1.0** | `git show origin/textures/santos-pack:tools/packs/Fantasy_Props_MegaKit_Standard/License_Standard.txt` → «License: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication» | так | так |
-| Creative Trio, 9 FBX | **UNGROUNDED** | автор роздає ті самі паки під CC0 на сайті й продає в сторах; у файлах ні `License`, ні URL; CC0 на сайті видача підтверджує лише для `Stone_Bridges_01` і `Potions_Final_CT`, `Wooden_Bridges_001` знайдено **тільки в сторах** | **ні — карантин** | **ні** |
+| Creative Trio, 9 FBX | **UNGROUNDED** | автор роздає ті самі паки під CC0 на сайті й продає в сторах; у файлах ні `License`, ні URL; CC0 на сайті видача підтверджує лише для `Stone_Bridges_01` і `Potions_Final_CT`, `Wooden_Bridges_001` знайдено **тільки в сторах** | **прибрано з гілки** | **ні** |
 
-**Карантин Creative Trio (рішення T1 до відповіді Santos).** Жоден із 9 FBX не йде в `game/assets/` і не вантажиться в
-Higgsfield, поки Santos не скаже канал (сайт creativetrio.art безкоштовно чи стор із купівлею) і не докладе `License` кожного
-паку. Причина: якщо канал — стор, ліцензія прив'язана до покупця, а гілка лежить у **публічному** репо
-(GitHub API `search_repositories repo:santos-va/nooneisreal` → `"visibility":"public"`; те саме — журнал [[2026-10-03-T1-Repo-Cleanup-Packs]]) — це вже поширення сирців. Тоді
-прибрати FBX з гілки — **RED (видалення ассетів), лише слово Santos**.
+**Creative Trio прибрано (Santos «прибрати повністю», 2026-10-03).** Спершу T1 поставив 9 FBX на карантин, бо канал
+завантаження невідомий. Якщо це стор, ліцензія прив'язана до покупця, а гілка лежить у **публічному** репо
+(GitHub API `search_repositories repo:santos-va/nooneisreal` → `"visibility":"public"`; те саме — журнал [[2026-10-03-T1-Repo-Cleanup-Packs]]) — це вже поширення сирців. Santos обрав повне прибирання: гілку `textures/santos-pack` перезібрано без FBX
+(force-push `6210890` → `6bd36a2` із замком на старий SHA; `git diff --name-status` старої й нової верхівки → рівно 9 `D`;
+`git log f94f0c8..6bd36a2 -- '*.fbx'` → 0 комітів). Чи GitHub ще віддає старі коміти за SHA — не перевірено. Повернути
+Creative Trio можна лише новим завантаженням з creativetrio.art з `License` і палітрами — тоді знову через Архімеда.
 
 Критичний шлях від Creative Trio **не залежить**: усе, крім дерев і кам'яного мосту, закривають KayKit і MegaKit (таблиця
 нижче, колонка «заміна»).
@@ -148,7 +149,7 @@ game/assets/
 | 6 | каміння, руїни | береги `river` | `rocks`, `rubble_half` |
 | 39 + 1 | поза Cronshift: грати, шипи, мімік, ліжка, зброя, ключі, кирки | резерв, у гру не йде | `bar_straight_A`, `floor_tile_big_spikes`, `chest_mimic` |
 
-**Creative Trio, 9 FBX, 187 мешів** — **карантин** (§ Ліцензії паків). Остання колонка — чим закриваємо без них:
+**Creative Trio, 9 FBX, 187 мешів** — **прибрано з гілки** (§ Ліцензії паків). Таблиця лишається довідкою: що це було і чим закриваємо без них:
 
 | файл | мешів | що | арена | зауваги | заміна з CC0-паків |
 |---|---|---|---|---|---|
@@ -162,7 +163,7 @@ game/assets/
 | `Potions_Final_CT.fbx` | 16 | пляшки-зілля | ятка спецій `bazaar` W; **«хілочки»** майбутньої крамниці | імена `Cylinder.*`, `Sphere.*` → перейменувати; є emission | MegaKit `Potion_1/2/4`, `SmallBottles_1`, `Shelf_Small_Bottles`; KayKit `bottle_*` |
 | `Food_01_CT.fbx` | 10 | бургер, картопля, хот-дог, стейк, сосиска, пиріг | їжа на ятках `bazaar` | бургер і паперовий стакан — сучасні; чи пасує старому Cronshift — Кліо/Santos | MegaKit `Barrel_Apples`, `FarmCrate_Apple/Carrot`, `Carrot`, `Cauldron`, `Pot_1`; KayKit `plate_food_*` — і питання про бургер знімається |
 
-**Quaternius Fantasy Props MegaKit [Standard]** — **на гілці** `textures/santos-pack` (`6210890`, T1 за словом Santos):
+**Quaternius Fantasy Props MegaKit [Standard]** — **на гілці** `textures/santos-pack` (`6bd36a2`; до переписування — `6210890`; T1 за словом Santos):
 `tools/packs/Fantasy_Props_MegaKit_Standard/` — лише `Exports/glTF` (94 `.gltf` + 94 `.bin` + 13 `.png`, 43 МБ) і
 `License_Standard.txt` (CC0 1.0; «standard FREE version… only contains a portion of the models» — повні Pro/Source платні).
 Архів 150 МБ цілим не проходить ліміт GitHub 100 МБ; FBX, OBJ і нормалі UE не взято.
@@ -193,10 +194,10 @@ game/assets/
 
 | # | хто | що | ризик | перевірка |
 |---|---|---|---|---|
-| 0.1 | Santos | докласти на гілку `textures/santos-pack` палітри `CT_Pallete.png`, `EK_Pallete.png`, `CT_Rocks_Palette.png` і файли ліцензії Creative Trio з тих самих завантажень (на Mac їх немає: `mdfind -name CT_Pallete` → 0 — докачати); ~~закинути MegaKit~~ — **зроблено** (`6210890`) | без палітр 9 FBX — сірі | `git ls-tree -r --name-only origin/textures/santos-pack tools/packs \| grep -ci pal` → ≥ 3 |
+| 0.1 | Santos | **зроблено / знято**: MegaKit на гілці (`6bd36a2`); палітри Creative Trio більше не потрібні — пак прибрано | — | `git ls-tree -r --name-only origin/textures/santos-pack tools/packs \| grep -c '\.fbx$'` → 0 |
 | 0.2 | T3 Архімед | **зроблено** — [[2026-10-03-Pack-Licenses]]: MegaKit CC0 (закрито `License_Standard.txt`), Creative Trio UNGROUNDED → карантин (§ Ліцензії паків). Лишилось: Santos — канал і `License` Creative Trio | CC-BY → рядок у титрах; NoAI → не можна ганяти через Higgsfield | файл існує; у кожного паку — цитата + URL + дата або `UNGROUNDED` |
 | 0.3 | T2 Гефест | контакт-лист паків: PNG-сітка всіх мешів з іменами (будь-яким способом — Godot на Mac або скрипт у `tools/art/`), у `docs/assets/screenshots/` | без картинки T6 і Кліо називають наосліп | `ls docs/assets/screenshots/packs_*.png` → по одному на пак |
-| 0.4 | Santos | дерева для площі й набережної — у CC0-паках їх немає. Варіанти: підтвердити канал `Trees_Pack_02` (Creative Trio) або докачати Quaternius Stylized Nature MegaKit (CC0 за переказом T3, [[2026-10-03-Free-Cartoon-Texture-Sources]] № 2) тим самим способом, що MegaKit | без дерев площа гола; нічого не ламає | `git ls-tree -r --name-only origin/textures/santos-pack \| grep -ci tree` → ≥ 1 |
+| 0.4 | Santos | дерева для площі й набережної — у CC0-паках їх немає. Варіант: докачати Quaternius Stylized Nature MegaKit (CC0 за переказом T3, [[2026-10-03-Free-Cartoon-Texture-Sources]] № 2) тим самим способом, що MegaKit | без дерев площа гола; нічого не ламає | `git ls-tree -r --name-only origin/textures/santos-pack \| grep -ci tree` → ≥ 1 |
 
 ### Ф1. Каталог і імена — T7 Кліо + T2 Гефест
 
@@ -248,7 +249,7 @@ game/assets/
 
 | # | що | де |
 |---|---|---|
-| 0a | реєстр: розділ «Паки-джерела» — KayKit Dungeon 1.1 EXTRA (CC0, `License.txt` відкрито), MegaKit (CC0, `License_Standard.txt`), Creative Trio ×9 — рядок «карантин, UNGROUNDED» без шляхів у `game/assets/` | [[Textures-Registry]] |
+| 0a | реєстр: розділ «Паки-джерела» — KayKit Dungeon 1.1 EXTRA (CC0, `License.txt` відкрито), MegaKit (CC0, `License_Standard.txt`), Creative Trio — не реєструємо: прибрано з гілки (§ Ліцензії паків) | [[Textures-Registry]] |
 | 0b | **ключ стилю**: промпт «перемалюй цей кадр у Sketch-Cel» — вхід `Samples/Dungeon_sample_big.png` з паку KayKit (CC0) + канон `a2913501`; виходом визначається палітра-ціль | [[Prompt-Library]] новий § «Ключ стилю» |
 | 0c | `Palette-Remap.md` (Ф3.1) — чернетка з hex [[Style-Guide]] ще до ключа стилю | `docs/Art/Palette-Remap.md` |
 | 0d | **кільце v2 «менше деталей»**: переписати SCENE трьох арен — великі силуети, 3–5 масивів на картку, жодних дрібних вивісок і людей; ближні 3–8 м прибрати з картки (їх дають 3D-пропи) | [[Arenas-360-Prompts]] § v2 |
@@ -307,18 +308,16 @@ Santos каже «стиль так» → хвиля 2. «Ні» → T6 прав
 cd <твоя копія nooneisreal>
 git fetch origin
 git switch textures/santos-pack
-git pull
-ls -lh ~/Downloads/*MegaKit*            # GitHub не прийме файл > 100 МБ
-cp ~/Downloads/<архів MegaKit>.zip tools/packs/
-cp <теки Creative Trio>/CT_Pallete.png <…>/EK_Pallete.png <…>/CT_Rocks_Palette.png tools/packs/
-# файл ліцензії кожного паку Creative Trio — під своїм іменем, щоб не перезаписались:
-cp <тека паку>/License.txt tools/packs/License_<пак>.txt
+git reset --hard origin/textures/santos-pack   # НЕ git pull: гілку переписано 2026-10-03, pull поверне 9 FBX Creative Trio
+ls -lh ~/Downloads/<архів паку>.zip           # GitHub не прийме файл > 100 МБ
+mkdir -p tools/packs/<Пак> && cp -R <розпакована тека glTF> tools/packs/<Пак>/
+cp <тека паку>/License*.txt tools/packs/<Пак>/   # без файла ліцензії пак у гру не йде
 git add tools/packs
-git commit -m "Packs from Santos: Quaternius Fantasy Props MegaKit Standard, Creative Trio palettes"
+git commit -m "Pack from Santos: <назва паку>"
 git push
 ```
 
-Якщо `ls -lh` показує архів понад 100 МБ — розпакуй і клади лише теку з glTF і текстурами + файл ліцензії. Далі скажи
+Клади лише glTF із текстурами + файл ліцензії, як із MegaKit: архів цілим часто більший за 100 МБ (MegaKit — 150 МБ). Далі скажи
 будь-якому терміналу «пак на гілці» — він робить інвентар (Ф0.3) і додає рядок у § Що з паків куди.
 
 ## Related
