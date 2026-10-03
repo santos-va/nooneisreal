@@ -62,6 +62,11 @@ smoke	1	hiss	*chemical_weapon_black_smoke*	-4	0	900
 smoke	1	pop	*big cardboard box impact*	-8	0	150	295
 book	1	page	*large book squeak page turn*	0	0	700	1450
 book	1	dread	*dark tone thrill*	-2	0	1400
+# ult_end: the grimoire slams shut over the bass cut-out of ult_skea_bass.ogg (plan Skea-Ult-Bass, step 4).
+# Page flick (catalog onset 1199 ms -> start 1190) + cardboard thump as the cover + cinematic boom as the low tail.
+ult_end	1	page	*large book squeak page turn*	-6	0	250	1190
+ult_end	1	slam	*big cardboard box impact*	0	0	220
+ult_end	1	tail	*modern_cinematic_impact_boom_003*	-6	0	1800
 crit	2	crunch	*bone breaks celery*	6	0	260	8615,11805
 crit	2	shatter	*glass break hit_04*	-6	0	400	90
 crit	2	ring	*metallic bell_ 22*	-12	0	500	40
