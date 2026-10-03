@@ -585,6 +585,7 @@ func _tick_attack(delta: float) -> void:
 		return
 	if move_frame == m.startup:
 		Sfx.play(m.sfx_whiff, -4)
+		_strike_smear(m)
 		if m.effect != "":
 			_activate_effect(m)
 		if pull_pending:
@@ -603,6 +604,16 @@ func _tick_attack(delta: float) -> void:
 			_set_state(State.JUMP)
 		else:
 			_set_state(State.IDLE)
+
+
+## Ink smear along the strike on the first active frame (step 1.5): heavier moves leave more.
+func _strike_smear(m: MoveData) -> void:
+	if m.damage <= 0.0 or m.hitbox_size == Vector3.ZERO:
+		return
+	var from := global_position + Vector3(facing * 0.25, m.hitbox_offset.y, 0.0)
+	var to := global_position + Vector3(facing * (m.hitbox_offset.x + m.hitbox_size.x * 0.5), m.hitbox_offset.y, 0.0)
+	var heavy := m.damage >= 70.0
+	SmearShards.burst(Fx.root(self), from, to, [data.vfx_primary, data.accent_color, Color(0.05, 0.03, 0.08)], 10 if heavy else 5, 3 if heavy else 2)
 
 
 func _activate_effect(m: MoveData) -> void:
@@ -742,7 +753,7 @@ func receive_hit(attacker: Fighter, m: MoveData) -> void:
 	stun_frames = m.hitstun
 	velocity.x = kb.x
 	velocity.y = kb.y
-	animator.flinch(Vector3(float(attacker.facing), 0, 0), dmg, facing)
+	animator.flinch(Vector3(float(attacker.facing), 0, 0), dmg, facing, _zone_for(attacker, m))
 	_set_state(State.HITSTUN)
 
 

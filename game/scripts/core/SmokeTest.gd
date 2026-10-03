@@ -20,6 +20,11 @@ var _profile0: String = ""
 var _old_arena: Node = null
 var _river_runs: Array = []
 var _river_min_gap: float = 99.0
+var _atk_frames: int = 0
+var _pose_changes: int = 0
+var _last_pose: Array = []
+var _run: int = 0
+var _max_run: int = 0
 
 
 func _ready() -> void:
@@ -186,9 +191,38 @@ func _physics_process(_delta: float) -> void:
 		2:
 			if _f == _f0 + 2 or _f == _f0 + 14:
 				InputRouter.v_press(1, "light")
+			if p1.state == Fighter.State.ATTACK and p1.current_move != null and p1.chain_index == 0:
+				if p1.move_frame == 2:
+					_shot("00a_strike_windup")
+				elif p1.move_frame == p1.current_move.startup + 1:
+					_shot("00b_strike_impact")
+			if p1.state == Fighter.State.ATTACK:
+				_atk_frames += 1
+				var snap: Array = p1.animator.pose.values()
+				if snap != _last_pose:
+					_pose_changes += 1
+					_run += 1
+					_max_run = maxi(_max_run, _run)
+				else:
+					_run = 0
+				_last_pose = snap
+			else:
+				_run = 0
 			if _f > _f0 + 50:
 				if p2.hp < p2.data.max_hp:
 					_ok("light string hit: p2 hp %.0f/%.0f" % [p2.hp, p2.data.max_hp])
+					# 12 fps stepping: the arm may change only on step/key frames, never every frame
+					# held drawings: a pose may change on two adjacent frames at most (a key frame next to
+					# a step), never in a longer run — a run ≥ 3 means per-frame (60 fps) motion
+					if _pose_changes < 2 or _max_run > 2:
+						_fail("attack pose stepping: %d changes, longest run of changing frames %d (want ≤ 2)" % [_pose_changes, _max_run])
+						return
+					var wind := RigAnimator.attack_ext(0.45)
+					var over := RigAnimator.attack_ext(1.0)
+					if wind >= 0.0 or over <= 1.0 or absf(RigAnimator.attack_ext(3.0)) > 0.001:
+						_fail("attack curve: wind-up %.2f, overshoot %.2f" % [wind, over])
+						return
+					_ok("strike readability: pose changed %d× over %d attack frames, longest run %d (12 fps steps), wind-up %.2f, overshoot %.2f, flinch zone '%s'" % [_pose_changes, _atk_frames, _max_run, wind, over, p2.animator.flinch_zone])
 					_next()
 				else:
 					_fail("light did not connect")
@@ -421,6 +455,8 @@ func _physics_process(_delta: float) -> void:
 				if gap < -0.05:
 					_fail("river: P%d sank (y %.3f, surface %.3f, frame %d, state %d)" % [f.player_index, f.global_position.y, f.global_position.y - gap, t, f.state])
 					return
+			if t == 200 and _river_runs.is_empty():
+				_shot("10_river_fight")
 			if t == 600:
 				_river_runs.append([p1.global_position, p2.global_position, p1.hp, p2.hp, GameState.water.height(0.0)])
 				_ok("river run %d: nobody sank in 600 frames (min gap %.3f m); p1 x %.4f y %.4f, p2 x %.4f y %.4f" % [_river_runs.size(), _river_min_gap, p1.global_position.x, p1.global_position.y, p2.global_position.x, p2.global_position.y])
@@ -456,6 +492,7 @@ func _physics_process(_delta: float) -> void:
 					_fail("P1 stumbled while guarding (held %s, stumbles %s → %s)" % [InputRouter.held(1, "block"), _n0, p1.stats.get("stumbles", 0)])
 					return
 				InputRouter.v_press(2, "light")
+				_shot("09_river_swell_stumble")
 			if _f == _f0 + 12:
 				if p2.state == Fighter.State.ATTACK:
 					_fail("P2 attacked out of a stumble")
