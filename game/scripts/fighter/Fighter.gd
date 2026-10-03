@@ -852,7 +852,7 @@ func _check_hit(m: MoveData) -> void:
 func receive_hit(attacker: Fighter, m: MoveData) -> void:
 	if state == State.KO or state == State.LAUNCHED or invulnerable_frames > 0:
 		return
-	if ult_armored():
+	if ult_armored() and not m.breaks_ult_armor:
 		_armored_hit(attacker, m)
 		return
 	_break_ult()
@@ -939,7 +939,7 @@ func receive_hit(attacker: Fighter, m: MoveData) -> void:
 
 ## Under a beat ultimate (MoveData.armor) Skea does not fall, flinch or lose the ult — from the move's
 ## first frame to the end of active. A spell already on him breaks it: DoT, armor break, «Seen», time
-## stop. Checked on every hit, so a poison landed mid-ult breaks the armor too (docs/GDD/03 § Ульта Skea
+## stop; so does a hit with MoveData.breaks_ult_armor (Choko's crystal blast, receive_hit). Checked on every hit, so a poison landed mid-ult breaks the armor too (docs/GDD/03 § Ульта Skea
 ## під бас, «Непорушний»).
 func ult_armored() -> bool:
 	if dot_frames > 0 or armor_break_frames > 0 or revealed_frames > 0 or frozen_frames > 0:
@@ -1014,7 +1014,7 @@ func _flinch_dir(attacker: Fighter) -> Vector3:
 
 
 func _check_crit(attacker: Fighter, m: MoveData) -> bool:
-	var crit := false
+	var crit := m.force_crit
 	if attacker.veil_strike:
 		crit = true
 		attacker.veil_strike = false

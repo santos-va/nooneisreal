@@ -1,29 +1,47 @@
 class_name SwordStormFx
 extends Node3D
-## Choko ultimate «Шторм мечів»: eight spectral emerald blades rise behind him, then rain down
-## in a line in front: 6 fast hits + a final heavy strike that ragdolls. Hits skip combo scaling.
-## Crystal look (Santos 2026-10-03, «кристальна ульта»): each blade is a faceted emerald crystal (crystal.gdshader);
-## it sticks into the ground where it lands and bursts into shards; the final strike throws a wave of shards.
-## Presentation only — the hit frames, reach and damage below are unchanged.
+## Choko ultimate — the crystal ult (docs/GDD/03-Skills-Framework.md § Кристальна ульта Choko, T5 Арес 3c-1; plan
+## docs/Plans/2026-10-03-Crystal-Ult-Arena-Fatigue.md, step 3c). The golden crystal sword bursts into «pyramids»:
+## frame 6 — a point-blank blast (half-circle 1.2 m in front, 70 × crit, breaks Skea's ult armor); frames 18…48 — six
+## ticks of crystal rain over 5 bands, each further band wider and weaker; frame 62 — the final over all bands
+## (knockdown + ragdoll). A target is hit by the band it stands in on that tick. Hits skip combo scaling.
+## All numbers PLACEHOLDER (ДИЗАЙН Ареса). Frames count from the move's first active frame (this node's _f).
 
-const BLADES := 8
-const RISE := 18
+const BLADES := 8           # crystals rising off the sword (look only)
+const RISE := 18            # first rain tick
 const EVERY := 6
 const HITS := 6
 const FINAL := 62
-const REACH := 5.4
-const HALF_WIDTH := 0.6   # free movement: the band is 5.4 × 1.2 m (width ДИЗАЙН, docs/GDD/03 § Як у 3D)
+const BLAST_FRAME := 6
+const BLAST_RADIUS := 1.2
+const BLAST_DAMAGE := 70.0  # × Fighter.CRIT_MULT = 105
+const BLAST_HITSTUN := 40
+## Bands along the gaze: [from m, to m, full width m, damage per tick, final]. GDD 03 § (а).
+const BANDS := [
+	[0.8, 2.0, 1.2, 25.0, 75.0],
+	[2.0, 3.2, 1.8, 22.0, 63.0],
+	[3.2, 4.4, 2.4, 18.0, 57.0],
+	[4.4, 5.6, 3.0, 15.0, 45.0],
+	[5.6, 6.8, 3.6, 12.0, 33.0],
+]
+## Point-blank (closer than band 1's start, down to just behind Choko like the old line): still band 1 —
+## GDD 03's smoke wants 330 at 0.5 m = blast 105 + band 1's 225.
+const NEAR_BEHIND := -0.6
+const REACH := 6.8
 const CRYSTAL := preload("res://shaders/crystal.gdshader")
-const BLADE_SHARDS := 5     # shards when a landed blade bursts
-const FINAL_SHARDS := 14    # shards along the line on the final strike
+## Gold of ult sword №1 (weapons-choko-ult). PLACEHOLDER until Apollon's 3c-2 VFX row.
+const GOLD_CORE := Color(1.0, 0.86, 0.45)
+const GOLD_DEEP := Color(0.42, 0.24, 0.04)
+const BLADE_SHARDS := 5     # shards when a landed crystal bursts
 const SHARD_LIFE := 22      # frames
 
 var owner_f: Fighter
 var _f: int = 0
 var _facing: int = 1
 var _blades: Array = []
-var _tick: MoveData
-var _final: MoveData
+var _ticks: Array = []      # MoveData per band
+var _finals: Array = []
+var _blast: MoveData
 var _mat: ShaderMaterial
 var shards: Array = []      # [{node, vel, spin, left}] — read by the smoke
 var shards_spawned: int = 0
@@ -43,15 +61,14 @@ func _ready() -> void:
 		# free movement: turn the whole effect onto the gaze; locally it is the plane's +x setup
 		rotation.y = owner_f.yaw()
 		_facing = 1
-	_tick = SkillHit.make("sword_storm_tick", 26.0, 14, Vector2(0.6, 0.0),
-		{"hitstop": 2, "ignore_scaling": true, "can_crit": false, "meter": 0.0, "sfx": "sword"})
-	_final = SkillHit.make("sword_storm_final", 100.0, 30, Vector2(8.5, 7.0),
-		{"hitstop": 10, "knockdown": true, "ragdoll": 1.3, "ignore_scaling": true, "can_crit": false, "meter": 0.0, "sfx": "hit_heavy"})
+	for i in BANDS.size():
+		_ticks.append(make_tick(i))
+		_finals.append(make_final(i))
+	_blast = make_blast()
 	_mat = ShaderMaterial.new()
 	_mat.shader = CRYSTAL
-	var c: Color = owner_f.data.vfx_primary
-	_mat.set_shader_parameter("core", c.lightened(0.45))
-	_mat.set_shader_parameter("deep", c.darkened(0.7))
+	_mat.set_shader_parameter("core", GOLD_CORE)
+	_mat.set_shader_parameter("deep", GOLD_DEEP)
 	var blade := crystal_blade(1.2, 0.16, 0.07)
 	for i in BLADES:
 		var b := Fx.mesh(blade, _mat)
@@ -132,7 +149,7 @@ func _physics_process(_delta: float) -> void:
 			b.rotation.z = ang
 		else:
 			var k := minf(1.0, float(_f - launch) / 6.0)
-			var target := Vector3(_facing * (1.0 + float(i) * 0.58), 0.5, 0.1)
+			var target := Vector3(_facing * (1.0 + float(i) * 0.8), 0.5, 0.1)   # spread over the 5 bands (0.8–6.8 m)
 			var start := Vector3(target.x - _facing * 1.5, 5.5, 0.1)
 			b.position = start.lerp(target, k)
 			# tip down, tilted along the fall; once landed the crystal stays stuck in the ground
@@ -140,29 +157,89 @@ func _physics_process(_delta: float) -> void:
 			b.visible = _f < launch + 16
 			if _f == launch + 16:
 				_burst(target + Vector3(0, -0.3, 0), Vector3(_facing, 0, 0), BLADE_SHARDS, 0.28, i + 1)
+	if _f == BLAST_FRAME:
+		_hit_blast()
+		_burst(Vector3(_facing * 0.6, 1.0, 0.0), Vector3(_facing, 0.6, 0), 8, 0.3, 90)
 	if _f >= RISE and (_f - RISE) % EVERY == 0 and (_f - RISE) / EVERY < HITS:
-		_hit(_tick)
+		_hit_band(_ticks)
 	if _f == FINAL:
-		_hit(_final)
+		_hit_band(_finals)
 		SmearShards.burst(Fx.root(owner_f), to_global(Vector3(_facing * 0.5, 0, 0)), to_global(Vector3(_facing * REACH, 0, 0)),
-			[owner_f.data.vfx_primary, owner_f.data.vfx_secondary, Color(0.05, 0.05, 0.08)], 18, 5)
-		for k in FINAL_SHARDS:
-			var x := 0.5 + (REACH - 0.5) * float(k) / float(FINAL_SHARDS - 1)
-			_burst(Vector3(_facing * x, 0.1, 0.0), Vector3(_facing, 0.4, 0), 1, 0.45, 40 + k)
+			[GOLD_CORE, owner_f.data.vfx_secondary, Color(0.05, 0.05, 0.08)], 18, 5)
+		for i in BANDS.size():
+			var b: Array = BANDS[i]
+			var mid := (float(b[0]) + float(b[1])) * 0.5
+			for side in [-1.0, 0.0, 1.0]:
+				_burst(Vector3(_facing * mid, 0.1, side * float(b[2]) * 0.4), Vector3(_facing, 0.4, 0), 1, 0.45, 40 + i * 3 + int(side) + 1)
 	_tick_shards()
 	if _f > FINAL + SHARD_LIFE + 2 and shards.is_empty():
 		queue_free()
 
 
-func _hit(m: MoveData) -> void:
-	var v := owner_f.opponent
-	if v == null or not v.hurtbox_enabled():
-		return
-	var dx := (v.global_position.x - global_position.x) * float(_facing)
-	var side := 0.0
+static func make_tick(i: int) -> MoveData:
+	return SkillHit.make("sword_storm_band%d" % (i + 1), BANDS[i][3], 14, Vector2(0.6, 0.0),
+		{"hitstop": 2, "ignore_scaling": true, "can_crit": false, "meter": 0.0, "sfx": "sword"})
+
+
+static func make_final(i: int) -> MoveData:
+	return SkillHit.make("sword_storm_final%d" % (i + 1), BANDS[i][4], 30, Vector2(8.5, 7.0),
+		{"hitstop": 10, "knockdown": true, "ragdoll": 1.3, "ignore_scaling": true, "can_crit": false, "meter": 0.0, "sfx": "hit_heavy"})
+
+
+static func make_blast() -> MoveData:
+	return SkillHit.make("sword_storm_blast", BLAST_DAMAGE, BLAST_HITSTUN, Vector2.ZERO,
+		{"hitstop": 8, "ignore_scaling": true, "force_crit": true, "breaks_armor": true, "meter": 0.0, "sfx": "hit_heavy"})
+
+
+## Target in the effect's frame (+x = the gaze at the ult's start; the plane: x along facing, no side).
+func _local(p: Vector3) -> Vector2:
 	if GameState.free_move:
-		var local := to_local(v.global_position)   # +x = the gaze at the start of the ultimate
-		dx = local.x
-		side = absf(local.z)
-	if dx >= -0.6 and dx <= REACH and side <= HALF_WIDTH and absf(v.global_position.y - global_position.y) < 3.0:
-		v.receive_hit(owner_f, m)
+		var l := to_local(p)
+		return Vector2(l.x, l.z)
+	return Vector2((p.x - global_position.x) * float(_facing), 0.0)
+
+
+## Band index (0…4) of a point in the effect's frame, -1 = none. Point-blank (NEAR_BEHIND…0.8 m) counts as band 1.
+static func band_at(local: Vector2) -> int:
+	var x := local.x
+	if x < NEAR_BEHIND or x >= REACH:
+		return -1
+	for i in BANDS.size():
+		var b: Array = BANDS[i]
+		if (x < float(b[1]) or i == BANDS.size() - 1) and (i == 0 or x >= float(b[0])):
+			return i if absf(local.y) <= float(b[2]) * 0.5 else -1
+	return -1
+
+
+## The rain never lands outside the arena (free movement: the circle; the plane: its half width).
+static func in_arena(p: Vector3) -> bool:
+	if GameState.free_move:
+		return Vector2(p.x, p.z).length() <= Fighter.ARENA_RADIUS
+	return absf(p.x) <= Fighter.ARENA_HALF_WIDTH
+
+
+## Point-blank blast: half-circle of BLAST_RADIUS in front of Choko.
+static func in_blast(local: Vector2) -> bool:
+	return local.x >= 0.0 and local.length() <= BLAST_RADIUS
+
+
+func _target() -> Fighter:
+	var v := owner_f.opponent
+	if v == null or not v.hurtbox_enabled() or absf(v.global_position.y - global_position.y) >= 3.0:
+		return null
+	return v
+
+
+func _hit_band(moves: Array) -> void:
+	var v := _target()
+	if v == null or not in_arena(v.global_position):
+		return
+	var i := band_at(_local(v.global_position))
+	if i >= 0:
+		v.receive_hit(owner_f, moves[i])
+
+
+func _hit_blast() -> void:
+	var v := _target()
+	if v != null and in_blast(_local(v.global_position)):
+		v.receive_hit(owner_f, _blast)
