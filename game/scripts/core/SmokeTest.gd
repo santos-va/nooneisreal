@@ -35,6 +35,7 @@ var _yaw_prev: float = 0.0
 var _rmax: float = 0.0
 var _data0: CharacterData = null
 var _rotated: bool = false
+var _picks: Dictionary = {}
 
 
 func _ready() -> void:
@@ -167,6 +168,22 @@ func _track_camera_turn() -> void:
 	if line.length() > 0.5:
 		var z: Vector3 = _flat(arena.duel_camera.cam.global_basis.z).normalized()
 		_rmax = maxf(_rmax, absf(90.0 - rad_to_deg(z.angle_to(line.normalized()))))
+
+
+## Records which anchor P1's grapple would pick with the current stick, and checks it is inside the
+## yaw cone around the aim axis (stick, or forward when neutral).
+func _cone_pick(tag: String) -> void:
+	var a: Node3D = p1.grapple.best_anchor()
+	if a == null:
+		_fail("grapple cone (%s): no anchor picked" % tag)
+		return
+	var axis: Vector3 = p1.grapple.aim_axis()
+	var to := _flat(a.global_position - p1.global_position)
+	var ang := rad_to_deg(axis.angle_to(to.normalized()))
+	if ang > p1.grapple.cone_deg + 0.01:
+		_fail("grapple cone (%s): %s is %.1f° off the aim (cone %.0f°)" % [tag, a.name, ang, p1.grapple.cone_deg])
+		return
+	_picks[tag] = a
 
 
 func _both_in_view() -> bool:
@@ -732,4 +749,89 @@ func _physics_process(_delta: float) -> void:
 					return
 				_shot("13_free_side_swap")
 				_ok("duel camera: side swap without a flip, max turn %.2f°/frame; screen x p1 %.0f, p2 %.0f" % [_turn_max, s1, s2])
+				_next()
+		47:
+			# 0.3-3: the anchor is chosen inside the aim cone — of the stick when deflected, else of the
+			# gaze; the same spot gives a different anchor for stick up / down / neutral
+			if _f == _f0 + 1:
+				p1.global_position = Vector3(-2.0, p1.global_position.y, 0.0)
+				p2.global_position = Vector3(2.0, p2.global_position.y, 0.0)
+			if _f == _f0 + 10:
+				InputRouter.v_set(1, "up", true)
+			if _f == _f0 + 11:
+				_cone_pick("up")
+				InputRouter.v_set(1, "up", false)
+				InputRouter.v_set(1, "down", true)
+			if _f == _f0 + 12:
+				_cone_pick("down")
+				InputRouter.v_set(1, "down", false)
+			if _f == _f0 + 13:
+				_cone_pick("neutral")
+				if _done:
+					return
+				var up: Node3D = _picks["up"]
+				var down: Node3D = _picks["down"]
+				var neutral: Node3D = _picks["neutral"]
+				if up == down or up == neutral or down == neutral or signf(up.global_position.z) == signf(down.global_position.z):
+					_fail("grapple cone: up %s, down %s, neutral %s — want three different anchors, up/down on opposite sides" % [up.name, down.name, neutral.name])
+					return
+				# next to a lamp: the nearest anchor (Anchor2 at x −4.5) is 90° off a stick-up aim and must lose
+				p1.global_position = Vector3(-4.0, p1.global_position.y, 0.0)
+			if _f == _f0 + 15:
+				InputRouter.v_set(1, "up", true)
+			if _f == _f0 + 16:
+				_cone_pick("up_near_lamp")
+				InputRouter.v_set(1, "up", false)
+				if _done:
+					return
+				var near: Node3D = _picks["up_near_lamp"]
+				_ok("grapple cone %.0f°: stick up → %s, down → %s, neutral (gaze) → %s; next to %s with stick up → %s (the lamp beside is outside the cone)" % [p1.grapple.cone_deg, (_picks["up"] as Node3D).name, (_picks["down"] as Node3D).name, (_picks["neutral"] as Node3D).name, "Anchor2", near.name])
+				p1.global_position = Vector3(-2.0, p1.global_position.y, 0.0)
+				p2.global_position = Vector3(2.0, p2.global_position.y, 0.0)
+				_next()
+		48:
+			# 0.3-3: zip/reel into the depth: hold up + hold grapple until the hook reaches the anchor
+			if _f == _f0 + 3:
+				InputRouter.v_set(1, "up", true)
+				_x0 = 0.0
+				_rmax = 99.0
+				InputRouter.v_set(1, "grapple", true)
+			if _f > _f0 + 3:
+				if _x0 > 0.0 or p1.state == Fighter.State.GRAPPLE:
+					# measured on the release frame too (the hook lets go the frame it reaches the anchor)
+					_d0 = p1.grapple.anchor_point.z
+					_rmax = minf(_rmax, (p1.grapple.anchor_point - (p1.global_position + GrappleHook.HAND)).length())
+				if p1.state == Fighter.State.GRAPPLE:
+					_x0 = 1.0
+					if p1.grapple._frames == 10:
+						_shot("14_free_grapple_zip")
+				elif _x0 > 0.0:
+					if _rmax > 1.4 or absf(_d0) < 1.0 or signf(p1.global_position.z) != signf(_d0):
+						_fail("grapple 3D: closest to anchor %.2f m (want < 1.4), anchor z %.2f, p1 z %.2f" % [_rmax, _d0, p1.global_position.z])
+						return
+					_ok("grapple 3D: reeled to the anchor at z %.2f (closest %.2f m), p1 now at z %.2f" % [_d0, _rmax, p1.global_position.z])
+					_next()
+				if _f > _f0 + 200:
+					_fail("grapple 3D never attached/released (state %d, attached %s)" % [p1.state, _x0 > 0.0])
+		49:
+			# 0.3-3: pull the enemy along the gaze when they stand off the X line
+			if not (p1.is_actionable() and p2.is_actionable()) and _f < _f0 + 200:
+				return
+			if _n0 != 49:
+				_n0 = 49
+				p1.global_position = Vector3(0.0, p1.global_position.y, 0.0)
+				p2.global_position = Vector3(3.0, p2.global_position.y, 3.0)
+				_f0 = _f
+				return
+			if _f == _f0 + 3:
+				InputRouter.v_set(1, "crouch", true)
+				InputRouter.v_press(1, "grapple")
+			if _f == _f0 + 60:
+				var want := p1.global_position + p1.forward * 1.25
+				var miss := _flat(p2.global_position - want).length()
+				var z_moved := absf(p2.global_position.z - 3.0)
+				if p1.stats.grapples < 1 or miss > 0.6 or z_moved < 1.0:
+					_fail("grapple pull 3D: grapples %d, P2 %.2f m from 1.25 m in front of P1 (want ≤ 0.6), z moved %.2f" % [p1.stats.grapples, miss, z_moved])
+					return
+				_ok("grapple pull 3D: P2 from (3, 3) to %.2f m off the spot 1.25 m in front of P1 (z moved %.2f)" % [miss, z_moved])
 				_finish()

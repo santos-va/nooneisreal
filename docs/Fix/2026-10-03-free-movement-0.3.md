@@ -1,4 +1,4 @@
-# Fix-журнал — Prototype 0.3: вільний рух (0.3-1) і камера дуелі (0.3-2)
+# Fix-журнал — Prototype 0.3: вільний рух (0.3-1), камера дуелі (0.3-2), гарпун у 3D (0.3-3)
 
 **Роль:** T2 Гефест. **План:** [[2026-10-03-Prototype-0.3-Free-Movement]]. **Issue:** santos-va/nooneisreal#27.
 **Гілка:** `claude/friendly-ritchie-3ti2sm` (перезапущена від `main` `4dd6c84`, бо PR #21 уже змерджено).
@@ -82,16 +82,64 @@
 Два мутанти (S1, C3) спершу не впіймались. Тести посилено, і після цього обидва дають `FAIL`.
 Після посилення `make check` → `ALL OK (45 checks)`: дистанція `6.000 → 6.000`, камера відходить від положення збоку максимум на 13.0°.
 
+## 0.3-3 Гарпун у 3D
+
+**Звірка:**
+- Правило — [[04-Grapple-System]] § «Конус вибору в 3D» (Арес, #25, змерджено в `main`). Конус по yaw із напівкутом
+  `grapple_cone_deg` = 30° (ДИЗАЙН). Вісь — стік відносно камери, а без стіка — погляд. Оцінка `відстань − 0.6·вперед`, де
+  «вперед» — проєкція на вісь конуса. `pull_enemy` тягне вздовж погляду в тому самому конусі ≤ 14 м.
+  [[02-Combat-System]]:156 каже те саме: `grapple_cone_deg` у `CharacterData`, 30.
+- Код до змін: `GrappleHook.gd:95, 139, 204, 207` рахують лише по x, `drive()` обнуляє `velocity.z`, а п'ять якорів `Arena.tscn`
+  стоять на лінії z = 0 (`x = −9.5, −4.5, 0, 4.5, 9.5`).
+- Розбіжність, яку повертаю Дедалу: план просить «якорі арен у 3D по колу», але позицій ніде немає. Тимчасово, лише при
+  `free_move`, `Arena._anchors_around()` дублює кожен бічний якір, повернутий на 90° навколо центру. Висоти й відстані
+  беру наявні, нових чисел немає. Це PLACEHOLDER розкладки.
+
+**Зміни:**
+- `CharacterData.grapple_cone_deg = 30.0`. У `.tres` поле не пишу, бо значення там — зона Ареса, а дефолт збігається з його числом.
+- `GrappleHook`: `aim_axis()` і `_in_cone()` (yaw, `cos(a) ≥ cos(cone)`); `_best_anchor` відкидає якорі поза конусом.
+  Свінг у 3D: кермо — стік відносно камери, `velocity.z` не обнуляється, а при досягненні якоря горизонталь обмежена 8 м/с
+  (той самий кламп, що й по x).
+- `Fighter.get_pulled_to(target: Vector3, stun)` — версія `get_pulled(target_x)` для 3D.
+- **Баг з 0.3-1:** `_friction()` у 3D гальмував x і z окремо, тож по діагоналі рух гас у √2 раз швидше. Тепер `Vector2.move_toward`
+  гальмує вектор. Знайшов його тест підтяжки: P2 недолітав на 0.91 м, після виправлення — 0.09 м.
+- Предмет: для всіх положень і стіків у `free_move` обраний якір лежить у конусі навколо осі прицілу, зип і свінг доводять
+  до якоря в глибині, а підтяжка ставить суперника на 1.25 м перед бійцем незалежно від напрямку.
+
+**Перевірка:** `make check` → `[smoke] ALL OK (48 checks) in 4069 frames`, `SMOKE ЗЕЛЕНИЙ`. Нові:
+- `grapple cone 30°: stick up → Anchor2Z, down → Anchor4Z, neutral (gaze) → Anchor4; next to Anchor2 with stick up → Anchor1Z (the lamp beside is outside the cone)`
+- `grapple 3D: reeled to the anchor at z -4.50 (closest 1.28 m), p1 now at z -5.07`
+- `grapple pull 3D: P2 from (3, 3) to 0.09 m off the spot 1.25 m in front of P1 (z moved 2.05)`
+
+**Негативні контролі 0.3-3** (той самий скрипт: мутація → smoke → відновлення):
+
+| мутація | що ламає | результат |
+|---|---|---|
+| G1 без перевірки конуса | хапає будь-який якір | спершу **пройшло**: на тій розкладці найкраща оцінка й так була в конусі. Додано позицію поруч із ліхтарем Anchor2, і тепер `FAIL grapple cone (up_near_lamp): Anchor2 is 100.6° off the aim` |
+| G2 вісь лише з погляду | стік ігнорується | `FAIL grapple cone: up Anchor4, down Anchor4, neutral Anchor4` |
+| G3 вибір як у площині | лише вісь x | `FAIL grapple cone (up): Anchor4 is 90.8° off the aim (cone 30°)` |
+| G4 свінг з `velocity.z = 0` | гарпун плаский | `FAIL grapple 3D never attached/released (state 13, attached true)` |
+| G5 підтяжка по x | старий `get_pulled(target_x)` | `FAIL grapple pull 3D: … 1.90 m …, z moved 0.00` |
+| G6 тертя окремо по x і z | баг 0.3-1 | `FAIL grapple pull 3D: … 0.91 m …` |
+
+Після контролів, без зміни поведінки в тестах: `GrappleHook` читає стік через публічний `Fighter.wish()`, а не через `_wish`.
+Кламп швидкості на відпусканні в 3D тепер лише векторний: раніше перед ним ще спрацьовував площинний кламп x.
+Підказка HUD у 3D: «(no anchor in cone → pull)» замість «S+E pull». Контролі G1–G6 проганялись до цієї чистки.
+
+Після посилення `make check` → `ALL OK (48 checks) in 4072 frames`; новий рядок конуса:
+`… next to Anchor2 with stick up → Anchor1Z (the lamp beside is outside the cone)`.
+
 ## Кадри (Xvfb + llvmpipe, `--rendering-driver opengl3 --rendering-method gl_compatibility`)
 
 - Режим площини: `-- --screenshot=DIR` → 4 кадри OK. Вільний рух: `-- --free-move --screenshot=DIR` → 4 кадри OK.
   CPU у 3D поки ходить лише вздовж лінії (це крок 0.3-4), тож кадр за складом той самий, що в площині, — камера
   зблизька читається як бічна. Файли кадрів 230 різняться (`cmp` → differ), бо відрізняється рядок підказки.
-- `-- --smoke --shots=DIR` → `ALL OK (45 checks)` плюс кадри `11_free_sidestep_90`, `12_free_duel_camera`, `13_free_side_swap`.
+- `-- --smoke --shots=DIR` → `ALL OK (45 checks)` плюс кадри `11_free_sidestep_90`, `12_free_duel_camera`, `13_free_side_swap`; після 0.3-3 → `ALL OK (48 checks)` і кадр `14_free_grapple_zip`.
 
 ![Площина, 0.2](../assets/screenshots/2026-10-03-0.3-plane-mode.png)
 ![Обхід 90°](../assets/screenshots/2026-10-03-0.3-free-sidestep-90.png)
 ![Камера дуелі під кутом](../assets/screenshots/2026-10-03-0.3-free-duel-camera.png)
+![Зип у глибину (0.3-3)](../assets/screenshots/2026-10-03-0.3-free-grapple-zip.png)
 
 ## Не перевірено / ризики
 
@@ -100,7 +148,9 @@
 - Меш води `Water.gd` покриває z від +7 до −18, а коло — ±12.5: на річці в 3D бійці можуть стояти поза мешем (крок 0.3-5).
 
 - Гра на Mac у 3D. Перевірено лише headless і Xvfb/llvmpipe.
-- Гарпун у 3D (`get_pulled` тягне по x), CPU (ходить лише вздовж лінії), вода по z, скіли — кроки 0.3-3…0.3-5 і #25.
+- CPU (ходить лише вздовж лінії), вода по z, скіли — кроки 0.3-4, 0.3-5 і #25. Гарпун у 3D — зроблено (0.3-3).
+- Розкладка якорів у 3D — PLACEHOLDER (повернуті двійники), чекає Дедала й Ареса. Дрон-якір (ADR-011) — окремий крок #19.
+- Підтяжка ворога в 3D з клавіатури SOLO недоступна: S тепер обхід, а присід без клавіші (TODO #26). Лишається фолбек «немає якоря в конусі».
 - Детермінізм `free_move` двома прогонами — крок 0.3-6.
 
 ## Related

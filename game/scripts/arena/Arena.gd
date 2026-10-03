@@ -28,6 +28,7 @@ func _ready() -> void:
 		world_env.environment.ambient_light_color = st.ambient
 	if GameState.free_move:
 		_round_floor()
+		_anchors_around()
 	GameState.water = null
 	var water_path: String = st.get("water", "")
 	if water_path != "" and ResourceLoader.exists(water_path):
@@ -72,6 +73,24 @@ func _round_floor() -> void:
 	var mesh := (mi.mesh as BoxMesh).duplicate() as BoxMesh
 	mesh.size.z = depth
 	mi.mesh = mesh
+
+
+## Free movement: the 0.2 anchors sit on the X line. Until a 3D anchor layout exists (PLACEHOLDER —
+## level layout from T1 Дедал / T5 Арес, ADR-011), every off-centre anchor gets a twin turned 90°
+## around the arena centre, so anchors stand in front of and behind the fight, not only to the sides.
+func _anchors_around() -> void:
+	var root := get_node("Anchors") as Node3D
+	for a in root.get_children():
+		var m := a as Marker3D
+		if m == null or not m.is_in_group("grapple_anchor"):
+			continue
+		var p := m.position
+		if absf(p.x) < 0.01 and absf(p.z) < 0.01:
+			continue
+		var twin := m.duplicate() as Marker3D
+		twin.name = "%sZ" % m.name
+		twin.position = Vector3(-p.z, p.y, p.x)
+		root.add_child(twin)
 
 
 func _spawn(idx: int, char_id: String, x: float, face: int, cpu: bool) -> Fighter:
