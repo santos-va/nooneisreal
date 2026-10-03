@@ -26,7 +26,7 @@ Storm із 13 входами на тач не лягає. 9 дій — стел�
 | Скіл 1 | RECORD (маркер → перемотка) | KUNAI RAIN (AoE + Armor Break) |
 | Скіл 2 | TIME STOP (заморозка 1.2 с) | SHADOW VEIL (невидимість + крит) |
 | Ульта | SWORD STORM | CURSED GRIMOIRE ∞8 (відбитки переможених сторінок) |
-| Пасивка | **Printer** (стікери-айтеми; у коді ще Chrono Guard) | Weak Point Perception (мітки) |
+| Пасивка | **Printer** (стікери-айтеми; у коді з запуску 3, Chrono Guard прибрано) | Weak Point Perception (мітки) |
 
 Механіка ефектів: `MoveData.effect` (`record`, `time_stop`, `sword_storm`, `kunai_rain`, `shadow_veil`, `grimoire`)
 запускає ноду з `game/scripts/skills/` на першому активному кадрі. Удари скілів проходять через той самий `Fighter.receive_hit`.

@@ -28,9 +28,9 @@ static func spawn(f: Fighter) -> GrimoireFx:
 
 func _ready() -> void:
 	_moves = [
-		SkillHit.make("grimoire_page3_blood_grip", 60.0, 22, Vector2(-1.5, 1.0), {"hitstop": 6, "ignore_scaling": true, "sfx": "hit_heavy"}),
-		SkillHit.make("grimoire_page7_cursed_burn", 60.0, 22, Vector2(1.5, 1.5), {"hitstop": 6, "ignore_scaling": true, "sfx": "hit_heavy"}),
-		SkillHit.make("grimoire_page12_shadow", 90.0, 30, Vector2(7.0, 8.0),
+		SkillHit.make("imprint_blood_grip", 60.0, 22, Vector2(-1.5, 1.0), {"hitstop": 6, "ignore_scaling": true, "sfx": "hit_heavy"}),
+		SkillHit.make("imprint_cursed_burn", 60.0, 22, Vector2(1.5, 1.5), {"hitstop": 6, "ignore_scaling": true, "sfx": "hit_heavy"}),
+		SkillHit.make("imprint_venom_knot", 90.0, 30, Vector2(7.0, 8.0),
 			{"hitstop": 11, "knockdown": true, "ragdoll": 1.3, "ignore_scaling": true, "effect": "poison", "sfx": "ko"}),
 	]
 	var c := owner_f.data.vfx_primary

@@ -24,6 +24,9 @@ var _river3d_runs: Array = []
 const DUEL_FRAMES := 1110   # the last ultimate (t 820) must ragdoll, land and get up inside the trace
 var _duel_runs: Array = []
 var _splat_phase: int = 0
+var _prints: Array = []
+var _y0: float = 0.0
+var _picks_p: Dictionary = {}
 
 ## Design numbers as written in docs/GDD/02-Combat-System.md § «Поле → значення → джерело» (T5 Арес).
 ## Literals on purpose (T4 Феміда, audit 0.3-7 п. 8): the smoke must not compare the code with its own
@@ -1349,6 +1352,182 @@ func _physics_process(_delta: float) -> void:
 				else:
 					_splat_phase = 0
 					_next_to(80)
+		# ---------------- Launch 3: Choko's passive Printer (03 § Пасивка Choko — Printer) ---------
+		# numbers are the GDD literals (8 s, 15 s, 1.5 m, 8 s, max 1, +30 HP, 4 s, 6 s), not the code's constants
+		90:
+			if flow.phase == MatchFlow.Phase.FIGHT and p1.printer != null and not p1.control_locked:
+				_prints.clear()
+				p1.printer.printed.connect(func(kind: String, at: Vector3) -> void:
+					_prints.append({"kind": kind, "at": at, "t": p1.printer.fight_frames, "from": p1.global_position, "fwd": p1.forward}))
+				p1.printer.picked.connect(func(kind: String) -> void:
+					_picks_p = {"kind": kind, "spring": p1.spring_frames, "revealed": p2.revealed_frames, "hp": p1.hp})
+				_x0 = p1.hp
+				_next()
+			elif _f > _f0 + 600:
+				_fail("printer: Choko has no Printer (passive_id %s) or the fight never started" % p1.data.passive_id)
+		91:
+			if _prints.size() >= 1:
+				var pr: Dictionary = _prints[0]
+				var off: Vector3 = pr.at - pr.from
+				var flat := Vector2(off.x, off.z).length()
+				var behind: float = Vector3(off.x, 0.0, off.z).dot(pr.fwd)
+				if pr.kind != "patch" or pr.t != 8 * 60 or absf(flat - 1.5) > 0.05 or behind > -1.45:
+					_fail("printer first sticker: %s at fight frame %d (want patch at 480), %.2f m from Choko (want 1.5), along the gaze %.2f (want -1.5)" % [pr.kind, pr.t, flat, behind])
+					return
+				_ok("printer: first sticker (patch) at 8.0 s, %.2f m straight behind Choko" % flat)
+				_next()
+			elif p1.printer.fight_frames > 8 * 60 + 5:
+				_fail("printer: nothing printed by 8 s (fight frame %d)" % p1.printer.fight_frames)
+		92:
+			if p1.printer.sticker_kind == "":
+				var t: int = p1.printer.fight_frames
+				if p1.printer.stats.crumbled != 1 or t != 8 * 60 + 8 * 60 or p1.hp != _x0:
+					_fail("printer: sticker gone at fight frame %d (want 960 = lived 8 s), crumbled %d, hp %.0f → %.0f (want unchanged)" % [t, p1.printer.stats.crumbled, _x0, p1.hp])
+					return
+				_ok("printer: an untouched sticker lives 8 s and crumbles with no effect")
+				_next()
+		93:
+			if _prints.size() >= 2 and p1.printer.sticker_kind != "":
+				var pr: Dictionary = _prints[1]
+				if pr.kind != "seen" or pr.t != 8 * 60 + 15 * 60:
+					_fail("printer second sticker: %s at fight frame %d (want seen at 1380 = 8 s + 15 s)" % [pr.kind, pr.t])
+					return
+				var at: Vector3 = p1.printer.sticker_position()
+				p2.global_position = Vector3(at.x, p2.global_position.y, at.z)   # the opponent steps on it
+				_n0 = p1.printer.stats.torn
+				_next()
+			elif p1.printer.fight_frames > 8 * 60 + 15 * 60 + 5:
+				_fail("printer: no second sticker by 23 s (prints %d)" % _prints.size())
+		94:
+			if _f == _f0 + 3:
+				if p1.printer.stats.torn != _n0 + 1 or p1.printer.sticker_kind != "" or p2.revealed_frames != 0 or p1.printer.stats.picked != 0:
+					_fail("printer: opponent on the sticker → torn %d (want +1), sticker %s, p2 revealed %d (want 0), picked %d (want 0)" % [p1.printer.stats.torn - _n0, p1.printer.sticker_kind, p2.revealed_frames, p1.printer.stats.picked])
+					return
+				_ok("printer: second sticker (seen) at 23.0 s; the opponent stepping on it tears it — no effect for anyone")
+				# Spring: pick, then one extra jump in the air, and only one
+				p1.printer.print_now()
+				if p1.printer.sticker_kind != "spring":
+					_fail("printer queue: third sticker %s (want spring)" % p1.printer.sticker_kind)
+					return
+				var at: Vector3 = p1.printer.sticker_position()
+				p1.global_position = Vector3(at.x, p1.global_position.y, at.z)
+			if _f == _f0 + 6:
+				if _picks_p.get("kind") != "spring" or _picks_p.get("spring") != 6 * 60:
+					_fail("printer spring: picked %s → spring %s frames at pickup (want spring, 360)" % [_picks_p.get("kind"), _picks_p.get("spring")])
+					return
+				InputRouter.v_press(1, "jump")
+			if _f == _f0 + 22:
+				_y0 = p1.velocity.y
+				InputRouter.v_press(1, "jump")
+			if _f == _f0 + 24:
+				if p1.on_ground() or p1.spring_frames != 0 or p1.velocity.y < p1.data.jump_velocity - 1.0 or _y0 > p1.data.jump_velocity - 3.0:
+					_fail("printer spring: second jump in the air — vy before %.1f, after %.1f (want ≈ %.1f), spring left %d (want 0)" % [_y0, p1.velocity.y, p1.data.jump_velocity, p1.spring_frames])
+					return
+			if _f == _f0 + 38:
+				_y0 = p1.velocity.y
+				InputRouter.v_press(1, "jump")
+			if _f == _f0 + 40:
+				if p1.velocity.y > _y0:
+					_fail("printer spring: a third jump in the air worked (vy %.1f → %.1f) — Spring is one use" % [_y0, p1.velocity.y])
+					return
+				_ok("printer: third sticker (spring) picked → 6 s window, one extra air jump, the next one does nothing")
+				_next()
+		95:
+			if p1.is_actionable() and p1.on_ground() and _f > _f0 + 10:
+				# fourth = patch; at most one on the floor: a second print is skipped and the queue waits
+				p1.printer.print_now()
+				var qi: int = p1.printer.queue_index
+				var sk: int = p1.printer.stats.skipped
+				var again := p1.printer.print_now()
+				if p1.printer.sticker_kind != "patch" or again or p1.printer.queue_index != qi or p1.printer.stats.skipped != sk + 1:
+					_fail("printer max 1: sticker %s (want patch), second print %s (want false), queue %d → %d (want same)" % [p1.printer.sticker_kind, again, qi, p1.printer.queue_index])
+					return
+				p1.hp = p1.data.max_hp - 100.0
+				var at: Vector3 = p1.printer.sticker_position()
+				p1.global_position = Vector3(at.x, p1.global_position.y, at.z)
+				_next()
+		96:
+			if _f == _f0 + 3:
+				if absf(p1.hp - (p1.data.max_hp - 70.0)) > 0.01:
+					_fail("printer patch: hp %.1f (want max − 100 + 30 = %.1f)" % [p1.hp, p1.data.max_hp - 70.0])
+					return
+				_ok("printer: max one sticker on the floor (second print skipped, queue waits); patch heals +30")
+				p1.printer.print_now()   # fifth = seen, picked by Choko this time
+				var at: Vector3 = p1.printer.sticker_position()
+				p1.global_position = Vector3(at.x, p1.global_position.y, at.z)
+			if _f == _f0 + 6:
+				if _picks_p.get("kind") != "seen" or _picks_p.get("revealed") != 4 * 60:
+					_fail("printer seen: picked %s → Skea revealed %s frames at pickup (want seen, 240)" % [_picks_p.get("kind"), _picks_p.get("revealed")])
+					return
+				p2.begin_veil()
+			if _f == _f0 + 9:
+				if p2.veil_frames <= 0 or not p2.animator.visible:
+					_fail("printer seen: Skea under Shadow Veil while seen — veil %d f, visible %s (want visible)" % [p2.veil_frames, p2.animator.visible])
+					return
+				p2.revealed_frames = 0
+			if _f == _f0 + 12:
+				if p2.animator.visible:
+					_fail("printer seen: with «seen» over, Skea under the veil is still visible")
+					return
+				p2.end_veil()
+				_ok("printer: seen → Skea shows through Shadow Veil for 4 s, and hides again when it ends")
+				_next()
+		97:
+			if p1.is_actionable() and p1.on_ground() and _f > _f0 + 10:
+				p1.printer.print_now()   # sixth = spring: a hit in the air spends it
+				var at: Vector3 = p1.printer.sticker_position()
+				p1.global_position = Vector3(at.x, p1.global_position.y, at.z)
+				_next()
+		98:
+			if _f == _f0 + 3:
+				_place(p2, p1, 1.2, 0.0)
+				InputRouter.v_press(1, "jump")
+			if _f == _f0 + 5:
+				InputRouter.v_press(1, "light")   # early in the jump, so the dive kick meets Skea's body
+			if _f > _f0 + 5 and p2.state == Fighter.State.HITSTUN and not p1.on_ground():
+				if p1.spring_frames != 0:
+					_fail("printer spring: an air hit on Skea left the Spring (%d frames) — it must not extend a juggle" % p1.spring_frames)
+					return
+				_ok("printer: an air hit with Spring active spends it (no juggle extension)")
+				_next()
+			elif _f > _f0 + 60:
+				_fail("printer spring burn: the air attack never hit (p1 state %d, p2 state %d)" % [p1.state, p2.state])
+		99:
+			if p1.is_actionable() and p1.on_ground() and _f > _f0 + 10:
+				p1.printer.print_now()   # seventh = patch at almost full HP: capped at max
+				p1.hp = p1.data.max_hp - 10.0
+				var at: Vector3 = p1.printer.sticker_position()
+				p1.global_position = Vector3(at.x, p1.global_position.y, at.z)
+				_next()
+		100:
+			if _f == _f0 + 3:
+				if p1.hp != p1.data.max_hp or p1.printer.queue_index != 7:
+					_fail("printer patch cap: hp %.1f (want max %.1f), queue %d (want 7)" % [p1.hp, p1.data.max_hp, p1.printer.queue_index])
+					return
+				_ok("printer: patch never heals above max HP; queue patch → seen → spring repeats (7 prints)")
+				_next()
+		101:
+			# Spring's other use: one air dash (Choko's Chrono Step in the air); pickup itself is tested above
+			if _f == _f0 + 10 and p1.is_actionable():
+				p1.spring_frames = 6 * 60
+				InputRouter.v_press(1, "jump")
+			if _f == _f0 + 18:
+				InputRouter.v_press(1, "dash")
+			if _f == _f0 + 20:
+				if p1.state != Fighter.State.DASH or p1.on_ground() or p1.spring_frames != 0:
+					_fail("printer spring air dash: state %d (want DASH), on ground %s, spring %d (want 0)" % [p1.state, p1.on_ground(), p1.spring_frames])
+					return
+			if _f == _f0 + 20 + p1.data.dash_frames + 2:
+				if p1.state != Fighter.State.JUMP and not p1.on_ground():
+					_fail("printer spring air dash ended in state %d in the air (want JUMP)" % p1.state)
+					return
+				InputRouter.v_press(1, "dash")
+			if _f == _f0 + 20 + p1.data.dash_frames + 4:
+				if p1.state == Fighter.State.DASH and not p1.on_ground():
+					_fail("printer spring: a second air dash worked — Spring is one use")
+					return
+				_ok("printer: Spring also gives one air dash (ends falling), and only one")
+				_finish()
 		# ---------------- wall splat (02 § Коло арени: 10 f, no damage, once per combo) -----------
 		80:
 			# phase 0: first combo → splat; phase 1: next combo → splat again, then a second launch in that
@@ -1407,6 +1586,6 @@ func _physics_process(_delta: float) -> void:
 					_fail("wall splat: %d splats in the second combo (want 1)" % got)
 					return
 				_ok("wall splat once per combo: the next combo splatted again, a second launch into the wall in that combo did not (%d ragdoll frames, splats +%d)" % [_f - _f0, got])
-				_finish()
+				_load_arena(2, 90)   # Launch 3: Choko's passive Printer, fresh round
 			elif _f > _f0 + 400:
 				_fail("wall splat: second launch never settled (state %d)" % p2.state)
