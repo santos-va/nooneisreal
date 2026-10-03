@@ -94,6 +94,8 @@
 | sfx-lib-sword-3 | `game/assets/audio/sfx/sword_3.ogg` | build_sfx.sh: shing: Sonniss.com-GDC2024-GameAudioBundle2of9/Mechanical Wave - Sound Effects Collection/TOOLHand_Shears Slide Open Close_ 01_MWSFX_SEC.wav @1400ms; scrape: Sonniss.com-GDC2024-GameAudioBundle2of9/Justsoundeffects - Melee Weapons/WEAPSwrd_Weapon 03 Slow Scrapes_JSE_MW.wav @21840ms; cut: Sonniss.com-GDC2024-GameAudioBundle2of9/Justsoundeffects - Melee Weapons/WEAPAxe_Long Two-Handed Axe Flesh Hit_JSE_MW.wav @7410ms | бібліотека | Sonniss-GDC-royalty-free | `Sfx.play("sword")` |
 | sfx-lib-ui-move | `game/assets/audio/sfx/ui_move.ogg` | build_sfx.sh: blip: kenney_interface-sounds/Audio/select_001.ogg | бібліотека | CC0 | `Sfx.play("ui_move")` |
 | sfx-lib-ui-confirm | `game/assets/audio/sfx/ui_confirm.ogg` | build_sfx.sh: chime: kenney_interface-sounds/Audio/confirmation_001.ogg | бібліотека | CC0 | `Sfx.play("ui_confirm")` |
+| anim-ual1 | `game/assets/animations/ual/UAL1.glb` | Quaternius Universal Animation Library «Source» (itch.io, куплено Santos 2026-10-03), `Unreal-Godot/UAL1.glb`, без root motion | Quaternius | CC0 1.0 (`License.txt` у zip) | манекен `Mannequin` + кліпи UAL1; запуск 4 (C1), `-- --skeletal-rig` |
+| anim-ual2 | `game/assets/animations/ual/UAL2.glb` | Quaternius Universal Animation Library 2 «Source» (itch.io, куплено Santos 2026-10-03), `Unreal-Godot/UAL2.glb`, без root motion | Quaternius | CC0 1.0 (`License.txt` у zip) | кліпи UAL2 на тому самому скелеті (меч, блок, реакції, нокдаун); запуск 4 (C1) |
 
 Іконка проєкту `game/icon.svg` — намальована в сесії (SVG, CC0), поза `game/assets/`.
 

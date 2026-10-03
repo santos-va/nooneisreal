@@ -125,7 +125,7 @@ rows = [
 ]
 lines = [l for l in s.split("\n") if f"`{out}/" not in l]
 plan = next(j for j, x in enumerate(lines) if x.startswith("## Заплановано"))
-anchor = max(i for i, l in enumerate(lines) if "`game/assets/" in l and i < plan)
+anchor = max(i for i, l in enumerate(lines) if l.startswith("| ") and "`game/assets/" in l and i < plan)  # a table row, not the icon note
 lines[anchor + 1:anchor + 1] = rows
 open(p, "w", encoding="utf-8").write("\n".join(lines))
 print("  реєстр: 2 рядки")
