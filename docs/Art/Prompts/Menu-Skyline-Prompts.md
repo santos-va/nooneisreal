@@ -458,8 +458,8 @@ only turn him to a three-quarter front view». Референси 2–3 — K-0 
 
 | мітка | партія | job-id | розмір · CDN-URL | результат |
 |---|---|---|---|---|
-| G-0 | C4v3 `choko-tpose-34-v5` · 3 | `73639409-a0e9-4718-9391-7366c426b783` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_033807_73639409-a0e9-4718-9391-7366c426b783.png | чекає вибору Santos |
-| G-1 | C4v3 `choko-tpose-34-v5` · 4 | `487bc563-e036-4d0c-8506-0728110fe3e8` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_033807_487bc563-e036-4d0c-8506-0728110fe3e8.png | чекає вибору Santos |
+| G-0 | C4v3 `choko-tpose-34-v5` · 3 | `73639409-a0e9-4718-9391-7366c426b783` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_033807_73639409-a0e9-4718-9391-7366c426b783.png | **переможець** (Santos: «вони однакові, бери любий») — канон ¾ |
+| G-1 | C4v3 `choko-tpose-34-v5` · 4 | `487bc563-e036-4d0c-8506-0728110fe3e8` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_033807_487bc563-e036-4d0c-8506-0728110fe3e8.png | не обрано (рівноцінний G-0, за словами Santos) |
 
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
