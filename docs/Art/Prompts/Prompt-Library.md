@@ -248,7 +248,7 @@ lanky, very tall and thin young man of about twenty — for this character only,
 
 **`{NEG_CHOKO}`** (додається після `{NEG}` у кожному промпті Choko з людиною):
 ```
-No chain mail or metal rings on the back, chest or torso, no mail shirt, no armor vest, no stripes anywhere on the jacket, front or back, no logos or brand marks on the shoes.
+No chain mail or metal rings on the back, chest or torso, no mail shirt, no armor vest, no stripes anywhere on the jacket, front or back, no brand logos on the shoes — the cursive C is the only mark.
 ```
 
 **Картка кросівок** `choko-item-sneakers-v1` — шаблон § 4, рядок ITEM «Choko's low-top 2000s retro running sneakers…».

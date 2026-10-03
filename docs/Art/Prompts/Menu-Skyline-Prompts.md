@@ -427,8 +427,23 @@ Santos: V-1 «не ті» (варіант «б») → «так» на 11 кр.: 
 
 | мітка | партія | job-id | розмір · CDN-URL | результат |
 |---|---|---|---|---|
-| K-0 | C2v2 `choko-item-sneakers-v2` · v1 | `face408d-13b4-4255-91d1-a379df09049d` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031833_face408d-13b4-4255-91d1-a379df09049d.png | чекає вибору Santos |
-| K-1 | C2v2 `choko-item-sneakers-v2` · v2 | `597d9600-7911-43cf-b5a8-8000dcc63e8e` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031832_597d9600-7911-43cf-b5a8-8000dcc63e8e.png | чекає вибору Santos |
+| K-0 | C2v2 `choko-item-sneakers-v2` · v1 | `face408d-13b4-4255-91d1-a379df09049d` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031833_face408d-13b4-4255-91d1-a379df09049d.png | **переможець** (Santos) |
+| K-1 | C2v2 `choko-item-sneakers-v2` · v2 | `597d9600-7911-43cf-b5a8-8000dcc63e8e` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_031832_597d9600-7911-43cf-b5a8-8000dcc63e8e.png | не обрано |
+
+T-пози front і ¾ (решта того самого «так» на 11): референси X-0 `b529a3bd` (обличчя, пропорції), K-0 `face408d` (кросівки), Z-1 `50734236` (спина);
+IDENTITY v5.2 без меча, куртка без смуг; у `{NEG}` «no logos» замінено на «no brand logos except the cursive C on the sneakers». `get_cost` 3:4 → 2.75.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C4v2 T-пози front + ¾ | 5749 | 5743.5 | 5.5 |
+| **Слово «так» на 11** | **5754.5** | **5743.5** | **11** |
+
+Z-1 малювався з кросівками V-1 — на спині видно п'яти; чи вони помітно інші, ніж K-0, **не перевірено** — питання Santos на дошці.
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| F-0 | C4v2 `choko-tpose-front-v5` · 2 | `600fa251-4ff7-4105-bcc4-3cda8dae5195` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_032101_600fa251-4ff7-4105-bcc4-3cda8dae5195.png | чекає вибору Santos |
+| F-1 | C4v2 `choko-tpose-34-v5` · 2 | `9ea38aaf-fa2f-458e-880c-54bf599eff52` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_032101_9ea38aaf-fa2f-458e-880c-54bf599eff52.png | чекає вибору Santos |
 
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
