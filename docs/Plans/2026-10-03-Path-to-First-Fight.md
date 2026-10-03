@@ -49,11 +49,13 @@ Godot у хмарі (перевірено 2026-10-03): `curl -sL -o g.zip https:
 | **2** — пасивка Printer | Гефест | нода друку й підбору для `passive_id = "printer"` за [[03-Skills-Framework]] і [[2026-10-03-Ares-Printer-Items]]; прибрати `_perfect_block` (`Fighter.gd`); id `grimoire_page*` → нові назви (`GrimoireFx.gd`); стікер — плейсхолдер-квад, арт на паузі | регрес Chrono Guard у smoke; стікер у 3D за спиною не там | smoke: стікер на 8-й с, 1.5 м позаду, живе 8 с, максимум 1; суперник рве; підбір дає ефект черги | стікер з'являється за Choko, підбирається, Skea його рве; ефект відчутний |
 | **3** — манекен C1 | Гефест | [[2026-10-03-Picks-to-Game-and-Animation]] § C1: `SkeletalRig.gd`, `MoveData.gd` (`anim_clip`, `contact_time`), UAL1+UAL2 Standard (CC0) у `game/assets/` + рядки [[Textures-Registry]]; прапорець запуску `-- --skeletal-rig`; кліпи — з таблиці Ареса (#36), до неї — кандидати [[2026-10-03-Animation-Sources]] §8 п. 2 | регрес капсул; BoneMap не перевірений у редакторі | § C1: кадр контакту = перший `active` ±1, кадр звуку = кадр влучання, 3 різні реакції | у редакторі на Mac: BoneMap → `SkeletonProfileHumanoid`, «Except Bone Transform» вимкнено; у грі — удар, звук і реакція збігаються |
 | **4** — справжні Choko і Skea | Santos → Аполлон → Santos → Гефест | Santos: «M-0, M-1 — так» (галерея Higgsfield); Аполлон: URL у `tools/fetch_assets.sh` + рядки [[Textures-Registry]]; Santos на Mac: `make fetch-assets`; Гефест: моделі замість манекена | CDN для хмари закритий (403) — лише Mac | РЕЄ `незареєстрованих: 0`; smoke запуску 3 зелений з моделями без зміни коду; `--screenshot` обох | герої замість манекена, анімації ті самі, ніщо не пливе |
-| **5** — клавіші 3D і кнопка режиму | Гермес (#26) → Гефест | Гермес: [[05-Platforms-Input]] § Вільний рух, ADR-014, рядок у [[06-UI-UX]] про кнопку «РЕЖИМ 2.5D / 3D»; Гефест: `InputRouter.gd` (прибрати `TODO #26`), `MainMenu.gd`, `GameState.gd` (кнопка, `user://settings.cfg`) | конфлікт клавіш у SHARED; ламаємо ADR-009 | гейти rc=0; smoke: кнопка → `free_move=true` і камера дуелі `current`; «no key clashes» з новими клавішами | 3D вмикається з меню без термінала; присід, обхід, підтяжка — кожне на своїй клавіші; SHARED удвох |
+| **5** — 3D-керування й камера | Гефест (Гермес — зроблено, ADR-014; Арес — числа камери) | клавіші за [[ADR-014-Free-Movement-Layout]] (`InputRouter.gd`, прибрати `TODO #26`); кнопка за [[06-UI-UX]] § Кнопка «РЕЖИМ 2.5D / 3D» (`MainMenu.gd`, `GameState.gd`, `user://settings.cfg`); **камера за [[ADR-015-Solo-Camera-Behind-Fighter]]**: `DuelCamera.gd` — `behind` у соло, `side` у VERSUS, інтерполяція рендера, межа прискорення yaw | регрес старих перевірок камери; P2 закритий тілом P1 | smoke: кнопка → `free_move=true`; «no key clashes» з ADR-014; обхід 360° в обох режимах — зміна кутової швидкості ≤ межа Ареса, обидва в кадрі | 3D з меню без термінала; присід X, стрибок Space; **камера за спиною, без ривків при обході**; VERSUS удвох — камера збоку, теж плавна |
 | **6** — фінал 0.3 | Гефест → Феміда → Santos | 0.3-6: прогін обох режимів + детермінізм (`SmokeTest.gd`); вердикт Феміди по всьому 0.3; слово Santos «3D за замовчуванням» → `free_move=true` окремим комітом | відчуття не те | `make check` → `ALL OK`; вердикт без RED | бій від меню до KO у 3D без прапорців — **«нормальний файт»** |
 
 **Порядок 4 ↔ 5 поміняно** (Santos 2026-10-03: «в першу чергу модельки, вид анімації, вміння, акробатика»): справжні
-герої раніше за клавіші. Запуск 4 чекає лише слова Santos на M-0/M-1 і `make fetch-assets`; запуск 5 — #26 Гермеса.
+герої раніше за клавіші. Запуск 4 чекає лише слова Santos на M-0/M-1 і `make fetch-assets`. Запуск 5 ні на кого не чекає
+(ADR-014 прийнято, PR #56), тож **якщо після запуску 3 моделей ще немає в `game/assets/`, Гефест бере 5, потім 4**.
+[[06-UI-UX]] § Кнопка і ADR-014 кажуть «запуск 4» — це стара нумерація, тепер це запуск 5.
 
 **Паралельно із запусками, без коду:** Гермес (#26) і Арес (#36 — таблиця кліп → удар, чесні описи замість
 «PLACEHOLDER frame data» у `choko.tres`, нових полів не додає) — зараз; Феміда — на кожен PR запуску. Терміналів,
@@ -78,8 +80,10 @@ Godot у хмарі (перевірено 2026-10-03): `curl -sL -o g.zip https:
 | підлога / помост — «набагато більше текстур» | беклог після запуску 6 | Аполлон (промпти + кошторис, RED) → Гефест | на річці — шейдер води, на провулку — плаский `Ground` |
 | оточення живе: метелики, кораблі по річці, «двіжуха» | беклог після запуску 6 | Дедал (план «Арена живе») → Аполлон (RED) → Гефест; Архімед — бюджет FPS | фон у 3D — одна картка, що повертається за камерою (`Backdrop.gd:48-52`); дрони над річкою — задум [[ADR-011-Diegetic-Grapple-Anchors]], у коді немає |
 
-Беклог — не пауза назавжди: після запуску 6 Дедал пише план «Арена живе» (камера, помост, оточення на 360°, життя
-навколо) з кроками й кошторисом.
+**Оновлено того ж дня.** Santos уточнив камеру й описав живий бій. Два рішення прийнято:
+[[ADR-015-Solo-Camera-Behind-Fighter]] (у соло камера за спиною, плавна; іде в **запуск 5**) і
+[[ADR-016-Player-Decides-What-Body-Decides-How]]. Решта — **хвиля 2, запуски 7–11**: живі тіла, акробатика, поверхні,
+ухили й стати, живе оточення ([[2026-10-03-Living-Combat]]). Рядок «камера — беклог» у таблиці вище застарів.
 
 ## Як запустити (Mac)
 
@@ -95,4 +99,4 @@ GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot
 ## Related
 - [[state]] · [[Roadmap]] · [[2026-10-03-First-Fight-Recap]] · [[2026-10-03-Prototype-0.3-Free-Movement]] ·
   [[2026-10-03-Picks-to-Game-and-Animation]] · [[2026-10-03-Animation-Sources]] · [[2026-10-03-C2-3D-Heroes]] ·
-  [[2026-10-03-Ares-Printer-Items]] · [[2026-10-03-Free-Movement-References]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[02-Combat-System]] · [[03-Skills-Framework]] · [[05-Platforms-Input]] · [[06-UI-UX]] · [[Textures-Registry]]
+  [[2026-10-03-Ares-Printer-Items]] · [[ADR-014-Free-Movement-Layout]] · [[ADR-015-Solo-Camera-Behind-Fighter]] · [[ADR-016-Player-Decides-What-Body-Decides-How]] · [[2026-10-03-Living-Combat]] · [[2026-10-03-Free-Movement-References]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[02-Combat-System]] · [[03-Skills-Framework]] · [[05-Platforms-Input]] · [[06-UI-UX]] · [[Textures-Registry]]
