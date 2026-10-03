@@ -36,6 +36,18 @@ var last_result: Dictionary = {}
 ## The live water surface when the current stage is on water (set by Arena), else null.
 ## Fighters read their floor from it; see scripts/core/WaveField.gd.
 var water: WaveField = null
+## Prototype 0.3 free 3D movement with lock-on (docs/Plans/2026-10-03-Prototype-0.3-Free-Movement.md).
+## false = the 0.2 fight on the X plane, unchanged. Becomes true only after Santos approves 0.3.
+## Switch with set_free_move() (it also re-binds the keyboard), or launch with `-- --free-move`.
+var free_move: bool = false
+## The duel's screen frame for free movement (scripts/core/DuelFrame.gd); fighters sync it each frame.
+var duel: DuelFrame = DuelFrame.new()
+
+
+func set_free_move(on: bool) -> void:
+	free_move = on
+	duel.reset()
+	InputRouter.apply_profile(InputRouter.profile, false)
 
 
 func load_character(id: String) -> CharacterData:

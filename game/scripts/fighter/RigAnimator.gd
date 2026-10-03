@@ -205,7 +205,7 @@ func tick(delta: float, f: Fighter, frozen: bool) -> void:
 		_update_flash(delta)
 		return
 	idle_time += delta
-	rotation.y = 0.0 if f.facing == 1 else PI
+	rotation.y = f.yaw() if GameState.free_move else (0.0 if f.facing == 1 else PI)
 	_compute_target(f, delta)
 	_water_sway(f)
 	if f.state == Fighter.State.ATTACK and f.current_move != null:
@@ -268,7 +268,8 @@ func _compute_target(f: Fighter, delta: float) -> void:
 		Fighter.State.IDLE, Fighter.State.INTRO:
 			_guard(breathe)
 		Fighter.State.WALK:
-			walk_phase += delta * 9.0 * signf(f.velocity.x * f.facing if f.velocity.x != 0.0 else 1.0)
+			var along := f.velocity.dot(f.forward) if GameState.free_move else f.velocity.x * f.facing
+			walk_phase += delta * 9.0 * signf(along if along != 0.0 else 1.0)
 			_guard(breathe)
 			var s := sin(walk_phase)
 			_pose_set("thigh_l", Vector3(0, 0, 0.55 * s))

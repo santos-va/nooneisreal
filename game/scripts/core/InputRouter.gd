@@ -5,7 +5,13 @@ extends Node
 ## as a human player. Docs: docs/GDD/05-Platforms-Input.md
 
 const BUFFER_FRAMES := 6
-const ACTIONS := ["left", "right", "jump", "crouch", "light", "heavy", "block", "skill1", "skill2", "ultimate", "grapple", "dash"]
+const ACTIONS := ["left", "right", "jump", "crouch", "light", "heavy", "block", "skill1", "skill2", "ultimate", "grapple", "dash", "up", "down"]
+## Free movement (GameState.free_move): screen up/down = sidestep around the opponent. These two
+## actions have no keys in project.godot; while free_move is on, apply_profile() moves the W/↑ key
+## off `jump` onto `up` and S/↓ off `crouch` onto `down` (Space stays jump; crouch has no key).
+## TEMPORARY until T8 Гермес fixes the free-movement layout — TODO #26.
+const FREE_MOVE_UP_KEYS := [KEY_W, KEY_UP]
+const FREE_MOVE_DOWN_KEYS := [KEY_S, KEY_DOWN]
 const SETTINGS_PATH := "user://settings.cfg"
 
 ## Keyboard profiles (docs/Decisions/ADR-009-Solo-Keyboard-Layout.md). Only keyboard events are
@@ -36,6 +42,8 @@ func _ready() -> void:
 	for p in [1, 2]:
 		for a in ACTIONS:
 			var n := action_name(p, a)
+			if not InputMap.has_action(n):
+				InputMap.add_action(n)   # up/down exist only for free movement
 			var keys: Array = []
 			for ev in InputMap.action_get_events(n):
 				if ev is InputEventKey:
@@ -69,6 +77,9 @@ func apply_profile(prof: String, save: bool = true) -> void:
 					if code == KEY_SHIFT:
 						k.location = KEY_LOCATION_LEFT   # RShift stays free
 					InputMap.action_add_event(n, k)
+		if GameState.free_move:
+			_move_keys(action_name(p, "jump"), action_name(p, "up"), FREE_MOVE_UP_KEYS)
+			_move_keys(action_name(p, "crouch"), action_name(p, "down"), FREE_MOVE_DOWN_KEYS)
 	_pressed_at.clear()
 	if save:
 		var cfg := ConfigFile.new()
@@ -77,12 +88,26 @@ func apply_profile(prof: String, save: bool = true) -> void:
 		cfg.save(SETTINGS_PATH)
 
 
+## TODO #26: free-movement layout is temporary (see FREE_MOVE_UP_KEYS).
+func _move_keys(from: String, to: String, codes: Array) -> void:
+	for ev in InputMap.action_get_events(from):
+		if ev is InputEventKey and (ev as InputEventKey).physical_keycode in codes:
+			InputMap.action_erase_event(from, ev)
+			InputMap.action_add_event(to, ev)
+
+
 func cycle_profile() -> void:
 	apply_profile(PROFILES[wrapi(PROFILES.find(profile) + 1, 0, PROFILES.size())])
 
 
 ## One-line control hint for the HUD / menu, matching the active profile.
 func hint_text(vs_cpu: bool) -> String:
+	if GameState.free_move:
+		return _hint_profile(vs_cpu).replace("W/Space jump · S crouch", "W/S sidestep · Space jump") + "   [3D free move — keys TODO #26]"
+	return _hint_profile(vs_cpu)
+
+
+func _hint_profile(vs_cpu: bool) -> String:
 	if profile == PROFILE_SOLO:
 		var p1 := "P1  A/D move · W/Space jump · S crouch · LShift dash · E grapple (S+E pull)   J light · K heavy · L guard · U/I skills · O ultimate"
 		return p1 + ("   |   Tab hitboxes · Esc pause" if vs_cpu else "      P2  gamepad (SOLO keyboard)")
@@ -134,6 +159,20 @@ func axis(player: int) -> float:
 	if _virtual_held.get(action_name(player, "left"), false):
 		x -= 1.0
 	return clampf(x, -1.0, 1.0)
+
+
+## Free movement: camera-relative stick, x = screen right, y = screen up (into the picture).
+## In the plane mode y is always 0, so callers can use move() in both modes.
+func move(player: int) -> Vector2:
+	if not GameState.free_move:
+		return Vector2(axis(player), 0.0)
+	var y := Input.get_action_strength(action_name(player, "up")) - Input.get_action_strength(action_name(player, "down"))
+	if _virtual_held.get(action_name(player, "up"), false):
+		y += 1.0
+	if _virtual_held.get(action_name(player, "down"), false):
+		y -= 1.0
+	var v := Vector2(axis(player), clampf(y, -1.0, 1.0))
+	return v.normalized() if v.length() > 1.0 else v
 
 
 func just_pressed(player: int, action: String) -> bool:

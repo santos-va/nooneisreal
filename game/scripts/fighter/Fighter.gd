@@ -48,13 +48,19 @@ const PERFECT_FREEZE := 24
 const REWIND_HEAL_CAP := 0.15
 const TIME_STOP_FRAMES := 72
 const WATER_GETUP_EXTRA := 6      # Stage-River: getting up out of the water is slower (PLACEHOLDER)
+# free movement, GameState.free_move (Prototype 0.3 plan; PLACEHOLDER — T5 Арес #25, T3 Архімед #24)
+const ARENA_RADIUS := 12.5        # circle arena; = ARENA_HALF_WIDTH until #25 sets it
+const BLOCK_HALF_ANGLE := 90.0    # guard covers ±deg around forward: = 0.2's «facing the attacker»
+const MIN_LINE := 0.05            # below this the direction to the opponent is undefined: keep the last
 
 @export var player_index: int = 1
 @export var data: CharacterData
 @export var is_cpu: bool = false
 
 var state: State = State.INTRO
-var facing: int = 1
+var facing: int = 1               # plane: ±1 along X. free_move: derived from `forward` (screen side)
+## Where the fighter looks, unit vector on the ground plane. Plane mode: always (facing, 0, 0).
+var forward: Vector3 = Vector3.RIGHT
 var hp: float = 1000.0
 var meter: float = 0.0
 var opponent: Fighter
@@ -92,6 +98,9 @@ var dash_charges_left: int = 0
 var dash_recharge_left: float = 0.0
 var flashing: bool = false
 var _water_grounded: bool = false
+var _wish: Vector3 = Vector3.ZERO   # free_move: camera-relative stick in world space, this frame
+var _dash_vec: Vector3 = Vector3.RIGHT
+var _track_left: float = 0.0       # free_move: radians the current attack may still turn
 
 @onready var animator: RigAnimator = $Rig
 @onready var hurtbox: Area3D = $Hurtbox
@@ -155,6 +164,9 @@ func reset_for_round(x: float, face: int) -> void:
 	global_position = Vector3(x, 0.0, 0.0)
 	velocity = Vector3.ZERO
 	facing = face
+	forward = Vector3(float(face), 0.0, 0.0)
+	_wish = Vector3.ZERO
+	GameState.duel.reset()
 	hp = data.max_hp
 	meter = 0.0
 	combo_count = 0
@@ -220,6 +232,9 @@ func speed_mult() -> float:
 
 # --- main tick ---------------------------------------------------------------------------------
 func _physics_process(delta: float) -> void:
+	if _free() and opponent != null:
+		var a: Fighter = self if player_index == 1 else opponent
+		GameState.duel.sync(a.global_position, a.opponent.global_position, InputRouter.frame())
 	if frozen_frames > 0:
 		frozen_frames -= 1
 		animator.tick(delta, self, true)
@@ -275,9 +290,12 @@ func _physics_process(delta: float) -> void:
 
 func _read_intent() -> Dictionary:
 	var i := {"axis": 0.0, "crouch": false, "block": false, "grapple_held": false}
+	_wish = Vector3.ZERO
 	if control_locked:
 		return i
 	i.axis = InputRouter.axis(player_index)
+	if _free():
+		_wish = GameState.duel.to_world(InputRouter.move(player_index))
 	i.crouch = InputRouter.held(player_index, "crouch")
 	i.block = InputRouter.held(player_index, "block")
 	i.grapple_held = InputRouter.held(player_index, "grapple")
@@ -395,6 +413,9 @@ func _tick_ground(delta: float, intent: Dictionary) -> void:
 	if _pressed("jump"):
 		velocity.y = data.jump_velocity
 		velocity.x = intent.axis * data.walk_speed * speed_mult()
+		if _free():
+			velocity.x = _wish.x * data.walk_speed * speed_mult()
+			velocity.z = _wish.z * data.walk_speed * speed_mult()
 		_set_state(State.JUMP)
 		velocity.y -= GRAVITY * delta
 		move_and_slide()
@@ -407,9 +428,14 @@ func _tick_ground(delta: float, intent: Dictionary) -> void:
 		_set_state_if(State.CROUCH)
 		_ground_physics(delta, 0.0)
 		return
-	if absf(intent.axis) > 0.1:
-		var forward := signf(intent.axis) == float(facing)
-		var speed := (data.walk_speed if forward else data.back_walk_speed) * speed_mult() * water_walk_mult()
+	if _free():
+		if _wish.length() > 0.1:
+			_set_state_if(State.WALK)
+			_walk_free(delta)
+			return
+	elif absf(intent.axis) > 0.1:
+		var fwd := signf(intent.axis) == float(facing)
+		var speed := (data.walk_speed if fwd else data.back_walk_speed) * speed_mult() * water_walk_mult()
 		_set_state_if(State.WALK)
 		_ground_physics(delta, intent.axis * speed)
 		return
@@ -417,8 +443,30 @@ func _tick_ground(delta: float, intent: Dictionary) -> void:
 	_ground_physics(delta, 0.0)
 
 
-func _ground_physics(delta: float, vx: float) -> void:
+## Free movement walk: along the line to the opponent at walk/back-walk speed, across it = circling
+## around the opponent at walk speed (sidestep speed PLACEHOLDER — #25). The sideways part keeps
+## the distance, so a pure sidestep is an arc around the opponent, not a spiral outward.
+func _walk_free(delta: float) -> void:
+	var along := _wish.dot(forward)
+	var side := _wish - forward * along
+	var k := speed_mult() * water_walk_mult()
+	var v := forward * along * (data.walk_speed if along >= 0.0 else data.back_walk_speed) * k + side * data.walk_speed * k
+	var r0 := -1.0
+	if opponent != null and side.length() > 0.1:
+		r0 = _flat(global_position - opponent.global_position).length() - along * (data.walk_speed if along >= 0.0 else data.back_walk_speed) * k * delta
+	_ground_physics(delta, v.x, v.z)
+	if r0 > MIN_SEPARATION:
+		var d := _flat(global_position - opponent.global_position)
+		if d.length() > MIN_LINE:
+			d = d.normalized() * r0
+			global_position.x = opponent.global_position.x + d.x
+			global_position.z = opponent.global_position.z + d.z
+
+
+func _ground_physics(delta: float, vx: float, vz: float = 0.0) -> void:
 	velocity.x = vx
+	if _free():
+		velocity.z = vz
 	velocity.y -= GRAVITY * delta
 	move_and_slide()
 	if on_ground():
@@ -434,7 +482,12 @@ func _tick_air(delta: float, intent: Dictionary) -> void:
 	if (_pressed("light") or _pressed("heavy")) and data.air_light:
 		_start_move(data.air_light)
 		return
-	velocity.x = move_toward(velocity.x, intent.axis * data.walk_speed * speed_mult(), data.air_control * data.walk_speed * 3.0 * delta)
+	if _free():
+		var rate := data.air_control * data.walk_speed * 3.0 * delta
+		velocity.x = move_toward(velocity.x, _wish.x * data.walk_speed * speed_mult(), rate)
+		velocity.z = move_toward(velocity.z, _wish.z * data.walk_speed * speed_mult(), rate)
+	else:
+		velocity.x = move_toward(velocity.x, intent.axis * data.walk_speed * speed_mult(), data.air_control * data.walk_speed * 3.0 * delta)
 	velocity.y -= GRAVITY * delta
 	move_and_slide()
 	if on_ground():
@@ -448,6 +501,8 @@ func _start_dash(axis: float) -> bool:
 	if data.dash_style == "flash":
 		return _start_flash(axis)
 	dash_dir = int(signf(axis)) if absf(axis) > 0.1 else facing
+	if _free():
+		_aim_dash()
 	dash_frames_left = data.dash_frames
 	if dash_dir != facing:
 		invulnerable_frames = 6
@@ -469,8 +524,12 @@ func _start_flash(axis: float) -> bool:
 	dash_changed.emit(dash_charges_left, dash_recharge_left, data.dash_charges)
 	dash_dir = int(signf(axis)) if absf(axis) > 0.1 else facing
 	_flash_from = global_position
-	var tx := clampf(global_position.x + float(dash_dir) * data.flash_distance, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH)
-	_flash_to = Vector3(tx, global_position.y, 0.0)
+	if _free():
+		_aim_dash()
+		_flash_to = clamp_arena(global_position + _dash_vec * data.flash_distance)
+	else:
+		var tx := clampf(global_position.x + float(dash_dir) * data.flash_distance, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH)
+		_flash_to = Vector3(tx, global_position.y, 0.0)
 	flashing = true
 	dash_frames_left = FLASH_TRAVEL + FLASH_RECOVER
 	invulnerable_frames = maxi(invulnerable_frames, FLASH_IFRAMES)
@@ -486,12 +545,22 @@ func _start_flash(axis: float) -> bool:
 	return true
 
 
+## Free movement: dash/flash along the stick (or forward when neutral); dash_dir keeps its
+## plane meaning (+facing = toward the opponent) for the backdash i-frames and the rig.
+func _aim_dash() -> void:
+	_dash_vec = _wish.normalized() if _wish.length() > 0.1 else forward
+	dash_dir = facing if _dash_vec.dot(forward) >= -0.5 else -facing
+
+
 func _tick_dash(delta: float) -> void:
 	if flashing:
 		_tick_flash(delta)
 		return
 	dash_frames_left -= 1
 	velocity.x = dash_dir * data.dash_speed
+	if _free():
+		velocity.x = _dash_vec.x * data.dash_speed
+		velocity.z = _dash_vec.z * data.dash_speed
 	velocity.y -= GRAVITY * delta
 	move_and_slide()
 	if dash_frames_left < data.dash_frames / 2:
@@ -529,7 +598,7 @@ func _tick_flash(delta: float) -> void:
 			return
 		if not on_ground():
 			velocity.y -= GRAVITY * delta * 0.5
-		velocity.x = move_toward(velocity.x, 0.0, 40.0 * delta)
+		_friction(40.0 * delta)
 		move_and_slide()
 	if dash_frames_left <= 0:
 		flashing = false
@@ -556,6 +625,7 @@ func _start_move(m: MoveData, slot: String = "") -> void:
 	current_slot = slot
 	move_frame = 0
 	has_hit = false
+	_track_left = deg_to_rad(m.tracking_deg)
 	airborne_attack = not on_ground()
 	_set_state(State.ATTACK)
 	move_started.emit(self, m)
@@ -572,10 +642,15 @@ func _tick_attack(delta: float) -> void:
 		velocity.y -= GRAVITY * delta
 	else:
 		var window := m.startup + m.active
+		if _free() and move_frame < m.startup:
+			_track()
 		if m.forward_step > 0.0 and move_frame < window:
 			velocity.x = facing * m.forward_step / (float(window) / 60.0)
+			if _free():
+				velocity.x = forward.x * m.forward_step / (float(window) / 60.0)
+				velocity.z = forward.z * m.forward_step / (float(window) / 60.0)
 		else:
-			velocity.x = move_toward(velocity.x, 0.0, 40.0 * delta)
+			_friction(40.0 * delta)
 		velocity.y -= GRAVITY * delta
 	move_and_slide()
 	if airborne_attack and on_ground():
@@ -606,12 +681,26 @@ func _tick_attack(delta: float) -> void:
 			_set_state(State.IDLE)
 
 
+## Free movement: during startup the attack turns toward the opponent, at most tracking_deg in
+## total over the whole startup (docs/Plans/2026-10-03-Prototype-0.3-Free-Movement.md § Модель руху).
+func _track() -> void:
+	if opponent == null or _track_left <= 0.0:
+		return
+	var to := _flat(opponent.global_position - global_position)
+	if to.length() < MIN_LINE:
+		return
+	var ang := forward.signed_angle_to(to.normalized(), Vector3.UP)
+	var step := clampf(ang, -_track_left, _track_left)
+	_track_left -= absf(step)
+	_set_forward(forward.rotated(Vector3.UP, step))
+
+
 ## Ink smear along the strike on the first active frame (step 1.5): heavier moves leave more.
 func _strike_smear(m: MoveData) -> void:
 	if m.damage <= 0.0 or m.hitbox_size == Vector3.ZERO:
 		return
-	var from := global_position + Vector3(facing * 0.25, m.hitbox_offset.y, 0.0)
-	var to := global_position + Vector3(facing * (m.hitbox_offset.x + m.hitbox_size.x * 0.5), m.hitbox_offset.y, 0.0)
+	var from := global_position + _ahead(0.25, m.hitbox_offset.y)
+	var to := global_position + _ahead(m.hitbox_offset.x + m.hitbox_size.x * 0.5, m.hitbox_offset.y)
 	var heavy := m.damage >= 70.0
 	SmearShards.burst(Fx.root(self), from, to, [data.vfx_primary, data.accent_color, Color(0.05, 0.03, 0.08)], 10 if heavy else 5, 3 if heavy else 2)
 
@@ -625,6 +714,7 @@ func _activate_effect(m: MoveData) -> void:
 		"sword_storm":
 			SwordStormFx.spawn(self)
 		"kunai_rain":
+			# TODO #25: kunai rain still lands on the X line; its 3D rule comes from T5 Арес
 			var cx := global_position.x + float(facing) * 3.0
 			if opponent != null:
 				cx = clampf(opponent.global_position.x, global_position.x - 7.0, global_position.x + 7.0)
@@ -669,6 +759,8 @@ func _check_hit(m: MoveData) -> void:
 	var off := m.hitbox_offset
 	off.x *= float(facing)
 	_hit_query.transform = Transform3D(Basis.IDENTITY, global_position + off)
+	if _free():
+		_hit_query.transform = Transform3D(_basis(), global_position + _basis() * m.hitbox_offset)
 	var space := get_world_3d().direct_space_state
 	var results := space.intersect_shape(_hit_query, 8)
 	for r in results:
@@ -688,6 +780,8 @@ func receive_hit(attacker: Fighter, m: MoveData) -> void:
 	var scale := 1.0 if m.ignore_scaling else maxf(0.35, 1.0 - COMBO_SCALING * float(combo_count))
 	var crit_k := CRIT_MULT if crit else 1.0
 	var kb := Vector3(float(attacker.facing) * m.knockback.x, m.knockback.y, 0.0) / maxf(0.2, data.weight)
+	if _free():
+		kb = (attacker.forward * m.knockback.x + Vector3.UP * m.knockback.y) / maxf(0.2, data.weight)
 	if frozen_frames > 0:
 		# time is stopped: damage lands (70 %), knockback is stored until time resumes
 		hp -= m.damage * scale * crit_k * FREEZE_DAMAGE
@@ -711,11 +805,14 @@ func receive_hit(attacker: Fighter, m: MoveData) -> void:
 		elif state != State.HITSTUN:
 			_set_state(State.HITSTUN)
 		return
-	var blocking := (state == State.BLOCK or state == State.BLOCKSTUN) and facing == -attacker.facing and m.kind != MoveData.Kind.THROW
+	var blocking := (state == State.BLOCK or state == State.BLOCKSTUN) and _guards_against(attacker) and m.kind != MoveData.Kind.THROW
 	if blocking:
 		hp = maxf(1.0, hp - m.chip_damage * (3.0 if crit else 1.0))
 		stun_frames = m.blockstun + (4 if crit else 0)
 		velocity.x = float(attacker.facing) * m.knockback.x * 0.45
+		if _free():
+			velocity.x = attacker.forward.x * m.knockback.x * 0.45
+			velocity.z = attacker.forward.z * m.knockback.x * 0.45
 		velocity.y = 0.0
 		meter = minf(MAX_METER, meter + m.meter_gain_block * 0.5)
 		attacker.meter = minf(MAX_METER, attacker.meter + m.meter_gain_block)
@@ -753,8 +850,28 @@ func receive_hit(attacker: Fighter, m: MoveData) -> void:
 	stun_frames = m.hitstun
 	velocity.x = kb.x
 	velocity.y = kb.y
-	animator.flinch(Vector3(float(attacker.facing), 0, 0), dmg, facing, _zone_for(attacker, m))
+	if _free():
+		velocity.z = kb.z
+	animator.flinch(_flinch_dir(attacker), dmg, facing, _zone_for(attacker, m))
 	_set_state(State.HITSTUN)
+
+
+## Plane: the guard holds when the fighters face each other. Free movement: when the attacker is
+## within BLOCK_HALF_ANGLE of where we look — a hit in the back is never blocked.
+func _guards_against(attacker: Fighter) -> bool:
+	if not _free():
+		return facing == -attacker.facing
+	var to := _flat(attacker.global_position - global_position)
+	if to.length() < MIN_LINE:
+		return true
+	return rad_to_deg(forward.angle_to(to.normalized())) <= BLOCK_HALF_ANGLE
+
+
+## Direction for RigAnimator.flinch(), which reads only dir.x against `facing`.
+func _flinch_dir(attacker: Fighter) -> Vector3:
+	if not _free():
+		return Vector3(float(attacker.facing), 0, 0)
+	return Vector3(attacker.forward.dot(forward) * float(facing), 0.0, 0.0)
 
 
 func _check_crit(attacker: Fighter, m: MoveData) -> bool:
@@ -840,7 +957,7 @@ func _apply_hitstop(other: Fighter, frames: int) -> void:
 
 func _tick_hitstun(delta: float) -> void:
 	stun_frames -= 1
-	velocity.x = move_toward(velocity.x, 0.0, HIT_FRICTION * delta)
+	_friction(HIT_FRICTION * delta)
 	velocity.y -= GRAVITY * delta
 	move_and_slide()
 	if on_ground():
@@ -853,7 +970,7 @@ func _tick_hitstun(delta: float) -> void:
 
 func _tick_blockstun(delta: float, intent: Dictionary) -> void:
 	stun_frames -= 1
-	velocity.x = move_toward(velocity.x, 0.0, HIT_FRICTION * delta)
+	_friction(HIT_FRICTION * delta)
 	velocity.y -= GRAVITY * delta
 	move_and_slide()
 	if stun_frames <= 0:
@@ -916,7 +1033,7 @@ func rewind() -> void:
 	animator.visible = true
 	hurt_shape.disabled = false
 	grapple.detach()
-	global_position = Vector3(target.x, maxf(target.y, 0.0), 0.0)
+	global_position = Vector3(target.x, maxf(target.y, 0.0), target.z if _free() else 0.0)
 	velocity = Vector3.ZERO
 	if rec_hp > hp:
 		hp = minf(rec_hp, hp + data.max_hp * REWIND_HEAL_CAP)
@@ -947,7 +1064,7 @@ func end_veil() -> void:
 	veil_frames = 0
 	if state != State.LAUNCHED and state != State.KO:
 		animator.visible = true
-	SmearShards.burst(Fx.root(self), global_position, global_position + Vector3(float(facing) * 0.6, 0, 0), [data.vfx_primary, Color(0.05, 0.03, 0.08)], 8, 1)
+	SmearShards.burst(Fx.root(self), global_position, global_position + _ahead(0.6), [data.vfx_primary, Color(0.05, 0.03, 0.08)], 8, 1)
 
 
 # --- ragdoll / knockdown / KO ----------------------------------------------------------------
@@ -956,6 +1073,8 @@ func _enter_ragdoll(impulse: Vector3) -> void:
 	flashing = false
 	if not GameState.use_ragdoll:
 		velocity.x = impulse.x * 0.5
+		if _free():
+			velocity.z = impulse.z * 0.5
 		_set_state(State.KNOCKDOWN)
 		return
 	_spawn_ragdoll(impulse, true)
@@ -983,11 +1102,11 @@ func _tick_launched() -> void:
 		_set_state(State.KNOCKDOWN)
 		return
 	var p := _ragdoll.pelvis_position()
-	global_position = Vector3(clampf(p.x, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH), 0.0, 0.0)
+	global_position = _ground_spot(p)
 	if _ragdoll.settled() or frame_in_state > 170:
-		var gx := global_position.x
+		var g := global_position
 		_clear_ragdoll()
-		global_position = Vector3(gx, 0.0, 0.0)
+		global_position = g
 		velocity = Vector3.ZERO
 		animator.visible = veil_frames <= 0
 		hurt_shape.disabled = false
@@ -998,7 +1117,7 @@ func _tick_launched() -> void:
 
 
 func _tick_knockdown(delta: float) -> void:
-	velocity.x = move_toward(velocity.x, 0.0, HIT_FRICTION * delta)
+	_friction(HIT_FRICTION * delta)
 	velocity.y -= GRAVITY * delta
 	move_and_slide()
 	if frame_in_state >= KNOCKDOWN_FRAMES:
@@ -1025,6 +1144,8 @@ func _die(attacker: Fighter, m: MoveData) -> void:
 		record_marker.queue_free()
 	record_marker = null
 	var dir := Vector3(float(attacker.facing) * maxf(m.knockback.x, 5.0), maxf(m.knockback.y, 4.5), 0.0) * 1.3
+	if _free():
+		dir = (attacker.forward * maxf(m.knockback.x, 5.0) + Vector3.UP * maxf(m.knockback.y, 4.5)) * 1.3
 	if GameState.use_ragdoll:
 		_spawn_ragdoll(dir, false)
 	_set_state(State.KO)
@@ -1034,8 +1155,7 @@ func _die(attacker: Fighter, m: MoveData) -> void:
 
 func _tick_ko() -> void:
 	if _ragdoll != null:
-		var p := _ragdoll.pelvis_position()
-		global_position = Vector3(clampf(p.x, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH), 0.0, 0.0)
+		global_position = _ground_spot(_ragdoll.pelvis_position())
 
 
 # --- grapple --------------------------------------------------------------------------------------
@@ -1069,9 +1189,73 @@ func _on_grapple_changed(charges: int, cooldown_left: float, max_charges: int) -
 func _update_facing() -> void:
 	if opponent == null:
 		return
+	if _free():
+		# lock-on: always look at the opponent (they are in one spot → keep the last direction)
+		_set_forward(opponent.global_position - global_position)
+		return
 	var dx := opponent.global_position.x - global_position.x
 	if absf(dx) > 0.05:
 		facing = 1 if dx > 0.0 else -1
+		forward = Vector3(float(facing), 0.0, 0.0)
+
+
+# --- free movement helpers (GameState.free_move) ---------------------------------------------------
+func _free() -> bool:
+	return GameState.free_move
+
+
+static func _flat(v: Vector3) -> Vector3:
+	return Vector3(v.x, 0.0, v.z)
+
+
+## Sets `forward` from any vector (y ignored); a near-zero vector keeps the old one. `facing` follows
+## as the screen side: +1 when looking toward screen-right of the duel frame.
+func _set_forward(v: Vector3) -> void:
+	var f := _flat(v)
+	if f.length() < MIN_LINE:
+		return
+	forward = f.normalized()
+	facing = 1 if forward.dot(GameState.duel.right) >= 0.0 else -1
+
+
+## Yaw that turns local +x (the rig's and MoveData's "forward") onto `forward`.
+func yaw() -> float:
+	return atan2(-forward.z, forward.x)
+
+
+func _basis() -> Basis:
+	return Basis(Vector3.UP, yaw())
+
+
+## A point `dist` ahead of the fighter at height y, relative to its position.
+func _ahead(dist: float, y: float = 0.0) -> Vector3:
+	if _free():
+		return forward * dist + Vector3.UP * y
+	return Vector3(float(facing) * dist, y, 0.0)
+
+
+func _friction(amount: float) -> void:
+	velocity.x = move_toward(velocity.x, 0.0, amount)
+	if _free():
+		velocity.z = move_toward(velocity.z, 0.0, amount)
+
+
+## Plane: |x| ≤ ARENA_HALF_WIDTH. Free movement: inside the circle of ARENA_RADIUS (hard edge for
+## now; the soft wall's feel is T5 Арес's, #25). y is kept.
+static func clamp_arena(p: Vector3) -> Vector3:
+	if not GameState.free_move:
+		return Vector3(clampf(p.x, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH), p.y, p.z)
+	var f := Vector3(p.x, 0.0, p.z)
+	if f.length() > ARENA_RADIUS:
+		f = f.normalized() * ARENA_RADIUS
+	return Vector3(f.x, p.y, f.z)
+
+
+## Where the body stands while a ragdoll flies: under the pelvis, on the floor, inside the arena.
+func _ground_spot(p: Vector3) -> Vector3:
+	if not _free():
+		return Vector3(clampf(p.x, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH), 0.0, 0.0)
+	return clamp_arena(Vector3(p.x, 0.0, p.z))
 
 
 # --- water (river stage) -------------------------------------------------------------------------
@@ -1119,14 +1303,20 @@ func _tick_stumble(delta: float, intent: Dictionary) -> void:
 		_ground_physics(delta, 0.0)
 		return
 	stun_frames -= 1
-	_ground_physics(delta, -facing * 0.6)
+	if _free():
+		_ground_physics(delta, -forward.x * 0.6, -forward.z * 0.6)
+	else:
+		_ground_physics(delta, -facing * 0.6)
 	if stun_frames <= 0:
 		_set_state(State.IDLE)
 
 
 func _post_move() -> void:
-	global_position.x = clampf(global_position.x, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH)
-	global_position.z = 0.0
+	if _free():
+		global_position = clamp_arena(global_position)
+	else:
+		global_position.x = clampf(global_position.x, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH)
+		global_position.z = 0.0
 	if GameState.water != null:
 		# stand on the waves: never below the surface, and stay glued to it while grounded
 		var fy := floor_y()
@@ -1143,6 +1333,9 @@ func _post_move() -> void:
 		return
 	if state == State.LAUNCHED or state == State.KO or opponent.state == State.LAUNCHED or opponent.state == State.KO:
 		return
+	if _free():
+		_push_radial()
+		return
 	var dx := global_position.x - opponent.global_position.x
 	if absf(dx) < MIN_SEPARATION and on_ground() and opponent.on_ground():
 		var push := (MIN_SEPARATION - absf(dx)) * 0.5
@@ -1151,6 +1344,19 @@ func _post_move() -> void:
 			dir = -float(facing)
 		global_position.x = clampf(global_position.x + dir * push, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH)
 		opponent.global_position.x = clampf(opponent.global_position.x - dir * push, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH)
+
+
+## Free movement push-box: the fighters are discs of MIN_SEPARATION on the ground plane; overlap is
+## split half-half along the line between them (they are in one spot → along -forward).
+func _push_radial() -> void:
+	var d := _flat(global_position - opponent.global_position)
+	var l := d.length()
+	if l >= MIN_SEPARATION or not on_ground() or not opponent.on_ground():
+		return
+	var dir := d / l if l > 0.0001 else -forward
+	var push := dir * (MIN_SEPARATION - l) * 0.5
+	global_position = clamp_arena(global_position + push)
+	opponent.global_position = clamp_arena(opponent.global_position - push)
 
 
 func _update_hitbox_debug() -> void:
@@ -1162,6 +1368,8 @@ func _update_hitbox_debug() -> void:
 		off.x *= float(facing)
 		hitbox_debug.global_position = global_position + off
 		hitbox_debug.scale = current_move.hitbox_size
+		if _free():
+			hitbox_debug.global_transform = Transform3D(_basis() * Basis.from_scale(current_move.hitbox_size), global_position + _basis() * current_move.hitbox_offset)
 
 
 func _set_state(s: State) -> void:
