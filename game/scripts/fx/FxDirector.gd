@@ -6,17 +6,22 @@ extends Node
 ##
 ## what → sheet (docs/Art/Prompts/VFX-Sheets-Prompts.md):
 ##   Choko's normals → slash_choko / slash_heavy_choko / slash_air_choko, from the first active frame
+##   Skea's normals (jab_elbow, roundhouse, low_kick, flying_knee) → slash_skea, same hook, her own size
 ##   a hit → spark_hit (row: cream, crit violet, Choko emerald, blocked blue) — Arena._on_hit
-##   K.O. → ko_burst · a dash → trail_chrono (Choko) / trail_flash (Skea's Flash Step) · a grapple shot → grapple_launch
+##   K.O. → ko_burst · a dash → trail_chrono (Choko) / trail_flash (Skea's Flash Step), plus a smoke_puff at the push-off point
+##   a grapple shot → grapple_launch
 ##   landing from a jump → dust_land (water_splash on the river) · a ragdoll settles → dust_land + ground_crack
 ##   SHADOW VEIL → smoke_veil · TIME STOP → choko_timestop under Choko · armor break → armor_break
 ##   «Seen» on a fighter → seen_mark over the head while it lasts · Printer Patch picked → patch_heal
 ##   Spring spent in the air → spring_jump · RECORD rewind → choko_rewind where Choko lands
 ##   sliding along the soft wall → skid_dust (again every SKID_EVERY frames) · a zip to an anchor → speed_lines
 ##   a blocked hit → spark_metal on top of the blue spark_hit row
+## Still without a hook: electro_arc / electro_arc_kling — no electro mechanic on Fighter yet (T5 Арес, #161).
 ## (Printer stickers, the RECORD sticker, kunai, grimoire pages, ult sigils and weak marks draw inside their own scripts.)
 
 const SLASH := {"light": "slash_choko", "crouch_light": "slash_choko", "heavy": "slash_heavy_choko", "air_light": "slash_air_choko"}
+## Skea's normals all share one sheet; only the size differs (roundhouse is her "heavy").
+const SLASH_SKEA := ["jab_elbow", "roundhouse", "low_kick", "flying_knee"]
 const CHEST := 1.15
 ## spark_hit rows (sheet row 1…4): normal, crit, Choko, blocked.
 const SPARK_ROW := {"normal": 0, "crit": 1, "choko": 2, "blocked": 3}
@@ -77,11 +82,13 @@ static func hit_spark(near: Node, at: Vector3, attacker: Fighter, damage: float,
 
 
 func _on_move_started(f: Fighter, m: MoveData) -> void:
-	if f.data.id != "choko" or not SLASH.has(m.id):
-		return
 	var at := f.global_position + f.forward * 0.8 + Vector3.UP * CHEST
-	Flipbook.play(f, SLASH[m.id], at, 2.4 if m.id == "heavy" else 1.8,
-		{"count": 8, "delay": float(m.startup) / 60.0, "additive": true, "flip": f.forward.x < 0.0})
+	if f.data.id == "choko" and SLASH.has(m.id):
+		Flipbook.play(f, SLASH[m.id], at, 2.4 if m.id == "heavy" else 1.8,
+			{"count": 8, "delay": float(m.startup) / 60.0, "additive": true, "flip": f.forward.x < 0.0})
+	elif f.data.id == "skea" and SLASH_SKEA.has(m.id):
+		Flipbook.play(f, "slash_skea", at, 2.2 if m.id == "roundhouse" else 1.6,
+			{"count": 8, "delay": float(m.startup) / 60.0, "additive": true, "flip": f.forward.x < 0.0})
 
 
 func _on_ko(f: Fighter) -> void:
@@ -102,11 +109,13 @@ func _physics_process(_dt: float) -> void:
 func _events(f: Fighter, p: Array, now: Array) -> void:
 	var pos := f.global_position
 	var floor_y := f.floor_y()
-	# a dash: Choko's Chrono Step enters DASH; Skea's Flash Step spends a charge
+	# a dash: Choko's Chrono Step enters DASH; Skea's Flash Step spends a charge — a push-off puff under the trail either way
 	if now[0] == Fighter.State.DASH and p[0] != Fighter.State.DASH and f.data.dash_style != "flash":
 		Flipbook.play(f, "trail_chrono", pos + Vector3.UP * 0.9, 2.6, {"count": 12, "additive": true, "flip": f.forward.x < 0.0})
+		Flipbook.play(f, "smoke_puff", Vector3(pos.x, floor_y + 0.3, pos.z), 1.6)
 	if f.data.dash_style == "flash" and now[6] < p[6]:
 		Flipbook.play(f, "trail_flash", pos + Vector3.UP * 0.9, 2.6, {"count": 12, "flip": f.forward.x < 0.0})
+		Flipbook.play(f, "smoke_puff", Vector3(pos.x, floor_y + 0.3, pos.z), 1.6)
 	# a grapple shot (any of the three verbs spends a charge)
 	if now[5] < p[5]:
 		Flipbook.play(f, "grapple_launch", pos + GrappleHook.HAND + f.forward * 0.4, 1.2, {"count": 9, "flip": f.forward.x < 0.0})
