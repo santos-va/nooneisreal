@@ -65,7 +65,8 @@ D1 і D2 я запушив у ту саму гілку вже після мер�
   `S1 ✓  S2 ✓` (`Hud.gd:208`) стає контурними іконками із заливкою знизу вгору.
 - [[HUD-Skill-Icons-Prompts]]: RECORD, TIME STOP, KUNAI RAIN, SHADOW VEIL; кремова заливка `#FAEDD9` + контур `#2B2230`.
 - `get_cost`: `gpt_image_2_5` high 1k transparent → 1.5; 2k → 2.75; `recraft_v4_1` vector/utility_vector 1k → 2.5, 2k → 10.
-  Пропозиція — 8 зображень × 1.5 = **12 кр.** Кредитів не витрачено (`balance` → 5281).
+  Пропозиція — 8 зображень × 1.5 = **12 кр.** Santos «Давай генерувати» → згенеровано, `balance` 5281 → 5269 (−12);
+  4 іконки в `game/assets/ui/icons/` (512×512, обрізано по силуету), рядки в [[Textures-Registry]].
 
 ## Що вирішили (пропозиція T6, чекає Santos)
 
