@@ -37,6 +37,47 @@
 - [ ] T3 Архімед · ліцензії паків + бриф імпорту для різкості · `docs/Research/`
 - [ ] T2 Гефест · контакт-лист паків, `rename_asset.py`, `recolor_palette.py` · `make check`, `make gates`
 
+## Друга частина — бриф ліцензій і MegaKit (того ж дня)
+
+**Що сталося між частинами:** PR #142 змерджено (`e7879de`); T1 на Mac затвердив план з Santos (Р1–Р3 = A) і залив MegaKit
+на гілку паків (`6210890`, PR #144, [[2026-10-03-T1-Repo-Cleanup-Packs]]); Архімед написав [[2026-10-03-Pack-Licenses]]
+(гілка `claude/cool-bardeen-kri8nw`, PR #143 — змерджено `f45c2cb`; T1 спершу помилково написав «PR не було»: перевіряв лише відкриті PR).
+
+**Виміряно в цій сесії:**
+- MegaKit: `License_Standard.txt` → CC0 1.0; 94 `.gltf`; реальний масштаб (`Barrel` 0.90 м, `Stall_Empty` 2.63 м); 4 трім-атласи
+  2048² замість палітри; 39 моделей на матеріалах `*_Vertex`.
+- `toon.gdshader:16-17` — `base = albedo.rgb * tex.rgb`: колір вершин не множиться → MegaKit `*_Vertex` без правки шейдера знебарвиться.
+- Репо публічне: GitHub API → `"visibility":"public"`.
+- `balance` → 5041.25: від старту спринту 514 витрачено, лишок стелі ≈ 486.
+
+**Що вирішив T1 (у межах плану, до відповіді Santos):**
+- Creative Trio ×9 — **карантин**: ні в `game/assets/`, ні в Higgsfield, поки Santos не скаже канал завантаження й не докладе
+  `License`. Критичний шлях від них не залежить: заміни з KayKit і MegaKit — у плані; без заміни лишаються дерева й кам'яний міст.
+- Ятку для `bazaar` не генеруємо — MegaKit `Stall_Empty` / `Stall_Cart_Empty`; хвиля T6-3 стала ≈ 90–120 кр.
+- Нові кроки: Ф0.4 (дерева — Santos), Ф3.2b (трім-атласи MegaKit + `COLOR` у шейдері), T6 0j.
+
+**Питання до Santos:** звідки 9 FBX Creative Trio — з creativetrio.art безкоштовно чи куплені в сторі (Sketchfab / ArtStation / Fab)?
+Якщо стор або «не пам'ятаю» — прибрати їх із публічної гілки (RED, лише твоє слово).
+
+## Третя частина — Creative Trio прибрано з гілки (того ж дня)
+
+**Питання Santos:** «Тоді шо робимо?» T1 запропонував робити далі без Creative Trio: на критичному шляху їх немає, а палітр до
+них у Santos немає (журнал [[2026-10-03-T1-Repo-Cleanup-Packs]]). Що робити з 9 FBX на публічній гілці — опитування, 4 варіанти.
+
+**Рішення Santos:** «Прибрати повністю» — з верхівки й з історії гілки (RED, слово Santos в опитуванні).
+
+**Що зроблено (команда → вихід):**
+- Тільки `textures/santos-pack` містила старі коміти: `git merge-base --is-ancestor 7ce1ba3|6210890 <кожна віддалена гілка>` → лише вона; тегів 0.
+- Перезбірка у тимчасовому worktree у scratchpad від `f94f0c8`: KayKit-коміт без FBX (`46da3e6`, автор і дата Santos), далі
+  cherry-pick MegaKit (`6bd36a2`).
+- Перевірка до пушу: `git diff --name-status <стара верхівка> <нова>` → рівно 9 `D` (FBX); `git log f94f0c8..HEAD -- '*.fbx'` → 0.
+- `git push --force-with-lease=refs/heads/textures/santos-pack:6210890` → `+ 6210890...6bd36a2 (forced update)`;
+  `git ls-tree -r origin/textures/santos-pack tools/packs | grep -c '\.fbx$'` → 0; worktree знесено.
+- Не перевірено: чи GitHub ще віддає старі коміти за SHA.
+
+**Наслідок для Mac:** локальна `textures/santos-pack` має стару історію. Вирівнювати `git reset --hard origin/textures/santos-pack`,
+**не** `git pull` — pull поверне FBX. Команди в плані § Як закинути пак оновлено.
+
 ## Related
-- [[2026-10-03-Santos-Packs-Arenas]] · [[2026-10-03-Sprint-Arenas-VFX]] · [[2026-10-03-Free-Cartoon-Texture-Sources]] ·
+- [[2026-10-03-Santos-Packs-Arenas]] · [[2026-10-03-Pack-Licenses]] · [[2026-10-03-T1-Repo-Cleanup-Packs]] · [[2026-10-03-Sprint-Arenas-VFX]] · [[2026-10-03-Free-Cartoon-Texture-Sources]] ·
   [[2026-10-03-Arena-360-Textures]] · [[Textures-Registry]] · [[Stage-River]] · [[state]]

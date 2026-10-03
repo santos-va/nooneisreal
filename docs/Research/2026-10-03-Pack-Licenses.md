@@ -99,6 +99,14 @@ Santos узяв свої 9 FBX — невідомо.
    Це обережність, а не вимога ліцензії; рішення — за Дедалом / Santos.
 4. Pro / Source MegaKit не розглядались — у плані лише Standard.
 
+## Доповнення — MegaKit закрито (T1 Дедал, 2026-10-03, за п. 2 «Що лишилось»)
+
+Після завантаження Santos (`6210890`; після переписування гілки 2026-10-03 — `6bd36a2`) файл ліцензії є на гілці:
+`git show origin/textures/santos-pack:tools/packs/Fantasy_Props_MegaKit_Standard/License_Standard.txt` →
+«This is the standard FREE version of the Fantasy Props MegaKit … License: CC0 1.0 Universal (CC0 1.0) Public Domain
+Dedication https://creativecommons.org/publicdomain/zero/1.0/». MegaKit [Standard] → **GROUNDED, CC0 1.0**.
+Creative Trio — без змін, **UNGROUNDED**; за словом Santos 9 FBX **прибрано з гілки** разом з історією ([[2026-10-03-Santos-Packs-Arenas]] § Ліцензії паків).
+
 ## Related
 - [[2026-10-03-Santos-Packs-Arenas]] · [[2026-10-03-T1-Santos-Packs]] · [[2026-10-03-Free-Cartoon-Texture-Sources]]
 - [[2026-10-03-Animation-Sources]] · [[Textures-Registry]] · [[ADR-013-License-Check-At-Release]] · [[state]]
