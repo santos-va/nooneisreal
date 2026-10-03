@@ -215,6 +215,7 @@ ultimate = SubResource("ultimate")
 throw_move = SubResource("throw_move")
 grapple_charges = 3
 grapple_cooldown = 3.0
+fatigue_seconds = 300.0
 grapple_regen_all_at_once = false
 grapple_range = 14.0
 dash_style = "dash"

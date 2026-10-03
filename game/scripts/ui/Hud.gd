@@ -372,7 +372,7 @@ func _on_grapple(idx: int, c: int, cd: float, mc: int) -> void:
 		if i < c:
 			frac = 1.0
 		elif i == c and cd > 0.0:
-			frac = 1.0 - cd / maxf(d.grapple_cooldown, 0.001)
+			frac = 1.0 - cd / maxf((p1 if idx == 1 else p2).grapple.cooldown_total, 0.001)
 		_fill_cell(pips[i] as ColorRect, frac, d.accent_color)
 
 
@@ -388,7 +388,7 @@ func _on_dash(idx: int, c: int, r: float, _mc: int) -> void:
 	var pips: Array = _dash[idx]
 	var d: CharacterData = (p1 if idx == 1 else p2).data
 	# all spent charges return together dash_recharge s after the last use, so they fill together
-	var back := 1.0 - r / maxf(d.dash_recharge, 0.001) if r > 0.0 else 0.0
+	var back := 1.0 - r / maxf((p1 if idx == 1 else p2).dash_recharge_total, 0.001) if r > 0.0 else 0.0
 	for i in pips.size():
 		_fill_cell(pips[i] as ColorRect, 1.0 if i < c else back, dash_color(d))
 

@@ -32,6 +32,7 @@ const STATE_CLIPS := {
 	"hit_low": "Hit_Stomach",
 	"knockdown": "Hit_Knockback",
 	"ko": "Death01",
+	"tired": "Idle_Tired_Loop",   # 02 § Втома (г): the stance from fatigue 0.5
 }
 ## The model faces +Z; the capsule rig (and every hitbox_offset) faces +X.
 const MODEL_YAW := PI / 2.0
@@ -242,6 +243,9 @@ func state_clip(f: Fighter) -> String:
 			return f.data.getup_clip
 		Fighter.State.KO:
 			return STATE_CLIPS["ko"]
+		Fighter.State.IDLE:
+			if f.fatigue >= Fighter.FATIGUE_TIRED:
+				return STATE_CLIPS["tired"]
 	return f.data.idle_clip
 
 
@@ -277,6 +281,9 @@ func _physics_process(delta: float) -> void:
 			clip_pos = attack_clip_time(_fighter.move_frame, m.startup, span, anim.length, c[2])
 	elif anim.loop_mode != Animation.LOOP_NONE:
 		clip_pos = fmod(float(_state_frames) * delta, anim.length)
+	elif _fighter.state == Fighter.State.GETUP:
+		# tired get-up plays slower, stretched with getup_frames() (02 § Втома (г))
+		clip_pos = minf(float(_state_frames) * delta / _fighter.fatigue_mult(Fighter.FATIGUE_GETUP), anim.length)
 	else:
 		clip_pos = minf(float(_state_frames) * delta, anim.length)
 	player.seek(clip_pos, true)
