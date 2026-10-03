@@ -17,6 +17,10 @@ const JOINT_LIMITS := {
 }
 const MUSCLE_STIFFNESS := 55.0
 const MUSCLE_DAMPING := 6.0
+## Water stages: the stone floor sits below the deepest trough (Arena.gd), so a body lying on it is under the surface
+## and the water hides it. Bodies float instead — lift in body weights at full submersion, and drag. Presentation.
+const FLOAT_LIFT := 2.5
+const FLOAT_DRAG := 3.0
 
 var bodies: Dictionary = {}
 var joints: Array[Generic6DOFJoint3D] = []
@@ -51,7 +55,8 @@ func build_from(snapshot: Array, impulse: Vector3, with_muscles: bool) -> void:
 		mi.material_override = _mat(s.color)
 		rb.add_child(mi)
 		add_child(rb)
-		rb.global_transform = s.transform
+		# the rig's squash/stretch scales the part; Jolt takes no non-uniform scale on a body (Н7, launch 7.1)
+		rb.global_transform = (s.transform as Transform3D).orthonormalized()
 		bodies[s.name] = rb
 	for s in snapshot:
 		if s.parent == "" or not bodies.has(s.parent):
@@ -150,12 +155,35 @@ func _physics_process(delta: float) -> void:
 	# muscles fade after the initial flight so a live fighter "collapses" before getting up
 	if muscles and _age > 0.9:
 		go_limp()
+	if GameState.water != null:
+		_float(delta)
+
+
+## Buoyancy per body (RigidBody3D capsules or BoneRagdoll's PhysicalBone3D): k = submerged share of the capsule's
+## thickness; lift k·FLOAT_LIFT·weight, drag k·FLOAT_DRAG·v.
+func _float(delta: float) -> void:
+	var g := float(ProjectSettings.get_setting("physics/3d/default_gravity"))
+	for b in bodies.values():
+		var pb := b as PhysicsBody3D
+		var r := ((pb.get_child(0) as CollisionShape3D).shape as CapsuleShape3D).radius
+		var p := pb.global_position
+		var depth := GameState.water.height(p.x, p.z) - p.y + r
+		if depth <= 0.0:
+			continue
+		var k := clampf(depth / (2.0 * r), 0.0, 1.0)
+		var v: Vector3 = pb.get("linear_velocity")
+		pb.call("apply_central_impulse", (Vector3.UP * g * FLOAT_LIFT - v * FLOAT_DRAG) * pb.get("mass") * k * delta)
 
 
 func pelvis_position() -> Vector3:
 	if bodies.has("pelvis"):
 		return (bodies["pelvis"] as RigidBody3D).global_position
 	return global_position
+
+
+## Ends the ragdoll's hold on the drawing before queue_free (BoneRagdoll stops its simulator); capsules: nothing.
+func release() -> void:
+	pass
 
 
 func settled() -> bool:
