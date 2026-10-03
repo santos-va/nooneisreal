@@ -60,7 +60,7 @@ Higgsfield: нічого не генеруй без мого слова на к�
    Ворота лишаються: стиль затверджується на першому листі Choko, а понад 600 — окреме слово.
 4. Звукові бібліотеки Santos завантажить у `~/Downloads/nir-audio/`.
 
-Відкрите: написання на неоновій вежі — KRONSHIFT (канон міста) чи CRONSHIFT?
+Закрито 2026-10-03: напис — CRONSHIFT, місто перейменовуємо ([[ADR-010-City-Name-Cronshift]], #12).
 
 ## Related
 - [[Asset-Manifest]] · [[Prompt-Library]] · [[Higgsfield-Pipeline]] · [[Stage-River]] · [[05-Platforms-Input]] · [[07-Audio]] · [[Animation-Plan]] · [[state]]
