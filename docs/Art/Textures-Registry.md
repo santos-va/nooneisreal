@@ -30,6 +30,7 @@
 | sfx-crit | `game/assets/audio/sfx/crit.wav` | ffmpeg: 2.6/3.9/5.2 kHz дзвін | проєкт | CC0 | крит по слабкій точці |
 | sfx-sword | `game/assets/audio/sfx/sword.wav` | ffmpeg: свіп 4.2 kHz + 6.1 kHz «шінг» | проєкт | CC0 | Sword Storm |
 | sfx-book | `game/assets/audio/sfx/book.wav` | ffmpeg: 55/82.5/110 Hz дрон | проєкт | CC0 | Cursed Grimoire |
+| bg-kronshift-river | `game/assets/backgrounds/bg_kronshift_river.jpg` | надіслав Santos у чаті 2026-10-03 (1500×848 JPEG, ймовірно Higgsfield, оригінальна URL невідома) | Santos | підтвердити (Архімед) | стадія `river` (дефолтна), джерело для [[Stage-River]] |
 | card-skea-v1 | `game/assets/characters/cards/card_skea_v1.jpg` | надіслав Santos у чаті 2026-10-02 (1500×848 JPEG; згенеровано в Higgsfield, оригінальна URL невідома) | Santos / Higgsfield | Higgsfield ToS (підтвердити, Архімед) | картка Skea в меню; референс для 3D |
 
 Іконка проєкту `game/icon.svg` — намальована в сесії (SVG, CC0), поза `game/assets/`.
