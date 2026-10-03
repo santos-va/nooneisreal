@@ -1,7 +1,8 @@
 # Fix-журнал — Запуск 4: манекен C1 (`-- --skeletal-rig`), каркас
 
 **Роль:** T2 Гефест, 2026-10-03. **План:** [[2026-10-03-Path-to-First-Fight]] § Запуски, рядок 4; [[2026-10-03-Picks-to-Game-and-Animation]] § C1.
-**Статус:** каркас зроблено; `anim_clip` у `.tres` — **порожні**, чекають таблицю Ареса 4a (не змерджено: `git log origin/main` і гілок `ares*` немає).
+**Статус:** зроблено — каркас, потім кліпи з таблиці 4a (PR #85 → `68fb03b`, змерджено під час PR #86) і жовті пункти аудиту
+Феміди `docs/Audit/2026-10-03-Launch-4.md` (santos-va/nooneisreal#81).
 
 ## Звірка плану з репо (до роботи)
 
@@ -56,13 +57,45 @@
 Предмет: для всіх станів бійця з `skeletal_rig` — манекен грає кліп стану з GDD 02, поза контакту атаки — на першому `active`,
 видимість = видимість капсульного рига; без прапорця — манекена немає.
 
-**Не зроблено / не перевірено:**
-- `anim_clip` ударів — після мержу 4a (smoke ставить тестовий `Sword_Regular_A`, 0.2 с, і повертає `light` назад). До того удари
-  на манекені — стійка.
-- Кадр `Sfx.play(sfx_hit)` = кадр влучання і «3 різні реакції» з § C1: зараз 2 (low = mid за GDD) — Арес у 4a.
-- Пропозиція Феміди 1 (hurtbox під час splat) — чекає «так» Ареса в 4a.
+**Не зроблено / не перевірено** (оновлено після 4a — нижче):
+- Шар `crouch_light`, вибір `Dodge_Left/Right`, ланцюг Skea на манекені в smoke не ганяю (лише light Choko), удар у splat.
 - Афтерімеджі (Flash-Step, Chrono Step) лишаються капсульними — вони з `part_snapshot()`.
 - Поворот +90° і вигляд у грі — лише на кадрі llvmpipe; на Mac `make run-rig` не грав ніхто. BoneMap у редакторі — запуск 5.
+
+## Після 4a і аудиту Феміди (YELLOW: low = mid, кадр звуку не перевірено)
+
+- `git merge origin/main` → таблиця 4a: [[02-Combat-System]] § Кліп → удар (Арес), кліпи лише в описах `.tres`.
+- **Поля:** `MoveData.anim_clip_rec` (пара «атака + `_Rec`»: перший на startup + active, `_Rec` на recovery), `anim_clip_chain(_rec)` +
+  `contact_time_chain` (непарні удари ланцюга, як `anim_chain`); `CharacterData.dash_clip`, `getup_clip`. Без `_Rec` кліп цілий на весь удар
+  («цілий на N» у таблиці = s+a+r).
+- **Значення в `.tres`** — переписані з таблиці 4a: Choko — `Sword_Idle`, `Roll`, `LayToIdle`; light `Sword_Light_A`+`_Rec` / ланцюг
+  `Sword_Light_B`+`_Rec`; heavy `Sword_Heavy_C`+`_Rec`; air `Sword_Aerial_A`+`_Rec`; ульта `Sword_Heavy_D` цілий; гарпун `OverhandThrow`.
+  Skea — `Idle_Loop`, `KipUp`; light `Punch_Jab` цілий / ланцюг `Melee_Hook`+`_Rec`; roundhouse `Kick`; flying_knee `Melee_Knee`+`_Rec`;
+  kunai_rain і гарпун `OverhandThrow`. Порожні (за таблицею): RigA-скіли (`record`, `time_stop`, `shadow_veil`, `cursed_grimoire`),
+  дірка `low_kick`, **`crouch_light` Choko — «шар» (низ + верх, `AnimationTree` R4) не зроблено**, поки стійка.
+  Skea DASH: у таблиці `Dodge_Left / Dodge_Right` — взяв `Dodge_Right` (одне поле), вибір за напрямком — не зроблено.
+- **`contact_time` заміряно скриптом** (scratchpad `contact.gd`): кадр за кадром (1/60 с) — найбільший виніс ударної кістки вперед (+Z моделі),
+  поза з локальних поз кісток (`get_bone_global_pose` у `-s` скрипті не оновлювався — перша спроба дала 0 скрізь, відкинув).
+  Ударна кістка — та з пари, що виноситься далі: `Sword_Light_A` hand_r 0.233 с · `_Light_B` 0.233 · `_Heavy_C` 0.483 · `_Aerial_A` 0.233 ·
+  `OverhandThrow` 0.383 · `Punch_Jab` hand_l 0.200 · `Melee_Hook` hand_r 0.267 · `Kick` ball_r 0.517 · `Melee_Knee` calf_r 0.533.
+  `Sword_Heavy_D` (ульта, 2.33 с, кілька замахів) — без контакту, лінійно. **На око ніхто не підтверджував.**
+- HITSTUN low → `Hit_Stomach` (таблиця 4a): три різні реакції.
+- `Sfx.last_frame` — фізкадр останнього `play()`; smoke: Skea за 1 м, light влучає, `hit_light` зіграно рівно на кадрі влучання.
+- Пропозиція Феміди 1: у стадії splat `hurt_shape.disabled == false` (GDD 02:116). Удар нападника на 2–5 кадрі splat — **не перевіряю**.
+- `make check` → `[smoke] ALL OK (101 checks) in 13685 frames` (лічильник той самий: перевірки розширено всередині рядків); батарея зелена.
+- Кадр з ударом: `docs/assets/screenshots/2026-10-03-launch-4-mannequin-attack.png` (llvmpipe, кадр 330). Куди дивиться Skea — з кадру не певен.
+
+| # | злам | результат |
+|---|---|---|
+| S1 | `hit_low` → `Hit_Chest` | `FAIL … 2 different reactions (want 3)` |
+| S2 | `_Rec` ігнорується | `FAIL mannequin attack recovery plays 'ual2/Sword_Light_A', want 'Sword_Light_A_Rec'` |
+| S3 | `Sfx.play(m.sfx_hit)` прибрано | `FAIL mannequin hit sound: 'hit_light' last played on frame -1, the hit landed on 132` |
+| S4 | звук на кадр пізніше | `FAIL … last played on frame 133, the hit landed on 132` |
+| S5 | `Sword_Heavy_X` у `.tres` | `FAIL choko: clip 'Sword_Heavy_X' from the .tres is not in UAL1/UAL2` (перша спроба червоніла не з тієї причини — виправив порядок перевірок) |
+| S6 | `contact_time` 0.9 > довжини | `FAIL choko heavy: contact_time 0.900 past the end of 'Sword_Heavy_C'` |
+| S7–S9 | = R1–R3 на новій сигнатурі | червоні (`first active → 0.222` / `0.727`; `idle is frozen`) |
+| S10 | `idle_clip = "Idle_Lop"` | `FAIL skea: clip 'Idle_Lop' …` |
+| S11 (= NC8) | `hurt_shape.disabled = true` у `_wall_splat` | `FAIL wall splat: hurtbox disabled during the splat` |
 
 ## Related
 - [[2026-10-03-Path-to-First-Fight]] · [[2026-10-03-Picks-to-Game-and-Animation]] · [[02-Combat-System]] · [[2026-10-03-launch-4-ual-source]] · [[2026-10-03-launch-4-0-gates]] · [[state]]
