@@ -1329,9 +1329,16 @@ func _enter_ragdoll(impulse: Vector3) -> void:
 
 func _spawn_ragdoll(impulse: Vector3, muscles: bool) -> void:
 	_clear_ragdoll()
-	_ragdoll = Ragdoll.new()
-	get_parent().add_child(_ragdoll)
-	_ragdoll.build_from(animator.part_snapshot(), impulse, muscles)
+	if skeletal != null:
+		# launch 7.1: the hero itself falls — the ragdoll runs on the skeleton (BoneRagdoll)
+		var br := BoneRagdoll.new()
+		_ragdoll = br
+		get_parent().add_child(br)
+		br.build_on(skeletal, animator.part_snapshot(), impulse, muscles)
+	else:
+		_ragdoll = Ragdoll.new()
+		get_parent().add_child(_ragdoll)
+		_ragdoll.build_from(animator.part_snapshot(), impulse, muscles)
 	animator.visible = false
 	hurt_shape.disabled = true
 	stats.ragdolls += 1
@@ -1339,6 +1346,7 @@ func _spawn_ragdoll(impulse: Vector3, muscles: bool) -> void:
 
 func _clear_ragdoll() -> void:
 	if _ragdoll != null and is_instance_valid(_ragdoll):
+		_ragdoll.release()
 		_ragdoll.queue_free()
 	_ragdoll = null
 

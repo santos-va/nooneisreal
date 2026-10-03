@@ -74,6 +74,20 @@ var _rig_hit: int = -1               # launch 4: physics frame Skea took the man
 var _rig_swung: bool = false
 var _aim_max: float = 0.0             # launch 5: worst hero-vs-mannequin bone direction (deg) over the light
 var _aim_bone: String = ""
+## Launch 7.1: worst angle (deg) between a hero bone's turn and its Jolt body's turn over the skeleton ragdoll.
+var _rd_max: float = 0.0
+var _rd_part: String = ""
+var _rd_frames: int = 0
+var _rd_prev: Dictionary = {}           # part → body rotation a frame ago: the drawing is one physics step behind
+var _rd_ref: Dictionary = {}
+var _float_t: int = 0                   # launch 7.1: frames of the river float check (state 32 prelude)
+var _float_min: float = 99.0            # lowest pelvis-minus-surface after the body landed, m            # part → [hero bone rotation, body rotation] on the reference frame
+## Ragdoll part → the hero bone it drives (through the mannequin bone in BoneRagdoll.BONES and the retarget).
+const RAGDOLL_HERO := {
+	"pelvis": "Hips", "torso": "Spine01", "head": "Head",
+	"upper_arm_l": "LeftArm", "forearm_l": "LeftForeArm", "upper_arm_r": "RightArm", "forearm_r": "RightForeArm",
+	"thigh_l": "LeftUpLeg", "shin_l": "LeftLeg", "thigh_r": "RightUpLeg", "shin_r": "RightLeg",
+}
 var _storm: SwordStormFx = null       # crystal ult: the live SWORD STORM effect
 var _cam_only: bool = false           # dev / negative controls: only the launch 6 camera stages
 var _dw_max: float = 0.0              # launch 6: worst |change of yaw turn| per tick (deg)
@@ -1860,6 +1874,29 @@ func _physics_process(_delta: float) -> void:
 					_ok("river: deterministic — both runs identical at frame 600 (Σ|Δ| %.6f)" % d)
 					_next()
 		32:
+			# launch 7.1 first: a ragdoll on the river floats — the floor under the water must not swallow it. This stage
+			# runs the capsule rig; the buoyancy is Ragdoll._float(), shared with BoneRagdoll
+			if _float_t < 100:
+				if _float_t == 0:
+					p2._enter_ragdoll(Vector3(3.0, 4.0, 0.0))
+					_float_min = 99.0
+				_float_t += 1
+				var ended := p2._ragdoll == null
+				if ended and _float_t <= 46:
+					_fail("river float: the ragdoll ended on frame %d, before it landed (state %d)" % [_float_t, p2.state])
+					return
+				if not ended:
+					var pp := p2._ragdoll.pelvis_position()
+					if _float_t > 45:
+						_float_min = minf(_float_min, pp.y - GameState.water.height(pp.x, pp.z))
+				if ended or _float_t == 100:
+					_float_t = 100
+					if _float_min < -0.05:
+						_fail("river float: the ragdoll pelvis sank %.3f m under the surface (limit 0.05)" % -_float_min)
+						return
+					_ok("river float: the ragdoll stays on the water, pelvis ≥ %.3f m from the surface over frames 46–100" % _float_min)
+					p2._clear_ragdoll()
+				return
 			# both made unsteady; P1 guards, P2 stands idle; a 0.7 swell must topple only P2
 			if p1.is_actionable() and p2.is_actionable() and p1.on_ground() and p2.on_ground():
 				p1.data = p1.data.duplicate()
@@ -2979,7 +3016,7 @@ func _physics_process(_delta: float) -> void:
 			elif _f > _f0 + 200:
 				_fail("mannequin attack never reached its first active frame (state %d)" % p1.state)
 		112:
-			# hit reactions on Skea by zone, then the ragdoll hides the mannequin with the capsule rig
+			# hit reactions on Skea by zone, then the ragdoll runs on the skeleton and the hero itself falls (launch 7.1)
 			var s2: SkeletalRig = p2.skeletal
 			if _f == _f0 + 30:
 				p2.hitstop_frames = 0
@@ -3008,10 +3045,49 @@ func _physics_process(_delta: float) -> void:
 					return
 				p2._enter_ragdoll(Vector3(4.0, 3.0, 0.0))
 			if _f == _f0 + 35:
-				if s2.visible or p2.animator.visible:
-					_fail("mannequin during ragdoll: visible %s (capsule rig visible %s) — want both hidden" % [s2.visible, p2.animator.visible])
+				var br := p2._ragdoll as BoneRagdoll
+				if br == null or not s2.visible or p2.animator.visible or s2.ragdoll != br:
+					_fail("skeleton ragdoll: BoneRagdoll %s, hero visible %s (want true), capsule rig visible %s (want false)" % [br != null, s2.visible, p2.animator.visible])
 					return
-				_ok("mannequin reactions: head '%s', chest '%s', stomach '%s' — three different; hidden while the capsule ragdoll flies" % [s2.clip_name(SkeletalRig.STATE_CLIPS["hit_high"]), s2.clip_name(SkeletalRig.STATE_CLIPS["hit_mid"]), s2.clip_name(SkeletalRig.STATE_CLIPS["hit_low"])])
+				_ok("mannequin reactions: head '%s', chest '%s', stomach '%s' — three different; the hero stays drawn in the ragdoll" % [s2.clip_name(SkeletalRig.STATE_CLIPS["hit_high"]), s2.clip_name(SkeletalRig.STATE_CLIPS["hit_mid"]), s2.clip_name(SkeletalRig.STATE_CLIPS["hit_low"])])
+				_rd_max = 0.0
+				_rd_part = ""
+				_rd_frames = 0
+				_rd_prev = {}
+				_rd_ref = {}
+			if _f > _f0 + 35 and _f <= _f0 + 75:
+				# launch 7.1: on every ragdoll frame, every hero bone turns with its Jolt body. Body scale (Н7) is not
+				# visible from here — the body reports 1 while Jolt warns — so `make check` counts the Jolt warnings
+				var br := p2._ragdoll as BoneRagdoll
+				if br != null and br.sim != null:
+					if br.bodies.size() != BoneRagdoll.BONES.size() or (_f > _f0 + 33 + BoneRagdoll.BLEND_FRAMES and br.sim.influence < 1.0):
+						_fail("skeleton ragdoll: %d bodies (want %d), influence %.2f" % [br.bodies.size(), BoneRagdoll.BONES.size(), br.sim.influence])
+						return
+					var hs := s2.hero_skeleton
+					for part in RAGDOLL_HERO.keys():
+						var body: PhysicalBone3D = br.bodies[part]
+						var qh := (hs.global_transform.basis * hs.get_bone_global_pose(hs.find_bone(RAGDOLL_HERO[part])).basis).orthonormalized().get_rotation_quaternion()
+						if _rd_prev.has(part):
+							if not _rd_ref.has(part):
+								_rd_ref[part] = [qh, _rd_prev[part]]
+							else:
+								var turn_h: Quaternion = qh * (_rd_ref[part][0] as Quaternion).inverse()
+								var turn_b: Quaternion = (_rd_prev[part] as Quaternion) * (_rd_ref[part][1] as Quaternion).inverse()
+								var ang := rad_to_deg(turn_h.angle_to(turn_b))
+								if ang > _rd_max:
+									_rd_max = ang
+									_rd_part = part
+						_rd_prev[part] = body.global_transform.basis.orthonormalized().get_rotation_quaternion()
+					_rd_frames += 1
+			if _f == _f0 + 75:
+				if _rd_frames < 30 or _rd_max > 3.0 or not (p2._ragdoll is BoneRagdoll):
+					_fail("skeleton ragdoll: %d frames checked (want ≥ 30), worst hero bone '%s' turned %.2f° off its body (limit 3°)" % [_rd_frames, _rd_part, _rd_max])
+					return
+				_ok("skeleton ragdoll: the hero falls with Jolt — %d frames × %d parts, worst '%s' turned %.2f° off its body (limit 3°)" % [_rd_frames, RAGDOLL_HERO.size(), _rd_part, _rd_max])
+				p2._clear_ragdoll()
+				if s2.ragdoll != null or s2.skeleton.get_node_or_null("Ragdoll") != null and not (s2.skeleton.get_node("Ragdoll") as Node).is_queued_for_deletion():
+					_fail("skeleton ragdoll released, but the simulator is still on the mannequin")
+					return
 				if _rig_only:
 					_finish()
 				else:
