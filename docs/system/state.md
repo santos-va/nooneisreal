@@ -17,7 +17,7 @@
 | **T6·B** (новий) | D — VFX-арт | **смуга D зроблена** ([[VFX-Sheets-Prompts]], [[2026-10-03-Apollon-Sprint-D-Prompts]]): 34 файли в `game/assets/vfx/` (флипбуки 4×4 по 512 px + 4 стікери), 197.25 кр. з ≈ 400 (`balance` → 5281; D1+D2 — #122, D3 — #125, D4 — окремий PR); Kling — лише світні ефекти під `ADD` ([[VFX-Direction]] § Тест Kling); `tools/art/repack_flipbook.py`. **Далі — T2·B ставить у гру.** Іконки скілів S1/S2 (4) і ульт (2), портрети вибору (2) — **згенеровано** (12 + 17 кр., `balance` → 5219), `game/assets/ui/icons/`, `game/assets/ui/portraits/` ([[HUD-Skill-Icons-Prompts]]); підключення — Гефест за ТЗ Гермеса | `game/assets/vfx/`, [[VFX-Direction]], реєстр |
 | **T3** (t3) | E — R11 | 360° фон у Godot 4.7, бібліотеки текстур під наш стиль (ліцензії), що вміє Higgsfield — ≤ 45 хв; потім R10 і частина A | `docs/Research/2026-10-03-Arena-360-Textures.md` |
 | **T5** Арес | F | **зроблено** ([[2026-10-03-Ares-Lane-F]]): RED п. 3 → 0.68; якорі/укриття `bazaar` 16 / `fountain` 17; В-1 втома — далі Гефест | [[02-Combat-System]], [[04-Grapple-System]] |
-| **T8** Гермес | G | вибір арени й DAY/NIGHT у меню; контраст HUD | [[06-UI-UX]] |
+| **T8** Гермес | G | вибір арени й DAY/NIGHT у меню; контраст HUD. **Хвиля 2 — деш у 8 напрямках зроблено** (гілка `claude/main-menu-rooftop-view-fh5r8t`): клавіатура P1/P2, геймпад, тач — [[05-Platforms-Input]] § Деш у 8 напрямках; `tools/input/dash8_check.gd` (Godot 4.7.2) → 0 конфліктів, 8/8 на кожному пристрої; ТЗ Гефесту `dash_dir8` (стік зараз аналоговий) — [[2026-10-03-Hermes-Dash8]] | [[06-UI-UX]] |
 | **T7** Кліо (знято з паузи) | H | сторінки трьох арен, підписи й wikilinks нових ассетів, індекс | `docs/World/`, `docs/Art/` |
 | **T4** Феміда | I | аудит кожного PR смуг A–D | `docs/Audit/` |
 
