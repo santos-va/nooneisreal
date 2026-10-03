@@ -9,15 +9,19 @@ description: Промпт-інженерія для Higgsfield у цьому п�
 `balance` → число в чат → **слово Santos на конкретне ТЗ** → генерація. Без слова — промпт у
 `docs/Art/Prompts/`, нуль викликів `generate_*`. Батч — тільки з явним «скільки».
 
-## Стильова формула проєкту (вставляється байт-у-байт у кожен промпт)
-> Match the exact art style, line art, colors and flat cel shading of the first reference image.
-> Clean anime illustration, crisp lineart, cel-shaded flat color, bold ink outlines, Arcane-like mood,
-> not cyberpunk. Muted dusk palette: terracotta, dusty orange, slate blue, deep teal shadows.
-> Hands only in fists or gripping an object with exactly five clearly outlined fingers.
-> No text, no letters, no logos, no infinity symbol.
+## Стильова формула проєкту — «Sketch-Cel», НЕ аніме (з 2026-10-02)
 
-Референс №1 завжди — лист на кислотно-жовтій плашці (`hf_20260927_120107_b35646c4…`); для персонажа —
-його остання затверджена картка. Фіксований перелік відмінностей: «keep EVERYTHING identical … change ONLY …».
+Брати байт-у-байт із `docs/Art/Prompts/Prompt-Library.md` (блоки STYLE і NEG). Коротко: ескізна графітово-
+сливова лінія, пласка заливка, одна маджента-лілова тінь, західно-мультиплікаційні пропорції, м'ятна плашка
+`#B8CBB1`. Референси манери Santos — чужий фан-арт: **не завантажувати в Higgsfield, не називати художницю**.
+
+## Факти акаунта (перевірено 2026-10-02 — переперевіряй на старті сесії, R0)
+- Ultra, 6010 кредитів; один приватний workspace (перевір `list_workspaces` → `is_selected`).
+- Історія порожня: старі картки — з CDN через `media_import_url` (працює, кредитів не бере).
+- Ціни: gpt_image_2_5 high 2k = 2.75; nano_banana_pro 2k = 2; flux_3_image 2k = 3; image_decompose = 2;
+  multi_image_to_3d (текстура+риг) = 35; image_to_3d + кліп = 38; autosprite — оцінювач падав.
+- **SFX/музика (`mirelo_text_to_audio`, `sonilo_music`) — заборонені** описом інструмента; звук — з бібліотек.
+- Workflow «Texture Tile Factory» у каталозі відсутній.
 
 ## Шаблони
 

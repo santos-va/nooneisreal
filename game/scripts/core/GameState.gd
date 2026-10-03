@@ -12,6 +12,7 @@ const CHARACTER_PATHS := {
 ## Stage registry. Textures are optional: when the file is missing (assets not fetched yet),
 ## the arena falls back to a procedural Kronshift gradient backdrop. See docs/Art/Backgrounds.md.
 const STAGES := [
+	{"id": "river", "name": "Kronshift — River (dusk, preview: water mechanics in phase 1)", "texture": "res://assets/backgrounds/bg_kronshift_river.jpg", "sun": Color(1.0, 0.72, 0.5), "ambient": Color(0.32, 0.3, 0.4), "sky_top": Color(0.3, 0.3, 0.42), "sky_bottom": Color(0.9, 0.55, 0.35)},
 	{"id": "market_street", "name": "Kronshift — Market Street", "texture": "res://assets/backgrounds/bg_kronshift_market_street.webp", "sun": Color(1.0, 0.78, 0.55), "ambient": Color(0.38, 0.34, 0.42), "sky_top": Color(0.16, 0.22, 0.32), "sky_bottom": Color(0.78, 0.42, 0.26)},
 	{"id": "back_alley", "name": "Kronshift — Back Alley (night)", "texture": "res://assets/backgrounds/bg_kronshift_back_alley.webp", "sun": Color(0.55, 0.72, 0.95), "ambient": Color(0.12, 0.17, 0.26), "sky_top": Color(0.04, 0.06, 0.12), "sky_bottom": Color(0.12, 0.3, 0.36)},
 	{"id": "main_street", "name": "Kronshift — Main Street (dusk)", "texture": "res://assets/backgrounds/bg_kronshift_main_street.webp", "sun": Color(1.0, 0.7, 0.45), "ambient": Color(0.3, 0.27, 0.36), "sky_top": Color(0.2, 0.2, 0.34), "sky_bottom": Color(0.9, 0.5, 0.3)},

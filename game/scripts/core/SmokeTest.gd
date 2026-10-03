@@ -28,7 +28,7 @@ func _ready() -> void:
 	GameState.training_mode = false
 	GameState.p1_character = "choko"
 	GameState.p2_character = "skea"
-	GameState.stage_index = 1
+	GameState.stage_index = 2   # back_alley (river is index 0)
 	get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
 
 

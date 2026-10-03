@@ -9,7 +9,7 @@
 
 ## Грати
 
-- `GODOT_BIN=… make run` — запускає `scenes/main/Main.tscn` → меню → «FIGHT · P1 vs CPU».
+- `GODOT_BIN=… make run` — при першому запуску сам імпортує проєкт (до хвилини), далі запускає `scenes/main/Main.tscn` → меню → «FIGHT · P1 vs CPU».
 - Або відкрити `game/project.godot` у редакторі й натиснути ▶.
 - Клавіші — [[05-Platforms-Input]]. Tab — хітбокси, Esc — пауза, Backspace — скинути позиції (тренування).
 
@@ -21,6 +21,10 @@
   (у контейнері — через `xvfb-run` і Mesa llvmpipe).
 
 ## Типові проблеми
+
+- **«Could not find type "CharacterData"» / «Identifier "SmokeTest" not declared» при першому запуску** — свіжий клон без
+  імпорту: папка `game/.godot/` (реєстр `class_name`) не в git. `make run`/`make editor` тепер імпортують самі; вручну —
+  `make import` або `"$GODOT_BIN" --headless --path game --import`. Виявлено Santos на Mac 2026-10-02; клас №3 у [[recurring_class_register]].
 
 - «Identifier not found: GameState» у `--check-only` — норма (автолоади не реєструються); дивись smoke.
 - Фон сірий/процедурний — не запущено `fetch_assets.sh`.
