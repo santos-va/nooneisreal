@@ -1373,6 +1373,11 @@ func _physics_process(_delta: float) -> void:
 				if _run == 1:
 					var r := _flat(p2.global_position).length()
 					var face := p2.forward.dot(-_flat(p2.global_position).normalized())
+					# the splat drawing is on screen from its first frame (no smoothing): arm thrown wide
+					var arm: Vector3 = p2.animator.pose["upper_arm_l"]
+					if absf(arm.z - (-1.9)) > 0.01:
+						_fail("wall splat pose not on screen at its first frame: upper_arm_l z %.2f (want -1.90)" % arm.z)
+						return
 					if p2.hp != _x0 or r < 12.5 - 0.05 or face < 0.9 or int(p2.stats.get("splats", 0)) != _n0 + 1:
 						_fail("wall splat: hp %.1f → %.1f (want no damage), radius %.2f (want 12.5), facing the centre %.2f, splats %d → %d" % [_x0, p2.hp, r, face, _n0, p2.stats.get("splats", 0)])
 						return

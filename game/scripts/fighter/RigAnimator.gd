@@ -218,6 +218,13 @@ func tick(delta: float, f: Fighter, frozen: bool) -> void:
 			for n in parts.keys():
 				pose[n] = target_pose[n]
 			root_offset = target_root_offset
+	elif f.state == Fighter.State.WALL_SPLAT:
+		# the splat lasts 10 frames — shorter than the smoothing (≈ 10–14) — so it snaps to its
+		# drawing on the first frame, or it never reads on screen
+		_step_frame = -1
+		for n in parts.keys():
+			pose[n] = target_pose[n]
+		root_offset = target_root_offset
 	else:
 		_step_frame = -1
 		var k := 1.0 - pow(0.0001, delta)  # fast exponential smoothing (≈ 10-14 frames to settle)
