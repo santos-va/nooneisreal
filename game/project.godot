@@ -23,6 +23,7 @@ config/icon="res://icon.svg"
 GameState="*res://scripts/core/GameState.gd"
 InputRouter="*res://scripts/core/InputRouter.gd"
 Sfx="*res://scripts/core/Sfx.gd"
+UltMusic="*res://scripts/core/UltMusic.gd"
 
 [debug]
 

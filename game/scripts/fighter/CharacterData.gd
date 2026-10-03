@@ -42,6 +42,7 @@ extends Resource
 @export var skill1: MoveData
 @export var skill2: MoveData
 @export var ultimate: MoveData
+@export var ultimate_veil: MoveData                # started under SHADOW VEIL (veil_frames > 0): the long ult
 @export var throw_move: MoveData
 
 @export_group("Signature movement (dash slot)")

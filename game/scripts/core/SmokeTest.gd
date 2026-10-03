@@ -64,9 +64,31 @@ var _picks: Dictionary = {}
 var _v0: Vector3 = Vector3.ZERO
 var _pull_max: float = 0.0
 var _rig_only: bool = false
+var _ult_only: bool = false
 var _bone0: Vector3 = Vector3.ZERO
 var _rig_hit: int = -1               # launch 4: physics frame Skea took the mannequin's light (-1 = not yet)
 var _rig_swung: bool = false
+# launch 3b: Skea's ult under the bass (docs/GDD/03 § Ульта Skea під бас — literals, not the .tres)
+const GDD_ULT_BEATS := [62, 72, 82]                             # normal ult, move frames from frame 0
+const GDD_ULT_END := 84                                         # startup 12 + active 72
+const GDD_LONG_BEATS := [62, 148, 235, 321, 408, 494, 580, 667]  # from SHADOW VEIL
+const GDD_LONG_END := 688                                       # bass 1 cut, 11.46 s
+const GDD_ULT_DAMAGE := 273.0                                   # both ults when every imprint lands
+const GDD_ULT_STUN := 45
+const GDD_KO_MUSIC_STOP := 30                                   # plan step 3, item 5
+var _ult_t0: int = -1
+var _ult_id: String = ""
+var _fx: GrimoireFx = null
+var _imp_dmg: float = 0.0
+var _imp_n: int = 0
+var _imp_crit: bool = true
+var _stun_max: int = 0
+var _paused_ticks: int = 0
+var _last_fx_f: int = 0
+var _desync: String = ""
+var _heard: bool = false
+var _long_hashes: Array = []
+var _ko_t: int = -1
 
 
 func _ready() -> void:
@@ -89,6 +111,11 @@ func _ready() -> void:
 		if a == "--smoke-only=rig":
 			# dev / negative controls: only the launch 4 mannequin stages
 			_rig_only = true
+		if a == "--smoke-only=ult":
+			# dev / negative controls: only the launch 3b stages (Skea's ult under the bass)
+			_ult_only = true
+			GameState.set_free_move(true)
+			_stage = 120
 		if a == "--smoke-only=duel":
 			# dev / negative controls: only the 0.3-6 duel replay (plane, then free movement)
 			GameState.set_free_move(false)
@@ -468,6 +495,63 @@ func _gdd_mismatch() -> String:
 	return ""
 
 
+## Launch 3b: fresh duel 2 m apart in free movement, no statuses, Skea's meter full, Choko's Printer
+## off (a «Seen» pickup would break the armor under test). Returns false until both can act.
+func _ult_setup() -> bool:
+	if flow.phase != MatchFlow.Phase.FIGHT or not p1.is_actionable() or not p2.is_actionable() or _f < _f0 + 10:
+		return false
+	if p1.printer != null:
+		p1.printer.process_mode = Node.PROCESS_MODE_DISABLED
+	if not p2.move_started.is_connected(_on_ult_started):
+		p2.move_started.connect(_on_ult_started)
+		p1.hit_landed.connect(_on_imprint)
+	p1.global_position = Vector3(-1.0, 0.0, 0.0)
+	p2.global_position = Vector3(1.0, 0.0, 0.0)
+	p1.velocity = Vector3.ZERO
+	p2.velocity = Vector3.ZERO
+	p1._update_facing()
+	p2._update_facing()
+	for f: Fighter in [p1, p2]:
+		f.hp = f.data.max_hp
+		f.dot_frames = 0
+		f.armor_break_frames = 0
+		f.revealed_frames = 0
+		f.veil_frames = 0
+		f.veil_strike = false
+	p2.meter = Fighter.MAX_METER
+	_ult_t0 = -1
+	_ult_id = ""
+	_fx = null
+	_imp_dmg = 0.0
+	_imp_n = 0
+	_imp_crit = true
+	_stun_max = 0
+	_paused_ticks = 0
+	_last_fx_f = 0
+	_desync = ""
+	_heard = false
+	return true
+
+
+func _on_ult_started(_f2: Fighter, m: MoveData) -> void:
+	if m.kind == MoveData.Kind.ULTIMATE:
+		_ult_t0 = Engine.get_physics_frames()
+		_ult_id = m.id
+
+
+func _on_imprint(_a: Fighter, v: Fighter, m: MoveData, blocked: bool) -> void:
+	if not m.id.begins_with("imprint_") or blocked:
+		return
+	_imp_n += 1
+	_imp_crit = _imp_crit and v.last_hit_crit
+	_imp_dmg += m.damage * (Fighter.CRIT_MULT if v.last_hit_crit else 1.0)
+
+
+## Move frame of the running ult right now (frame 0 = the tick after move_started, like move_frame).
+func _ult_mf() -> int:
+	return Engine.get_physics_frames() - _ult_t0 - 1
+
+
 ## Jump to stage `st` (resets the stage clock and virtual input, like _next()).
 func _next_to(st: int) -> void:
 	_stage = st - 1
@@ -497,7 +581,7 @@ func _physics_process(_delta: float) -> void:
 	if _done:
 		return
 	_f += 1
-	if _f > 15000:
+	if _f > 19000:
 		_fail("timeout at stage %d (p1 %d, p2 %d)" % [_stage, p1.state if p1 else -1, p2.state if p2 else -1])
 		return
 	if arena == null:
@@ -1625,7 +1709,177 @@ func _physics_process(_delta: float) -> void:
 					_fail("printer spring: a second air dash worked — Spring is one use")
 					return
 				_ok("printer: Spring also gives one air dash (ends falling), and only one")
-				_start_rig_stages()
+				_load_arena(2, 120)   # launch 3b: Skea's ult under the bass, fresh round
+		# ---------------- launch 3b: Skea's ult under the bass (plan 2026-10-03-Skea-Ult-Bass, step 3) ------------
+		120:
+			# (1) normal ult: imprints on the beat, end event on frame 84 = music fade + stinger in that frame
+			if _ult_setup():
+				UltMusic.base = UltMusic.BASE
+				InputRouter.v_press(2, "ultimate")
+				_next()
+			elif _f > _f0 + 600:
+				_fail("3b: fighters never actionable (p1 %d, p2 %d)" % [p1.state, p2.state])
+		121:
+			if _ult_t0 < 0:
+				if _f > _f0 + 30:
+					_fail("3b: Skea's ultimate never started (state %d, meter %.0f)" % [p2.state, p2.meter])
+				return
+			if _fx == null:
+				_fx = p2.ult_fx
+			_stun_max = maxi(_stun_max, p1.stun_frames)
+			if _ult_mf() == 40:
+				_heard = UltMusic.audible()
+			if _ult_mf() == 30:
+				# armor: a heavy lands, damage counts, Skea does not flinch, the ult keeps going
+				var hp0 := p2.hp
+				var n0 := int(p2.stats.get("armored", 0))
+				p2.receive_hit(p1, p1.data.heavy)
+				if p2.state != Fighter.State.ATTACK or p2.hp >= hp0 or int(p2.stats.get("armored", 0)) != n0 + 1 or p2.hitstop_frames != 0 or not _fx.running():
+					_fail("3b armor: hit under the ult → state %d (want ATTACK), hp %.0f → %.0f, armored %d → %d, hitstop %d (want 0), ult running %s" % [p2.state, hp0, p2.hp, n0, int(p2.stats.get("armored", 0)), p2.hitstop_frames, _fx.running()])
+					return
+			if _fx != null and _fx.end_frame >= 0:
+				var beats: Array = []
+				for k in _fx.strike_log:
+					beats.append(k + 12)
+				var fade_mf := UltMusic.fade_frame - _ult_t0 - 1
+				if _ult_id != "cursed_grimoire" or beats != GDD_ULT_BEATS or fade_mf != GDD_ULT_END or _fx.end_frame + 12 != GDD_ULT_END:
+					_fail("3b normal ult: id %s, imprints on %s (want %s), music fade on move frame %d, end event %d (want %d)" % [_ult_id, beats, GDD_ULT_BEATS, fade_mf, _fx.end_frame + 12, GDD_ULT_END])
+					return
+				if UltMusic.play_frame - _ult_t0 - 1 != 12 or UltMusic.track != "ult_skea_bass" or UltMusic.stinger != "ult_end" or int(Sfx.last_frame.get("ult_end", -1)) != UltMusic.fade_frame:
+					_fail("3b music: started on move frame %d (want 12, from 0.2 s), track '%s', stinger '%s' on frame %d (fade %d)" % [UltMusic.play_frame - _ult_t0 - 1, UltMusic.track, UltMusic.stinger, int(Sfx.last_frame.get("ult_end", -1)), UltMusic.fade_frame])
+					return
+				if _imp_n != 3 or not _imp_crit or absf(_imp_dmg - GDD_ULT_DAMAGE) > 0.01 or _stun_max < GDD_ULT_STUN - 1 or _stun_max > GDD_ULT_STUN:
+					_fail("3b normal ult: %d imprints, all crit %s, damage %.2f (want 3, true, %.0f); Choko's stun peaked at %d (want %d, set not added)" % [_imp_n, _imp_crit, _imp_dmg, GDD_ULT_DAMAGE, _stun_max, GDD_ULT_STUN])
+					return
+				if not UltMusic.has_stream("ult_skea_bass") or not _heard:
+					_fail("3b music: track found %s, playing mid-ult %s" % [UltMusic.has_stream("ult_skea_bass"), _heard])
+					return
+				_ok("3b normal ult: imprints on move frames %s, %.0f damage (all crit), stun %d; end event, music fade and 'ult_end' on frame %d; armor took a heavy without a flinch" % [beats, _imp_dmg, _stun_max, fade_mf])
+				_ult_t0 = -1
+				_next()
+			elif _f > _f0 + 400:
+				_fail("3b normal ult never ended (fx %s)" % _fx)
+		122:
+			# a spell on Skea breaks the armor: the hit drops him and ends the ult on that frame
+			if _ult_t0 < 0:
+				if _f > _f0 + 400:
+					_fail("3b armor break: fighters never actionable (p1 %d, p2 %d)" % [p1.state, p2.state])
+				elif _ult_setup():
+					p1.global_position = Vector3(-1.0, 0.0, 0.0)
+					InputRouter.v_press(2, "ultimate")
+				return
+			if _ult_mf() == 30:
+				_fx = p2.ult_fx
+				p2.dot_frames = 60   # Poison on Skea
+				p2.receive_hit(p1, p1.data.heavy)
+				if p2.state != Fighter.State.HITSTUN or _fx == null or _fx.running() or UltMusic.fade_frame != Engine.get_physics_frames() or p2.ult_fx != null:
+					_fail("3b armor break: poisoned Skea hit → state %d (want HITSTUN), ult running %s, fade on %d (want %d)" % [p2.state, _fx.running() if _fx != null else false, UltMusic.fade_frame, Engine.get_physics_frames()])
+					return
+				_ok("3b armor break: Poison on Skea → the hit drops him and ends the ult that frame (music fade + stinger)")
+				_ult_t0 = -1
+				_long_hashes.clear()
+				_load_arena(2, 123)
+		123:
+			# (2)–(4) long ult from SHADOW VEIL, twice: with the track, then without the file — same hash
+			if _ult_setup():
+				UltMusic.base = UltMusic.BASE if _long_hashes.is_empty() else "res://__no_music__/"
+				p2.begin_veil()
+				InputRouter.v_press(2, "ultimate")
+				_next()
+			elif _f > _f0 + 600:
+				_fail("3b long: fighters never actionable (p1 %d, p2 %d)" % [p1.state, p2.state])
+		124:
+			if _ult_t0 < 0:
+				if _f > _f0 + 30:
+					_fail("3b long: the ult never started from the veil (veil %d, state %d)" % [p2.veil_frames, p2.state])
+				return
+			if _ko_t >= 0:
+				if Engine.get_physics_frames() < _ko_t + 30:
+					return
+				var h := _duel_state().hash()
+				_long_hashes.append(h)
+				_ko_t = -1
+				if _long_hashes.size() == 1:
+					_ok("3b long ult from the veil: free after startup, 8 imprints on %s, %.0f damage (all crit), end on %d; time stop paused effect and music together for %d frames" % [GDD_LONG_BEATS, _imp_dmg, GDD_LONG_END, _paused_ticks])
+					_ult_t0 = -1
+					_load_arena(2, 123)
+				elif _long_hashes[0] != _long_hashes[1] or UltMusic.has_stream("ult_skea_bass"):
+					_fail("3b: the fight depends on the music file — hash %d with the track, %d without (file found %s)" % [_long_hashes[0], _long_hashes[1], UltMusic.has_stream("ult_skea_bass")])
+				else:
+					UltMusic.base = UltMusic.BASE
+					_ok("3b: same fight with the track and without the file — hash %d both runs, no crash, silence" % h)
+					_ult_t0 = -1
+					_next()
+				return
+			if _fx == null:
+				_fx = p2.ult_fx
+				_last_fx_f = 0
+				return
+			var mf := _ult_mf()
+			if mf == 20 and (p2.state == Fighter.State.ATTACK or not p2.ult_armored()):
+				_fail("3b long: on frame 20 Skea is in state %d (want free, the mode), armored %s" % [p2.state, p2.ult_armored()])
+				return
+			if mf == 200:
+				TimeStopFx.spawn(p1, Fighter.TIME_STOP_FRAMES)   # (4) Choko's time stop over the long ult
+			if _fx.running() and mf < 16:
+				_last_fx_f = _fx._f   # the spawn frame is not counted (tick order); compare from here on
+				return
+			if _fx.running():
+				# the effect's counter and the music stand still together, frame by frame
+				var moved := _fx._f != _last_fx_f
+				if moved == UltMusic.paused and _desync == "":
+					_desync = "move frame %d: effect advanced %s, music paused %s" % [mf, moved, UltMusic.paused]
+				if _long_hashes.is_empty() and UltMusic.audible() == UltMusic.paused and _desync == "":
+					_desync = "move frame %d: audible %s while paused %s" % [mf, UltMusic.audible(), UltMusic.paused]
+				if not _long_hashes.is_empty() and UltMusic.audible():
+					_desync = "no file, yet audible"
+				_paused_ticks += int(UltMusic.paused)
+				_last_fx_f = _fx._f
+				return
+			if _fx.end_frame >= 0 and _ko_t < 0:
+				var beats: Array = []
+				for k in _fx.strike_log:
+					beats.append(k + 12)
+				var fade_mf := UltMusic.fade_frame - _ult_t0 - 1
+				if _ult_id != "cursed_grimoire_veil" or beats != GDD_LONG_BEATS or _fx.end_frame + 12 != GDD_LONG_END or fade_mf != GDD_LONG_END + _paused_ticks:
+					_fail("3b long ult: id %s, imprints on %s (want %s), end event %d (want %d), fade on tick-frame %d = %d + paused %d" % [_ult_id, beats, GDD_LONG_BEATS, _fx.end_frame + 12, GDD_LONG_END, fade_mf, GDD_LONG_END, _paused_ticks])
+					return
+				if _desync != "" or _paused_ticks < Fighter.TIME_STOP_FRAMES - 2:
+					_fail("3b time stop under the long ult: %s; paused %d frames (want ≈ %d)" % [_desync if _desync != "" else "in sync", _paused_ticks, Fighter.TIME_STOP_FRAMES])
+					return
+				if _imp_n != 8 or not _imp_crit or absf(_imp_dmg - GDD_ULT_DAMAGE) > 0.01:
+					_fail("3b long ult: %d imprints landed, all crit %s, damage %.2f (want 8, true, %.0f)" % [_imp_n, _imp_crit, _imp_dmg, GDD_ULT_DAMAGE])
+					return
+				_ko_t = Engine.get_physics_frames()
+			if _f > _f0 + 1400:
+				_fail("3b long ult never ended (fx %s, running %s)" % [_fx, _fx.running() if _fx != null else false])
+		125:
+			# (5) KO under the ult: the music stops within 30 frames
+			if _ult_t0 < 0:
+				if _f > _f0 + 900:
+					_fail("3b KO: fighters never actionable (p1 %d, p2 %d)" % [p1.state, p2.state])
+				elif _ult_setup():
+					p1.hp = 40.0
+					InputRouter.v_press(2, "ultimate")
+					_ko_t = -1
+				return
+			if _fx == null:
+				_fx = p2.ult_fx
+			if _ko_t < 0 and p1.state == Fighter.State.KO:
+				_ko_t = Engine.get_physics_frames()
+			if _ko_t >= 0 and Engine.get_physics_frames() == _ko_t + GDD_KO_MUSIC_STOP:
+				var still := is_instance_valid(_fx) and _fx.running()   # the effect frees itself 20 frames after the end
+				if still or UltMusic.fade_frame < _ko_t or UltMusic.fade_frame > _ko_t + 1 or UltMusic._player.playing:
+					_fail("3b KO under the ult: ult running %s, fade on %d (KO %d), still playing after %d frames %s" % [still, UltMusic.fade_frame, _ko_t, GDD_KO_MUSIC_STOP, UltMusic._player.playing])
+					return
+				_ok("3b KO under the ult: end event on the KO frame, music stopped within %d frames" % GDD_KO_MUSIC_STOP)
+				_ko_t = -1
+				if _ult_only:
+					_finish()
+				else:
+					_start_rig_stages()
+			elif _f > _f0 + 1200:
+				_fail("3b KO: Choko never went KO under the ult (hp %.0f, state %d)" % [p1.hp, p1.state])
 		# ---------------- launch 4 (C1): UAL mannequin, GameState.skeletal_rig -------------------------
 		110:
 			if flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable() and _f > _f0 + 10:
