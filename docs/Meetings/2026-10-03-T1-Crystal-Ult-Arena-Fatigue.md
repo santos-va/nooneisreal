@@ -61,7 +61,30 @@
 - [ ] Гермес · К-2 · `bash tools/gates/run_gates.sh` → rc=0
 - [ ] Гефест · у запуску 6 — smoke на гіпотезу про стіни: спершу червоний на `main`, потім зелений
 
+## Третя частина: хвиля 1 у `main`, гілки, онлайн
+
+- **Хендоф Гефесту.** Відправлено в сесію t2 (`send_message`). Він закрив усі 7 пунктів: `git log --oneline -1 origin/main` →
+  `2a39eb8 Merge pull request #98` (5 + 6.1 — PR #95; 3c + 6.2 ADR-018 — PR #98). Гіпотезу про стіни підтвердив він: рука
+  камери 2.04 з 8.39 м, боєць зупинявся на x 12.65 (`docs/Fix/2026-10-03-launch-6-controls-camera.md`).
+- **Гілки.** Локально: від'єднано 3 worktree старої сесії, видалено 3 злиті гілки. На GitHub `claude/*` прибрано
+  після мержів. `assets/ual`, `assets/ult-end`, `assets/ult-end-2` злиті, але видалити їх із сесії не вдалося: проксі
+  відповідає HTTP 403. Видаляє Santos.
+- **Звіт Гефеста для T1** (перевірено в `main`): ліміт smoke 19000 кадрів (`SmokeTest.gd:766`), прогін — 18752, `Makefile`
+  — `--quit-after 20000`; `skeletal_rig = false` (`GameState.gd:46`); мережевого коду 0 збігів (grep).
+
+### Вирішили (третя частина, опитування Santos)
+- Герої за замовчуванням: `skeletal_rig = true`, малий PR Гефеста.
+- Онлайн: ресерч і ADR зараз, код — пізніше. План [[2026-10-03-Online-Play]] (approved): R10 для Архімеда → ADR-019 →
+  аудит детермінізму Феміди. Поки ADR-019 немає, для хвилі 2 діє правило: у шляху симуляції немає фізики.
+- Далі: Santos спершу грає 5 + 3c + 6, код хвилі 2 — після його відгуку. Арес тим часом пише правила втоми (В-1).
+
+### Дії (третя частина)
+- [ ] Santos · зіграти в `~/dev/nir-play` → відгук у santos-va/nooneisreal#52 · видалити 3 гілки `assets/*`
+- [ ] Гефест · малий PR `skeletal_rig` + межі smoke · `make check` → `ALL OK`, `make gates` → rc=0
+- [ ] Архімед · R10 · `bash tools/gates/run_gates.sh` → rc=0
+- [ ] Арес · В-1 втома · `bash tools/gates/run_gates.sh` → rc=0
+
 ## Related
 - [[state]] · [[2026-10-03-Crystal-Ult-Arena-Fatigue]] · [[2026-10-03-launch-3b-ult-bass]] · [[2026-10-03-Path-to-First-Fight]] ·
   [[2026-10-03-Living-Combat]] · [[2026-10-03-Fight-Craft-Research]] · [[03-Skills-Framework]] · [[Choko]] · [[Skea]] ·
-  [[ADR-018-Camera-Frames-Fight-With-Air]] · [[ADR-015-Solo-Camera-Behind-Fighter]]
+  [[ADR-018-Camera-Frames-Fight-With-Air]] · [[ADR-015-Solo-Camera-Behind-Fighter]] · [[2026-10-03-Online-Play]]
