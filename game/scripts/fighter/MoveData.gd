@@ -56,6 +56,18 @@ enum Kind { NORMAL, SKILL, ULTIMATE, THROW }
 @export var cancel_tier: int = 0                      # 0 light, 1 heavy, 2 skill, 3 ultimate — can cancel into higher tier on hit
 @export var sfx_hit: String = "hit_light"
 @export var sfx_whiff: String = "whoosh"
+## Beat ultimate (Skea, docs/GDD/03 § Ульта Skea під бас; numbers — T5 Арес, PLACEHOLDER). Frames count
+## from the move's first frame (= 0, the track starts there); the effect ends on startup + active.
+@export var beat_frames: PackedInt32Array = PackedInt32Array()   # one imprint per frame
+@export var beat_damage: Array[float] = []                        # base per imprint, before the crit ×1.5
+@export var beat_stun: int = 0                                    # stun_frames each imprint sets (not adds)
+@export var armor: bool = false              # unbreakable from start to end of active unless a spell hangs on the fighter
+@export var free_after_startup: bool = false # «режим»: the body is free after startup, the effect runs active by itself
+@export var music: String = ""               # res://assets/audio/music/<music>.ogg, from the move's frame 0
+@export var end_sfx: String = ""             # stinger on the end event, with the music fade
+## «SKI» signature: one stroke per imprint, points in metres (x = screen right, y = up) around the
+## opponent's spot at the effect start. Shape PLACEHOLDER (Гефест), letters — T6 Аполлон.
+@export var contour: Array[PackedVector2Array] = []
 @export_multiline var description: String = ""
 
 

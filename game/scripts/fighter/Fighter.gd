@@ -104,6 +104,7 @@ var _splat_used: bool = false
 # Choko's passive Printer (docs/GDD/03 § Пасивка Choko — Printer); effects can land on either fighter
 var printer: Printer = null
 var revealed_frames: int = 0      # «Seen»: this fighter shows through Shadow Veil (information only)
+var ult_fx: GrimoireFx = null    # the running beat ultimate (armor, «SKI» flashes); null when none
 var spring_frames: int = 0        # «Spring»: one extra air jump or air dash while > 0      # this combo already had its wall splat (reset when the fighter recovers)
 var _wish: Vector3 = Vector3.ZERO   # free_move: camera-relative stick in world space, this frame
 var _dash_vec: Vector3 = Vector3.RIGHT
@@ -178,6 +179,7 @@ func _ready() -> void:
 
 # --- round lifecycle -------------------------------------------------------------------------
 func reset_for_round(x: float, face: int) -> void:
+	_break_ult()
 	_clear_ragdoll()
 	global_position = Vector3(x, 0.0, 0.0)
 	velocity = Vector3.ZERO
@@ -671,6 +673,8 @@ func _start_move(m: MoveData, slot: String = "") -> void:
 	if veil_frames > 0:
 		veil_strike = true
 		end_veil()
+		if m == data.ultimate and data.ultimate_veil != null:
+			m = data.ultimate_veil   # «з диму»: the long ult (docs/GDD/03 § Ульта Skea під бас, (а))
 	if m.meter_cost > 0.0:
 		meter = maxf(0.0, meter - m.meter_cost)
 		meter_changed.emit(meter, MAX_METER)
@@ -722,6 +726,11 @@ func _tick_attack(delta: float) -> void:
 		_strike_smear(m)
 		if m.effect != "":
 			_activate_effect(m)
+		if m.free_after_startup:
+			# «режим», not a cutscene: the effect runs the active window, the body is the player's again
+			current_move = null
+			_set_state(State.IDLE if on_ground() else State.JUMP)
+			return
 		if pull_pending:
 			pull_pending = false
 			if opponent:
@@ -788,7 +797,7 @@ func _activate_effect(m: MoveData) -> void:
 		"shadow_veil":
 			begin_veil()
 		"grimoire":
-			GrimoireFx.spawn(self)
+			ult_fx = GrimoireFx.spawn(self, m)
 
 
 func _try_cancel(m: MoveData) -> bool:
@@ -843,6 +852,10 @@ func _check_hit(m: MoveData) -> void:
 func receive_hit(attacker: Fighter, m: MoveData) -> void:
 	if state == State.KO or state == State.LAUNCHED or invulnerable_frames > 0:
 		return
+	if ult_armored():
+		_armored_hit(attacker, m)
+		return
+	_break_ult()
 	last_hit_crit = false
 	var crit := _check_crit(attacker, m)
 	var scale := 1.0 if m.ignore_scaling else maxf(0.35, 1.0 - COMBO_SCALING * float(combo_count))
@@ -924,6 +937,64 @@ func receive_hit(attacker: Fighter, m: MoveData) -> void:
 	_set_state(State.HITSTUN)
 
 
+## Under a beat ultimate (MoveData.armor) Skea does not fall, flinch or lose the ult — from the move's
+## first frame to the end of active. A spell already on him breaks it: DoT, armor break, «Seen», time
+## stop. Checked on every hit, so a poison landed mid-ult breaks the armor too (docs/GDD/03 § Ульта Skea
+## під бас, «Непорушний»).
+func ult_armored() -> bool:
+	if dot_frames > 0 or armor_break_frames > 0 or revealed_frames > 0 or frozen_frames > 0:
+		return false
+	if state == State.ATTACK and current_move != null and current_move.armor and move_frame < current_move.startup + current_move.active:
+		return true
+	return ult_fx != null and is_instance_valid(ult_fx) and ult_fx.running()
+
+
+## Damage lands as usual; no hitstun, no hitstop on the armored body, no knockback, no fall.
+func _armored_hit(attacker: Fighter, m: MoveData) -> void:
+	last_hit_crit = false
+	var crit := _check_crit(attacker, m)
+	var scale := 1.0 if m.ignore_scaling else maxf(0.35, 1.0 - COMBO_SCALING * float(combo_count))
+	var dmg := m.damage * scale * (CRIT_MULT if crit else 1.0)
+	hp -= dmg
+	attacker.stats.hits += 1
+	if crit:
+		attacker.stats.crits += 1
+		Sfx.play("crit", -2)
+	_gain_meter(attacker, m.meter_gain_hit)
+	_apply_hit_effects(m)
+	animator.flash()
+	Sfx.play(m.sfx_hit)
+	attacker.hitstop_frames = maxi(attacker.hitstop_frames, m.hitstop + (3 if crit else 0))
+	stats.armored = int(stats.get("armored", 0)) + 1
+	hp_changed.emit(hp, data.max_hp)
+	hit_landed.emit(attacker, self, m, false)
+	if hp <= 0.0:
+		_die(attacker, m)
+
+
+## A hit got through: the running beat ultimate ends now, like any move (end event, music fade, stinger).
+func _break_ult() -> void:
+	if ult_fx != null and is_instance_valid(ult_fx):
+		ult_fx.end_ult()
+	ult_fx = null
+
+
+## «SKI» signature: one flash-step stroke on the beat (no charge, no i-frames — the armor covers him).
+func beat_flash(to: Vector3) -> void:
+	if not (state in [State.IDLE, State.WALK, State.CROUCH, State.BLOCK, State.DASH]) or not on_ground():
+		return
+	_flash_from = global_position
+	_flash_to = clamp_arena(Vector3(to.x, global_position.y, to.z))
+	flashing = true
+	dash_dir = facing
+	dash_frames_left = FLASH_TRAVEL + FLASH_RECOVER
+	velocity = Vector3.ZERO
+	current_move = null
+	Afterimage.spawn(Fx.root(self), animator.part_snapshot(), data.vfx_primary, 0.4, 0.7, true)
+	Sfx.play("flash", -6)
+	_set_state(State.DASH)
+
+
 ## Plane: the guard holds when the fighters face each other. Free movement: when the attacker is
 ## within ±block_arc_deg of where we look — a side or back hit is never blocked.
 func _guards_against(attacker: Fighter) -> bool:
@@ -989,7 +1060,7 @@ func _gain_meter(attacker: Fighter, gain: float) -> void:
 
 ## Grapple "get over here": pulled to target_x and stunned. No damage; the follow-up is the reward.
 func get_pulled(target_x: float, stun: int) -> void:
-	if state == State.KO or state == State.LAUNCHED or frozen_frames > 0:
+	if state == State.KO or state == State.LAUNCHED or frozen_frames > 0 or ult_armored():
 		return
 	if state == State.GRAPPLE:
 		grapple.detach()
@@ -1007,7 +1078,7 @@ func get_pulled(target_x: float, stun: int) -> void:
 
 ## Free movement version of get_pulled(): pulled to a point on the ground plane (y ignored).
 func get_pulled_to(target: Vector3, stun: int) -> void:
-	if state == State.KO or state == State.LAUNCHED or frozen_frames > 0:
+	if state == State.KO or state == State.LAUNCHED or frozen_frames > 0 or ult_armored():
 		return
 	if state == State.GRAPPLE:
 		grapple.detach()
