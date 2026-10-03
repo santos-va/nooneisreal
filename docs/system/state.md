@@ -50,7 +50,7 @@
 | #7 | T2 Гефест | М3 каркас тла — **3D-діорама з карток** ([[ADR-012-Menu-As-3D-Diorama]]) + таймер прольоту 20–50 с | #5, #9 | чекає |
 | #8 | Гефест → Феміда | М4 арт у каркас, М5 аудит | #6 (слово Santos), #7 | чекає |
 | #11 | Гермес → Аполлон → Гефест | Б1 вибір персонажа на даху | #5, #6, #7 | В1 (Гермес) **зроблено, змерджено** (PR #22) — [[06-UI-UX]] § Вибір персонажа; В2 Аполлон — вільно, В3 Гефест чекає #7 |
-| #12 | Кліо → Гефест | Kronshift → **Cronshift** ([[ADR-010-City-Name-Cronshift]]) | #9 | **крок Кліо зроблено** (гілка `claude/klio-cronshift-rename`): сторінка [[Cronshift]], усі лінки й текст у `docs/` і `roles/`; `bash tools/gates/run_gates.sh` → rc=0 — [[2026-10-03-Klio-Cronshift-Rename]]; **Гефест — вільно**: код, `bg_kronshift_*`, [[Textures-Registry]], `fetch_assets.sh`, промпти скілів; `README.md`/`CLAUDE.md` — чий крок, вирішує Santos |
+| #12 | Кліо → Гефест | Kronshift → **Cronshift** ([[ADR-010-City-Name-Cronshift]]) | #9 | **крок Кліо зроблено** (гілка `claude/klio-cronshift-rename`): сторінка [[Cronshift]], усі лінки й текст у `docs/` і `roles/`; `bash tools/gates/run_gates.sh` → rc=0 — [[2026-10-03-Klio-Cronshift-Rename]]; **Гефест — вільно**: код, `bg_kronshift_*`, [[Textures-Registry]], `fetch_assets.sh`, промпти скілів; `README.md`/`CLAUDE.md` — теж виправила Кліо (слово Santos) |
 
 **Протокол:** взяв — коментар «беру» в issue + статус тут; закінчив — коментар із командою перевірки й виходом,
 статус тут. «Зроблено» ставить лише виконавець. Правиш state.md — тільки свій рядок/розділ (паралельні сесії).

@@ -23,7 +23,7 @@
 ## Відкрите / хто далі
 
 - **T2 Гефест, крок 2 #12:** код (`GameState.gd`, `MainMenu.gd`, `Backdrop.gd`, `backdrop_fallback.gdshader`, `project.godot`), файли `bg_kronshift_*` разом із `.import`, [[Textures-Registry]], `tools/fetch_assets.sh`, промпти в `.claude/skills/higgsfield-game-art` і `game-ui-design`. Після цього Кліо оновить шляхи `bg_kronshift_*` у вікі.
-- **Поза issue:** `README.md` і `CLAUDE.md` — по одному «Kronshift» у кожному (`grep -c`). У кроках #12 вони нікому не призначені, тож чекають слова Santos, чий це крок.
+- **Поза issue:** `README.md` і `CLAUDE.md` — по одному «Kronshift». Santos: «Виправ README і CLAUDE.md сама», тож Кліо виправила обидва (`grep -c Kronshift README.md CLAUDE.md` → 0 і 0).
 
 ## Related
 - [[ADR-010-City-Name-Cronshift]] · [[Cronshift]] · [[Glossary]] · [[state]] · [[index]]
