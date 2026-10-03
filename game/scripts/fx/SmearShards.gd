@@ -15,13 +15,13 @@ static func burst(parent: Node, from: Vector3, to: Vector3, colors: Array, count
 
 
 func _emit(from: Vector3, to: Vector3, colors: Array, count: int, streaks: int) -> void:
-	_rng.randomize()
+	_rng.seed = FxShader.rng().randi()
 	var dir := to - from
 	var back := -dir.normalized() if dir.length() > 0.01 else Vector3.ZERO
 	for i in count:
 		var c: Color = colors[_rng.randi() % colors.size()]
 		var ink := _rng.randf() < 0.45
-		var m := Fx.mat(Color(c.r, c.g, c.b, 0.9), not ink)
+		var m := FxShader.stroke(c, 0.9, not ink, 0.7)
 		var q := QuadMesh.new()
 		q.size = Vector2(_rng.randf_range(0.12, 0.42), _rng.randf_range(0.04, 0.16))
 		var mi := Fx.mesh(q, m)
@@ -33,7 +33,7 @@ func _emit(from: Vector3, to: Vector3, colors: Array, count: int, streaks: int) 
 			"spin": _rng.randf_range(-12.0, 12.0), "life": life, "left": life, "alpha": 0.9})
 	for i in streaks:
 		var c2: Color = colors[i % colors.size()]
-		var m2 := Fx.mat(Color(c2.r, c2.g, c2.b, 0.75), true)
+		var m2 := FxShader.stroke(c2, 0.75, true, 0.35)
 		var q2 := QuadMesh.new()
 		q2.size = Vector2(maxf(dir.length() * _rng.randf_range(0.5, 0.95), 0.4), _rng.randf_range(0.02, 0.06))
 		var mi2 := Fx.mesh(q2, m2)
@@ -58,6 +58,6 @@ func _process(delta: float) -> void:
 		n.rotation.z += it.spin * delta
 		var k := Fx.stepped(it.left / it.life)
 		n.scale = Vector3.ONE * (0.4 + 0.6 * k)
-		(it.mat as StandardMaterial3D).albedo_color.a = it.alpha * k
+		FxShader.fade(it.mat, k)
 	if alive == 0:
 		queue_free()

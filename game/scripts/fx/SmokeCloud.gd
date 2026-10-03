@@ -1,6 +1,8 @@
 class_name SmokeCloud
 extends Node3D
 ## Lingering smoke (Skea's Shadow Veil). `covers()` lets the CPU brain treat it as blinding.
+## Look (fx_smoke): cel puffs with a lilac shadow side and an ink rim that burn away in steps.
+## radius / life / covers() are read by the CPU brain — the look must never change them.
 
 var radius: float = 2.0
 var _puffs: Array = []
@@ -19,17 +21,17 @@ static func spawn(parent: Node, pos: Vector3, color: Color, life: float = 3.0, r
 
 
 func _build(color: Color, life: float, r: float) -> void:
-	_rng.randomize()
+	_rng.seed = FxShader.rng().randi()
 	_life = life
 	_left = life
 	radius = r
 	for i in 12:
-		var m := Fx.mat(Color(color.r, color.g, color.b, 0.6), false)
+		var m := FxShader.smoke(color)
 		var sm := SphereMesh.new()
 		sm.radius = _rng.randf_range(0.35, 0.7)
 		sm.height = sm.radius * 2.0
-		sm.radial_segments = 10
-		sm.rings = 5
+		sm.radial_segments = 16   # fx_smoke pushes the surface out with noise — needs the vertices
+		sm.rings = 8
 		var mi := Fx.mesh(sm, m)
 		add_child(mi)
 		mi.position = Vector3(_rng.randf_range(-r, r) * 0.7, _rng.randf_range(-0.8, 0.9), _rng.randf_range(-0.4, 0.6))
@@ -50,4 +52,4 @@ func _process(delta: float) -> void:
 		var n: MeshInstance3D = p.node
 		n.scale = Vector3.ONE * lerpf(0.5, p.grow, minf(1.0, t * 4.0))
 		n.position.y += p.rise * delta
-		(p.mat as StandardMaterial3D).albedo_color.a = 0.6 * Fx.stepped(_left / _life, 6)
+		FxShader.fade(p.mat, Fx.stepped(_left / _life, 6))

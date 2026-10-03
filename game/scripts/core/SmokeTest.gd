@@ -124,6 +124,8 @@ func _ready() -> void:
 	GameState.stage_index = 2   # back_alley (river is index 0)
 	if not _check_boot():
 		return
+	if not _check_lane_b_fx():   # sprint lane B (T2·B): effects are look only
+		return
 	# free movement is the game's default now; the smoke starts with the 0.2 plane stages and switches
 	# to free movement itself at stage 40 (T4 audit 0.3-7 item 7)
 	GameState.set_free_move(false)
@@ -240,6 +242,79 @@ func _check_boot() -> bool:
 			_fail("%s: %s" % [path.get_file(), bad])
 			return false
 	_ok("hero GLBs keep their textures embedded (%d models)" % heroes.size())
+	return true
+
+
+## Sprint lane B (T2·B, docs/Plans/2026-10-03-Sprint-Arenas-VFX.md § B): the effects are look only.
+## Runs inside one frame — each effect is stepped by hand — so it costs no smoke frames.
+## Subject: for every effect E in {Afterimage, SmearShards, SmokeCloud, HitSpark}: spawning E leaves the global
+## RNG untouched, E draws with an fx_* shader, E burns away in steps and frees itself, and SmokeCloud keeps
+## the radius / life / covers() contract the CPU brain reads. false = already failed.
+func _check_lane_b_fx() -> bool:
+	var dt := 1.0 / 60.0
+	var shaders := [FxShader.INK, FxShader.GLOW, FxShader.SMOKE, FxShader.SPARK]
+	var snap: Array = []
+	for i in 3:
+		snap.append({"transform": Transform3D(Basis(), Vector3(0.0, 0.6 + 0.5 * i, 0.0)), "radius": 0.12, "length": 0.4})
+	seed(4242)
+	var want := randi()
+	seed(4242)
+	var ghost := Afterimage.spawn(self, snap, Color(0.6, 0.3, 1.0), 0.3, 0.5, true)
+	var double := Afterimage.spawn(self, snap, Color(0.05, 0.03, 0.08), 0.3, 0.55, false)
+	var shards := SmearShards.burst(self, Vector3.ZERO, Vector3(3.0, 0.0, 0.0), [Color.RED, Color.BLACK], 12, 4)
+	var cloud := SmokeCloud.spawn(self, Vector3(0.0, 1.0, 0.0), Color(0.3, 0.2, 0.4), 3.0, 2.0)
+	var spark := HitSpark.new()
+	add_child(spark)
+	spark.setup(false, Color(1.0, 0.6, 0.3), 120.0, true)
+	var got := randi()
+	var fx: Array = [ghost, double, shards, cloud, spark]
+	if got != want:
+		_fail("lane B: spawning effects moved the global RNG (%d, want %d) — an effect calls randf()/randi()" % [got, want])
+		return false
+	# every drawn mesh (HitSpark: its star) uses one of the fx_* shaders
+	for e in fx:
+		var meshes: Array = (e as Node).find_children("*", "MeshInstance3D", true, false)
+		if e == spark:
+			meshes = [meshes[0]]
+		if meshes.is_empty():
+			_fail("lane B: %s drew nothing" % (e as Node).get_script().get_global_name())
+			return false
+		for mi in meshes:
+			var m := (mi as MeshInstance3D).material_override as ShaderMaterial
+			if m == null or not shaders.has(m.shader):
+				_fail("lane B: %s draws with %s, not an fx_* shader" % [(e as Node).get_script().get_global_name(), (mi as MeshInstance3D).material_override])
+				return false
+	# SmokeCloud contract the CPU brain reads (CpuBrain.gd: covers())
+	if not is_equal_approx(cloud.radius, 2.0) or not cloud.covers(Vector3(0.0, 0.0, 0.0)) or cloud.covers(Vector3(5.0, 0.0, 0.0)):
+		_fail("lane B: SmokeCloud changed its contract — radius %.2f, covers(centre) %s, covers(5 m) %s" % [cloud.radius, cloud.covers(Vector3.ZERO), cloud.covers(Vector3(5.0, 0.0, 0.0))])
+		return false
+	# step by hand: the ghost dissolves in steps (≤ 5 distinct `fade` values), everything frees itself
+	var fades := {}
+	var steps := {}
+	for i in 600:
+		for e in fx:
+			var n := e as Node
+			if steps.has(n):
+				continue
+			if n.is_queued_for_deletion():
+				steps[n] = i
+				continue
+			n._process(dt)
+		if not ghost.is_queued_for_deletion():
+			fades[snappedf(float(ghost._mat.get_shader_parameter("fade")), 0.001)] = true
+		if steps.size() == fx.size():
+			break
+	for e in fx:
+		if not steps.has(e):
+			_fail("lane B: %s is still alive after 600 frames — the effect never frees itself" % (e as Node).get_script().get_global_name())
+			return false
+	if fades.size() > 5:
+		_fail("lane B: Afterimage fades through %d values — smooth, not drawn in steps" % fades.size())
+		return false
+	if cloud.covers(Vector3.ZERO):
+		_fail("lane B: SmokeCloud still covers after its life")
+		return false
+	_ok("lane B: 5 effects spawn without touching the global RNG, draw with fx_* shaders, ghost burns in %d steps, all free themselves (smoke after %d frames, covers() contract kept)" % [fades.size(), steps[cloud]])
 	return true
 
 
