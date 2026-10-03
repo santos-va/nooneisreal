@@ -2,7 +2,7 @@
 
 **Роль:** T6 Аполлон (T6·B), 2026-10-03 · **План:** [[2026-10-03-Sprint-Arenas-VFX]], смуга D · **Напрям:** [[VFX-Direction]] ·
 **Стиль:** [[Style-Guide]], [[ADR-007-Art-Style-Sketch-Cel]] · **Бюджет смуги:** ≈ 400 кр. (поділ T1 у стелі 1000).
-**Статус:** смуга D згенерована повністю — D1 (Santos «Генеруй давай!!», 21.25 кр.) і D2 (Santos «yes» на «стиль так», 55 кр.); 13 файлів у `game/assets/vfx/`. Потім D3 (Santos «go, … готуй матеріал», 66 кр.): +11 файлів. Разом **142.25** з ≈ 400.
+**Статус:** смуга D згенерована повністю — D1 (Santos «Генеруй давай!!», 21.25 кр.) і D2 (Santos «yes» на «стиль так», 55 кр.); 13 файлів у `game/assets/vfx/`. Потім D3 (Santos «go, … готуй матеріал», 66 кр.): +11 файлів. Потім D4 (Santos «D4», 55 кр.): +10. Разом **197.25** з ≈ 400, у `game/assets/vfx/` 34 файли смуги D.
 
 ## Навіщо і для кого
 
@@ -156,6 +156,25 @@ lashes on top, a bright violet (#A666FF) round iris and a small dark pupil, like
 
 Ціна — та сама модель і параметри, що D1/D2 (`gpt_image_2_5` high 2k 1:1 transparent → 2.75): 11 видів × 2 варіанти = **22 × 2.75 = 60.5**.
 
+## D4 — бій і Printer (Santos 2026-10-03: «D4»)
+
+Шлейф ∞8 з рюкзака Skea **не генерується**: «емісивний декаль + частинки, не з генерації» ([[2026-10-03-Skea-Redesign-Brief]], рядок 18).
+
+| # | id | звідки потреба | опис (слот, англійською) |
+|---|---|---|---|
+| 24 | `vfx-kunai-fall` | `KunaiRain.gd:85` — кунай зараз `PrismMesh` + `BoxMesh` | `A single kunai falling straight down point first, dark steel blade (#4A4458, shadow #2E2638) with a violet (#9E4CF2) wrapped grip and a ring pommel, a thin violet speed streak above it: frames 1-12 it drops in steps from the top of the cell to the bottom with the streak stretching, frames 13-16 it is stuck in an invisible floor at the bottom with a tiny violet spark and two ink specks. Side view.` |
+| 25 | `vfx-kunai-impact` | той самий, точка падіння (вид згори) | `A small top-down impact mark where a kunai hits the ground: a violet (#9E4CF2) flash star, a ring of short ink cracks and a few flat stone chips (#7A6A73): frames 1-3 flash, frames 4-8 cracks and chips spread, frames 9-16 the flash is gone and the cracks thin out. Top-down orthographic, centered.` |
+| 26 | `vfx-slash-air-choko` | повітряні удари (`air_light`, [[02-Combat-System]]) | `A rising anti-air sword slash arc sweeping from lower left up over the top to the right, a thick emerald-green (#33E68C) blade trail with a pale cream (#EFEED4) leading edge and a dark green (#1E7A5A) shadow side: frames 1-3 a thin sliver, frames 4-7 a full rising crescent, frames 8-12 it thins into ribbon strips, frames 13-16 chips break apart.` |
+| 27 | `vfx-slash-heavy-choko` | важкі удари Choko | `A wide heavy horizontal sword sweep, a very thick emerald-green (#33E68C) crescent band with a pale cream (#EFEED4) edge, a dark green (#1E7A5A) shadow side and a few ink speed lines behind it: frames 1-3 a sharp line, frames 4-8 a huge flat crescent across the cell, frames 9-12 it tears into three thick ribbons, frames 13-16 small chips and specks.` |
+| 28 | `vfx-skid-dust` | гальмування, ковзання вздовж стіни арени ([[02-Combat-System]] § М'яка стіна) | `A trail of skid dust kicked up along the floor by feet sliding to the right, side view: warm grey-terracotta dust (#A88B7A base, #7A5C66 shadow) in low rolling clumps with inked outlines: frames 1-4 a small burst at the right, frames 5-10 a long low streak of clumps stretches to the left, frames 11-16 the clumps break into dust balls and specks that settle. Low and wide, the bottom edge of every frame is a straight invisible floor line.` |
+| 29 | `vfx-grapple-launch` | постріл гарпуна (`GrappleHook.gd`) | `A short compressed-air and steam burst from a launcher muzzle pointing to the right: a cone of cream-white steam puffs (#EFEED4, shadow #B8A9B8) with a brass-yellow (#D9A441) spark flash at the tip and ink speed lines: frames 1-3 a bright flash and a tight cone, frames 4-9 puffs roll out to the right and expand, frames 10-16 puffs break into small curls and vanish by breaking apart.` |
+| 30 | `vfx-seen-mark` | «Побачено» — суперник позначений 4 с (`revealed_frames`) | `A floating marker icon above a head: a bold almond-shaped open eye icon with eyelid lines, three short lashes, a bright violet (#A666FF) iris and a dark pupil, inside a thin violet diamond outline: a looping pulse — frames 1-8 it bobs up slightly and the diamond brightens in steps, frames 9-16 it bobs back down and dims so the loop is seamless.` |
+| 31 | `vfx-patch-heal` | підбір Латки, +30 HP | `A small healing burst: fresh green (#59D973) plus signs of different sizes and short sparkle strokes rising upward from the bottom center, inked outlines: frames 1-4 a green flash ring at the bottom, frames 5-12 the plus signs float up and wobble in steps, frames 13-16 they shrink and pop into tiny dots.` |
+| 32 | `vfx-spring-jump` | Пружина — зайвий стрибок у повітрі | `A burst under feet on a mid-air double jump, side view: a warm yellow (#FFD140) coiled spring shape that snaps from compressed to stretched, with two curved motion arcs and a flat yellow shock ring below it: frames 1-3 compressed coil, frames 4-7 it snaps up and the ring flashes, frames 8-16 the coil breaks into yellow chips and the ring spreads and breaks apart.` |
+| 33 | `vfx-ko-burst` | фінальний удар раунду | `A huge final-blow impact burst: a big jagged ink-black (#2B2230) splash star with a cream-white (#EFEED4) core and thick violet-magenta (#B04C9E) shadow shards, heavy ink speed lines radiating out: frames 1-2 a white flash, frames 3-6 the giant splash star at full size, frames 7-12 shards and ink drops fly outward, frames 13-16 only scattered ink drops remain.` |
+
+Ціна та сама: 10 видів × 2 = **20 × 2.75 = 55**.
+
 ## Журнал запусків
 
 | пакет | job-id | результат | `balance` до → після |
@@ -166,6 +185,7 @@ lashes on top, a bright violet (#A666FF) round iris and a small dark pupil, like
 | D2 партія 2 (8 × 2.75): електро, TIME STOP, перемотка, стікер — по a/b | `72f920ef`/`8fbc7de8` · `8d1a6cf5`/`40e1d193` · `51e0ca4a`/`6f2526bd` · `3fa2e2fc`/`35bf0bfb` | у гру — електро **a**, TIME STOP **b**, перемотка **a** (менше стиснення: 0.883 проти 0.790), стікер **b** (світлий циферблат читається на бруківці, темний a зливається) | → **5402** (−55, як у кошторисі) |
 | D3 (`generate_image_batch` 10 + 12): стікери, дуги, сплеск, сторінка, ∞8, мітка, Armor Break, тріщина — по a/b | 22 job-id — [[Textures-Registry]] рядки `vfx-*` (обраний і відкинутий); 2 перші заявки сплеску відхилені до запуску (короткий id референсу `b0a9189d` замість UUID), 0 кр. | у гру — 10; «Побачено» — ока не видно в a/b | 5402 → |
 | D3, перегенерація № 14 (2 × 2.75) | `3376a9c1` (c), `1d9e50b8` (d) | у гру — c | → **5336** (−66 = 60.5 + 5.5) |
+| D4 (`generate_image_batch` 12 + 8): кунай, удар кунаю, дуги Choko повітряна й важка, пил ковзання, постріл гарпуна, «Побачено» над головою, Латка, Пружина, KO — по a/b | 20 job-id — [[Textures-Registry]] рядки `vfx-*` | у гру — 10. «Побачено»: модель домалювала під оком тінь (a) і вихор (b) — у a тінь прибрано скриптом (у кожній клітинці знайдено найширший порожній проміжок між іконкою й тінню, усе нижче — прозоре), без перегенерації. Кунай: модель не «роняє» його по клітинці, кожен кадр на місці — це навіть краще, бо рух дає код | 5336 → **5281** (−55, як у кошторисі) |
 
 ## Related
 - [[2026-10-03-Sprint-Arenas-VFX]] · [[VFX-Direction]] · [[Style-Guide]] · [[Prompt-Library]] · [[Textures-Registry]] ·
