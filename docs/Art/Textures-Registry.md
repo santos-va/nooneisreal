@@ -42,21 +42,20 @@
 | sfx-book | `game/assets/audio/sfx/book.wav` | ffmpeg: 55/82.5/110 Hz дрон | проєкт | CC0 | Cursed Grimoire |
 | bg-kronshift-river | `game/assets/backgrounds/bg_kronshift_river.jpg` | надіслав Santos у чаті 2026-10-03 (1500×848 JPEG, ймовірно Higgsfield, оригінальна URL невідома) | Santos | підтвердити (Архімед) | стадія `river` (дефолтна), джерело для [[Stage-River]] |
 | card-skea-v1 | `game/assets/characters/cards/card_skea_v1.jpg` | надіслав Santos у чаті 2026-10-02 (1500×848 JPEG; згенеровано в Higgsfield, оригінальна URL невідома) | Santos / Higgsfield | Higgsfield ToS (підтвердити, Архімед) | картка Skea в меню; референс для 3D |
+| bg-market | `game/assets/backgrounds/bg_kronshift_market_street.webp` | Higgsfield CDN `hf_20261002_131105_0b5c85b7-…_min.webp`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield, GPT Image 2.5 ([[Prompts]] § Фони) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | stage `market_street` |
+| bg-alley | `game/assets/backgrounds/bg_kronshift_back_alley.webp` | Higgsfield CDN `hf_20261002_131105_a479d377-…_min.webp`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield, GPT Image 2.5 ([[Prompts]] § Фони) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | stage `back_alley` |
+| bg-main | `game/assets/backgrounds/bg_kronshift_main_street.webp` | Higgsfield CDN `hf_20261002_131104_8510a1fc-…_min.webp`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield, GPT Image 2.5 ([[Prompts]] § Фони) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | stage `main_street` |
+| bg-city-ref | `game/assets/backgrounds/bg_kronshift_city_reference.webp` | Higgsfield CDN `hf_20261002_102352_6c5c895d-…_min.webp`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield, GPT Image 2.5 (референс міста) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | stage `city_reference`, еталон стилю |
+| card-choko-v3 | `game/assets/characters/cards/card_choko_v3.png` | Higgsfield CDN `hf_20261002_111512_bcddbbc6-…png`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield ([[Prompts]] § Choko v3) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | портрет/картка Choko |
+| weapon-choko-main | `game/assets/characters/cards/weapon_choko_main_sword.png` | Higgsfield CDN `hf_20261002_111511_9652a5b1-…png`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield ([[Prompts]] § Зброя) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | референс меча для 3D |
+| weapons-choko-ult | `game/assets/characters/cards/weapons_choko_ultimate.png` | Higgsfield CDN `hf_20261002_102352_f00d0272-…png`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield ([[Prompts]] § Зброя) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | референс ульт-мечів |
+| hands-choko | `game/assets/characters/cards/hands_choko.png` | Higgsfield CDN `hf_20261002_110646_b776f4f8-…png`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield ([[Prompts]] § Руки) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | референс рук/рукавичок |
 
 Іконка проєкту `game/icon.svg` — намальована в сесії (SVG, CC0), поза `game/assets/`.
 
 ## Заплановано (завантажує `tools/fetch_assets.sh`; після цього перенести рядок угору з префіксом `game/assets/`)
 
-| id | файл (→ assets/) | джерело (Higgsfield, GPT Image 2.5, 2688×1520, `_min.webp` прев'ю) | промпт | ліцензія | використання |
-|---|---|---|---|---|---|
-| bg-market | → `backgrounds/bg_kronshift_market_street.webp` | `hf_20261002_131105_0b5c85b7-…_min.webp` | [[Prompts]] § Фони | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | stage `market_street` |
-| bg-alley | → `backgrounds/bg_kronshift_back_alley.webp` | `hf_20261002_131105_a479d377-…_min.webp` | [[Prompts]] § Фони | те саме | stage `back_alley` |
-| bg-main | → `backgrounds/bg_kronshift_main_street.webp` | `hf_20261002_131104_8510a1fc-…_min.webp` | [[Prompts]] § Фони | те саме | stage `main_street` |
-| bg-city-ref | → `backgrounds/bg_kronshift_city_reference.webp` | `hf_20261002_102352_6c5c895d-…_min.webp` | референс міста | те саме | stage `city_reference`, еталон стилю |
-| card-choko-v3 | → `characters/cards/card_choko_v3.png` | `hf_20261002_111512_bcddbbc6-…png` | [[Prompts]] § Choko v3 | те саме | портрет/картка Choko |
-| weapon-choko-main | → `characters/cards/weapon_choko_main_sword.png` | `hf_20261002_111511_9652a5b1-…png` | [[Prompts]] § Зброя | те саме | референс меча для 3D |
-| weapons-choko-ult | → `characters/cards/weapons_choko_ultimate.png` | `hf_20261002_102352_f00d0272-…png` | [[Prompts]] § Зброя | те саме | референс ульт-мечів |
-| hands-choko | → `characters/cards/hands_choko.png` | `hf_20261002_110646_b776f4f8-…png` | [[Prompts]] § Руки | те саме | референс рук/рукавичок |
+Порожньо: 8 рядків перенесено вгору 2026-10-03 — файли завантажено `tools/fetch_assets.sh` на Mac Santos (зі слова Santos).
 
 ## Related
 - [[Style-Guide]] · [[Backgrounds]] · [[Prompts]] · [[07-Audio]] · [[constitution]]
