@@ -1,18 +1,79 @@
-# name	variants	layer	file_glob	gain_db	offset_ms	max_ms
+# name	variants	layer	file_glob	gain_db	offset_ms	max_ms	start_ms	fade_in_ms
 # One row per layer. Layers of one name are summed (amix, no auto-normalise), then
 # compressor (attack 1 ms, 4:1) -> limiter -1 dBFS -> <name>.ogg, <name>_2.ogg ...
-# Variant v of a layer takes the v-th file matching file_glob (sorted, wraps around), so a pack
-# with 5 impacts gives 5 different hits. Globs are matched case-insensitively against paths inside
-# the unzipped packs. Edit the globs to the real file names after unzipping once (--list).
-hit_light	3	whoosh	*swish*	-14	0	90
-hit_light	3	transient	*metal*hit*	-6	2	40
-hit_light	3	body	*punch*	-3	2	150
-hit_light	3	sub	*impact*heavy*	-8	3	180
-hit_heavy	3	transient	*metal*hit*	-4	0	50
-hit_heavy	3	body	*impact*heavy*	0	1	200
-hit_heavy	3	sub	*impact*heavy*	-4	2	260
-block	3	transient	*metal*hit*	0	0	80
-block	3	body	*punch*	-12	1	80
-kunai	2	transient	*metal*hit*	-2	0	60
-kunai	2	body	*punch*	-6	1	120
-whoosh	3	whoosh	*swish*	-6	0	260
+# Variant v of a layer takes the v-th file matching file_glob (sorted, wraps around) and the v-th
+# value of start_ms (optional, comma list, wraps; where to seek in that file before trimming silence).
+# fade_in_ms (optional) softens a layer that enters mid-sound; a seek alone gets 2 ms.
+# Globs are matched case-insensitively against "<pack>/<path inside the pack>" (pack = bundle folder or zip).
+#
+# Fitted 2026-10-03 on the Mac against the real Sonniss GDC 2024 (parts 1-2) and Kenney Interface packs.
+# Hit times come from tools/audio/library_catalog.tsv plus a 5 ms peak scan: start_ms sits ~10 ms
+# before each transient peak, so the impact lands at t=0 (the hit sound fires on contact; the swing
+# is the separate whoosh played at the start of active frames). Picked by envelope, brightness and
+# name — not by ear yet: the listening pass is Santos's (bash tools/audio/audition.sh).
+#
+# --- strikes ---------------------------------------------------------------------------------
+# light: cardboard thump (classic foley punch) + anime "noise punch" + wet slap + a touch of sub
+hit_light	4	body	*big cardboard box impact*	-2	0	180	0,295,0,295
+hit_light	4	punch	*noise_punch_006*	-4	0	160	136
+hit_light	4	slap	*flesh drops on floor 03*	-9	0	120	2250,4615,16640,25885
+hit_light	4	sub	*modern_cinematic_impact_percussion_009*	-14	0	160
+# heavy: two-handed axe into flesh (4 takes) + anime punch + stone crack + cinematic sub
+hit_heavy	4	body	*long two-handed axe flesh hit*	-2	0	300	150,2590,4975,7410
+hit_heavy	4	punch	*noise_punch_006*	-5	0	220	136
+hit_heavy	4	crack	*stone_impact_hammer_015*	-9	0	120
+hit_heavy	4	sub	*modern_cinematic_impact_percussion_009*	-6	0	320
+# block: metal shield taking a hit (4 takes) + dull cardboard body
+block	4	shield	*metal shield block hits*	0	0	260	60,2545,4835,7350
+block	4	body	*big cardboard box impact*	-12	0	120	295
+# whoosh: cotton rips have the rise-and-fall of a swish (each start sits before the rise, never on the
+# peak — a hard onset reads as a tear); a slice of a heavy sci-fi whoosh adds the low end
+whoosh	4	air	*cottonrips*	-2	0	240	0,0,200,0	20
+whoosh	4	low	*sci-fi heavy whoosh*	-8	0	240	1317,1446,1421,1361	60
+# --- grapple ----------------------------------------------------------------------------------
+grapple_fire	1	thunk	*steampunk_weapon_gun_shot_026*	-6	0	220
+grapple_fire	1	air	*steam release short 03*	-3	0	300	30
+grapple_fire	1	mech	*steampunk_weapon_mechanism_texture_007*	-10	0	120	100
+grapple_hit	1	thump	*trs cable plug in solid metal thump*	0	0	300	1245
+grapple_hit	1	chain	*metal rattle scrap debris*	-5	0	450	40
+grapple_hit	1	ring	*metal impact-03*	-8	0	200	60
+grapple_release	1	lever	*industrial_lever_switch_small_003*	-2	0	300
+grapple_release	1	cable	*hairdryerfoleycabletension*	6	0	300	250
+grapple_denied	1	click	*hairdryerswitch36*	0	0	200
+grapple_denied	1	beep	*kenney*/error_004.ogg	-4	0	120
+# --- round flow ---------------------------------------------------------------------------------
+ko	1	boom	*haunted metal vol 1_60*	0	0	1600	240
+ko	1	body	*long two-handed axe flesh hit*	-4	0	300	7410
+ko	1	sub	*modern_cinematic_impact_percussion_009*	-6	0	900
+ko	1	crunch	*bone breaks celery*	-8	0	250	11805
+round_start	1	gong	*thegong*	0	0	1800	150
+ultimate	1	impact	*modern_cinematic_impact_022*	-4	0	1400
+ultimate	1	power	*short_powerup_005*	0	0	1300	4400
+land	2	body	*big cardboard box impact*	-2	0	220	0,295
+land	2	sub	*modern_cinematic_impact_percussion_009*	-14	0	200
+# --- Skea ---------------------------------------------------------------------------------------
+flash	1	zap	*sci_fi_weapon_texture_007*	0	0	400
+flash	1	crackle	*electricity_texture_sizzling_crackling*	-6	0	300
+flash	1	air	*cottonrips13*	-10	0	200	80
+kunai	3	ting	*ricochet hits 01*	0	0	260	2950,5030,7300
+kunai	3	clink	*stone_impact_steel_bar_01_010*	-8	0	150
+smoke	1	burst	*steam release short 03*	0	0	750	20
+smoke	1	hiss	*chemical_weapon_black_smoke*	-4	0	900
+smoke	1	pop	*big cardboard box impact*	-8	0	150	295
+book	1	page	*large book squeak page turn*	0	0	700	1450
+book	1	dread	*dark tone thrill*	-2	0	1400
+crit	2	crunch	*bone breaks celery*	6	0	260	8615,11805
+crit	2	shatter	*glass break hit_04*	-6	0	400	90
+crit	2	ring	*metallic bell_ 22*	-12	0	500	40
+# --- Choko -------------------------------------------------------------------------------------
+rewind	1	swell	*reversed metal-28*	0	0	1190	1600
+rewind	1	ticks	*clockmultireverse51_*	-4	231	800	8000
+time_stop	1	tick	*clock53_*	0	0	600
+time_stop	1	bell	*metallic bell_ 22*	-6	0	1500
+time_stop	1	boom	*modern_cinematic_impact_boom_003*	-10	0	1000
+sword	3	shing	*shears slide open close*	0	0	200	88,576,1400
+sword	3	scrape	*weapon 03 slow scrapes*	-6	0	260	7690,9915,21840
+sword	3	cut	*long two-handed axe flesh hit*	-9	0	200	2590,4975,7410
+# --- UI -----------------------------------------------------------------------------------------
+ui_move	1	blip	*kenney*/select_001.ogg	0	0	80
+ui_confirm	1	chime	*kenney*/confirmation_001.ogg	0	0	300
