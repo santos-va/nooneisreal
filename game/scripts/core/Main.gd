@@ -3,9 +3,7 @@ extends Node
 
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
-	apply_saved_mode(args, GameState, InputRouter.SETTINGS_PATH)
-	apply_saved_stage(args, GameState, InputRouter.SETTINGS_PATH)
-	apply_launch_args(args, GameState)
+	boot(args, GameState, InputRouter.SETTINGS_PATH)
 	if "--smoke" in args:
 		var t := SmokeTest.new()
 		get_tree().root.add_child.call_deferred(t)
@@ -16,6 +14,14 @@ func _ready() -> void:
 			get_tree().root.add_child.call_deferred(s)
 			return
 	GameState.to_menu.call_deferred()
+
+
+## The boot order: the saved choices first, then the launch flags, which win for this run. The smoke calls it on a fresh
+## GameState copy and a temp cfg, so the order itself is checked (T4 Lane I-2, proposal 3).
+static func boot(args: PackedStringArray, state: Node, cfg_path: String) -> void:
+	apply_saved_mode(args, state, cfg_path)
+	apply_saved_stage(args, state, cfg_path)
+	apply_launch_args(args, state)
 
 
 ## Movement mode the launch arguments ask for: 0 = `--plane` (the 0.2 side-on fight; wins over
