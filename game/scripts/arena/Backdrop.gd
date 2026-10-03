@@ -45,4 +45,16 @@ func apply(stage: Dictionary) -> void:
 func _process(_delta: float) -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam and quad:
+		if GameState.free_move:
+			# free movement (0.3, T1 Дедал, plan § Відповідь Дедала п. 5): the card keeps its distance from
+			# the arena centre and turns with the duel camera's yaw, so the city is always behind the fight
+			var z := cam.global_basis.z
+			rotation.y = atan2(z.x, z.z)
+			quad.position.x = to_local(cam.global_position).x * 0.2
+			return
 		quad.position.x = cam.global_position.x * 0.2
+
+
+## Angle (degrees) between where the camera looks and the card's facing: < 90° = the card is in view.
+func view_angle(cam: Camera3D) -> float:
+	return rad_to_deg((-cam.global_basis.z).angle_to(-quad.global_basis.z))

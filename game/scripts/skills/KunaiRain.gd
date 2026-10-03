@@ -21,10 +21,15 @@ var _rng := RandomNumberGenerator.new()
 
 
 static func spawn(f: Fighter, center_x: float) -> KunaiRain:
+	return spawn_at(f, Vector3(center_x, 0.0, 0.0))
+
+
+## Free movement: the circle lands on a ground point (x, z).
+static func spawn_at(f: Fighter, center: Vector3) -> KunaiRain:
 	var k := KunaiRain.new()
 	k.owner_f = f
 	Fx.root(f).add_child(k)
-	k.global_position = Vector3(center_x, 0.0, 0.0)
+	k.global_position = Vector3(center.x, 0.0, center.z)
 	return k
 
 
@@ -89,6 +94,8 @@ func _spawn_kunai() -> void:
 	root.add_child(tail)
 	add_child(root)
 	root.position = Vector3(_rng.randf_range(-RADIUS, RADIUS), _rng.randf_range(6.5, 8.5), _rng.randf_range(-0.5, 0.6))
+	if GameState.free_move:
+		root.position.z = _rng.randf_range(-RADIUS, RADIUS)   # the circle has depth now
 	root.rotation.z = _rng.randf_range(-0.15, 0.15)
 	_kunai.append({"node": root, "stuck": false, "left": 0.35})
 
@@ -97,5 +104,7 @@ func _hit() -> void:
 	var v := owner_f.opponent
 	if v == null or not v.hurtbox_enabled():
 		return
-	if absf(v.global_position.x - global_position.x) <= RADIUS and v.global_position.y < 4.0:
+	var d := v.global_position - global_position
+	var reach := Vector2(d.x, d.z).length() if GameState.free_move else absf(d.x)   # 3D: a circle (docs/GDD/03 § Як у 3D)
+	if reach <= RADIUS and v.global_position.y < 4.0:
 		v.receive_hit(owner_f, _tick_move)

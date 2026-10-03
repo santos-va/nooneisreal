@@ -12,11 +12,19 @@ const MIN_LINE := 0.05
 
 var right: Vector3 = Vector3.RIGHT
 var _frame: int = -1
+var _hold: int = 0
+
+
+## Keeps `right` as it is for `frames` physics frames (Flash Step: input stays in the pre-flash
+## camera frame, docs/GDD/02-Combat-System.md § Камера дуелі, п. 4).
+func hold(frames: int) -> void:
+	_hold = maxi(_hold, frames)
 
 
 func reset() -> void:
 	right = Vector3.RIGHT
 	_frame = -1
+	_hold = 0
 
 
 ## Recomputes `right` from P1 → P2 once per physics frame (the first caller wins, later callers
@@ -27,6 +35,9 @@ func sync(p1_pos: Vector3, p2_pos: Vector3, frame: int) -> void:
 	if frame == _frame:
 		return
 	_frame = frame
+	if _hold > 0:
+		_hold -= 1
+		return
 	var d := Vector3(p2_pos.x - p1_pos.x, 0.0, p2_pos.z - p1_pos.z)
 	if d.length() < MIN_LINE:
 		return

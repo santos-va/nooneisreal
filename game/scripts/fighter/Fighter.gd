@@ -48,10 +48,12 @@ const PERFECT_FREEZE := 24
 const REWIND_HEAL_CAP := 0.15
 const TIME_STOP_FRAMES := 72
 const WATER_GETUP_EXTRA := 6      # Stage-River: getting up out of the water is slower (PLACEHOLDER)
-# free movement, GameState.free_move (Prototype 0.3 plan; PLACEHOLDER — T5 Арес #25, T3 Архімед #24)
-const ARENA_RADIUS := 12.5        # circle arena; = ARENA_HALF_WIDTH until #25 sets it
-const BLOCK_HALF_ANGLE := 90.0    # guard covers ±deg around forward: = 0.2's «facing the attacker»
+# free movement, GameState.free_move — numbers: T5 Арес, docs/GDD/02-Combat-System.md § Вільний 3D-рух
+# (per-fighter ones live in CharacterData: block_arc_deg, circle_speed_mult, grapple_cone_deg)
+const ARENA_RADIUS := 12.5        # `arena_radius`, ДИЗАЙН (= ARENA_HALF_WIDTH)
+const FLASH_INPUT_LOCK := 6       # input stays in the pre-flash camera frame for the flash + 6 frames
 const MIN_LINE := 0.05            # below this the direction to the opponent is undefined: keep the last
+const FLASH_SIDE_DEG := 45.0      # Flash Step exit turned by a sideways stick (ДИЗАЙН, T5 Арес, docs/GDD/03 § Як у 3D)
 
 @export var player_index: int = 1
 @export var data: CharacterData
@@ -444,13 +446,13 @@ func _tick_ground(delta: float, intent: Dictionary) -> void:
 
 
 ## Free movement walk: along the line to the opponent at walk/back-walk speed, across it = circling
-## around the opponent at walk speed (sidestep speed PLACEHOLDER — #25). The sideways part keeps
-## the distance, so a pure sidestep is an arc around the opponent, not a spiral outward.
+## around the opponent at circle_speed_mult × walk speed. The sideways part keeps the distance, so a
+## pure sidestep is an arc around the opponent, not a spiral outward.
 func _walk_free(delta: float) -> void:
 	var along := _wish.dot(forward)
 	var side := _wish - forward * along
 	var k := speed_mult() * water_walk_mult()
-	var v := forward * along * (data.walk_speed if along >= 0.0 else data.back_walk_speed) * k + side * data.walk_speed * k
+	var v := forward * along * (data.walk_speed if along >= 0.0 else data.back_walk_speed) * k + side * data.walk_speed * data.circle_speed_mult * k
 	var r0 := -1.0
 	if opponent != null and side.length() > 0.1:
 		r0 = _flat(global_position - opponent.global_position).length() - along * (data.walk_speed if along >= 0.0 else data.back_walk_speed) * k * delta
@@ -525,12 +527,14 @@ func _start_flash(axis: float) -> bool:
 	dash_dir = int(signf(axis)) if absf(axis) > 0.1 else facing
 	_flash_from = global_position
 	if _free():
-		_aim_dash()
+		_aim_flash()
 		_flash_to = clamp_arena(global_position + _dash_vec * data.flash_distance)
 	else:
 		var tx := clampf(global_position.x + float(dash_dir) * data.flash_distance, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH)
 		_flash_to = Vector3(tx, global_position.y, 0.0)
 	flashing = true
+	if _free():
+		GameState.duel.hold(FLASH_TRAVEL + FLASH_INPUT_LOCK)   # «вперед» не перевертається під пальцем
 	dash_frames_left = FLASH_TRAVEL + FLASH_RECOVER
 	invulnerable_frames = maxi(invulnerable_frames, FLASH_IFRAMES)
 	velocity = Vector3.ZERO
@@ -550,6 +554,17 @@ func _start_flash(axis: float) -> bool:
 func _aim_dash() -> void:
 	_dash_vec = _wish.normalized() if _wish.length() > 0.1 else forward
 	dash_dir = facing if _dash_vec.dot(forward) >= -0.5 else -facing
+
+
+## Free movement Flash Step (docs/GDD/03 § Як у 3D, T5 Арес): along the line between the fighters —
+## through the opponent, or away from them when the stick points back; a sideways stick turns the
+## exit point by FLASH_SIDE_DEG to that side.
+func _aim_flash() -> void:
+	var along := _wish.dot(forward)
+	var base := forward if along >= -0.5 else -forward
+	var side := _wish.dot(Vector3.UP.cross(forward))   # + = to the fighter's left
+	_dash_vec = base.rotated(Vector3.UP, deg_to_rad(FLASH_SIDE_DEG) * signf(side)) if absf(side) > 0.1 else base
+	dash_dir = facing if along >= -0.5 else -facing
 
 
 func _tick_dash(delta: float) -> void:
@@ -714,7 +729,14 @@ func _activate_effect(m: MoveData) -> void:
 		"sword_storm":
 			SwordStormFx.spawn(self)
 		"kunai_rain":
-			# TODO #25: kunai rain still lands on the X line; its 3D rule comes from T5 Арес
+			if _free():
+				# on the opponent's spot at the throw, at most 7 m away (docs/GDD/03 § Як у 3D)
+				var c := global_position + forward * 3.0
+				if opponent != null:
+					var d := _flat(opponent.global_position - global_position)
+					c = global_position + d.limit_length(7.0)
+				KunaiRain.spawn_at(self, c)
+				return
 			var cx := global_position.x + float(facing) * 3.0
 			if opponent != null:
 				cx = clampf(opponent.global_position.x, global_position.x - 7.0, global_position.x + 7.0)
@@ -848,6 +870,8 @@ func receive_hit(attacker: Fighter, m: MoveData) -> void:
 		_enter_ragdoll(kb * m.ragdoll_impulse)
 		return
 	stun_frames = m.hitstun
+	if _free() and not _guards_against(attacker):
+		stun_frames += m.backhit_hitstun_bonus   # side/back hit (docs/GDD/02 § Блок під кутом)
 	velocity.x = kb.x
 	velocity.y = kb.y
 	if _free():
@@ -857,14 +881,14 @@ func receive_hit(attacker: Fighter, m: MoveData) -> void:
 
 
 ## Plane: the guard holds when the fighters face each other. Free movement: when the attacker is
-## within BLOCK_HALF_ANGLE of where we look — a hit in the back is never blocked.
+## within ±block_arc_deg of where we look — a side or back hit is never blocked.
 func _guards_against(attacker: Fighter) -> bool:
 	if not _free():
 		return facing == -attacker.facing
 	var to := _flat(attacker.global_position - global_position)
 	if to.length() < MIN_LINE:
 		return true
-	return rad_to_deg(forward.angle_to(to.normalized())) <= BLOCK_HALF_ANGLE
+	return rad_to_deg(forward.angle_to(to.normalized())) <= data.block_arc_deg
 
 
 ## Direction for RigAnimator.flinch(), which reads only dir.x against `facing`.
@@ -1281,6 +1305,20 @@ static func clamp_arena(p: Vector3) -> Vector3:
 	return Vector3(f.x, p.y, f.z)
 
 
+## Free movement soft wall (docs/GDD/02 § Коло арени): at the circle the outward radial part of the
+## velocity is removed and the tangential part stays — the fighter slides along the edge.
+func _soft_wall() -> void:
+	var f := _flat(global_position)
+	if f.length() <= ARENA_RADIUS:
+		return
+	var n := f.normalized()
+	global_position = clamp_arena(global_position)
+	var out := velocity.x * n.x + velocity.z * n.z
+	if out > 0.0:
+		velocity.x -= out * n.x
+		velocity.z -= out * n.z
+
+
 ## Where the body stands while a ragdoll flies: under the pelvis, on the floor, inside the arena.
 func _ground_spot(p: Vector3) -> Vector3:
 	if not _free():
@@ -1343,7 +1381,7 @@ func _tick_stumble(delta: float, intent: Dictionary) -> void:
 
 func _post_move() -> void:
 	if _free():
-		global_position = clamp_arena(global_position)
+		_soft_wall()
 	else:
 		global_position.x = clampf(global_position.x, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH)
 		global_position.z = 0.0

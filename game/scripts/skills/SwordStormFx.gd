@@ -9,6 +9,7 @@ const EVERY := 6
 const HITS := 6
 const FINAL := 62
 const REACH := 5.4
+const HALF_WIDTH := 0.6   # free movement: the band is 5.4 × 1.2 m (width ДИЗАЙН, docs/GDD/03 § Як у 3D)
 
 var owner_f: Fighter
 var _f: int = 0
@@ -29,6 +30,10 @@ static func spawn(f: Fighter) -> SwordStormFx:
 
 func _ready() -> void:
 	_facing = owner_f.facing
+	if GameState.free_move:
+		# free movement: turn the whole effect onto the gaze; locally it is the plane's +x setup
+		rotation.y = owner_f.yaw()
+		_facing = 1
 	_tick = SkillHit.make("sword_storm_tick", 26.0, 14, Vector2(0.6, 0.0),
 		{"hitstop": 2, "ignore_scaling": true, "can_crit": false, "meter": 0.0, "sfx": "sword"})
 	_final = SkillHit.make("sword_storm_final", 100.0, 30, Vector2(8.5, 7.0),
@@ -70,7 +75,7 @@ func _physics_process(_delta: float) -> void:
 		_hit(_tick)
 	if _f == FINAL:
 		_hit(_final)
-		SmearShards.burst(Fx.root(owner_f), global_position + Vector3(_facing * 0.5, 0, 0), global_position + Vector3(_facing * REACH, 0, 0),
+		SmearShards.burst(Fx.root(owner_f), to_global(Vector3(_facing * 0.5, 0, 0)), to_global(Vector3(_facing * REACH, 0, 0)),
 			[owner_f.data.vfx_primary, owner_f.data.vfx_secondary, Color(0.05, 0.05, 0.08)], 18, 5)
 	if _f > FINAL + 24:
 		queue_free()
@@ -81,5 +86,10 @@ func _hit(m: MoveData) -> void:
 	if v == null or not v.hurtbox_enabled():
 		return
 	var dx := (v.global_position.x - global_position.x) * float(_facing)
-	if dx >= -0.6 and dx <= REACH and absf(v.global_position.y - global_position.y) < 3.0:
+	var side := 0.0
+	if GameState.free_move:
+		var local := to_local(v.global_position)   # +x = the gaze at the start of the ultimate
+		dx = local.x
+		side = absf(local.z)
+	if dx >= -0.6 and dx <= REACH and side <= HALF_WIDTH and absf(v.global_position.y - global_position.y) < 3.0:
 		v.receive_hit(owner_f, m)

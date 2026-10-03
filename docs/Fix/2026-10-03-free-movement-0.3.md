@@ -129,6 +129,67 @@
 Після посилення `make check` → `ALL OK (48 checks) in 4072 frames`; новий рядок конуса:
 `… next to Anchor2 with stick up → Anchor1Z (the lamp beside is outside the cone)`.
 
+## Відповідь Дедала (#39): скіли в 3D, числа Ареса, фон
+
+PR #37 змерджено о 02:41 на `0c9af12`, ще до мого пушу 0.3-3. Коміт гарпуна перенесено на свіжий `main` (`12ccf38`,
+уже з #39), тож тепер він іде новим draft PR santos-va/nooneisreal#43. Мій коментар у #27 спершу хибно називав PR #37 —
+виправлено.
+
+**Звірка відповіді з джерелами** (не з переказом): [[02-Combat-System]] рядки 82, 86–100, 104–114, 123, 150–157 і
+[[03-Skills-Framework]] § Як у 3D. Числа збігаються з таблицею Дедала. У джерелі ширше, ніж у переказі: м'яка стіна, wall splat,
+відсув arm камери, замок вводу на флеші.
+
+**Зроблено (усе за `free_move`):**
+- `tracking_deg` у `.tres`: light 30 · crouch_light 20 · heavy 15 · air_light 10 · ult 45 · hook_pull 0 · скіли 0 (у [[03-Skills-Framework]]
+  куту немає: коло, гліф або ціль). Дефолт `MoveData` тепер 0. У `.tres` пишу числа Ареса, а не свої.
+- `backhit_hitstun_bonus` у `.tres` за класом: light/air 2, heavy/crouch 3, skill/ult 6 (`SkillHit` — 6), hook_pull 0.
+  Повітряний удар Арес окремо не назвав, тож віднесено до легких — це мій мапінг, винесено на перевірку Аресу.
+- `CharacterData.block_arc_deg = 70`, `circle_speed_mult = 0.8`. `BLOCK_HALF_ANGLE` прибрано.
+- М'яка стіна: на колі гаситься радіальна складова швидкості, тангенційна лишається.
+- `DuelFrame.hold()`: на Flash Step плюс 6 кадрів напрям вводу замкнений (02 § Камера, п. 4).
+- `DuelCamera`: кламп yaw 3°/тік у `_physics_process`; коли відставання > 15°, arm відсувається до +30 %.
+- Скіли: TIME STOP і CURSED GRIMOIRE б'ють колом; SWORD STORM — смугою 5.4 × 1.2 м уздовж погляду (ефект повернуто на yaw);
+  KUNAI RAIN падає на точку суперника (≤ 7 м); Flash Step іде вздовж лінії крізь суперника, а стік убік дає ±45°.
+- Фон повертається за yaw камери на тій самій відстані (п. 5).
+- **Не зроблено:** wall splat (`wall_splat_frames` 10, раз на комбо). Регдол — лише презентація ([[ADR-004-Physics-Is-Presentation]]),
+  а прилипання до стіни потребує окремого стану в бійця. Це борг на 0.3-6 або окремий крок, не вигадую на ходу.
+  Також не зроблено поділ дешу на 8 напрямків (зараз деш іде точно за стіком).
+
+**Перевірка:** `make check` → `[smoke] ALL OK (56 checks) in 4874 frames`. Нові:
+- `sidestep 90° in 128 frames (want 126 at 0.8 × walk)`
+- `block arc ±70°: attacker at 65° blocked, at 75° not; back hit stun 16 = hitstun 14 + 2; soft wall keeps tangential 3.0 m/s, outward → 0`
+- `duel camera: 360° sidestep … max turn 1.07°/frame ≤ clamp 3.001 … backdrop at most 10.2° off the view (< 90)`
+- `duel camera on a 90° jump: max turn 3.00°/tick ≤ 3.0, arm pulled back to +28 %, caught up (lag 0.00°)`
+- `TIME STOP 3D: P2 3 m away at 50° frozen; P2 at |dx| 1 but 5.1 m away untouched`
+- `SWORD STORM 3D: band along the gaze hit P2 at 40° (hp 900 → 874); 2 m beside the band — no more hits`
+- `KUNAI RAIN 3D: P1 4 m away at -60° hit (hp 1050 → 992), armor break 235 f`
+- `CURSED GRIMOIRE 3D: P1 2.5 m away at 60° hit and ragdolled (hp 1050 → 729); at |dx| 1 but 5.1 m away untouched`
+- `FLASH STEP 3D: from 135° straight through P2's line (0.0° off), 3.60 m travelled`
+- `FLASH STEP 3D: sideways stick turned the exit 45.0° off the line (rule 45°)`
+
+Помилки в самих тестах (не в грі), виправлено. Я двічі помилився саме в тесті. Перший раз — натискання time stop у кадрі,
+коли P1 ще був у відновленні, тож буфер спливав. Другий раз — одна змінна на два виміри камери. Обидва — помилки тесту, не гри.
+
+**Негативні контролі** (мутація → smoke → відновлення):
+
+| мутація | що ламає | результат |
+|---|---|---|
+| S1 TIME STOP по `|dx|` | коло → смуга | `FAIL time stop 3D: froze P2 5.1 m away (only |dx| = 1)` |
+| S2 SWORD STORM без ширини смуги | б'є збоку від смуги | `FAIL sword storm 3D: hit P2 2 m beside the band` |
+| S3 KUNAI на осі x | центр без z | `FAIL kunai 3D: P1 4 m away at -60° not hit` |
+| S4 GRIMOIRE по `|dx|` | коло → смуга | `FAIL grimoire 3D: hit P1 5.1 m away (|dx| 1)` |
+| S5 флеш без зсуву вбік | правило ±45° | `FAIL flash 3D: sideways stick turned the exit 0.0°` |
+| S6 флеш за стіком (як деш) | не крізь суперника | `FAIL flash 3D: … turned the exit 90.0°` |
+| N1 `block_arc_deg` 90 | старий кут | спершу **пройшло**: тест брав кут із даних, тобто був тавтологією. Тепер кути з плану 65°/75° → `FAIL … guards at 65° true, at 75° true` |
+| N2 без бонусу за спину | +2/+3/+6 | `FAIL backhit: stun 14, want 14 + 2` |
+| N3 обхід на швидкості `walk_speed` | множник 0.8 | `FAIL sidestep speed: 90° took 102 frames, want 126 ± 5 %` |
+| C1 без клампу камери | 3°/тік | `FAIL … 90° jump: max turn 89.61°/tick` |
+| C2 без відсуву arm | +30 % | `FAIL … max pull-back 0.00 (want > 0.2)` |
+| B1 фон не крутиться | п. 5 Дедала | `FAIL … backdrop at 169.8° (want < 90)` |
+| W1 без м'якої стіни | радіальна складова | спершу **пройшло**, бо тесту не було. Додано пряму перевірку → `FAIL soft wall: outward 5.000 (want 0)` |
+
+Після посилення `make check` → `ALL OK (56 checks) in 4874 frames`.
+
 ## Кадри (Xvfb + llvmpipe, `--rendering-driver opengl3 --rendering-method gl_compatibility`)
 
 - Режим площини: `-- --screenshot=DIR` → 4 кадри OK. Вільний рух: `-- --free-move --screenshot=DIR` → 4 кадри OK.

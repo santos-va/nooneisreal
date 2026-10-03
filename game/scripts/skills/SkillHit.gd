@@ -24,6 +24,7 @@ static func make(id: String, damage: float, hitstun: int, knockback: Vector2, op
 	m.meter_gain_hit = float(opts.get("meter", 3.0))
 	m.sfx_hit = String(opts.get("sfx", "hit_light"))
 	m.hitbox_offset = Vector3(0.9, 1.1, 0.0)
+	m.backhit_hitstun_bonus = int(opts.get("backhit", 6))   # skill/ult class (docs/GDD/02 § Блок під кутом)
 	return m
 
 

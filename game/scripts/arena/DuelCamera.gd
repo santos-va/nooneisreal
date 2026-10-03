@@ -7,11 +7,15 @@ extends Node3D
 ## The SpringArm3D keeps the camera out of walls. Framing numbers are FightCamera's.
 ## Plan: docs/Plans/2026-10-03-Prototype-0.3-Free-Movement.md, step 0.3-2.
 
-## Smoke bound: the camera must not turn faster than this per physics frame during a 360° sidestep
-## or a side swap. PLACEHOLDER — the grounded value comes from T3 Архімед (#24).
-const MAX_TURN_DEG_PER_FRAME := 6.0
-## Smoke bound: how far the view may lag from side-on (90° to the fighters' line) while circling —
-## the smoothing lag. PLACEHOLDER — #24.
+## T5 Арес, docs/GDD/02-Combat-System.md § Камера дуелі на швидкому розвороті:
+## `camera_yaw_clamp` — the yaw turns at most this per physics tick (180°/s; FM C10, ДИЗАЙН).
+const YAW_CLAMP_DEG := 3.0
+## While the clamp lags the fighters' line by more than this, the arm pulls back (no cuts) …
+const PULLBACK_LAG_DEG := 15.0
+## … by up to this fraction of its length (+30 %, ДИЗАЙН).
+const PULLBACK_MAX := 0.3
+## Smoke bound (T2): while circling, the view stays within this of side-on — catches a camera that
+## stops following the line. Not a design number.
 const MAX_SIDE_OFF_DEG := 25.0
 
 @onready var arm: SpringArm3D = $SpringArm3D
@@ -21,6 +25,7 @@ var p1: Fighter
 var p2: Fighter
 var _shake: float = 0.0
 var _yaw: float = 0.0
+var _pull: float = 0.0   # current arm pull-back fraction, 0 … PULLBACK_MAX
 
 
 func setup(a: Fighter, b: Fighter) -> void:
@@ -28,6 +33,7 @@ func setup(a: Fighter, b: Fighter) -> void:
 	p2 = b
 	arm.collision_mask = 1    # static world only; fighters are layer 2
 	_yaw = _target_yaw()
+	rotation = Vector3(0.0, _yaw, 0.0)
 	_apply(1.0)
 	cam.make_current()
 
@@ -36,6 +42,23 @@ func setup(a: Fighter, b: Fighter) -> void:
 func _target_yaw() -> float:
 	var back := GameState.duel.right.cross(Vector3.UP)
 	return atan2(back.x, back.z)
+
+
+## The yaw clamp runs on the physics tick, so the smoke measures exactly what the rule says.
+func _physics_process(delta: float) -> void:
+	if p1 == null or p2 == null:
+		return
+	var diff := angle_difference(_yaw, _target_yaw())
+	var step := clampf(diff, -deg_to_rad(YAW_CLAMP_DEG), deg_to_rad(YAW_CLAMP_DEG))
+	_yaw += step
+	rotation = Vector3(0.0, _yaw, 0.0)
+	var lag := rad_to_deg(absf(diff - step))
+	_pull = lerpf(_pull, PULLBACK_MAX if lag > PULLBACK_LAG_DEG else 0.0, 1.0 - pow(0.0015, delta))
+
+
+## Arm pull-back right now (0 … PULLBACK_MAX), for the smoke test.
+func pullback() -> float:
+	return _pull
 
 
 func _process(delta: float) -> void:
@@ -61,10 +84,8 @@ func _apply(k: float) -> void:
 	var focus := Vector3((a.x + b.x) * 0.5, 1.25 + hi * 0.4, (a.z + b.z) * 0.5)
 	var lift := 0.35 + hi * 0.05 + dist * 0.14
 	global_position = global_position.lerp(focus, k) if k < 1.0 else focus
-	_yaw = lerp_angle(_yaw, _target_yaw(), k)
-	rotation = Vector3(0.0, _yaw, 0.0)
 	arm.rotation = Vector3(-atan2(lift, dist), 0.0, 0.0)
-	arm.spring_length = sqrt(dist * dist + lift * lift)
+	arm.spring_length = sqrt(dist * dist + lift * lift) * (1.0 + _pull)
 
 
 ## Horizontal view direction of the camera (for the smoke turn-rate check).

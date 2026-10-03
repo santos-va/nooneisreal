@@ -38,6 +38,10 @@ func _ready() -> void:
 	_book = Node3D.new()
 	add_child(_book)
 	_book.position = Vector3(owner_f.facing * 0.55, 1.35, 0.25)
+	if GameState.free_move:
+		# free movement: the effect's local +x is the gaze, so the book floats in front, not to the screen side
+		rotation.y = owner_f.yaw()
+		_book.position = Vector3(0.55, 1.35, 0.25)
 	var cover := StandardMaterial3D.new()
 	cover.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	cover.albedo_color = Color(0.22, 0.1, 0.3)
@@ -98,6 +102,8 @@ func _strike(k: int) -> void:
 		at - owner_f.global_position + Vector3(0, 0, -0.25))
 	if v == null or not v.hurtbox_enabled():
 		return
-	if absf(v.global_position.x - owner_f.global_position.x) <= RADIUS and absf(v.global_position.y - owner_f.global_position.y) < 3.0:
+	var d := v.global_position - owner_f.global_position
+	var reach := Vector2(d.x, d.z).length() if GameState.free_move else absf(d.x)   # 3D: a circle (docs/GDD/03 § Як у 3D)
+	if reach <= RADIUS and absf(d.y) < 3.0:
 		SmearShards.burst(Fx.root(owner_f), at, v.global_position, [owner_f.data.vfx_primary, owner_f.data.vfx_secondary, Color(0.05, 0.03, 0.08)], 16, 3)
 		v.receive_hit(owner_f, _moves[k])

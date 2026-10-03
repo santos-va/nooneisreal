@@ -56,7 +56,8 @@ func _ready() -> void:
 	var v := owner_f.opponent
 	if v != null:
 		var d := v.global_position - owner_f.global_position
-		if absf(d.x) <= RADIUS and absf(d.y) < 3.0:
+		var reach := Vector2(d.x, d.z).length() if GameState.free_move else absf(d.x)   # 3D: a circle (docs/GDD/03 § Як у 3D)
+		if reach <= RADIUS and absf(d.y) < 3.0:
 			v.freeze(duration)
 
 

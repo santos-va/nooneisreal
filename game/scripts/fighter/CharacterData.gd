@@ -58,6 +58,9 @@ extends Resource
 ## Free movement (GameState.free_move): half-angle of the aim cone (yaw only) around the stick, or
 ## around the fighter's forward when the stick is neutral. 30° — ДИЗАЙН, T5 Арес, docs/GDD/04-Grapple-System.md.
 @export var grapple_cone_deg: float = 30.0
+## Free movement (ДИЗАЙН, T5 Арес, docs/GDD/02-Combat-System.md § Вільний 3D-рух):
+@export var block_arc_deg: float = 70.0       # guard holds while the attacker is within ± this of the gaze
+@export var circle_speed_mult: float = 0.8    # circling speed = this × walk_speed
 
 @export_group("Passive")
 @export var passive_id: String = ""
