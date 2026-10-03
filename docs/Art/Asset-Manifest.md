@@ -57,6 +57,13 @@
 | `ui-portraits` | портрети для HUD і вибору | gpt_image_2_5 | ≈ 6–11 |
 | `ui-menu-kit` | рамки, плашки, кнопки в стилі «скетч» | recraft_v4_1 vector | оцінити |
 
+## C2. Принтер і помічник Choko (канон H13–H14, [[Lore]]; T6, 2026-10-03)
+
+| id | що | модель | кредитів |
+|---|---|---|---|
+| `choko-item-printer-v1` | латунна скринька: лінза, ручка, рулон, стікер із рваним краєм; без екранів ([[Prompt-Library]] § 16) | gpt_image_2_5 high 2k, реф. годинник `cecf569d` | 2 × 2.75 = 5.5 |
+| `choko-drone-helper-v1` | маленький латунний дрон з одним оком-лінзою, 5 видів ([[Prompt-Library]] § 17) | gpt_image_2_5 high 2k, реф. `cecf569d` + `e9fd9e33` | 2 × 2.75 = 5.5 |
+
 ## D. Головне меню «Погляд з даху» (santos-va/nooneisreal#6, поза стелею 600)
 
 Промпти — [[Menu-Skyline-Prompts]]. Ціни — `get_cost` 2026-10-03 (за 1 зображення; × кількість — оцінка).
@@ -126,4 +133,4 @@ Santos. Звук — 0 кредитів ([[ADR-008-Audio-Sourcing]]).
 5. Арени: річка → базарчик → площа з фонтаном; потім VFX, UI.
 
 ## Related
-- [[Higgsfield-Pipeline]] · [[Prompt-Library]] · [[Menu-Skyline-Prompts]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[Style-Guide]] · [[Stage-River]] · [[Textures-Registry]] · [[2026-10-03-Production-Plan]]
+- [[Higgsfield-Pipeline]] · [[Prompt-Library]] · [[Menu-Skyline-Prompts]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[Style-Guide]] · [[Stage-River]] · [[Textures-Registry]] · [[2026-10-03-Production-Plan]] · [[Lore]]
