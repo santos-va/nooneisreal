@@ -26,7 +26,7 @@ No anime style, no glossy eyes, no 3D render look, no gradients, no realistic sk
 
 **IDENTITY — Choko** (v5 з 2026-10-03: гладка спина + кросівки, [[2026-10-03-Choko-Outfit-v5]]; до Choko завжди додавати `{NEG_CHOKO}` § 15; попередня v4 — § 15 «Було»):
 ```
-young man, lean narrow face, long straight nose, grey-green eyes, thick curly dark-brown hair covering temples and ears; the whole back of the jacket is one smooth plain dusty-orange cloth panel with a single vertical cream stripe down the spine, no metal on the back; light fitted cloth jacket in muted dusty orange with a thin cream stripe and a high collar, sleeves to the wrists, cut for a fast acrobatic swordsman, with small sewn-on patches of fine gunmetal ring mesh on the shoulder caps and the outer forearms only; slate blue-grey trousers; low-top 2000s retro running sneakers, breathable mesh base with layered silver-grey synthetic overlays, chunky segmented light-grey midsole with a visible heel cage, light grey with muted orange accent panels on the heel tab, around the lace eyelets and on the outsole, the same dusty orange as the jacket, no logos, no brand marks, plain side panels; black leather gloves; large analog wristwatch on the left wrist; emerald-green pike-style sword with dark green wrapped grip and brass guard
+young man, lean narrow face, long straight nose, grey-green eyes, thick curly dark-brown hair covering temples and ears; the whole back of the jacket is one smooth plain dusty-orange cloth panel with no stripe, no seam and no metal on the back; light fitted cloth jacket in muted dusty orange with a thin cream stripe and a high collar, sleeves to the wrists, cut for a fast acrobatic swordsman, with small sewn-on patches of fine gunmetal ring mesh on the shoulder caps and the outer forearms only; slate blue-grey trousers; low-top 2000s retro running sneakers, breathable mesh base with layered silver-grey synthetic overlays, chunky segmented light-grey midsole with a visible heel cage, light grey with muted orange accent panels on the heel tab, around the lace eyelets and on the outsole, the same dusty orange as the jacket, no logos, no brand marks, plain side panels; black leather gloves; large analog wristwatch on the left wrist; emerald-green pike-style sword with dark green wrapped grip and brass guard
 ```
 
 **IDENTITY — Skea** (v2 з 2026-10-03, santos-va/nooneisreal#33; попередня — § 12 «Було»; до Skea завжди додавати `{NEG_SKEA}` і пози § 12):
@@ -241,14 +241,14 @@ lanky, very tall and thin young man of about twenty — for this character only,
 ## 15. Choko — одяг v5: гладка спина і кросівки (Santos 2026-10-03, [[2026-10-03-Choko-Outfit-v5]])
 
 Причини, чому кільця лізли на спину, і ліки — у плані v5 § Діагноз. Що змінилось у тексті:
-1. Спина описана **першою і прямо** (гладка тканина + кремова смуга по хребту).
+1. Спина описана **першою і прямо**: гладка тканина. Спочатку в тексті стояла «кремова смуга по хребту» з плану T1. Santos 2026-10-03 (X-2): **смуги по центру спини не повинно бути**, тож смугу прибрано з IDENTITY, § 15a і `{NEG_CHOKO}`. Поворот W-1 і T-пози X-0…X-3 запускались ще зі смугою.
 2. Слова «chainmail» в IDENTITY немає; вставки — «ring mesh» лише на плечах і зовнішньому боці передпліч.
 3. Заперечення — лише в окремому хвості `{NEG_CHOKO}`, не в IDENTITY.
 4. Взуття вперше в IDENTITY: форма ретро-ранера на кшталт P-6000 (бренд у промпті **не називаємо**, лого немає), сірі з помаранчевими вставками.
 
 **`{NEG_CHOKO}`** (додається після `{NEG}` у кожному промпті Choko з людиною):
 ```
-No chain mail or metal rings on the back, chest or torso, no mail shirt, no armor vest, no logos or brand marks on the shoes.
+No chain mail or metal rings on the back, chest or torso, no mail shirt, no armor vest, no stripe down the back of the jacket, no logos or brand marks on the shoes.
 ```
 
 **Картка кросівок** `choko-item-sneakers-v1` — шаблон § 4, рядок ITEM «Choko's low-top 2000s retro running sneakers…».
@@ -266,13 +266,19 @@ gpt_image_2_5 high 2k. Референси в цьому порядку: 1) ку�
 
 **Поворот** `choko-turn-v5` ×2, 16:9:
 ```
-{STYLE} Character turnaround model sheet on a flat mint-sage background, four consistent full-body views in a row: front, three-quarter, side profile, back; neutral relaxed standing pose, arms slightly away from the body, same scale and ground line for all views. In the back view the whole back of the jacket is one smooth plain dusty-orange cloth panel with a single vertical cream stripe down the spine, no metal on the back. Take the jacket exactly from the first reference image and the shoes exactly from the second; take only the face, hair and drawing style from the third reference image, not its clothing. Identity: {IDENTITY_CHOKO_V5}. Title "CHOKO TURNAROUND". {NEG} {NEG_CHOKO}
+{STYLE} Character turnaround model sheet on a flat mint-sage background, four consistent full-body views in a row: front, three-quarter, side profile, back; neutral relaxed standing pose, arms slightly away from the body, same scale and ground line for all views. In the back view the whole back of the jacket is one smooth plain dusty-orange cloth panel with no stripe, no seam and no metal on the back. Take the jacket exactly from the first reference image and the shoes exactly from the second; take only the face, hair and drawing style from the third reference image, not its clothing. Identity: {IDENTITY_CHOKO_V5}. Title "CHOKO TURNAROUND". {NEG} {NEG_CHOKO}
 ```
 
 **T-пози** `choko-tpose-<view>-v5` ×4, 3:4 — після вибору повороту; референси: 1) переможець повороту, 2) куртка N-2, 3) кросівки V-1:
 ```
-{STYLE} Single full-body figure only, {VIEW} view, standing in a clean T-pose with both arms straight out to the sides and palms down, legs slightly apart, feet flat, whole body in frame head to toe, centered. Pure white background, no shadow, no ground plane, no props in hands, sword removed. Flat even lighting, flat colors with inked lines. Take the character exactly from the first reference image; the jacket from the second and the shoes from the third. The whole back of the jacket is one smooth plain dusty-orange cloth panel with a single vertical cream stripe down the spine, no metal on the back. Identity: {IDENTITY_CHOKO_V5}. {NEG} {NEG_CHOKO}
+{STYLE} Single full-body figure only, {VIEW} view, standing in a clean T-pose with both arms straight out to the sides and palms down, legs slightly apart, feet flat, whole body in frame head to toe, centered. Pure white background, no shadow, no ground plane, no props in hands, sword removed. Flat even lighting, flat colors with inked lines. Take the character exactly from the first reference image; the jacket from the second and the shoes from the third. The whole back of the jacket is one smooth plain dusty-orange cloth panel with no stripe, no seam and no metal on the back. Identity: {IDENTITY_CHOKO_V5}. {NEG} {NEG_CHOKO}
 ```
+
+**Переробка X-1 (бік) і X-2 (спина)** — вердикт Santos: X-1 «ніби хтось стиснув», X-2 «полоски по центру не повинно бути».
+Референси: 1) T-поза X-0 `b529a3bd` (так; пропорції й обличчя), 2) куртка N-2, 3) кросівки V-1. Поворот W-1 **не беремо**: на ньому
+спина, ймовірно, теж зі смугою (не перевірено — CDN закритий). До `{VIEW}`-рядка § 15a додається:
+- бік: `true side profile, the body keeps exactly the same height, shoulder width and limb length as the first reference image, not squashed, not compressed, not shortened; the arms point straight toward and away from the viewer`;
+- спина: `the back of the jacket is completely plain and uniform dusty orange, no stripe, no seam, no line down the middle`.
 
 ## Related
 - [[Style-Guide]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Prompts]] · [[Choko]] · [[Skea]] · [[Stage-River]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[2026-10-03-Skea-Redesign]]

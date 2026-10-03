@@ -378,10 +378,10 @@ S-1 `dcdef91d`, N-5 `ab80973c`, N-6 `d2ac65b6`, S-5 `36ace5cf`. Чи модел�
 
 | мітка | партія | job-id | розмір · CDN-URL | результат |
 |---|---|---|---|---|
-| X-0 | C4 `choko-tpose-front-v5` | `b529a3bd-4e3a-4dfc-bbbd-d6a90ead9e75` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_b529a3bd-4e3a-4dfc-bbbd-d6a90ead9e75.png | чекає вибору Santos |
-| X-1 | C4 `choko-tpose-side-v5` | `1cb13491-cfd6-46c4-aaeb-b1364af992e0` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_1cb13491-cfd6-46c4-aaeb-b1364af992e0.png | чекає вибору Santos |
-| X-2 | C4 `choko-tpose-back-v5` | `da24265e-c6d6-4dfd-8530-2bb49772b3ed` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_da24265e-c6d6-4dfd-8530-2bb49772b3ed.png | чекає вибору Santos |
-| X-3 | C4 `choko-tpose-34-v5` | `5b045b7a-b48f-4014-a7e7-011d60f2d5e8` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_5b045b7a-b48f-4014-a7e7-011d60f2d5e8.png | чекає вибору Santos |
+| X-0 | C4 `choko-tpose-front-v5` | `b529a3bd-4e3a-4dfc-bbbd-d6a90ead9e75` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_b529a3bd-4e3a-4dfc-bbbd-d6a90ead9e75.png | **так** (Santos, дошка) |
+| X-1 | C4 `choko-tpose-side-v5` | `1cb13491-cfd6-46c4-aaeb-b1364af992e0` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_1cb13491-cfd6-46c4-aaeb-b1364af992e0.png | **переробити** — «ніби хтось стиснув» |
+| X-2 | C4 `choko-tpose-back-v5` | `da24265e-c6d6-4dfd-8530-2bb49772b3ed` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_da24265e-c6d6-4dfd-8530-2bb49772b3ed.png | **переробити** — «полоски по центру не повинно бути» |
+| X-3 | C4 `choko-tpose-34-v5` | `5b045b7a-b48f-4014-a7e7-011d60f2d5e8` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_5b045b7a-b48f-4014-a7e7-011d60f2d5e8.png | **так** (Santos, дошка) |
 
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
