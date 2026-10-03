@@ -6,7 +6,7 @@
 #   godot_guard.sh stamp <game_dir>         записати HEAD у <game_dir>/.godot/nir_import_head після імпорту
 #
 # «Процес Godot» = перше слово командного рядка має ім'я godot* (без регістру). Тека процесу — з `--path`
-# (відносний шлях розв'язується від cwd процесу: на macOS `lsof -d cwd`, на Linux `/proc/PID/cwd`).
+# або cwd процесу (Godot робить chdir у теку проєкту; на macOS — `lsof -d cwd`, на Linux — `/proc/PID/cwd`).
 # Godot без `--path` (Project Manager, відкритий вручну) не ловиться — про нього скрипт не знає.
 # NIR_GUARD_OFF=1 вимикає `busy` (свідомо, на свою відповідальність).
 set -u
@@ -28,14 +28,16 @@ case "$cmd" in
     found=0
     while read -r pid args; do
       [ -n "$pid" ] || continue
-      first="${args%% *}"
-      case "$(basename "$first" | tr '[:upper:]' '[:lower:]')" in godot*) ;; *) continue ;; esac
+      first="${args%% *}"; name="${first##*/}"
+      case "$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]')" in godot*) ;; *) continue ;; esac
       # значення --path: «--path X» або «--path=X»
       p="$(printf '%s\n' "$args" | sed -n -e 's/.*--path[= ]\([^ ]*\).*/\1/p')"
       [ -n "$p" ] || continue
-      case "$p" in /*) abs="$p" ;; *) c="$(proc_cwd "$pid")"; [ -n "$c" ] || continue; abs="$c/$p" ;; esac
-      abs="$(cd "$abs" 2>/dev/null && pwd -P)" || continue
-      if [ "$abs" = "$target" ]; then
+      # Godot робить chdir у теку проєкту, тож cwd процесу — це вже <game_dir>; відносний --path
+      # розв'язувати від нього не можна (game/game). Збіг = cwd процесу АБО абсолютний --path.
+      c="$(proc_cwd "$pid")"; c="$(cd "$c" 2>/dev/null && pwd -P)"
+      case "$p" in /*) abs="$(cd "$p" 2>/dev/null && pwd -P)" ;; *) abs="" ;; esac
+      if [ "$c" = "$target" ] || [ "$abs" = "$target" ]; then
         echo "ВІДМОВА: на $target уже працює Godot (pid $pid): $args"
         found=1
       fi
