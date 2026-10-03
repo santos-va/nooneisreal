@@ -126,8 +126,38 @@
 - **Розбіжність 2.** Вікі — «678 кліпів» ([[Library]]:12, [[Pipeline-2D-to-3D]]:26); публічна таблиця — 656 рядків. Число **UNGROUNDED**.
 - **Сальто в Meshy є** (публічна таблиця): 452 Backflip, 462 Backflip_Jump, 413 Backflip_and_Rise, 453 Backflip_Sweep_Kick, 375 Handstand_Flip, 401 Sprint_Roll_and_Flip, 450 Wall_Flip. Чи є вони в каталозі Higgsfield — **UNGROUNDED** (MCP у суб-агента немає, у вікі цих id немає).
 - **Ціна** — лише з вікі: [[Higgsfield-Pipeline]]:40–42 — риг готової GLB + 1 кліп = **8 кр.**, кожен додатковий кліп — новий виклик `3d_rigging` + кліп = 8. Публічний API Meshy має `action_ids` (кілька кліпів в одному файлі); чи пропускає це Higgsfield — **UNGROUNDED**.
-- **Скелет Meshy-ригу** — «шаблон Mixamo» лише за вікі ([[Pipeline-2D-to-3D]]:25); імена кісток не перевірено — **UNGROUNDED**. Важливо для C2 (ретаргет UAL на Choko/Skea), не для C1.
+- **Скелет Meshy-ригу** — вікі каже «шаблон Mixamo» ([[Pipeline-2D-to-3D]]:25); звірено на реальних M-0/M-1 — див. §6.1.
 - Кліп Meshy приходить **на модель, яку ригав Meshy**: сальто для манекена = пропустити його GLB через `3d_rigging` (RED, слово Santos) і ретаргетити.
+
+### 6.1 Скелет Meshy-ригу — звірено на M-0 і M-1 (2026-10-03, головна сесія)
+
+**Звідки:** `show_generations` (Higgsfield, лише читання) → `rawUrl` GLB для M-0 Choko `2488e146` і M-1 Skea `f7f95324` (`multi_image_to_3d`, `enable_rigging: true`, `pose_mode: "t-pose"`). Файли — у scratchpad, не в репо: `curl` → 200, 5 240 128 і 6 131 300 байт. Скелет прочитано з JSON-чанка GLB (`python3`); генератор `Khronos glTF Blender I/O v4.5.51`.
+
+- **24 кістки, однакові імена й порядок у M-0 і M-1** (`a[0]==b[0]` → `True`):
+  `Hips → Spine02 → Spine01 → Spine → neck → Head (+ head_end, headfront)`; від `Spine` — `Left/RightShoulder → Arm → ForeArm → Hand`; від `Hips` — `Left/RightUpLeg → Leg → Foot → ToeBase`.
+- **Це не Mixamo дослівно:** імена схожі, але без префікса `mixamorig:`, а хребет **нумерується згори вниз** (`Spine02` — найнижча, біля `Hips`; у Mixamo навпаки). **Пальців немає**, кореневої кістки над `Hips` немає (вузол `Armature` зі `scale 0.01`, кістки в сантиметрах: `Hips` y = 103.9 у M-0, 101.4 у M-1).
+- У GLB є одна анімація `Armature|clip0|baselayer` тривалістю 0.033 с — поза зв'язування, не кліп.
+
+**Автомапінг Godot 4.7.2 — прогін сирців `bone_map_editor_plugin.cpp` @ `4.7.2-stable`, не редактора:**
+
+| профіль | кістка M-0/M-1 | чому (рядок сирців) |
+|---|---|---|
+| Hips | `Hips` | picklist `hip` (651) |
+| LeftFoot / LowerLeg / UpperLeg | `LeftFoot` / `LeftLeg` / `LeftUpLeg` | `foot` (707); `leg` — серед предків стопи береться найкоротше ім'я, `<=` (586–592) → `LeftLeg`; далі `up.*leg` (750) |
+| LeftToes | `LeftToeBase` | `toe` (774) |
+| LeftHand | `LeftHand` | `hand` (811), спершу з ≥ 5 дітьми, потім без (815–818) |
+| LeftShoulder | `LeftShoulder` | `shoulder` |
+| LeftLowerArm / UpperArm | `LeftForeArm` / `LeftArm` | `(low\|fore).*arm`, потім `arm` між плечем і передпліччям; пошук зупиняється на першому слові з влучанням (600–602) |
+| Neck / Head | `neck` / `Head` | `neck` (1186); `head` — найкоротше з `Head`, `head_end`, `headfront` |
+| UpperChest / Chest / Spine | `Spine` / `Spine01` / `Spine02` | крок 9: UpperChest = батько шиї, далі шлях до `Hips` у зворотному порядку → `Spine` = перший від `Hips`, `Chest` = останній (1321–1343). **Порядок за ієрархією, не за цифрами в імені — тож зворотна нумерація не заважає.** |
+
+**Підсумок:** 22 з 56 кісток профілю, **усі 19 обов'язкових** — змаплені; без пари — пальці, очі, `Jaw`, `Root` (усі необов'язкові). Отже, **UAL-кліпи ретаргетяться на Choko і Skea без кредитів**; від Meshy потрібні лише дірки з §8 п. 3.
+
+**Наслідки для C1/C2:**
+- Пальці UAL при ретаргеті відкидаються — кисть M-0/M-1 лишається в позі моделі. Кулак чи хват меча — окрема поза кисті (Арес/Гефест).
+- Немає `Root`: беремо кліпи UAL без `_RM` (як і в §8) — рух тіла задає код.
+- Масштаб (`Armature` 0.01, кістки в см) і різна висота `Hips` у M-0 і M-1 — ретаргет масштабує за `Hips` (scale base профілю); перевірити, що ноги не «пливуть».
+- **Ще не перевірено в редакторі** — підтвердити на Mac разом із першим комітом C1/C2 (BoneMap → `SkeletonProfileHumanoid` → Reimport, «Except Bone Transform» вимкнено, godot#123782).
 
 ## 7. Ліцензії — коротко (глибоко — на воротах релізу, [[ADR-013-License-Check-At-Release]])
 
@@ -166,7 +196,7 @@
 
 1. Автомапінг BoneMap на UAL без ручних правок — не перевірено в редакторі (§4 — прогін сирців). Перевірка — Mac, з першим комітом C1.
 2. `contact_time` для кожного кліпу — замір у редакторі.
-3. Скелет Meshy-ригу (імена, хребет, пальці) і мапінг на профіль — UNGROUNDED до першої моделі C2.
+3. ~~Скелет Meshy-ригу~~ — звірено на M-0/M-1 (§6.1): 24 кістки, без пальців, усі обов'язкові кістки профілю мапляться за сирцями; лишається підтвердження в редакторі.
 4. Чи є 452 Backflip та інші id поза [[Animation-Plan]] у каталозі Higgsfield `animation_actions`; 678 проти 656 кліпів; чи підтримує Higgsfield `action_ids`.
 5. Імена кліпів і скелет Rokoko `Combat.zip` — не відкривались.
 6. Вміст і ліцензійний файл UAL Pro/Source — відомі лише за переглядачем і сторінкою.
