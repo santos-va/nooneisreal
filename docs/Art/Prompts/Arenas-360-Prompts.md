@@ -2,7 +2,7 @@
 
 **Роль:** T6 Аполлон, 2026-10-03 · **План:** спринт «тверда арена, три карти день/ніч, VFX, меню» (T1, смуга C, PR santos-va/nooneisreal#107)
 · **Канон арен:** [[Cronshift]] § Нові арени · **Стиль:** [[Style-Guide]], [[ADR-007-Art-Style-Sketch-Cel]].
-**Статус:** проба v1 — «занадто багато деталізацій» (Santos); **v2** — простіше, у стилі героїв, вирізками (§ v2); проба v2 згенерована (11 кр.), чекає «стиль так». Генерація — лише після слова Santos на стелю (§ Кошторис).
+**Статус:** проба v1 — «занадто багато деталізацій» (Santos); **v2** — простіше, у стилі героїв, вирізками (§ v2); проба v2 — **обрано v2 і там, і там** (Santos): `9d96757d` (river N), `bc50c97d` (bazaar N); вони — референс стилю для решти напрямків. Генерація — лише після слова Santos на стелю (§ Кошторис).
 
 ## v2 — простіше, у стилі героїв (відгук Santos на пробу v1)
 
@@ -208,10 +208,10 @@ Prop design sheet for a fighting game, on a flat muted mint-sage background (#B8
 | 2026-10-03 | стиль-проба `stage-river-n-day` · v2 | `ba93fc22-b3d6-4d7b-8731-e10783392edf` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102632_ba93fc22-b3d6-4d7b-8731-e10783392edf.png | ні — «занадто деталізовано» |
 | 2026-10-03 | стиль-проба `stage-river-n-night` · v1 | `a470d3e8-9422-4ab6-9ed0-2711e327f5d9` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102632_a470d3e8-9422-4ab6-9ed0-2711e327f5d9.png | ні — «занадто деталізовано» |
 | 2026-10-03 | стиль-проба `stage-river-n-night` · v2 | `aa24a131-71be-4635-9f44-51266c89aab3` | 2688×1152 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_102632_aa24a131-71be-4635-9f44-51266c89aab3.png | ні — «занадто деталізовано» |
-| 2026-10-03 | стиль-проба v2 `stage-river-n-strips` · v1 | `7d605bc7-3469-4c2b-a0c2-efabbb7001b5` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_103524_7d605bc7-3469-4c2b-a0c2-efabbb7001b5.png | чекає Santos |
-| 2026-10-03 | стиль-проба v2 `stage-river-n-strips` · v2 | `9d96757d-da5c-4491-9134-311113be796a` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_103524_9d96757d-da5c-4491-9134-311113be796a.png | чекає Santos |
-| 2026-10-03 | стиль-проба v2 `stage-bazaar-n-strips` · v1 | `d523c637-2140-488d-ac6f-b4878ad21d8e` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_103524_d523c637-2140-488d-ac6f-b4878ad21d8e.png | чекає Santos |
-| 2026-10-03 | стиль-проба v2 `stage-bazaar-n-strips` · v2 | `bc50c97d-27f6-41d5-be65-3799cb4a45d1` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_103525_bc50c97d-27f6-41d5-be65-3799cb4a45d1.png | чекає Santos |
+| 2026-10-03 | стиль-проба v2 `stage-river-n-strips` · v1 | `7d605bc7-3469-4c2b-a0c2-efabbb7001b5` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_103524_7d605bc7-3469-4c2b-a0c2-efabbb7001b5.png | ні |
+| 2026-10-03 | стиль-проба v2 `stage-river-n-strips` · v2 | `9d96757d-da5c-4491-9134-311113be796a` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_103524_9d96757d-da5c-4491-9134-311113be796a.png | **так** (Santos «і там і там v2») |
+| 2026-10-03 | стиль-проба v2 `stage-bazaar-n-strips` · v1 | `d523c637-2140-488d-ac6f-b4878ad21d8e` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_103524_d523c637-2140-488d-ac6f-b4878ad21d8e.png | ні |
+| 2026-10-03 | стиль-проба v2 `stage-bazaar-n-strips` · v2 | `bc50c97d-27f6-41d5-be65-3799cb4a45d1` | 2688×1152, transparent · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_103525_bc50c97d-27f6-41d5-be65-3799cb4a45d1.png | **так** (Santos «і там і там v2») |
 
 Проба v2: слово Santos «GO!», 2026-10-03, у сесії T6. `gpt_image_2_5` high 2k 21:9 transparent, референси `f21298f4` + `08c09625`; промпт зібрано скриптом із блоків § v2 байт-у-байт. `balance` 5544.25 → 5533.25 (−11).
 

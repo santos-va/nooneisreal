@@ -46,6 +46,9 @@ fetch "$CDN3D/hf_20261003_034702_f7f95324-7686-48af-8d0c-3f4d5010502c.glb" "$MOD
 fetch "$CDN3D/hf_20261003_005206_a2913501-694d-4bbc-9908-66892760bf7e.png" "$BG/stage_river_plate_v1.png"
 fetch "$CDN3D/hf_20261003_013154_b0a9189d-0b0a-435f-b5a5-459b105374ce.png" "$TEX/tex_water_foam.png"
 fetch "$CDN3D/hf_20261003_013154_bb5e3e44-27c1-478c-9b2d-2252bf2e9339.png" "$TEX/tex_water_ripple.png"
+# Lane C probe v2 picks (Santos «і там і там V2», 2026-10-03): transparent cut-out strips, north of river and bazaar.
+fetch "$CDN3D/hf_20261003_103524_9d96757d-da5c-4491-9134-311113be796a.png" "$BG/stage_river_n_strips.png"
+fetch "$CDN3D/hf_20261003_103525_bc50c97d-27f6-41d5-be65-3799cb4a45d1.png" "$BG/stage_bazaar_n_strips.png"
 fetch "$CDN3D/hf_20261003_013416_c5900952-f4f0-4728-8ada-5b30d641be3a.png" "$PROPS/props_anchors_v1.png"
 
 echo "done. Now run: make check   (re-imports the new textures headlessly)"

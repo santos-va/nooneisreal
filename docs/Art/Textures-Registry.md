@@ -106,6 +106,8 @@
 | stage-river-plate-v1 | `backgrounds/stage_river_plate_v1.png` | Higgsfield CDN `hf_20261003_005206_a2913501-…png`, 2688×1152 | Higgsfield `gpt_image_2_5` ([[Prompt-Library]] § 6) | Higgsfield ToS — до релізу (ADR-013) | арена `river`, референс стилю карток 360° ([[Arenas-360-Prompts]]) |
 | tex-water-foam | `textures/tex_water_foam.png` | Higgsfield CDN `hf_20261003_013154_b0a9189d-…png`, 2048×2048 | Higgsfield `nano_banana_pro` ([[Prompt-Library]] § 5) | Higgsfield ToS — до релізу (ADR-013) | вода арени `river` |
 | tex-water-ripple | `textures/tex_water_ripple.png` | Higgsfield CDN `hf_20261003_013154_bb5e3e44-…png`, 2048×2048 | Higgsfield `nano_banana_pro` ([[Prompt-Library]] § 5) | Higgsfield ToS — до релізу (ADR-013) | вода арени `river` |
+| stage-river-n-strips | `backgrounds/stage_river_n_strips.png` | Higgsfield CDN `hf_20261003_103524_9d96757d-…png`, 2688×1152, прозоре тло | Higgsfield `gpt_image_2_5` ([[Arenas-360-Prompts]] § v2) | Higgsfield ToS — до релізу (ADR-013) | арена `river`, напрямок N (дві смуги: далеке місто, ближній ряд) |
+| stage-bazaar-n-strips | `backgrounds/stage_bazaar_n_strips.png` | Higgsfield CDN `hf_20261003_103525_bc50c97d-…png`, 2688×1152, прозоре тло | Higgsfield `gpt_image_2_5` ([[Arenas-360-Prompts]] § v2) | Higgsfield ToS — до релізу (ADR-013) | арена `bazaar`, напрямок N |
 | props-anchors-v1 | `props/props_anchors_v1.png` | Higgsfield CDN `hf_20261003_013416_c5900952-…png`, 2688×1520 | Higgsfield `gpt_image_2_5` ([[Prompt-Library]] § 10) | Higgsfield ToS — до релізу (ADR-013) | ліхтар-якір гарпуна ([[ADR-011-Diegetic-Grapple-Anchors]]) на всіх аренах |
 
 Раніше перенесено вгору: 8 рядків 2026-10-03, ще 2 (M-0, M-1) і `ult_end` — того ж дня.
