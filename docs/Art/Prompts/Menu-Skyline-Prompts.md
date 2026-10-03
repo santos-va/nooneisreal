@@ -461,5 +461,36 @@ only turn him to a three-quarter front view». Референси 2–3 — K-0 
 | G-0 | C4v3 `choko-tpose-34-v5` · 3 | `73639409-a0e9-4718-9391-7366c426b783` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_033807_73639409-a0e9-4718-9391-7366c426b783.png | **переможець** (Santos: «вони однакові, бери любий») — канон ¾ |
 | G-1 | C4v3 `choko-tpose-34-v5` · 4 | `487bc563-e036-4d0c-8506-0728110fe3e8` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_033807_487bc563-e036-4d0c-8506-0728110fe3e8.png | не обрано (рівноцінний G-0, за словами Santos) |
 
+### C2 — 3D Choko і Skea з ригом (2026-10-03, #38, #33, [[2026-10-03-Picks-to-Game-and-Animation]] § C2)
+
+Слово Santos (сесія T6): «починай робити… всі потрібні модельки доробити… уперед» — C2, два герої, стеля 70 (план).
+Модель `multi_image_to_3d` (Meshy). Параметри — ті самі, що в заміру Х3a ([[Higgsfield-Pipeline]]): `should_texture:true`,
+`enable_pbr:false`, `enable_rigging:true`, `pose_mode:t-pose`, `topology:quad`, `target_polycount:20000`, `count:1`;
+`rigging_height_meters` не задано (дефолт 1.7 — зросту героїв у каноні нема, масштаб — у рушії).
+**Текстового промпту немає навмисно:** `texture_prompt` не ставили, щоб текстура йшла з канонічних карток, а не з тексту.
+Види — варіант А Santos (без боку), порядок front → ¾ → back:
+
+- Choko: F-0 `600fa251` · G-0 `73639409` · Z-1 `50734236` — без меча (канон Santos);
+- Skea: V-3 `c17c3449` · V-6 `82dfeb1b` · V-5 `e3b39f3c`; бік V-4 `be43c7b7` не брали.
+
+Звірка перед запуском (`show_generation_by_ids` на 6 job-ів): усі `completed`; промпти й референси збігаються з § 15a–15c і § 14b
+[[Prompt-Library]]. Розбіжності, які йдуть у модель як є (канон Santos, не перемальовували):
+1. Z-1 малювався з кросівками V-1 і з IDENTITY, де ще стоїть «thin cream stripe» (спереду — на спині її не видно). П'яти в 3D
+   можуть узяти форму V-1, а не K-0 — «C» і так ставиться декалем у рушії (Santos «б»).
+2. Skea: кунаї в кобурах на стегнах — частина одягу в IDENTITY v3, тож вони будуть у меші; у руках нічого.
+3. Знак ∞8 на рюкзаку Skea і «C» на кросівках Choko (F-0, G-0) запечуться в текстуру; план D6 ставить їх декалями — декаль кладеться
+   поверх (рішення Гефеста в D6).
+4. Самі картинки T-поз я не бачу: CDN закритий для хмари (`curl` → `CONNECT tunnel failed, response 403`). Відповідність карткам —
+   за вердиктами Santos у журналах, не за моїм оком.
+
+| партія | `get_cost` | `balance` до | після | різниця |
+|---|---|---|---|---|
+| C2 3D Choko + Skea | 35 + 35 | 5738 | 5668 | 70 = стеля |
+
+| мітка | герой | job-id | GLB (CDN) | результат |
+|---|---|---|---|---|
+| M-0 | Choko | `2488e146-f049-4469-9aad-4a512a810022` | https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_034701_2488e146-f049-4469-9aad-4a512a810022.glb | `completed`; чекає ока Santos |
+| M-1 | Skea | `f7f95324-7686-48af-8d0c-3f4d5010502c` | https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_034702_f7f95324-7686-48af-8d0c-3f4d5010502c.glb | `completed`; чекає ока Santos |
+
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
