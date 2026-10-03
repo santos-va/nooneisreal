@@ -17,9 +17,14 @@
    [[Menu-Skyline-Prompts]] § «Choko v5 кросівки + Skea S3»; [[Asset-Manifest]] § E.
 4. Референси S3: `models_explore` ліміту не називає; `get_cost` з 4 пройшов, у кожній роботі в `medias` стоять усі 4.
 
+## Що вирішили (Santos, дошка вибору V)
+
+- Кросівки Choko: **V-1 `482bfc6d`** — канон; V-0 — ні.
+- Skea S3: **усі 5 — так** — поворот V-2 `5a560785`, T-пози V-3 `c17c3449`, V-4 `be43c7b7`, V-5 `e3b39f3c`, V-6 `82dfeb1b`.
+
 ## Що відкладено
 
-- Вибір Santos: кросівки V-0/V-1, S3 V-2…V-6 (руки, лого, стиль — **не перевірено мною**, CDN із хмари закритий).
+- 3D Skea з T-поз V-3…V-6 (C2, ≈ 35 кр.) — окреме слово Santos.
 - `docs/Characters/Choko.md` § Зовнішність → v5 — робота Кліо (T7), не Аполлона.
 - Choko v5 кроки 3–5 (поворот, T-пози, лист) — окреме слово Santos.
 - `game/assets/` і [[Textures-Registry]] — після вибору, завантаження на Mac (`tools/fetch_assets.sh`).
