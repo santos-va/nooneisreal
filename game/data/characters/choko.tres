@@ -25,7 +25,7 @@ hitbox_size = Vector3(1.2, 0.9, 1.0)
 meter_gain_hit = 8.0
 cancel_tier = 0
 sfx_hit = "hit_light"
-description = "PLACEHOLDER frame data. Quick sword poke; chains twice, cancels into heavy/skills."
+description = "Frames and hitstun/blockstun/hitstop within reference ranges (Combat-Numbers-Grounding §3-4, 02 § Кадри нормалей); damage PLACEHOLDER (feel, playtest). Clip: Sword_Regular_A + _A_Rec (C3). Quick sword poke; chains twice, cancels into heavy/skills."
 
 [sub_resource type="Resource" id="heavy"]
 script = ExtResource("2")
@@ -50,7 +50,7 @@ meter_gain_hit = 12.0
 forward_step = 0.5
 cancel_tier = 1
 sfx_hit = "hit_heavy"
-description = "PLACEHOLDER. Wide overhead slash with a step-in; cancels into skills and ultimate."
+description = "Frames and hitstun/blockstun/hitstop within reference ranges (Combat-Numbers-Grounding §3-4, 02 § Кадри нормалей); damage PLACEHOLDER (feel, playtest). Clip: Sword_Regular_C (C3). Wide overhead slash with a step-in; cancels into skills and ultimate."
 
 [sub_resource type="Resource" id="crouch_light"]
 script = ExtResource("2")
@@ -72,7 +72,7 @@ hitbox_offset = Vector3(1.0, 0.6, 0)
 hitbox_size = Vector3(1.3, 0.7, 1.0)
 cancel_tier = 0
 sfx_hit = "hit_light"
-description = "PLACEHOLDER. Crouching poke (held S + light)."
+description = "Frames and hitstun/blockstun/hitstop within reference ranges (Combat-Numbers-Grounding §3-4, 02 § Кадри нормалей); damage PLACEHOLDER (feel, playtest). Clip: none in UAL Standard, RigAnimator pose (C3). Crouching poke (held S + light)."
 
 [sub_resource type="Resource" id="air_light"]
 script = ExtResource("2")
@@ -94,7 +94,7 @@ hitbox_offset = Vector3(0.9, 0.7, 0)
 hitbox_size = Vector3(1.2, 1.1, 1.0)
 cancel_tier = 1
 sfx_hit = "hit_light"
-description = "PLACEHOLDER. Jumping kick; also usable right after a grapple release."
+description = "Startup/active within reference ranges; hitstun/blockstun/hitstop PLACEHOLDER (only aerial heavies grounded, CN §3); damage PLACEHOLDER. Clip: none in UAL Standard, RigAnimator pose (C3). Jumping kick; also usable right after a grapple release."
 
 [sub_resource type="Resource" id="skill1"]
 script = ExtResource("2")
@@ -112,7 +112,7 @@ effect = "record"
 cooldown = 9.0
 cancel_tier = 2
 sfx_whiff = "rewind"
-description = "PLACEHOLDER numbers. Press: a clock glyph records Choko's position and HP (4 s). Press again or wait: rewind to the glyph, recover HP up to the recorded value (max 15 % of max HP), 14 i-frames; breaks combos and ragdolls. Cooldown 9 s starts after the rewind."
+description = "All numbers UNGROUNDED (no reference for unique skills, CN §3): feel, playtest. No clip, RigAnimator watch pose (C3). Press: a clock glyph records Choko's position and HP (4 s). Press again or wait: rewind to the glyph, recover HP up to the recorded value (max 15 % of max HP), 14 i-frames; breaks combos and ragdolls. Cooldown 9 s starts after the rewind."
 [sub_resource type="Resource" id="skill2"]
 script = ExtResource("2")
 id = "time_stop"
@@ -129,7 +129,7 @@ effect = "time_stop"
 cooldown = 16.0
 cancel_tier = 2
 sfx_whiff = "whoosh"
-description = "PLACEHOLDER. Chrono pulse, radius 4.2 m: the opponent freezes for 72 frames (1.2 s), enemy skill effects inside pause, the world turns grey-blue. Hits on a frozen target deal 70 %; their knockback is stored and released when time resumes. Unblockable; dodged by i-frames (flash-step) or range."
+description = "All numbers UNGROUNDED (CN §3): feel, playtest. No clip, RigAnimator watch pose (C3). Chrono pulse, radius 4.2 m: the opponent freezes for 72 frames (1.2 s), enemy skill effects inside pause, the world turns grey-blue. Hits on a frozen target deal 70 %; their knockback is stored and released when time resumes. Unblockable; dodged by i-frames (flash-step) or range."
 [sub_resource type="Resource" id="ultimate"]
 script = ExtResource("2")
 id = "sword_storm"
@@ -145,7 +145,7 @@ damage = -1.0
 effect = "sword_storm"
 meter_cost = 100.0
 cancel_tier = 3
-description = "PLACEHOLDER. Eight spectral emerald blades rise behind Choko and rain down in a 5.4 m line in front: 6 hits x 26 + final 100 (ragdoll). Ultimate hits ignore combo scaling: 256 total."
+description = "All numbers UNGROUNDED (CN §3): feel, playtest. Clip: none in UAL Standard, RigAnimator sword-up pose (C3). Eight spectral emerald blades rise behind Choko and rain down in a 5.4 m line in front: 6 hits x 26 + final 100 (ragdoll). Ultimate hits ignore combo scaling: 256 total."
 [sub_resource type="Resource" id="throw_move"]
 script = ExtResource("2")
 id = "hook_pull"
@@ -162,7 +162,7 @@ hitstun = 22
 cancel_tier = 1
 sfx_hit = "grapple_hit"
 sfx_whiff = "grapple_fire"
-description = "Grapple verb 3: pull the enemy to you (crouch + grapple). Spends a grapple charge; no damage; opponent is stunned 22 f."
+description = "Numbers PLACEHOLDER: no comparable reference (CN §3). Clip: OverhandThrow (C3). Grapple verb 3: pull the enemy to you (crouch + grapple). Spends a grapple charge; no damage; opponent is stunned 22 f."
 
 [resource]
 script = ExtResource("1")
