@@ -25,7 +25,7 @@ hitbox_size = Vector3(1.1, 0.8, 1.0)
 meter_gain_hit = 7.0
 cancel_tier = 0
 sfx_hit = "hit_light"
-description = "PLACEHOLDER. Muay Thai string: jab, then a short elbow on the second press (high zone)."
+description = "Frames and hitstun/blockstun/hitstop within reference ranges (Combat-Numbers-Grounding §3-4, 02 § Кадри нормалей); damage PLACEHOLDER (feel, playtest). Clip: Punch_Jab, elbow Melee_Hook + _Rec (C3). Muay Thai string: jab, then a short elbow on the second press (high zone)."
 
 [sub_resource type="Resource" id="heavy"]
 script = ExtResource("2")
@@ -50,7 +50,7 @@ meter_gain_hit = 11.0
 forward_step = 0.35
 cancel_tier = 1
 sfx_hit = "hit_heavy"
-description = "PLACEHOLDER. Muay Thai roundhouse with the shin (mid zone), hip twist."
+description = "Frames, hitstun and hitstop within reference ranges; blockstun 14 is below the 15-24 range but gives -8 on block, the edge of -8..+1 (02 § Кадри нормалей); damage PLACEHOLDER. Clip: Higgsfield 649 Lunge_Roundhouse_Kick_inplace (C3, not generated). Muay Thai roundhouse with the shin (mid zone), hip twist."
 
 [sub_resource type="Resource" id="crouch_light"]
 script = ExtResource("2")
@@ -72,7 +72,7 @@ hitbox_offset = Vector3(1.0, 0.45, 0)
 hitbox_size = Vector3(1.3, 0.6, 1.0)
 cancel_tier = 0
 sfx_hit = "hit_light"
-description = "PLACEHOLDER. Calf kick (low zone) — the dull shin-on-shin thud."
+description = "Frames and hitstun/blockstun/hitstop within reference ranges (Combat-Numbers-Grounding §3-4, 02 § Кадри нормалей); damage PLACEHOLDER (feel, playtest). Clip: Higgsfield 217 Sweeping_Kick (C3, not generated). Calf kick (low zone) — the dull shin-on-shin thud."
 
 [sub_resource type="Resource" id="air_light"]
 script = ExtResource("2")
@@ -94,7 +94,7 @@ hitbox_offset = Vector3(0.75, 1.3, 0)
 hitbox_size = Vector3(1.0, 1.0, 1.0)
 cancel_tier = 1
 sfx_hit = "hit_heavy"
-description = "PLACEHOLDER. Kao loi — jumping knee, best right out of a flash-step."
+description = "Active/recovery within reference ranges; startup 6 is faster than the aerial-heavy reference (8-12) and hitstun/blockstun/hitstop are PLACEHOLDER (no aerial-light reference, CN §3); damage PLACEHOLDER. Clip: Higgsfield 211 Boxing_Guard_Step_Knee_Strike, approximate (C3, not generated). Kao loi — jumping knee, best right out of a flash-step."
 
 [sub_resource type="Resource" id="skill1"]
 script = ExtResource("2")
@@ -112,7 +112,7 @@ effect = "kunai_rain"
 cooldown = 10.0
 cancel_tier = 2
 sfx_whiff = "kunai"
-description = "PLACEHOLDER. Tosses a bundle of kunai that rains on a 2.2 m circle at the opponent (max 7 m away): 8 ticks x 11, small hitstun, each tick applies Armor Break (4 s, exposes every weak point). Ticks never crit."
+description = "All numbers UNGROUNDED (no reference for unique skills, CN §3): feel, playtest. Clip: OverhandThrow (C3). Tosses a bundle of kunai that rains on a 2.2 m circle at the opponent (max 7 m away): 8 ticks x 11, small hitstun, each tick applies Armor Break (4 s, exposes every weak point). Ticks never crit."
 
 [sub_resource type="Resource" id="skill2"]
 script = ExtResource("2")
@@ -130,7 +130,7 @@ effect = "shadow_veil"
 cooldown = 14.0
 cancel_tier = 2
 sfx_whiff = "smoke"
-description = "PLACEHOLDER. Smoke bomb: a 2 m cloud stays 3 s (blinds the CPU inside it); Skea is invisible for 3.5 s (only a faint shimmer) with +30 % speed. The first attack out of the veil is a guaranteed crit and applies Bleed (4 dmg / 20 f for 3 s)."
+description = "All numbers UNGROUNDED (no reference for unique skills, CN §3): feel, playtest. No clip, RigAnimator veil pose (C3). Smoke bomb: a 2 m cloud stays 3 s (blinds the CPU inside it); Skea is invisible for 3.5 s (only a faint shimmer) with +30 % speed. The first attack out of the veil is a guaranteed crit and applies Bleed (4 dmg / 20 f for 3 s)."
 
 [sub_resource type="Resource" id="ultimate"]
 script = ExtResource("2")
@@ -147,7 +147,7 @@ damage = -1.0
 effect = "grimoire"
 meter_cost = 100.0
 cancel_tier = 3
-description = "PLACEHOLDER (variant B). The book opens, pages orbit, and the grimoire throws three imprints of pages Skea has beaten within 3.6 m: imprint Blood Grip 60, imprint Cursed Burn 60, imprint Poison Knot 90 (ragdoll + Poison). All weak points exposed during the ultimate, so every strike crits: 315 total."
+description = "All numbers UNGROUNDED (no reference for unique skills, CN §3): feel, playtest. Variant B. No clip, RigAnimator book pose (C3). The book opens, pages orbit, and the grimoire throws three imprints of pages Skea has beaten within 3.6 m: imprint Blood Grip 60, imprint Cursed Burn 60, imprint Poison Knot 90 (ragdoll + Poison). All weak points exposed during the ultimate, so every strike crits: 315 total."
 
 [sub_resource type="Resource" id="throw_move"]
 script = ExtResource("2")
@@ -165,7 +165,7 @@ hitstun = 22
 cancel_tier = 1
 sfx_hit = "grapple_hit"
 sfx_whiff = "grapple_fire"
-description = "Grapple verb 3: pull the enemy into clinch range (crouch + grapple)."
+description = "Numbers PLACEHOLDER: no comparable reference (CN §3). Clip: OverhandThrow (C3). Grapple verb 3: pull the enemy into clinch range (crouch + grapple)."
 
 [resource]
 script = ExtResource("1")
