@@ -37,6 +37,7 @@
 | `make check` на гілці | `[smoke] ALL OK (134 checks) in 18843 frames`, rc=0; рядок `lane B: 5 effects spawn without touching the global RNG, draw with fx_* shaders, ghost burns in 4 steps, all free themselves (smoke after 181 frames, covers() contract kept)` |
 | хеші реплеїв, база → гілка | `duel replay plane` 1989487740 → 1989487740; `free` 1366043150 → 1366043150; `3b` 2620994242 → 2620994242 — симуляцію не зачеплено |
 | `make gates` | `БАТАРЕЯ ЗЕЛЕНА`, rc=0 |
+| після злиття свіжого `main` `f8c01e4` (#110 A1 + межа smoke ×2, #111, #114): `make check` на `f8c01e4` / на злитті | `ALL OK (134 checks) in 19088 frames` / `ALL OK (135 checks) in 19088 frames`; хеші реплеїв ті самі; `make gates` — зелена |
 | GPU (Metal, вікно) — тимчасовий скрипт-прев'ю поза комітом, `godot --path game -s …` | 6 шейдерів зібрались, помилок у виводі немає; 4 знімки — привид, чорнильний двійник, шматки, дим, зірка, екран стоп-часу |
 
 `ERROR: 24 resources still in use at exit` (аудіопотоки `Sfx`) — **є й на чистому `main`** (той самий прогін `--smoke-only=cam`
