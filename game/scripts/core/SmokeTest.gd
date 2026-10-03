@@ -495,6 +495,34 @@ func _gdd_mismatch() -> String:
 	return ""
 
 
+## Launch 3b, T4 audit 3b proposal 1 (NC1): «Seen» on Skea is a spell too — Santos' word, docs/GDD/03
+## § Ульта Skea під бас. Same shape as the Poison stage: a heavy on frame 30 drops him and ends the ult.
+func _check_3b_seen_breaks_armor() -> void:
+	if _ult_t0 < 0:
+		if _f > _f0 + 400:
+			_fail("3b Seen: fighters never actionable (p1 %d, p2 %d)" % [p1.state, p2.state])
+		elif _ult_setup():
+			p1.global_position = Vector3(-1.0, 0.0, 0.0)
+			InputRouter.v_press(2, "ultimate")
+		return
+	if _ult_mf() == 30:
+		_fx = p2.ult_fx
+		p2.revealed_frames = 60   # «Seen» on Skea, nothing else
+		if p2.dot_frames > 0 or p2.armor_break_frames > 0 or p2.frozen_frames > 0:
+			_fail("3b Seen: another spell on Skea (dot %d, armor break %d, frozen %d) — the stage would not isolate «Seen»" % [p2.dot_frames, p2.armor_break_frames, p2.frozen_frames])
+			return
+		p2.receive_hit(p1, p1.data.heavy)
+		if p2.state != Fighter.State.HITSTUN or _fx == null or _fx.running() or UltMusic.fade_frame != Engine.get_physics_frames() or p2.ult_fx != null:
+			_fail("3b Seen: revealed Skea hit → state %d (want HITSTUN), ult running %s, fade on %d (want %d)" % [p2.state, _fx.running() if _fx != null else false, UltMusic.fade_frame, Engine.get_physics_frames()])
+			return
+		_ok("3b armor break: «Seen» on Skea → the hit drops him and ends the ult that frame (music fade + stinger)")
+		_ult_t0 = -1
+		_long_hashes.clear()
+		_load_arena(2, 123)
+	elif _f > _f0 + 400:
+		_fail("3b Seen: the ult never reached move frame 30 (state %d)" % p2.state)
+
+
 ## Launch 3b: fresh duel 2 m apart in free movement, no statuses, Skea's meter full, Choko's Printer
 ## off (a «Seen» pickup would break the armor under test). Returns false until both can act.
 func _ult_setup() -> bool:
@@ -1777,8 +1805,9 @@ func _physics_process(_delta: float) -> void:
 					return
 				_ok("3b armor break: Poison on Skea → the hit drops him and ends the ult that frame (music fade + stinger)")
 				_ult_t0 = -1
-				_long_hashes.clear()
-				_load_arena(2, 123)
+				_load_arena(2, 126)   # «Seen» breaks the armor too (T4 audit 3b, proposal 1)
+		126:
+			_check_3b_seen_breaks_armor()
 		123:
 			# (2)–(4) long ult from SHADOW VEIL, twice: with the track, then without the file — same hash
 			if _ult_setup():
