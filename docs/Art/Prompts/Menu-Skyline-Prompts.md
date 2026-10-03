@@ -349,5 +349,22 @@ S-1 `dcdef91d`, N-5 `ab80973c`, N-6 `d2ac65b6`, S-5 `36ace5cf`. Чи модел�
 | V-5 | S3 `skea-tpose-back-v3` | `e3b39f3c-8430-4499-a7c7-7b8986da0cec` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024624_e3b39f3c-8430-4499-a7c7-7b8986da0cec.png | **так** (Santos, дошка V) |
 | V-6 | S3 `skea-tpose-34-v3` | `82dfeb1b-c881-4361-a3d3-97ff40a8d267` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_024624_82dfeb1b-c881-4361-a3d3-97ff40a8d267.png | **так** (Santos, дошка V) |
 
+### Choko v5 — поворот (2026-10-03, #38, план v5 крок 3)
+
+Слово Santos: «Поворот і T-пози Choko v5, давай» (стеля ≈ 16.5 кр.: поворот ×2 + T-пози ×4). Промпт — [[Prompt-Library]] § 15a.
+Референси: куртка N-2 `a2bf79a1`, кросівки V-1 `482bfc6d`, лист `f21298f4` (лише обличчя й манера) — у `medias` обох робіт усі 3.
+`get_cost` gpt_image_2_5 high 2k 16:9 з 3 референсами → 2.75. T-пози ×4 (≈ 11) — після вибору повороту, бо він їхній референс.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C3 поворот Choko v5 ×2 | 5787.5 | 5782 | 5.5 |
+
+Спину й лого **не перевірено мною** — CDN із хмари закритий.
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| W-0 | C3 `choko-turn-v5` · v1 | `4091fd4d-67d3-45b2-8f52-f39fa617026c` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025259_4091fd4d-67d3-45b2-8f52-f39fa617026c.png | чекає вибору Santos |
+| W-1 | C3 `choko-turn-v5` · v2 | `d048c40f-ef80-4d8d-a9c8-35b5b7838bac` | 2688×1520 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025259_d048c40f-ef80-4d8d-a9c8-35b5b7838bac.png | чекає вибору Santos |
+
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]

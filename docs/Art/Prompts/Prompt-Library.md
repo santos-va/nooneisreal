@@ -259,5 +259,20 @@ gpt_image_2_5 high 2k 16:9, **без референсу** (обличчя не �
 young man, lean narrow face, long straight nose, grey-green eyes, thick curly dark-brown hair covering temples and ears; light fitted cloth jacket in muted dusty orange with a thin cream stripe and a high collar, sleeves to the wrists, with panels of fine gunmetal chainmail rings only on the shoulders and forearms, cut for a fast acrobatic swordsman (no full chainmail coat, no shirt); slate blue-grey trousers; black leather gloves; large analog wristwatch on the left wrist; emerald-green pike-style sword with dark green wrapped grip and brass guard
 ```
 
+### 15a. Поворот і T-пози Choko v5 (Santos 2026-10-03, план v5 кроки 3–4)
+
+gpt_image_2_5 high 2k. Референси в цьому порядку: 1) куртка N-2 `a2bf79a1` (канон v4); 2) кросівки V-1 `482bfc6d` (канон v5);
+3) лист `f21298f4` — **лише обличчя, волосся й манера**, бо він несе стару кольчугу. Спина в тексті описана прямо.
+
+**Поворот** `choko-turn-v5` ×2, 16:9:
+```
+{STYLE} Character turnaround model sheet on a flat mint-sage background, four consistent full-body views in a row: front, three-quarter, side profile, back; neutral relaxed standing pose, arms slightly away from the body, same scale and ground line for all views. In the back view the whole back of the jacket is one smooth plain dusty-orange cloth panel with a single vertical cream stripe down the spine, no metal on the back. Take the jacket exactly from the first reference image and the shoes exactly from the second; take only the face, hair and drawing style from the third reference image, not its clothing. Identity: {IDENTITY_CHOKO_V5}. Title "CHOKO TURNAROUND". {NEG} {NEG_CHOKO}
+```
+
+**T-пози** `choko-tpose-<view>-v5` ×4, 3:4 — після вибору повороту; референси: 1) переможець повороту, 2) куртка N-2, 3) кросівки V-1:
+```
+{STYLE} Single full-body figure only, {VIEW} view, standing in a clean T-pose with both arms straight out to the sides and palms down, legs slightly apart, feet flat, whole body in frame head to toe, centered. Pure white background, no shadow, no ground plane, no props in hands, sword removed. Flat even lighting, flat colors with inked lines. Take the character exactly from the first reference image; the jacket from the second and the shoes from the third. The whole back of the jacket is one smooth plain dusty-orange cloth panel with a single vertical cream stripe down the spine, no metal on the back. Identity: {IDENTITY_CHOKO_V5}. {NEG} {NEG_CHOKO}
+```
+
 ## Related
 - [[Style-Guide]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Prompts]] · [[Choko]] · [[Skea]] · [[Stage-River]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[2026-10-03-Skea-Redesign]]
