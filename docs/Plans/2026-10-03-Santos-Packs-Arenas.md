@@ -1,6 +1,6 @@
 # План — паки Santos у гру: 3D-пропи, стиль через Higgsfield, три арени, на яких хочеться битись
 
-**Дата:** 2026-10-03 · **Роль:** T1 Дедал · **Статус:** `draft` — чекає Santos на Р1–Р3.
+**Дата:** 2026-10-03 · **Роль:** T1 Дедал · **Статус:** `approved` — Santos «ааа» 2026-10-03: Р1 = A, Р2 = A, Р3 = A ([[2026-10-03-T1-Repo-Cleanup-Packs]]).
 **Виріс із:** голосових Santos 2026-10-03 ([[2026-10-03-T1-Santos-Packs]]) · [[2026-10-03-Sprint-Arenas-VFX]] (смуги A, C, H) ·
 [[2026-10-03-Free-Cartoon-Texture-Sources]] (звідки Santos брав паки) · [[2026-10-03-Arena-360-Textures]] (R11) ·
 [[Arenas-360-Prompts]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-013-License-Check-At-Release]].
@@ -57,6 +57,9 @@
    так, щоб його силует збігся з коробкою. Нові укриття — тільки через Ареса.
 
 ## Розвилки для Santos
+
+**Закрито (Santos «ааа», 2026-10-03): Р1 = A, Р2 = A, Р3 = A.** За Р2 = A гілка `textures/santos-pack` — склад сирців паків:
+у `main` не мерджиться і живе довше за робочі гілки.
 
 **Р1 — як фарбуємо пропи паків.**
 - **A (рекомендую):** усі пропи — перефарбована палітра + наш toon/контур, 0 кр.; `meshy_v5_retexture` — лише 4–6 героїчних
@@ -142,8 +145,11 @@ game/assets/
 | `Potions_Final_CT.fbx` | 16 | пляшки-зілля | ятка спецій `bazaar` W; **«хілочки»** майбутньої крамниці | імена `Cylinder.*`, `Sphere.*` → перейменувати; є emission |
 | `Food_01_CT.fbx` | 10 | бургер, картопля, хот-дог, стейк, сосиска, пиріг | їжа на ятках `bazaar` | бургер і паперовий стакан — сучасні; чи пасує старому Cronshift — Кліо/Santos |
 
-**Quaternius Fantasy Props MegaKit [Standard]** — чекає завантаження (нижче § Як закинути пак). За ресерчем T3 (переказ
-WebSearch, не перевірено): 200+ пропів, є ятки ринку. Після завантаження — той самий інвентар, що вище, і рядок у цій таблиці.
+**Quaternius Fantasy Props MegaKit [Standard]** — **на гілці** `textures/santos-pack` (`6210890`, T1 за словом Santos):
+`tools/packs/Fantasy_Props_MegaKit_Standard/` — лише `Exports/glTF` (94 `.gltf` + 94 `.bin` + 13 `.png`, 43 МБ) і
+`License_Standard.txt` (CC0 1.0; «standard FREE version… only contains a portion of the models» — повні Pro/Source платні).
+Архів 150 МБ цілим не проходить ліміт GitHub 100 МБ; FBX, OBJ і нормалі UE не взято. Далі — той самий інвентар (Ф0.3),
+що вище, і рядок у цій таблиці.
 
 ## Кроки
 
@@ -153,7 +159,7 @@ WebSearch, не перевірено): 200+ пропів, є ятки ринку
 
 | # | хто | що | ризик | перевірка |
 |---|---|---|---|---|
-| 0.1 | Santos | докласти на гілку `textures/santos-pack` палітри `CT_Pallete.png`, `EK_Pallete.png`, `CT_Rocks_Palette.png` і файли ліцензії Creative Trio з тих самих завантажень; закинути MegaKit (§ Як закинути пак) | без палітр 9 FBX — сірі | `git ls-tree -r --name-only origin/textures/santos-pack tools/packs \| grep -ci pal` → ≥ 3 |
+| 0.1 | Santos | докласти на гілку `textures/santos-pack` палітри `CT_Pallete.png`, `EK_Pallete.png`, `CT_Rocks_Palette.png` і файли ліцензії Creative Trio з тих самих завантажень (на Mac їх немає: `mdfind -name CT_Pallete` → 0 — докачати); ~~закинути MegaKit~~ — **зроблено** (`6210890`) | без палітр 9 FBX — сірі | `git ls-tree -r --name-only origin/textures/santos-pack tools/packs \| grep -ci pal` → ≥ 3 |
 | 0.2 | T3 Архімед | ліцензія Creative Trio і MegaKit: текст `License`/сторінки з дати завантаження; бриф `docs/Research/2026-10-03-Pack-Licenses.md` | CC-BY → рядок у титрах; NoAI → не можна ганяти через Higgsfield | файл існує; у кожного паку — цитата + URL + дата або `UNGROUNDED` |
 | 0.3 | T2 Гефест | контакт-лист паків: PNG-сітка всіх мешів з іменами (будь-яким способом — Godot на Mac або скрипт у `tools/art/`), у `docs/assets/screenshots/` | без картинки T6 і Кліо називають наосліп | `ls docs/assets/screenshots/packs_*.png` → по одному на пак |
 
