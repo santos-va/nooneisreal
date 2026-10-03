@@ -95,6 +95,9 @@
 | sfx-lib-ui-move | `game/assets/audio/sfx/ui_move.ogg` | build_sfx.sh: blip: kenney_interface-sounds/Audio/select_001.ogg | бібліотека | CC0 | `Sfx.play("ui_move")` |
 | sfx-lib-ui-confirm | `game/assets/audio/sfx/ui_confirm.ogg` | build_sfx.sh: chime: kenney_interface-sounds/Audio/confirmation_001.ogg | бібліотека | CC0 | `Sfx.play("ui_confirm")` |
 
+| model-choko-m0 | `characters/models/choko_m0.glb` (ціль: `game/` + цей шлях) | Higgsfield CDN `hf_20261003_034701_2488e146-…glb`, job `2488e146-f049-4469-9aad-4a512a810022`; завантажує `tools/fetch_assets.sh` | Higgsfield `multi_image_to_3d` + авториг Meshy, з T-поз F-0 / G-0 / Z-1 ([[2026-10-03-C2-3D-Heroes]], [[Menu-Skyline-Prompts]] § C2) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед; [[ADR-013-License-Check-At-Release]]) | тіло Choko, запуск 5 (Гефест); без меча |
+| model-skea-m1 | `characters/models/skea_m1.glb` (ціль: `game/` + цей шлях) | Higgsfield CDN `hf_20261003_034702_f7f95324-…glb`, job `f7f95324-7686-48af-8d0c-3f4d5010502c`; завантажує `tools/fetch_assets.sh` | Higgsfield `multi_image_to_3d` + авториг Meshy, з T-поз V-3 / V-6 / V-5 ([[2026-10-03-C2-3D-Heroes]], [[Menu-Skyline-Prompts]] § C2) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед; [[ADR-013-License-Check-At-Release]]) | тіло Skea, запуск 5 (Гефест) |
+
 Порожньо: 8 рядків перенесено вгору 2026-10-03 — файли завантажено `tools/fetch_assets.sh` на Mac Santos (зі слова Santos).
 
 ## Related
