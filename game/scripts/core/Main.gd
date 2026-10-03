@@ -3,6 +3,8 @@ extends Node
 
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
+	if "--free-move" in args:
+		GameState.set_free_move(true)
 	if "--smoke" in args:
 		var t := SmokeTest.new()
 		get_tree().root.add_child.call_deferred(t)

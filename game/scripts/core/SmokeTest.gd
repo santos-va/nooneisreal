@@ -25,6 +25,16 @@ var _pose_changes: int = 0
 var _last_pose: Array = []
 var _run: int = 0
 var _max_run: int = 0
+# free movement (Prototype 0.3)
+var _swept: float = 0.0
+var _ang0: float = 0.0
+var _d0: float = 0.0
+var _hp0: float = 0.0
+var _turn_max: float = 0.0
+var _yaw_prev: float = 0.0
+var _rmax: float = 0.0
+var _data0: CharacterData = null
+var _rotated: bool = false
 
 
 func _ready() -> void:
@@ -59,7 +69,8 @@ func _finish() -> void:
 	if _done:
 		return
 	_done = true
-	print("[smoke] ALL OK (%d checks)" % _oks.size())
+	GameState.set_free_move(false)
+	print("[smoke] ALL OK (%d checks) in %d frames" % [_oks.size(), _f])
 	get_tree().quit(0)
 
 
@@ -106,14 +117,61 @@ func _key(code: Key, down: bool) -> void:
 
 ## (Re)loads the arena on the river stage; the main loop re-acquires it and resumes at stage 30.
 func _load_river() -> void:
+	_load_arena(0, 30)   # river
+
+
+## (Re)loads the arena on `stage_idx`; the main loop re-acquires it and resumes at `next_stage`.
+func _load_arena(stage_idx: int, next_stage: int) -> void:
 	_old_arena = arena
 	arena = null
 	InputRouter.v_clear(1)
 	InputRouter.v_clear(2)
-	GameState.stage_index = 0   # river
-	_stage = 30
+	GameState.stage_index = stage_idx
+	_stage = next_stage
 	_f0 = _f
 	get_tree().change_scene_to_file.call_deferred("res://scenes/arena/Arena.tscn")
+
+
+# --- free movement helpers (Prototype 0.3) ------------------------------------------------------
+static func _flat(v: Vector3) -> Vector3:
+	return Vector3(v.x, 0.0, v.z)
+
+
+## Angle of `who` around `center` on the ground plane (radians).
+static func _bearing(who: Fighter, center: Fighter) -> float:
+	var d := _flat(who.global_position - center.global_position)
+	return atan2(d.z, d.x)
+
+
+## Free-movement approach: press toward the target in the duel's screen frame.
+func _approach3d(who: Fighter, target: Fighter, dist: float) -> bool:
+	var d := _flat(target.global_position - who.global_position)
+	var p := who.player_index
+	var toward_right := d.dot(GameState.duel.right) > 0.0
+	InputRouter.v_set(p, "right", toward_right)
+	InputRouter.v_set(p, "left", not toward_right)
+	if d.length() < dist:
+		InputRouter.v_set(p, "right", false)
+		InputRouter.v_set(p, "left", false)
+		return true
+	return false
+
+
+## Duel camera turn this physics frame (degrees), tracked into _turn_max; also how far the view is
+## from side-on to the line between the fighters (90° = side-on), tracked into _rmax.
+func _track_camera_turn() -> void:
+	var y: float = arena.duel_camera.view_yaw()
+	_turn_max = maxf(_turn_max, rad_to_deg(absf(angle_difference(_yaw_prev, y))))
+	_yaw_prev = y
+	var line := _flat(p2.global_position - p1.global_position)
+	if line.length() > 0.5:
+		var z: Vector3 = _flat(arena.duel_camera.cam.global_basis.z).normalized()
+		_rmax = maxf(_rmax, absf(90.0 - rad_to_deg(z.angle_to(line.normalized()))))
+
+
+func _both_in_view() -> bool:
+	var cam: Camera3D = arena.duel_camera.cam
+	return cam.is_position_in_frustum(p1.global_position + Vector3.UP) and cam.is_position_in_frustum(p2.global_position + Vector3.UP)
 
 
 ## The same scripted inputs on every river run (frame t from FIGHT start), so runs can be compared.
@@ -159,7 +217,7 @@ func _physics_process(_delta: float) -> void:
 	if _done:
 		return
 	_f += 1
-	if _f > 9000:
+	if _f > 14000:
 		_fail("timeout at stage %d (p1 %d, p2 %d)" % [_stage, p1.state if p1 else -1, p2.state if p2 else -1])
 		return
 	if arena == null:
@@ -514,6 +572,164 @@ func _physics_process(_delta: float) -> void:
 					_fail("balance 0.85 stumbled on a 0.7 swell")
 					return
 				_ok("swell 0.7 vs balance 0.85: both stay up")
-				_finish()
+				GameState.set_free_move(true)
+				_load_arena(2, 40)   # back_alley, free movement
 			elif _f > _f0 + 400:
 				_fail("round 3 never started")
+		# ---------------- free movement, GameState.free_move (Prototype 0.3-1, 0.3-2) -------------
+		40:
+			if flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable():
+				_profile0 = InputRouter.profile
+				for prof in InputRouter.PROFILES:
+					var clash := _key_clash(prof)
+					if clash != "":
+						_fail("free move, profile %s: %s" % [prof, clash])
+						return
+				InputRouter.apply_profile(InputRouter.PROFILE_SOLO, false)
+				var w_up := false
+				for ev in InputMap.action_get_events("p1_up"):
+					w_up = w_up or (ev is InputEventKey and (ev as InputEventKey).physical_keycode == KEY_W)
+				var w_jump := false
+				for ev in InputMap.action_get_events("p1_jump"):
+					w_jump = w_jump or (ev is InputEventKey and (ev as InputEventKey).physical_keycode == KEY_W)
+				InputRouter.apply_profile(_profile0, false)
+				if not w_up or w_jump:
+					_fail("free move SOLO: W on up %s, W on jump %s (want true, false)" % [w_up, w_jump])
+					return
+				if get_viewport().get_camera_3d() != arena.duel_camera.cam:
+					_fail("free move: duel camera is not the current camera")
+					return
+				_ok("free move: duel camera current; SOLO W/S → sidestep (TODO #26), no key clashes in SOLO/SHARED")
+				_ang0 = _bearing(p1, p2)
+				_d0 = _flat(p1.global_position - p2.global_position).length()
+				_swept = 0.0
+				_next()
+		41:
+			# 0.3-1: sidestep 90° around the opponent; lock-on keeps facing them
+			InputRouter.v_set(1, "up", true)
+			var a := _bearing(p1, p2)
+			_swept += angle_difference(_ang0, a)
+			_ang0 = a
+			if absf(_swept) >= PI * 0.5:
+				InputRouter.v_clear(1)
+				var to := _flat(p2.global_position - p1.global_position).normalized()
+				var off := rad_to_deg(p1.forward.angle_to(to))
+				var d := _flat(p1.global_position - p2.global_position).length()
+				if off >= 5.0 or absf(d - _d0) > 0.01 or absf(p1.global_position.z) < 0.5:
+					_fail("sidestep 90°: forward off by %.2f° (want < 5), distance %.3f → %.3f (want ±0.01), z %.2f" % [off, _d0, d, p1.global_position.z])
+					return
+				_shot("11_free_sidestep_90")
+				_ok("sidestep 90° in %d frames: forward %.2f° off the opponent, distance %.3f → %.3f (arc, not spiral), p1 z %.2f" % [_f - _f0, off, _d0, d, p1.global_position.z])
+				_n0 = 0
+				_data0 = p1.data
+				_next()
+			elif _f > _f0 + 400:
+				_fail("sidestep never reached 90° (swept %.1f°)" % rad_to_deg(_swept))
+		42:
+			if p1.is_actionable() and p2.is_actionable() and _approach3d(p1, p2, 1.5):
+				_hp0 = p2.hp
+				_rotated = false
+				_ang0 = 0.0
+				InputRouter.v_press(1, "light")
+				_next()
+		43:
+			# 0.3-1: the opponent steps 60° around the attacker at the start of a light; tracking
+			# (30°, PLACEHOLDER) turns the strike so it still lands. 60° − 30° = 30° stays inside the
+			# hitbox at 1.5 m; 60° without tracking does not (negative control, attempt 2).
+			if p1.state == Fighter.State.ATTACK and not _rotated:
+				_rotated = true
+				_ang0 = atan2(-p1.forward.z, p1.forward.x)
+				var rel := _flat(p2.global_position - p1.global_position).normalized() * 1.5
+				p2.global_position = p1.global_position + rel.rotated(Vector3.UP, deg_to_rad(60.0)) + Vector3(0.0, p2.global_position.y - p1.global_position.y, 0.0)
+			if _rotated and p1.state == Fighter.State.ATTACK and p1.move_frame == p1.current_move.startup:
+				# turn measured on the first active frame — after the attack lock-on turns the fighter anyway
+				_d0 = rad_to_deg(absf(angle_difference(_ang0, atan2(-p1.forward.z, p1.forward.x))))
+			if _f == _f0 + 30:
+				var turned := _d0
+				var hit := p2.hp < _hp0
+				if _n0 == 0:
+					var budget := p1.data.light.tracking_deg
+					if not hit or absf(turned - budget) > 0.5:
+						_fail("tracking: 60°-off light hit %s, turned %.1f° (want hit, %.1f° = tracking_deg)" % [hit, turned, budget])
+						return
+					_ok("tracking: light started 60° off the opponent turned %.1f° and hit (hp %.0f → %.0f)" % [turned, _hp0, p2.hp])
+					p1.data = _data0.duplicate(true)
+					p1.data.light.tracking_deg = 0.0
+					_n0 = 1
+					_stage = 42
+					_f0 = _f
+					InputRouter.v_clear(1)
+				else:
+					p1.data = _data0
+					if hit or turned > 0.5:
+						_fail("tracking negative control: tracking 0° still hit %s, turned %.1f°" % [hit, turned])
+						return
+					_ok("tracking negative control: with tracking_deg 0 the same strike turns %.1f° and misses" % turned)
+					_rmax = 0.0
+					_next()
+		44:
+			# 0.3-1: walk straight away from the opponent into the arena edge; never past the circle
+			if not p1.is_actionable() and _f < _f0 + 60:
+				return
+			var away_right := _flat(p1.global_position - p2.global_position).dot(GameState.duel.right) > 0.0
+			InputRouter.v_set(1, "right", away_right)
+			InputRouter.v_set(1, "left", not away_right)
+			_rmax = maxf(_rmax, _flat(p1.global_position).length())
+			if _rmax > Fighter.ARENA_RADIUS + 0.001:
+				_fail("arena circle: p1 at radius %.3f > %.2f" % [_rmax, Fighter.ARENA_RADIUS])
+				return
+			if _f > _f0 + 420:
+				if _rmax < Fighter.ARENA_RADIUS - 0.05:
+					_fail("arena circle: never reached the edge (max radius %.2f)" % _rmax)
+					return
+				_ok("arena circle: walked into the edge, max radius %.3f ≤ %.2f" % [_rmax, Fighter.ARENA_RADIUS])
+				_next()
+		45:
+			if _f == _f0 + 1:
+				# back to a duel distance in the middle, then a full circle around the opponent
+				p1.global_position = Vector3(-2.0, p1.global_position.y, 0.0)
+				p2.global_position = Vector3(2.0, p2.global_position.y, 0.0)
+			if _f == _f0 + 20:
+				_yaw_prev = arena.duel_camera.view_yaw()
+				_turn_max = 0.0
+				_rmax = 0.0
+				_ang0 = _bearing(p1, p2)
+				_swept = 0.0
+			if _f > _f0 + 20:
+				InputRouter.v_set(1, "up", true)
+				_track_camera_turn()
+				var a := _bearing(p1, p2)
+				_swept += angle_difference(_ang0, a)
+				_ang0 = a
+				if _f == _f0 + 120:
+					_shot("12_free_duel_camera")
+				if absf(_swept) >= TAU:
+					InputRouter.v_clear(1)
+					if _turn_max > DuelCamera.MAX_TURN_DEG_PER_FRAME or not _both_in_view() or _rmax > DuelCamera.MAX_SIDE_OFF_DEG:
+						_fail("duel camera on a 360° sidestep: max turn %.2f°/frame (bound %.1f), off side-on %.1f° (bound %.1f), both in view %s" % [_turn_max, DuelCamera.MAX_TURN_DEG_PER_FRAME, _rmax, DuelCamera.MAX_SIDE_OFF_DEG, _both_in_view()])
+						return
+					_ok("duel camera: 360° sidestep in %d frames, max turn %.2f°/frame ≤ %.1f, at most %.1f° off side-on ≤ %.1f (both PLACEHOLDER), both fighters in view" % [_f - _f0 - 20, _turn_max, DuelCamera.MAX_TURN_DEG_PER_FRAME, _rmax, DuelCamera.MAX_SIDE_OFF_DEG])
+					_next()
+				elif _f > _f0 + 900:
+					_fail("360° sidestep not finished (swept %.1f°)" % rad_to_deg(_swept))
+		46:
+			# 0.3-2: the fighters swap sides in one frame (flash-step through, jump over): the camera
+			# must not flip 180°, the fighters swap sides on screen instead
+			if _f == _f0 + 1:
+				_yaw_prev = arena.duel_camera.view_yaw()
+				_turn_max = 0.0
+				var a := p1.global_position
+				p1.global_position = Vector3(p2.global_position.x, a.y, p2.global_position.z)
+				p2.global_position = Vector3(a.x, p2.global_position.y, a.z)
+			elif _f > _f0 + 1:
+				_track_camera_turn()
+			if _f == _f0 + 40:
+				var cam: Camera3D = arena.duel_camera.cam
+				var s1 := cam.unproject_position(p1.global_position + Vector3.UP).x
+				var s2 := cam.unproject_position(p2.global_position + Vector3.UP).x
+				if _turn_max > DuelCamera.MAX_TURN_DEG_PER_FRAME or not _both_in_view():
+					_fail("duel camera on a side swap: max turn %.2f°/frame, both in view %s" % [_turn_max, _both_in_view()])
+					return
+				_shot("13_free_side_swap")
+				_ok("duel camera: side swap without a flip, max turn %.2f°/frame; screen x p1 %.0f, p2 %.0f" % [_turn_max, s1, s2])
+				_finish()
