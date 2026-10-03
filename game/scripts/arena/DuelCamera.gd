@@ -34,7 +34,7 @@ const BEHIND_FOCUS := 0.5         # the view aims at the pair's middle (ADR-018 
 const BEHIND_FOCUS_Y := 1.2       # … at this height
 ## Mode `side` (VERSUS): arm length = clamp(SIDE_DIST + SIDE_DIST_PER_M · sep, SIDE_DIST_MIN, SIDE_DIST_MAX).
 const SIDE_DIST := 6.0
-const SIDE_DIST_PER_M := 0.7    # Арес 2026-10-03: 0.75 gave 14.8 % at sep 6, under the 15 % floor
+const SIDE_DIST_PER_M := 0.68   # Арес 2026-10-03 (T4 RED п. 3, variant а): 0.7 measured 14.84 % at sep 6, 0.68 ≥ 15 %
 const SIDE_DIST_MIN := 8.0
 const SIDE_DIST_MAX := 24.0
 ## The pull-back never stretches the arm past the larger of this and the unpulled framing distance (Арес 2026-10-03,

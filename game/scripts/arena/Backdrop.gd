@@ -8,6 +8,9 @@ const FALLBACK_SHADER := preload("res://shaders/backdrop_fallback.gdshader")
 
 var quad: MeshInstance3D            # the first card (the only one in the plane)
 var cards: Array[MeshInstance3D] = []
+var neon: Label3D = null           # Fountain Square at night only
+const NEON_COLOR := Color(1.0, 0.36, 0.78)
+const NEON_GLOW := Color(0.62, 0.12, 0.52)
 ## Free movement: cards in the ring. Each card is wider than 2 × its distance, so neighbours meet at the corners.
 const RING_CARDS := 4
 var floor_fade: MeshInstance3D
@@ -35,6 +38,7 @@ func apply(stage: Dictionary) -> void:
 		mat.set_shader_parameter("mirror_x", float(frame.mirror_x))
 		mat.set_shader_parameter("img_top", float(frame.img_top))
 		mat.set_shader_parameter("sky_top", stage.get("sky_top", Color(0.3, 0.3, 0.42)))
+		mat.set_shader_parameter("tint", stage.get("tint", Color.WHITE))   # A2: night darkens and cools the painted card
 		using_texture = true
 	else:
 		mat.shader = FALLBACK_SHADER
@@ -60,6 +64,23 @@ func apply(stage: Dictionary) -> void:
 		pivot.add_child(q)
 		cards.append(q)
 	quad = cards[0]
+	# sprint A2: the CRONSHIFT neon on the far tower of Fountain Square — night only (docs/World/Cronshift.md § Нові арени).
+	# PLACEHOLDER sign in front of the first card until band C paints the tower.
+	var neon_text: String = stage.get("neon", "")
+	if neon_text != "":
+		neon = Label3D.new()
+		neon.name = "Neon"
+		neon.text = neon_text
+		neon.shaded = false
+		neon.double_sided = false
+		neon.modulate = NEON_COLOR
+		neon.outline_modulate = NEON_GLOW
+		neon.outline_size = 24
+		neon.font_size = 256
+		var fp: Vector3 = frame.pos
+		neon.pixel_size = 0.02 * absf(fp.z) / 18.0   # same apparent size at any card distance
+		neon.position = Vector3(0.0, fp.y + absf(fp.z) * 0.45, fp.z * 0.97)
+		add_child(neon)
 
 
 func _process(_delta: float) -> void:

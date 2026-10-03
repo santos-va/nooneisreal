@@ -4,6 +4,7 @@ extends Node
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	apply_saved_mode(args, GameState, InputRouter.SETTINGS_PATH)
+	apply_saved_stage(args, GameState, InputRouter.SETTINGS_PATH)
 	apply_launch_args(args, GameState)
 	if "--smoke" in args:
 		var t := SmokeTest.new()
@@ -26,6 +27,12 @@ static func apply_launch_args(args: PackedStringArray, state: Node) -> void:
 	var mode := free_move_arg(args)
 	if mode != -1:
 		state.set_free_move(mode == 1)
+	# sprint A2: `-- --stage <id>` and `-- --night` pick the arena for this run only (never written to settings.cfg)
+	var at := args.find("--stage")
+	if at >= 0 and at + 1 < args.size():
+		state.set_stage(args[at + 1])
+	if "--night" in args:
+		state.night = true
 	if "--capsules" in args:
 		state.skeletal_rig = false
 	if "--skeletal-rig" in args:
@@ -40,6 +47,14 @@ static func apply_saved_mode(args: PackedStringArray, state: Node, cfg_path: Str
 	var saved: bool = state.saved_free_move(state.free_move, cfg_path)
 	if saved != state.free_move:
 		state.set_free_move(saved)
+
+
+## The menu's STAGE/TIME choice from `cfg_path` onto `state`, unless this is the smoke (06-UI-UX § Збереження).
+## Launch flags (`--stage`, `--night`) are applied after this, so they win for the run.
+static func apply_saved_stage(args: PackedStringArray, state: Node, cfg_path: String) -> void:
+	if "--smoke" in args:
+		return
+	state.load_stage_time(cfg_path)
 
 
 static func free_move_arg(args: PackedStringArray) -> int:
