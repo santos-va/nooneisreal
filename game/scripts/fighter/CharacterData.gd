@@ -55,6 +55,9 @@ extends Resource
 @export var grapple_cooldown: float = 3.0
 @export var grapple_regen_all_at_once: bool = true   # true: 3 uses → 3 s → all back. false: one charge per 3 s.
 @export var grapple_range: float = 14.0
+## Free movement (GameState.free_move): half-angle of the aim cone (yaw only) around the stick, or
+## around the fighter's forward when the stick is neutral. 30° — ДИЗАЙН, T5 Арес, docs/GDD/04-Grapple-System.md.
+@export var grapple_cone_deg: float = 30.0
 
 @export_group("Passive")
 @export var passive_id: String = ""
