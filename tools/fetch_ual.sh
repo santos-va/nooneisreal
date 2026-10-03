@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Launch 4 (C1 mannequin): put Quaternius Universal Animation Library 1 + 2 GLBs (Source or Standard tier) into the game.
 # The cloud agent cannot reach itch.io (network policy 403), so this runs on Santos's Mac:
-#   1. download both FREE zips (Standard tier) from
+#   1. download both zips from
 #        https://quaternius.itch.io/universal-animation-library
 #        https://quaternius.itch.io/universal-animation-library-2
-#      into ~/Downloads (keep the names itch gives them);
+#      into ~/Downloads (keep the names itch gives them). Santos bought «Source» (2026-10-03); the script takes
+#      Source over the free «Standard» if both are there;
 #   2. in the repo:  bash tools/fetch_ual.sh
 # It checks the zips against the sha256 T3 Архімед recorded (docs/Research/2026-10-03-Animation-Sources.md),
 # extracts Unreal-Godot/UAL{1,2}.glb (Source) or UAL{1,2}_Standard.glb (no _RM, CC0) into game/assets/animations/ual/,
@@ -49,6 +50,23 @@ find_zip() { # $1 = 1 or 2; prints the newest zip of the best tier (Source > Sta
   done
   printf '%s' "$best"
 }
+if [ "$LIST" = "1" ]; then
+  # show what the zips hold, change nothing
+  found=0
+  for f in "$SRC"/*.zip; do
+    [ -f "$f" ] || continue
+    case "$(basename "$f")" in *"Animation Library"*|*UAL*|*"Universal Animation"*) ;; *) continue ;; esac
+    found=1
+    echo "== $(basename "$f")  ($(wc -c < "$f" | tr -d ' ') байт)"
+    echo "   sha256 $(sha "$f")"
+    lic="$(unzip -Z1 "$f" | grep -iE '(^|/)licen[sc]e[^/]*\.txt$' | head -n 1)"
+    if [ -n "$lic" ]; then echo "   ліцензія ($lic): $(unzip -p "$f" "$lic" | tr '\n' ' ' | cut -c1-160)"; else echo "   ліцензійного файлу немає"; fi
+    echo "   3D-файли всередині (glb/gltf/fbx/blend), перші 40:"
+    unzip -Z1 "$f" | grep -iE '\.(glb|gltf|fbx|blend)$' | head -n 40 | sed 's/^/     /'
+  done
+  [ "$found" = 1 ] || echo "fetch_ual --list: у $SRC немає zip з «Animation Library» в імені"
+  exit 0
+fi
 tier_of() { case "$(basename "$1")" in *Source*) echo Source ;; *) echo Standard ;; esac; }
 Z1="$(find_zip 1)"
 Z2="$(find_zip 2)"
