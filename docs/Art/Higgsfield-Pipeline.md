@@ -59,7 +59,7 @@
 |---|---|---|
 | Листи персонажів, картки предметів, іконки, фони | `gpt_image_2_5`, `nano_banana_pro`, `flux_3_image`, `recraft_v4_1` (вектор/іконки) | ✅ |
 | Розширити фон / шари / апскейл | `flux_2_pro_outpaint`, `outpaint`, `image_decompose`, `topaz_image`, `bytedance_image_upscale` | ✅ |
-| 3D-модель з листа, авториг, кліпи з бібліотеки 678 дій | `multi_image_to_3d`, `image_to_3d`, `3d_rigging`, `animation_actions` | ✅ |
+| 3D-модель з листа, авториг, кліпи з бібліотеки дій (678 чи 656 — **UNGROUNDED**, [[2026-10-03-Animation-Sources]]) | `multi_image_to_3d`, `image_to_3d`, `3d_rigging`, `animation_actions` | ✅ |
 | Спрайт-шити (VFX, UI-анімації) | `autosprite` | ✅ ціну перевірити |
 | Відео як референс анімації/хвиль | `kling3_0`, `seedance_2_0`, `veo3_1`, Genjutsu (`hf_mult_motion_control`) | ✅ для референсу, не в гру |
 | Голоси персонажів (TTS) | `seed_audio`, `elevenlabs_v4`, `text2speech_v2` | ✅ пізніше |

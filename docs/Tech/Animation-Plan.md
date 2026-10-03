@@ -23,7 +23,7 @@ Santos 2026-10-02: «атаки ножів і анімації бою слабк
 | Джеб / удари руками | 96 Kung_Fu_Punch · 92 Double_Combo_Attack · 105 Triple_Combo_Attack · 90 Counterstrike |
 | Ноги | 103 Simple_Kick · 94 Flying_Fist_Kick |
 | Меч (Choko) | 97 Left_Slash · 102 Sword_Judgment · 4 Attack · 147 Sword_Parry |
-| Блок | 138–146 Block1…Block10 |
+| Блок | 138–146 Block1…Block10, **`Block7` немає** (143 = Block6, 144 = Block8) — [[2026-10-03-Animation-Sources]] |
 | Ухил | 156/157 Stand_Dodge · 158–163 Roll_Dodge |
 | Хіт-реакції | 178/179 Hit_Reaction · 174–176 Face_Punch_Reaction · 7 BeHit_FlyUp · 8 Dead |
 
