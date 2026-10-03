@@ -7,6 +7,9 @@ var _p1_btn: Button
 var _p2_btn: Button
 var _stage_btn: Button
 var _keys_btn: Button
+## Bottom hint follows the focus (06-UI-UX § Кнопка «РЕЖИМ», «підказка внизу меню», T8): FIGHT/TRAINING → solo vs
+## CPU, VERSUS → two players; every other row keeps the last of the three. Starts on FIGHT.
+var hint_vs_cpu: bool = true
 var mode_btn: Button   # MODE 2.5D / 3D (docs/GDD/06-UI-UX.md § Кнопка «РЕЖИМ 2.5D / 3D»); the smoke presses it
 var _foot: Label
 var _card1: TextureRect
@@ -54,9 +57,12 @@ func _ready() -> void:
 	var spacer := Control.new()
 	spacer.custom_minimum_size = Vector2(0, 30)
 	center.add_child(spacer)
-	_add(center, "FIGHT  ·  P1 vs CPU", func(): GameState.p2_is_cpu = true; GameState.training_mode = false; _go())
-	_add(center, "VERSUS  ·  P1 vs P2", func(): GameState.p2_is_cpu = false; GameState.training_mode = false; _go())
-	_add(center, "TRAINING", func(): GameState.p2_is_cpu = true; GameState.training_mode = true; _go())
+	var fight := _add(center, "FIGHT  ·  P1 vs CPU", func(): GameState.p2_is_cpu = true; GameState.training_mode = false; _go())
+	var versus := _add(center, "VERSUS  ·  P1 vs P2", func(): GameState.p2_is_cpu = false; GameState.training_mode = false; _go())
+	var training := _add(center, "TRAINING", func(): GameState.p2_is_cpu = true; GameState.training_mode = true; _go())
+	fight.focus_entered.connect(_set_hint.bind(true))
+	training.focus_entered.connect(_set_hint.bind(true))
+	versus.focus_entered.connect(_set_hint.bind(false))
 	_p1_btn = _add(center, "", func(): GameState.cycle_character(1, 1); _refresh())
 	_p2_btn = _add(center, "", func(): GameState.cycle_character(2, 1); _refresh())
 	_stage_btn = _add(center, "", func(): GameState.cycle_stage(1); _refresh())
@@ -129,10 +135,16 @@ func _refresh() -> void:
 	_keys_btn.text = "KEYBOARD:  ◂ %s ▸" % ("SOLO (P2 on gamepad)" if solo else "SHARED (two on one keyboard)")
 	mode_btn.text = "MODE:  ◂ %s ▸" % ("3D (free move)" if GameState.free_move else "2.5D (plane)")
 	if _foot:
-		_foot.text = InputRouter.hint_text(false)
+		_foot.text = InputRouter.hint_text(hint_vs_cpu)
 	if _card1:
 		_card1.texture = _card_tex(c1)
 		_card2.texture = _card_tex(c2)
+
+
+func _set_hint(vs_cpu: bool) -> void:
+	hint_vs_cpu = vs_cpu
+	if _foot:
+		_foot.text = InputRouter.hint_text(hint_vs_cpu)
 
 
 ## MODE row: 2.5D ↔ 3D, remembered in user://settings.cfg; the keyboard re-binds and the hint updates at once.

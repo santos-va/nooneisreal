@@ -34,9 +34,12 @@ const BEHIND_FOCUS := 0.5         # the view aims at the pair's middle (ADR-018 
 const BEHIND_FOCUS_Y := 1.2       # … at this height
 ## Mode `side` (VERSUS): arm length = clamp(SIDE_DIST + SIDE_DIST_PER_M · sep, SIDE_DIST_MIN, SIDE_DIST_MAX).
 const SIDE_DIST := 6.0
-const SIDE_DIST_PER_M := 0.75
+const SIDE_DIST_PER_M := 0.7    # Арес 2026-10-03: 0.75 gave 14.8 % at sep 6, under the 15 % floor
 const SIDE_DIST_MIN := 8.0
 const SIDE_DIST_MAX := 24.0
+## The pull-back never stretches the arm past the larger of this and the unpulled framing distance (Арес 2026-10-03,
+## 02 § Відтягування й межа Гермеса): 12.47 m keeps a 1.8 m fighter at 12.5 % of the frame height at fov 60.
+const PULLBACK_CAP_M := 12.47
 ## Vertical field of view of both arena cameras (Arena.tscn), 91.5° horizontal in 16:9; the ceiling (ADR-018 п. 1).
 const FOV_DEG := 60.0
 
@@ -50,6 +53,7 @@ var _yaw: float = 0.0
 var _yaw_prev: float = 0.0   # yaw at the previous physics tick — the render frame interpolates between the two
 var _omega: float = 0.0      # yaw turn this tick (rad/tick), |Δ| ≤ YAW_ACCEL_DEG per tick
 var _pull: float = 0.0   # current arm pull-back fraction, 0 … PULLBACK_MAX
+var force_pull: float = -1.0   # smoke only: ≥ 0 pins the pull-back fraction
 ## ADR-015 mode, fixed for the match: true = behind P1 (FIGHT, TRAINING), false = side-on (VERSUS).
 var behind: bool = false
 
@@ -114,11 +118,18 @@ func _physics_process(delta: float) -> void:
 	rotation = Vector3(0.0, _yaw, 0.0)
 	var lag := rad_to_deg(absf(angle_difference(_yaw, _target_yaw())))
 	_pull = lerpf(_pull, PULLBACK_MAX if lag > PULLBACK_LAG_DEG else 0.0, 1.0 - pow(0.0015, delta))
+	if force_pull >= 0.0:
+		_pull = force_pull
 
 
 ## Yaw turn this physics tick (degrees) — the smoke's |Δω| check.
 func turn_deg() -> float:
 	return rad_to_deg(_omega)
+
+
+## Arm length with the pull-back on `base`: +_pull, but never past max(PULLBACK_CAP_M, base).
+func pulled(base: float) -> float:
+	return minf(base * (1.0 + _pull), maxf(PULLBACK_CAP_M, base))
 
 
 ## Arm pull-back right now (0 … PULLBACK_MAX), for the smoke test.
@@ -155,7 +166,7 @@ func _apply(k: float) -> void:
 	var lift := 0.35 + hi * 0.05 + dist * 0.14
 	global_position = global_position.lerp(focus, k) if k < 1.0 else focus
 	arm.rotation = Vector3(-atan2(lift, dist), 0.0, 0.0)
-	arm.spring_length = sqrt(dist * dist + lift * lift) * (1.0 + _pull)
+	arm.spring_length = pulled(sqrt(dist * dist + lift * lift))
 
 
 ## Behind mode: rig at the focus, arm pitched and stretched so the camera lands on behind_spot() (the yaw is
@@ -166,7 +177,7 @@ func _apply_behind(k: float) -> void:
 	var flat := Vector2(v.x, v.z).length()
 	global_position = global_position.lerp(focus, k) if k < 1.0 else focus
 	arm.rotation = Vector3(-atan2(v.y, flat), 0.0, 0.0)
-	arm.spring_length = v.length() * (1.0 + _pull)
+	arm.spring_length = pulled(v.length())
 
 
 ## Horizontal view direction of the camera (for the smoke turn-rate check).

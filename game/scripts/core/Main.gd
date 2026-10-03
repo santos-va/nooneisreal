@@ -29,6 +29,8 @@ static func apply_launch_args(args: PackedStringArray, state: Node) -> void:
 	var mode := free_move_arg(args)
 	if mode != -1:
 		state.set_free_move(mode == 1)
+	if "--capsules" in args:
+		state.skeletal_rig = false
 	if "--skeletal-rig" in args:
 		state.skeletal_rig = true
 
