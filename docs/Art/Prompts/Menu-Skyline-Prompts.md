@@ -383,5 +383,21 @@ S-1 `dcdef91d`, N-5 `ab80973c`, N-6 `d2ac65b6`, S-5 `36ace5cf`. Чи модел�
 | X-2 | C4 `choko-tpose-back-v5` | `da24265e-c6d6-4dfd-8530-2bb49772b3ed` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_da24265e-c6d6-4dfd-8530-2bb49772b3ed.png | **переробити** — «полоски по центру не повинно бути» |
 | X-3 | C4 `choko-tpose-34-v5` | `5b045b7a-b48f-4014-a7e7-011d60f2d5e8` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_025913_5b045b7a-b48f-4014-a7e7-011d60f2d5e8.png | **так** (Santos, дошка) |
 
+### Choko v5 — переробка T-поз (2026-10-03, #38)
+
+Слово Santos: «так, генеруй» на X-1 (бік, «стиснутий») і X-2 (спина, смуга по центру), по одній, 5.5 кр.; і **«прибери з 3D моделі меч, має бути
+чистий персонаж»**. Промпт — [[Prompt-Library]] § 15a + рядки переробки, IDENTITY **без меча**, «Clean character only: no sword, no scabbard…».
+Референси: X-0 `b529a3bd`, куртка N-2 `a2bf79a1`, кросівки V-1 `482bfc6d`. `get_cost` 3:4 → 2.75.
+X-0 і X-3 промптились ще з мечем в IDENTITY — чи є там меч, **не перевірено** (CDN закритий), питання — на дошці.
+
+| партія | `balance` до | після | різниця |
+|---|---|---|---|
+| C4r бік + спина ×1 | 5771 | 5765.5 | 5.5 |
+
+| мітка | партія | job-id | розмір · CDN-URL | результат |
+|---|---|---|---|---|
+| Y-0 | C4r `choko-tpose-side-v5` · 2 | `913c53bb-6e28-4e03-9250-bf01f4bc91c5` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_030544_913c53bb-6e28-4e03-9250-bf01f4bc91c5.png | чекає вибору Santos |
+| Y-1 | C4r `choko-tpose-back-v5` · 2 | `f5a3a1fb-d423-4773-90a2-cff460ea466c` | 1744×2336 · https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261003_030544_f5a3a1fb-d423-4773-90a2-cff460ea466c.png | чекає вибору Santos |
+
 ## Related
 - [[2026-10-03-Main-Menu-Skyline]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[ADR-010-City-Name-Cronshift]] · [[04-Grapple-System]] · [[Kronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[2026-10-03-Wave-2]] · [[2026-10-03-Skea-Redesign]]
