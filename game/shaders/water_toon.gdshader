@@ -11,6 +11,9 @@ uniform vec3 speed = vec3(1.1, -0.75, 1.5);
 uniform vec3 phase = vec3(0.0, 1.7, 4.1);
 uniform float swell_amp = 0.0;          // swell_amplitude * swell_env(), already enveloped
 uniform float wave_time = 0.0;
+uniform bool use_z = false;              // free movement (0.3-5): waves travel along dir_deg in XZ
+uniform vec3 dir_deg = vec3(0.0, 35.0, -50.0);
+uniform float far_r = 0.0;               // > 0: fade into the painted river by distance from the centre
 uniform vec4 deep : source_color = vec4(0.1, 0.16, 0.2, 1.0);
 uniform vec4 mid : source_color = vec4(0.14, 0.23, 0.27, 1.0);
 uniform vec4 crest : source_color = vec4(0.22, 0.33, 0.36, 1.0);
@@ -23,14 +26,23 @@ uniform float far_z = -17.0;
 varying float v_h;
 varying vec3 v_world;
 
-float wave_h(float x) {
+// Same formula as WaveField.height(x, z): position projected on each wave's direction.
+float along(int i, vec2 p) {
+	if (!use_z) {
+		return p.x;
+	}
+	float a = radians(dir_deg[i]);
+	return cos(a) * p.x + sin(a) * p.y;
+}
+
+float wave_h(vec2 p) {
 	float h = 0.0;
 	for (int i = 0; i < 3; i++) {
 		float k = 6.28318530718 / wavelength[i];
-		h += amp[i] * sin(k * (x - speed[i] * wave_time) + phase[i]);
+		h += amp[i] * sin(k * (along(i, p) - speed[i] * wave_time) + phase[i]);
 	}
 	float k0 = 6.28318530718 / wavelength.x;
-	h += swell_amp * sin(k0 * (x - speed.x * wave_time) + phase.x + 1.2);
+	h += swell_amp * sin(k0 * (along(0, p) - speed.x * wave_time) + phase.x + 1.2);
 	return h;
 }
 
@@ -40,7 +52,7 @@ float hash2(vec2 p) {
 
 void vertex() {
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	float h = wave_h(w.x);
+	float h = wave_h(w.xz);
 	VERTEX.y += h;
 	v_h = h;
 	v_world = w;
@@ -64,6 +76,7 @@ void fragment() {
 	float dash = step(0.3, fract(v_world.x * 4.0)) * step(fract(v_world.x * 4.0), 0.8);
 	c = mix(c, glint.rgb, on * dash * smoothstep(0.45, 0.8, n) * 0.7);
 	// melt into the painted river near the backdrop
-	c = mix(c, horizon.rgb, smoothstep(far_z + 9.0, far_z, v_world.z) * 0.7);
+	float far_t = far_r > 0.0 ? smoothstep(far_r - 9.0, far_r, length(v_world.xz)) : smoothstep(far_z + 9.0, far_z, v_world.z);
+	c = mix(c, horizon.rgb, far_t * 0.7);
 	ALBEDO = c;
 }

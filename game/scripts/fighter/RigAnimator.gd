@@ -226,12 +226,14 @@ func tick(delta: float, f: Fighter, frozen: bool) -> void:
 
 
 ## Stage-River: the pelvis follows the wave slope, amplified for unsteady fighters
-## (tilt = atan(slope) × (1.6 − water_balance)). Presentation only — hitboxes don't move.
+## (tilt = atan(slope along forward) × (1.6 − water_balance)). Presentation only — hitboxes don't move.
 func _water_sway(f: Fighter) -> void:
 	var w := GameState.water
 	var target := 0.0
 	if w != null and f.on_ground() and f.state != Fighter.State.KNOCKDOWN and f.state != Fighter.State.KO:
-		target = atan(w.slope(f.global_position.x)) * (1.6 - f.data.water_balance) * float(f.facing)
+		# slope along where the fighter faces: plane → ±X (facing), free movement → forward in XZ
+		var fwd := Vector2(f.forward.x, f.forward.z) if GameState.free_move else Vector2(float(f.facing), 0.0)
+		target = atan(w.gradient(f.global_position.x, f.global_position.z).dot(fwd)) * (1.6 - f.data.water_balance)
 		if w.swell_started_now():
 			flinch_v.x += (1.6 - f.data.water_balance) * 3.0 * (1.0 if target >= 0.0 else -1.0)
 	water_tilt = lerpf(water_tilt, target, 0.25)
