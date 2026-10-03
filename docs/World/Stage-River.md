@@ -48,4 +48,4 @@ Smoke-тест отримає стадію `river`: бійці не провал
 `balance` 0.55 і не спрацьовує в блоці, і детермінізм: два прогони дають однакові позиції на кадрі 600.
 
 ## Related
-- [[Kronshift]] · [[Backgrounds]] · [[Prompt-Library]] · [[Asset-Manifest]] · [[08-Balance]] · [[2026-10-03-Production-Plan]]
+- [[Cronshift]] · [[Backgrounds]] · [[Prompt-Library]] · [[Asset-Manifest]] · [[08-Balance]] · [[2026-10-03-Production-Plan]]

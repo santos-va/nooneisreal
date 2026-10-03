@@ -22,9 +22,11 @@
    `texture_prompt: "flat cel-shaded colors, no shadows"`). Орієнтовно ~38 кредитів на ригованого
    персонажа + ~8 за кліп (внутрішній док Higgsfield; підтвердити `get_cost`).
 2. Blender: сплющити запечене світло до пласких заливок, додати лупи на ліктях/колінах.
-3. Риг: Meshy auto-rig (шаблон Mixamo), AccuRig 2.0 (безкоштовно) або UniRig (MIT, розуміє VRM).
-4. Бібліотека Meshy: 678 кліпів, група Fighting — Attack, Left_Slash, Sword_Judgment, Kung_Fu_Punch,
-   Flying_Fist_Kick, Block1–10, Sword_Parry, Roll_Dodge, Hit_Reaction, BeHit_FlyUp, Dead
+3. Риг: Meshy auto-rig (24 кістки без пальців; імена схожі на Mixamo, але без `mixamorig:`, і хребет
+   від `Hips` угору — `Spine02 → Spine01 → Spine`, навпаки до Mixamo; звірено на M-0/M-1 —
+   [[2026-10-03-Animation-Sources]] §6.1), AccuRig 2.0 (безкоштовно) або UniRig (MIT, розуміє VRM).
+4. Бібліотека Meshy: 678 кліпів за внутрішнім доком Higgsfield, 656 у публічній таблиці Meshy (**UNGROUNDED**), група Fighting — Attack, Left_Slash, Sword_Judgment, Kung_Fu_Punch,
+   Flying_Fist_Kick, Block1–10 (без `Block7`), Sword_Parry, Roll_Dodge, Hit_Reaction, BeHit_FlyUp, Dead
    (`animation_actions`); один кліп на джоб → злити локально.
 5. Спеціальні удари — Cascadeur Indie ($19/міс, FBX) або власний мокап Rokoko Vision.
 
