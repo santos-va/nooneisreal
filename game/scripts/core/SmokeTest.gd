@@ -388,6 +388,41 @@ func _check_free_layout() -> bool:
 	return true
 
 
+## Sprint A1 (docs/Plans/2026-10-03-Sprint-Arenas-VFX.md): the world stands still — over half a turn of the side camera
+## (P2 placed around P1, 1.25°/tick) no backdrop card moves in the world, the camera ends up facing another card, and
+## the ring has no gaps (each card wider than 2 × its distance from the centre).
+func _stage_a1_fixed_world() -> void:
+	var bd: Backdrop = arena.backdrop
+	var cam: Camera3D = arena.duel_camera.cam
+	var t := _f - _f0 - 1
+	if t == 0:
+		_fr = {"xf": bd.cards.map(func(c: MeshInstance3D) -> Transform3D: return c.global_transform), "moved": 0.0}
+		p1.global_position = Vector3(0.0, p1.global_position.y, 0.0)
+	if t <= 40 + 144:
+		_place(p2, p1, 4.0, float(maxi(t - 40, 0)) * 1.25)
+		if t == 40:
+			_fr["card0"] = bd.facing_card(cam)
+		for i in bd.cards.size():
+			var x0: Transform3D = _fr.xf[i]
+			_fr.moved = maxf(_fr.moved, x0.origin.distance_to(bd.cards[i].global_transform.origin) + (x0.basis.z - bd.cards[i].global_transform.basis.z).length())
+		return
+	if t < 40 + 144 + 60:
+		return   # let the rate-limited yaw finish the half turn
+	var card1 := bd.facing_card(cam)
+	var gap := ""
+	for c in bd.cards:
+		var w: float = (c.mesh as QuadMesh).size.x
+		var d := Vector2(c.global_position.x, c.global_position.z).length()
+		if w < 2.0 * d - 0.01:
+			gap = "card %.1f m wide at %.1f m (want ≥ %.1f)" % [w, d, 2.0 * d]
+	if bd.cards.size() < 4 or _fr.moved > 0.001 or card1 == _fr.card0 or gap != "":
+		_fail("A1 fixed world: %d cards (want ≥ 4, T1 handoff), cards moved %.4f (want 0), facing card %d → %d after 180° (want another), %s" % [bd.cards.size(), _fr.moved, _fr.card0, card1, gap])
+		return
+	_ok("A1 fixed world: ring of %d cards, none moved while the camera turned 180° (facing card %d → %d), no gaps at the corners" % [bd.cards.size(), _fr.card0, card1])
+	_fr = {}
+	_next_to(140)
+
+
 ## ADR-018: [P1 share of frame height, P2 share, worst horizontal margin to the frame edge (fraction of width)].
 func _frame_metrics() -> Array:
 	var cam: Camera3D = arena.duel_camera.cam
@@ -2517,7 +2552,9 @@ func _physics_process(_delta: float) -> void:
 				return
 			_ok("pull-back cap (side, +30 %%): sep 4 arm %.2f → %.2f m, share %.1f %%; sep 8 %.2f → %.2f m (cap 12.47), %.1f %%; sep 20 %.2f m unchanged" % [r4[0], r4[1], r4[2] * 100, r8[0], r8[1], r8[2] * 100, r20[1]])
 			_fr = {}
-			_next_to(140)
+			_next_to(137)
+		137:
+			_stage_a1_fixed_world()
 		# ---------------- 3c: crystal ult (03 § Кристальна ульта Choko, Ares 3c-1) ----------------
 		140:
 			if not (flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable()):
