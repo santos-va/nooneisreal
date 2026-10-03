@@ -31,7 +31,7 @@
 
 Everything below is a short English rendering of canon. If a line here disagrees with [[Lore]], **[[Lore]] wins**.
 
-- Choko leads a team of heroes; the city is Cronshift (still spelled [[Kronshift]] in the wiki until #12). Choko's
+- Choko leads a team of heroes; the city is [[Cronshift]]. Choko's
   watch stops time; his glyphs "record" strikes. — [[Lore]] § Що відомо
 - Choko and Skea are in **one squad**, very close comrades who went through a lot together. The squad's name, purpose
   and other members are **in development**. — [[2026-10-03-Choko-Skea-Bond-and-Curse]], [[2026-10-03-Skea-Curse-Lore-Answers]]
@@ -173,7 +173,7 @@ more later. Klio does **not** pick the character, only notes a fit to check:
 
 ### H9. The old building and the catacombs [P] — **CANON 2026-10-03** (clock tower; see [[Lore]])
 
-- **The old clock tower** (canon city references show a clock tower over Cronshift — [[Kronshift]]). Catacombs under
+- **The old clock tower** (canon city references show a clock tower over [[Cronshift]]). Catacombs under
   it. It ties Choko's watch, the city's name (*cron* — time) and the "stopped halfway" moment (H1-A) into one place.
 - Alternatives: an old archive, a shut-down station.
 
@@ -209,7 +209,7 @@ Canon: a clear picture of the curser goes into the book; maybe the name comes th
 ### H13. Choko's device and his AI [P] [?] — **CANON 2026-10-03** (brass printer box + AI in the watch; the wink is not canon; see [[Lore]])
 
 Canon: technician, talks to an AI, a device invented "ahead" that creates, visualises and prints pictures. Cronshift is
-Arcane-like, **not cyberpunk** ([[Kronshift]]), so Klio proposes the device looks like the city:
+Arcane-like, **not cyberpunk** ([[Cronshift]]), so Klio proposes the device looks like the city:
 
 - **A brass box with a lens, a crank and a paper spool** — half instant camera, half typewriter. The AI's answers come
   out as short printed strips; the pictures as stickers with a torn edge. Warm valve glow, no screens.
@@ -280,7 +280,7 @@ Style-Guide, Prompt-Library. Стиль — надрукований стіке�
 ## 4. Proposed arc [P]
 
 Story mode is out of scope for 0.x ([[01-Vision]] § Чого не робимо в 0.x) — this is a frame for later, and for arcade
-intros/endings now. Stages are the ones that already exist or are planned on [[Kronshift]].
+intros/endings now. Stages are the ones that already exist or are planned on [[Cronshift]].
 
 | part | beat | playable fight | stage |
 |---|---|---|---|
@@ -340,4 +340,4 @@ intros/endings now. Stages are the ones that already exist or are planned on [[K
 - This page stays a proposal until every item is answered; then it is archived, not merged into canon as a whole.
 
 ## Related
-- [[Lore]] · [[Skea]] · [[Choko]] · [[Roster]] · [[Kronshift]] · [[2026-10-03-Skea-Curse-Lore-Answers]] · [[2026-10-03-Choko-Skea-Bond-and-Curse]] · [[03-Skills-Framework]] · [[01-Vision]] · [[index]]
+- [[Lore]] · [[Skea]] · [[Choko]] · [[Roster]] · [[Cronshift]] · [[2026-10-03-Skea-Curse-Lore-Answers]] · [[2026-10-03-Choko-Skea-Bond-and-Curse]] · [[03-Skills-Framework]] · [[01-Vision]] · [[index]]

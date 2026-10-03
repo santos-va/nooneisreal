@@ -6,7 +6,7 @@
 
 ## Що хоче Santos
 
-Меню у високій якості, стиль Sketch-Cel ([[Style-Guide]]). Камера — **з даху хмарочоса** над [[Kronshift]] на
+Меню у високій якості, стиль Sketch-Cel ([[Style-Guide]]). Камера — **з даху хмарочоса** над [[Cronshift]] на
 присмерку. Унизу **ходять люди**, **їздять парові машини**. Раз на **випадкові 20–50 с** з-за краю хмарочоса
 **пролітає на гарпуні** герой, **по черзі**: Choko → Skea → Choko… Пункти меню не заважають.
 
@@ -77,4 +77,4 @@
 Рекомендація Дедала: **Б1 одразу після меню** — той самий арт-конвеєр, мінімум нових кредитів.
 
 ## Related
-- [[2026-10-03-Main-Menu-and-Chain]] · [[2026-10-03-Production-Plan]] · [[06-UI-UX]] · [[Style-Guide]] · [[Kronshift]] · [[04-Grapple-System]] · [[Asset-Manifest]] · [[state]]
+- [[2026-10-03-Main-Menu-and-Chain]] · [[2026-10-03-Production-Plan]] · [[06-UI-UX]] · [[Style-Guide]] · [[Cronshift]] · [[04-Grapple-System]] · [[Asset-Manifest]] · [[state]]

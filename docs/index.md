@@ -7,7 +7,7 @@
 
 3D cel-shaded файтинг на арені (динаміка як у *Naruto Storm*, малюнок — власний «Sketch-Cel», **не аніме**),
 з Euphoria-подібним active ragdoll і гарпуном на зарядах. Персонажі — з власного аніме
-Santos і товариша (лідер команди [[Choko]] — контроль часу, другий боєць [[Skea]] — Muay Thai і тіні), місто — [[Kronshift]].
+Santos і товариша (лідер команди [[Choko]] — контроль часу, другий боєць [[Skea]] — Muay Thai і тіні), місто — [[Cronshift]].
 Движок — Godot 4.7, GDScript ([[ADR-001-Engine-Godot]]).
 
 ## Карта
@@ -21,7 +21,7 @@ Santos і товариша (лідер команди [[Choko]] — контро
 | **Меню «погляд з даху»** | [[2026-10-03-Main-Menu-Skyline]] · [[2026-10-03-Character-Select]] — ланцюжок issues у [[state]] |
 | Платформи та UI | [[05-Platforms-Input]] · [[06-UI-UX]] · [[07-Audio]] |
 | Персонажі | [[Choko]] · [[Skea]] · [[Roster]] |
-| Світ | [[Kronshift]] · [[Stage-River]] · [[Lore]] |
+| Світ | [[Cronshift]] · [[Stage-River]] · [[Lore]] |
 | Арт | [[Style-Guide]] · [[Textures-Registry]] · [[Backgrounds]] · [[Pipeline-2D-to-3D]] · [[Prompts]] · [[VFX-Direction]] · [[Higgsfield-Pipeline]] · [[Asset-Manifest]] · [[Prompt-Library]] |
 | Техніка | [[Architecture]] · [[Active-Ragdoll]] · [[Cel-Shading]] · [[Build-and-Run]] · [[Export-Platforms]] · [[Testing]] · [[Animation-Plan]] · [[Library]] |
 | Рішення | [[ADR-001-Engine-Godot]] · [[ADR-002-2.5D-First]] · [[ADR-003-Docs-As-Wiki]] · [[ADR-004-Physics-Is-Presentation]] · [[ADR-005-Grapple-Charges]] · [[ADR-006-Equal-Kit-Structure]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-008-Audio-Sourcing]] · [[ADR-009-Solo-Keyboard-Layout]] · [[ADR-010-City-Name-Cronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[ADR-013-License-Check-At-Release]] · [[ADR-014-Free-Movement-Layout]] · [[ADR-015-Solo-Camera-Behind-Fighter]] · [[ADR-016-Player-Decides-What-Body-Decides-How]] · [[ADR-017-Post-Ragdoll-Position]] |
