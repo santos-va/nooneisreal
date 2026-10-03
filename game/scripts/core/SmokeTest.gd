@@ -31,6 +31,9 @@ var _picks_p: Dictionary = {}
 ## Design numbers as written in docs/GDD/02-Combat-System.md § «Поле → значення → джерело» (T5 Арес).
 ## Literals on purpose (T4 Феміда, audit 0.3-7 п. 8): the smoke must not compare the code with its own
 ## constants, or a number drifting away from the GDD would never turn it red.
+## Whole-run timeout, physics frames (each stage also has its own `_f > _f0 + N`). T1 2026-10-03: ×2 (was 19000), with
+## Makefile's `--quit-after` (40000) above it, so the named in-smoke timeout fires first (T4 Launch 5/6 п. 4, proposal 5).
+const FRAME_BUDGET := 38000
 const GDD_ARENA_RADIUS := 20.0          # 02 § Коло арени, Арес 2026-10-03 (Р4), was 12.5
 const GDD_YAW_CLAMP_DEG := 3.0
 const GDD_PULLBACK_LAG_DEG := 15.0
@@ -422,6 +425,7 @@ func _finish() -> void:
 	GameState.set_free_move(false)
 	GameState.skeletal_rig = false
 	print("[smoke] ALL OK (%d checks) in %d frames" % [_oks.size(), _f])
+	print("[smoke] budget used %d / %d frames (%.0f %%)" % [_f, FRAME_BUDGET, 100.0 * float(_f) / float(FRAME_BUDGET)])
 	get_tree().quit(0)
 
 
@@ -802,7 +806,7 @@ func _physics_process(_delta: float) -> void:
 	if _done:
 		return
 	_f += 1
-	if _f > 19000:
+	if _f > FRAME_BUDGET:
 		_fail("timeout at stage %d (p1 %d, p2 %d)" % [_stage, p1.state if p1 else -1, p2.state if p2 else -1])
 		return
 	if arena == null:
