@@ -66,6 +66,9 @@ Godot у хмарі (перевірено 2026-10-03): `curl -sL -o g.zip https:
 запуску 6 уже в `main` (PR #59: [[02-Combat-System]] § Камера за спиною і плавність, позначені PLACEHOLDER). ~~Якщо після запуску 4 моделей ще немає в `game/assets/`, Гефест бере 6,
 потім 5.~~ Моделі вже в `game/assets/characters/models/` (PR santos-va/nooneisreal#67), тож після 4 іде **5, потім 6**. Запуск 3b
 стає між 4 і 5, щойно змерджено крок 1 Ареса з [[2026-10-03-Skea-Ult-Bass]]. До того 3b не блокує 5.
+**Пропозиція T1 (2026-10-03, чекає «так» Santos):** крок 1 Ареса вже змерджено (PR #76, #78), і за правилом вище 3b стає
+перед 5. Santos питає, коли побачить героїв у їхньому дизайні з анімаціями, тому T1 пропонує йти **4 → 5 → 3b → 6**.
+Так справжні Choko і Skea з'являються на один повний цикл PR раніше, а ульта під бас іде одразу після них.
 
 **Паралельно, без коду:** Арес — #36 C3 (PR #55) і числа камери (PR #59) — обидва змерджено; Феміда — на кожен PR запуску. Терміналів, що
 пишуть у `game/` або `state.md`, одночасно не більше трьох.
@@ -95,25 +98,68 @@ Godot у хмарі (перевірено 2026-10-03): `curl -sL -o g.zip https:
 
 ## Як запустити (Mac)
 
-**Спершу — робоча копія поза iCloud.** Феміда знайшла в `~/Documents/nooneisreal` 75 дублікатів iCloud « 2», з них 56 у
-`game/assets/audio/sfx`, і гейти на Mac через них червоніють не через код (аудит 0.3-7 п. 16, PR #53). Старої копії не
-видаляй, доки нова не запуститься:
+**Гра — в окремій копії, де агенти не працюють** (T1 2026-10-03, [[2026-10-03-T1-Godot-Crash-Fresh-Build]]). Феміда й Кліо
+працюють локально в `~/Documents/nooneisreal` (їхні журнали: «у робочій копії (iCloud)»). Там же в iCloud Феміда знайшла 75
+дублікатів « 2», з них 56 у `game/assets/audio/sfx`, і через них гейти на Mac червоні, хоча код тут ні до чого (аудит 0.3-7
+п. 16, PR #53). Тому для гри потрібна окрема копія `~/dev/nir-play` поза iCloud. Агенти в ній не працюють, і Godot відкривається
+лише там. Старої копії не видаляй:
 
 ```bash
+# Godot закритий повністю (Cmd+Q)
 export GODOT_BIN=/Applications/Godot.app/Contents/MacOS/Godot
 mkdir -p ~/dev && cd ~/dev
-git clone https://github.com/santos-va/nooneisreal.git
-cd nooneisreal
-make fetch-assets           # фони з CDN (хмара їх не бачить); моделі — після запуску 5
-make run                    # до запуску 2 — площина; після — одразу 3D
+git clone https://github.com/santos-va/nooneisreal.git nir-play
+cd nir-play
+git log --oneline -1        # коміт main, який ти зараз граєш
+make import                 # → «імпорт готовий»
+make run
 ```
 
-Далі щоразу — `cd ~/dev/nooneisreal && make update && make run`.
+Далі щоразу: закрити Godot, потім `cd ~/dev/nir-play && make update BRANCH=main && make run`. Гілка PR —
+`make update BRANCH=<гілка>`. Фони вже в git (`git ls-files game/assets/backgrounds | wc -l` → 10), тож `make fetch-assets`
+для гри не потрібен.
 
-- До запуску 2: 3D — `"$GODOT_BIN" --path game -- --free-move`.
-- Після запуску 2: `make run` — це 3D, а стара площина — `"$GODOT_BIN" --path game -- --plane`.
+- `make run` — 3D; стара площина — `"$GODOT_BIN" --path game -- --plane`.
+- Запускай через `make run`, а не з іконки Godot: іконка відкриває Project Manager і може взяти іншу, стару копію.
+
+## Godot падає, поки агент працює (T1 2026-10-03)
+
+**Симптом (Santos):** Godot відкривається з помилкою, з'являється кнопка Reopen, після неї — порожній Godot без гри. Кнопка
+«Reopen» є в системному вікні macOS «Godot quit unexpectedly»: вона перезапускає застосунок **без аргументів**, тобто без
+`--path game`, і тому відкривається Project Manager. Це загальна поведінка macOS. Звіту про падіння T1 не бачив.
+
+**Механізм відтворено в хмарі** на Godot `4.7.2.stable.official.ed1daf0bf`, `main` `0ce296c`. Гра запускалась як
+`--headless -- --smoke`, у тій самій теці `game/`, де одночасно працював інший процес Godot:
+
+| сценарій | що робить агент | гра |
+|---|---|---|
+| кеш класів ще пишеться | `--import` після стертого `.godot/` (свіжий клон, `make check`) | 6 з 6: `Could not find type "CharacterData"`, `Failed to load script "res://scripts/core/GameState.gd"`, `Main.gd` не вантажиться |
+| повний переімпорт | `--import` після стертого `.godot/imported/` | 3 з 3: rc=1, `Unable to open file: res://.godot/imported/bg_kronshift_back_alley.webp-….ctex`, звуки не вантажаться |
+| перемкнув гілку | кеш зібрано на `28deba3` (до Printer), далі `checkout` на `main` без імпорту | `Could not find type "Printer"`, 8 помилок |
+
+Кожен `make check` запускає ще 38 процесів Godot на ту саму теку: імпорт, 36 `--check-only` (`find game -name '*.gd' | wc -l`
+→ 36) і smoke. Хук `gd_check.sh` додає ще один процес на кожен записаний `.gd`. На Linux headless справжнього падіння
+(сигналу) не було, гра просто стартує зламаною. Чи саме це валить вікно на Mac — **не перевірено**, для цього потрібен звіт.
+Де його взяти: кнопка «Report…» у тому ж вікні або `ls -t ~/Library/Logs/DiagnosticReports | grep -i godot | head -3`.
+Лог гри лежить у `user://logs/godot.log` (у хмарі — `~/.local/share/godot/app_userdata/No One Is Real/logs/godot.log`; на Mac
+корінь `user://` — `~/Library/Application Support/Godot/app_userdata/No One Is Real/`, на Mac не перевірено).
+
+**Що робимо:**
+
+1. **Santos, без коду, одразу:** гра — лише в `~/dev/nir-play` (§ Як запустити). Агентам `~/dev/nir-play` не давати.
+   Перед `make update` закрити Godot.
+2. **Гефест, малий PR «чесний `make run`»** — не запуск і не блокує 4/5. Можна взяти між запусками. Що змінюємо:
+   `Makefile`. Ризик: `make run` стане довшим на один імпорт після кожного `git pull`.
+   - (а) `run` / `run-plane` / `editor` імпортують проєкт не лише тоді, коли кешу нема, а й коли HEAD змінився з
+     останнього імпорту. Штамп — `git rev-parse HEAD` у `game/.godot/` (тека в `.gitignore`).
+   - (б) `run` і `check` відмовляють, коли на цю ж теку `game/` уже працює інший процес Godot (наприклад,
+     `pgrep -f -- "--path $(realpath game)"`; форму на macOS Гефест звіряє сам).
+
+   **Як перевіряється:** `git checkout 28deba3 && make import && git checkout main && make run` → перед грою з'являється
+   рядок «── імпорт проєкту», а в лозі нуль `Could not find type`. Другий `make run` імпорту не запускає. При запущеному
+   `make run` друга команда `make check` у тій самій копії відмовляє з rc≠0. Плюс `make check` → `ALL OK`, `make gates` → rc=0.
 
 ## Related
 - [[state]] · [[Roadmap]] · [[2026-10-03-First-Fight-Recap]] · [[2026-10-03-Prototype-0.3-Free-Movement]] ·
   [[2026-10-03-Picks-to-Game-and-Animation]] · [[2026-10-03-Animation-Sources]] · [[2026-10-03-C2-3D-Heroes]] ·
-  [[2026-10-03-Ares-Printer-Items]] · [[ADR-014-Free-Movement-Layout]] · [[ADR-015-Solo-Camera-Behind-Fighter]] · [[ADR-016-Player-Decides-What-Body-Decides-How]] · [[2026-10-03-Living-Combat]] · [[2026-10-03-Free-Movement-References]] · [[2026-10-03-Fight-Craft-Research]] · [[2026-10-03-launch-4-ual-source]] · [[2026-10-03-Launch-2-PR60]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[02-Combat-System]] · [[03-Skills-Framework]] · [[05-Platforms-Input]] · [[06-UI-UX]] · [[Textures-Registry]]
+  [[2026-10-03-Ares-Printer-Items]] · [[ADR-014-Free-Movement-Layout]] · [[ADR-015-Solo-Camera-Behind-Fighter]] · [[ADR-016-Player-Decides-What-Body-Decides-How]] · [[2026-10-03-Living-Combat]] · [[2026-10-03-Free-Movement-References]] · [[2026-10-03-Fight-Craft-Research]] · [[2026-10-03-launch-4-ual-source]] · [[2026-10-03-Launch-2-PR60]] · [[2026-10-03-T1-Godot-Crash-Fresh-Build]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[02-Combat-System]] · [[03-Skills-Framework]] · [[05-Platforms-Input]] · [[06-UI-UX]] · [[Textures-Registry]]
