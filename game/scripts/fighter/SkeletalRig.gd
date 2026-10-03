@@ -14,19 +14,17 @@ const EXTRA_LIBRARY := "res://assets/animations/ual/UAL2.glb"
 const EXTRA_PREFIX := "ual2"
 ## Clips per fighter state — docs/GDD/02-Combat-System.md § Кліп → удар, «Спільні стани» (T5 Арес). Names are the
 ## GLB names; Godot's importer drops the `_Loop` suffix and loops the clip, so clip_name() maps them.
-## HITSTUN low has no clip in GDD 02 (capsule flinch spring) — it uses mid until table 4a says otherwise.
+## Per-fighter clips (stance, dash, get-up) live in CharacterData; attack clips in MoveData.
 const STATE_CLIPS := {
 	"walk": "Walk_Loop",
 	"walk_back": "Walk_Bwd_Loop",
 	"crouch": "Crouch_Idle_Loop",
 	"jump": "Jump_Loop",
-	"dash": "Roll",
 	"block": "Sword_Block",
 	"hit_high": "Hit_Head",
 	"hit_mid": "Hit_Chest",
-	"hit_low": "Hit_Chest",
+	"hit_low": "Hit_Stomach",
 	"knockdown": "Hit_Knockback",
-	"getup": "LayToIdle",
 	"ko": "Death01",
 }
 ## The model faces +Z; the capsule rig (and every hitbox_offset) faces +X.
@@ -75,26 +73,35 @@ func clip_name(glb_name: String) -> String:
 	return ""
 
 
-## Clip time for attack frame `frame` (0 = first startup frame). Startup maps 0 → `contact`, so the contact pose is
-## on the first active frame; active + recovery map `contact` → the clip's end. Without a measured contact time the
-## clip spans startup + active (GDD 02 § Кліп → удар) and recovery holds its last pose.
-static func attack_clip_time(frame: int, startup: int, active: int, recovery: int, length: float, contact: float) -> float:
+## Time in the first attack clip at attack frame `frame` (0 = first startup frame); the clip spans `span` frames
+## (startup + active with a _Rec clip, the whole move without). Startup maps 0 → `contact`, so the contact pose is on
+## the first active frame; the rest of the span maps `contact` → the clip's end. contact 0 = not measured: linear.
+static func attack_clip_time(frame: int, startup: int, span: int, length: float, contact: float) -> float:
 	if length <= 0.0:
 		return 0.0
-	if contact <= 0.0 or contact >= length:
-		var window := maxi(startup + active, 1)
-		return clampf(float(frame) / float(window), 0.0, 1.0) * length
+	if contact <= 0.0 or contact >= length or span <= startup:
+		return clampf(float(frame) / float(maxi(span, 1)), 0.0, 1.0) * length
 	if frame <= startup:
 		return contact * float(frame) / float(maxi(startup, 1))
-	var rest := maxi(active + recovery, 1)
-	return contact + (length - contact) * clampf(float(frame - startup) / float(rest), 0.0, 1.0)
+	return contact + (length - contact) * clampf(float(frame - startup) / float(span - startup), 0.0, 1.0)
+
+
+## The attack's clip names and contact for this swing: [clip, rec clip, contact] (odd chain hits use *_chain).
+static func attack_clips(m: MoveData, chain_index: int) -> Array:
+	if chain_index % 2 == 1 and m.anim_clip_chain != "":
+		return [m.anim_clip_chain, m.anim_clip_chain_rec, m.contact_time_chain]
+	return [m.anim_clip, m.anim_clip_rec, m.contact_time]
 
 
 ## GLB clip this fighter state plays (attacks: the move's anim_clip; "" = hold the stance).
 func state_clip(f: Fighter) -> String:
 	match f.state:
 		Fighter.State.ATTACK:
-			return f.current_move.anim_clip if f.current_move != null else ""
+			if f.current_move == null:
+				return ""
+			var c := attack_clips(f.current_move, f.chain_index)
+			var m := f.current_move
+			return c[1] if c[1] != "" and f.move_frame >= m.startup + m.active else c[0]
 		Fighter.State.WALK:
 			var along := f.velocity.dot(f.forward) if GameState.free_move else f.velocity.x * float(f.facing)
 			return STATE_CLIPS["walk_back"] if along < -0.1 else STATE_CLIPS["walk"]
@@ -103,7 +110,7 @@ func state_clip(f: Fighter) -> String:
 		Fighter.State.JUMP, Fighter.State.GRAPPLE:
 			return STATE_CLIPS["jump"]
 		Fighter.State.DASH:
-			return STATE_CLIPS["dash"]
+			return f.data.dash_clip
 		Fighter.State.BLOCK, Fighter.State.BLOCKSTUN:
 			return STATE_CLIPS["block"]
 		Fighter.State.HITSTUN, Fighter.State.STUMBLE:
@@ -111,7 +118,7 @@ func state_clip(f: Fighter) -> String:
 		Fighter.State.LAUNCHED, Fighter.State.KNOCKDOWN, Fighter.State.WALL_SPLAT:
 			return STATE_CLIPS["knockdown"]
 		Fighter.State.GETUP:
-			return STATE_CLIPS["getup"]
+			return f.data.getup_clip
 		Fighter.State.KO:
 			return STATE_CLIPS["ko"]
 	return f.data.idle_clip
@@ -132,13 +139,21 @@ func _physics_process(delta: float) -> void:
 	var want := clip_name(state_clip(_fighter))
 	if want == "":
 		want = clip_name(_fighter.data.idle_clip)
+	if want == "":
+		return   # no stance clip either (bad .tres name — the smoke names it)
 	var anim := player.get_animation(want)
 	if want != clip:
 		clip = want
 		player.play(clip)
-	if _fighter.state == Fighter.State.ATTACK and _fighter.current_move != null:
+	if _fighter.state == Fighter.State.ATTACK and _fighter.current_move != null and clip_name(state_clip(_fighter)) == clip:
 		var m := _fighter.current_move
-		clip_pos = attack_clip_time(_fighter.move_frame, m.startup, m.active, m.recovery, anim.length, m.contact_time)
+		var c := attack_clips(m, _fighter.chain_index)
+		var window := m.startup + m.active
+		if c[1] != "" and _fighter.move_frame >= window:
+			clip_pos = anim.length * clampf(float(_fighter.move_frame - window) / float(maxi(m.recovery, 1)), 0.0, 1.0)
+		else:
+			var span := window if c[1] != "" else window + m.recovery
+			clip_pos = attack_clip_time(_fighter.move_frame, m.startup, span, anim.length, c[2])
 	elif anim.loop_mode != Animation.LOOP_NONE:
 		clip_pos = fmod(float(_state_frames) * delta, anim.length)
 	else:

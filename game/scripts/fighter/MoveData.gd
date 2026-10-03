@@ -10,12 +10,17 @@ enum Kind { NORMAL, SKILL, ULTIMATE, THROW }
 @export var kind: Kind = Kind.NORMAL
 @export var anim: String = "light"            # pose family used by RigAnimator
 @export var anim_chain: String = ""           # alternate pose on odd chain hits (jab → elbow)
-## C1 mannequin (GameState.skeletal_rig): UAL clip name as in the GLB (e.g. "Sword_Regular_A"), "" = stance only.
-## Values come from docs/GDD/02-Combat-System.md § Кліп → удар (T5 Арес, table 4a).
+## C1 mannequin (GameState.skeletal_rig): UAL clip names as in the GLB, "" = stance only — docs/GDD/02-Combat-System.md
+## § Кліп → удар (T5 Арес, table 4a). With anim_clip_rec ("attack + _Rec") the first clip plays over startup + active
+## and _Rec over recovery; without it the clip is whole over the move. *_chain: odd chain hits (like anim_chain).
 @export var anim_clip: String = ""
-## Second in anim_clip with the contact pose; it lands on the first active frame. 0 = not measured: the clip
-## spans startup + active (scripts/fighter/SkeletalRig.gd attack_clip_time()).
+@export var anim_clip_rec: String = ""
+@export var anim_clip_chain: String = ""
+@export var anim_clip_chain_rec: String = ""
+## Second in the first clip with the contact pose; it lands on the first active frame. Measured by script (the
+## striking bone's furthest reach forward, docs/Fix/2026-10-03-launch-4-mannequin.md), not by eye. 0 = not measured.
 @export var contact_time: float = 0.0
+@export var contact_time_chain: float = 0.0
 @export var startup: int = 5
 @export var active: int = 3
 @export var recovery: int = 10
