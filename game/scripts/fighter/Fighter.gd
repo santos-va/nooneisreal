@@ -949,6 +949,26 @@ func get_pulled(target_x: float, stun: int) -> void:
 	_set_state(State.HITSTUN)
 
 
+## Free movement version of get_pulled(): pulled to a point on the ground plane (y ignored).
+func get_pulled_to(target: Vector3, stun: int) -> void:
+	if state == State.KO or state == State.LAUNCHED or frozen_frames > 0:
+		return
+	if state == State.GRAPPLE:
+		grapple.detach()
+	var d := _flat(target - global_position)
+	var t := float(stun) / 60.0
+	var v0 := (d.length() + 0.5 * HIT_FRICTION * t * t) / maxf(t, 0.05)
+	var dir := d.normalized() if d.length() > MIN_LINE else Vector3.ZERO
+	velocity.x = dir.x * v0
+	velocity.z = dir.z * v0
+	velocity.y = 2.5
+	stun_frames = stun
+	combo_count = 0
+	animator.flinch(Vector3(dir.dot(forward) * float(facing), 0, 0), 60.0, facing)
+	Sfx.play("hit_light", -6)
+	_set_state(State.HITSTUN)
+
+
 func _apply_hitstop(other: Fighter, frames: int) -> void:
 	hitstop_frames = maxi(hitstop_frames, frames)
 	if other:
@@ -1204,6 +1224,11 @@ func _free() -> bool:
 	return GameState.free_move
 
 
+## This frame's camera-relative stick in world space (zero in the plane mode or without control).
+func wish() -> Vector3:
+	return _wish
+
+
 static func _flat(v: Vector3) -> Vector3:
 	return Vector3(v.x, 0.0, v.z)
 
@@ -1234,10 +1259,15 @@ func _ahead(dist: float, y: float = 0.0) -> Vector3:
 	return Vector3(float(facing) * dist, y, 0.0)
 
 
+## Ground friction on horizontal speed. Free movement slows the (x, z) vector as a whole: per-axis
+## friction would stop diagonal motion √2× sooner than motion along an axis.
 func _friction(amount: float) -> void:
-	velocity.x = move_toward(velocity.x, 0.0, amount)
-	if _free():
-		velocity.z = move_toward(velocity.z, 0.0, amount)
+	if not _free():
+		velocity.x = move_toward(velocity.x, 0.0, amount)
+		return
+	var h := Vector2(velocity.x, velocity.z).move_toward(Vector2.ZERO, amount)
+	velocity.x = h.x
+	velocity.z = h.y
 
 
 ## Plane: |x| ≤ ARENA_HALF_WIDTH. Free movement: inside the circle of ARENA_RADIUS (hard edge for

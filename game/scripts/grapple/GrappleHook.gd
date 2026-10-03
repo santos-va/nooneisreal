@@ -24,6 +24,7 @@ var zip_accel: float = 70.0
 var release_boost: float = 1.15
 var max_speed: float = 26.0
 var steer_accel: float = 14.0
+var cone_deg: float = 30.0      # free movement only (docs/GDD/04-Grapple-System.md § Конус вибору в 3D)
 
 var attached: bool = false
 var anchor_point: Vector3 = Vector3.ZERO
@@ -41,6 +42,7 @@ func setup(f: Fighter) -> void:
 	cooldown = f.data.grapple_cooldown
 	regen_all = f.data.grapple_regen_all_at_once
 	range_m = f.data.grapple_range
+	cone_deg = f.data.grapple_cone_deg
 	_rope_mesh = ImmediateMesh.new()
 	_rope = MeshInstance3D.new()
 	_rope.mesh = _rope_mesh
@@ -93,6 +95,8 @@ func fire(prefer_enemy: bool) -> int:
 	if opp != null and opp.hurtbox_enabled():
 		var to_opp := opp.global_position - fighter.global_position
 		enemy_ok = to_opp.length() <= range_m and to_opp.length() > 1.2 and signf(to_opp.x) == float(fighter.facing)
+		if GameState.free_move:
+			enemy_ok = to_opp.length() <= range_m and to_opp.length() > 1.2 and _in_cone(to_opp, fighter.forward)
 	var anchor := _best_anchor()
 	var target := Target.NONE
 	if prefer_enemy and enemy_ok:
@@ -122,10 +126,32 @@ func _spend() -> void:
 	changed.emit(charges, cooldown_left, max_charges)
 
 
+## Free movement: the cone axis — the camera-relative stick when it is deflected, else where the
+## fighter looks (lock-on, i.e. at the opponent).
+func aim_axis() -> Vector3:
+	var w := fighter.wish()
+	return Vector3(w.x, 0.0, w.z).normalized() if Vector3(w.x, 0.0, w.z).length() > 0.1 else fighter.forward
+
+
+## Yaw-only cone test: is `to` within cone_deg of `axis` on the ground plane? A target straight
+## above has no yaw and counts as inside.
+func _in_cone(to: Vector3, axis: Vector3) -> bool:
+	var flat := Vector3(to.x, 0.0, to.z)
+	if flat.length() < 0.05:
+		return true
+	return flat.normalized().dot(axis) >= cos(deg_to_rad(cone_deg))
+
+
+## The anchor fire() would pick right now (null = none); public for the smoke test.
+func best_anchor() -> Node3D:
+	return _best_anchor()
+
+
 func _best_anchor() -> Node3D:
 	var best: Node3D = null
 	var best_score := INF
 	var origin := fighter.global_position + HAND
+	var axis := aim_axis() if GameState.free_move else Vector3.ZERO
 	for n in get_tree().get_nodes_in_group("grapple_anchor"):
 		var a := n as Node3D
 		if a == null:
@@ -137,6 +163,10 @@ func _best_anchor() -> Node3D:
 		if to.y < 1.5:
 			continue
 		var fwd := to.x * float(fighter.facing)
+		if GameState.free_move:
+			if not _in_cone(to, axis):
+				continue
+			fwd = Vector3(to.x, 0.0, to.z).dot(axis)
 		if fwd < -1.5:
 			continue
 		var score := d - fwd * 0.6
@@ -160,8 +190,12 @@ func drive(delta: float, held: bool) -> void:
 	if zipping or held:
 		rope_length = maxf(rope_length - reel_speed * delta, 1.0)
 		f.velocity += to_anchor.normalized() * zip_accel * delta
-	var steer := InputRouter.axis(f.player_index) if not f.control_locked else 0.0
-	f.velocity.x += steer * steer_accel * delta
+	if GameState.free_move:
+		var w := f.wish()
+		f.velocity += Vector3(w.x, 0.0, w.z) * steer_accel * delta   # camera-relative stick
+	else:
+		var steer := InputRouter.axis(f.player_index) if not f.control_locked else 0.0
+		f.velocity.x += steer * steer_accel * delta
 	var next := hand + f.velocity * delta
 	var off := next - anchor_point
 	if off.length() > rope_length:
@@ -169,7 +203,8 @@ func drive(delta: float, held: bool) -> void:
 		next = anchor_point + n * rope_length
 		f.velocity -= maxf(0.0, f.velocity.dot(n)) * n
 	f.velocity = (next - hand) / delta
-	f.velocity.z = 0.0
+	if not GameState.free_move:
+		f.velocity.z = 0.0
 	if f.velocity.length() > max_speed:
 		f.velocity = f.velocity.normalized() * max_speed
 	f.move_and_slide()
@@ -185,7 +220,12 @@ func _release(reached: bool) -> void:
 	f.velocity *= release_boost
 	if reached:
 		f.velocity.y = maxf(f.velocity.y, 3.5)
-		f.velocity.x = clampf(f.velocity.x, -8.0, 8.0)
+		if GameState.free_move:
+			var h := Vector3(f.velocity.x, 0.0, f.velocity.z).limit_length(8.0)
+			f.velocity.x = h.x
+			f.velocity.z = h.z
+		else:
+			f.velocity.x = clampf(f.velocity.x, -8.0, 8.0)
 	Sfx.play("grapple_release", -8)
 	detach()
 
@@ -201,11 +241,18 @@ func detach() -> void:
 func pull_enemy(opp: Fighter) -> void:
 	var f := fighter
 	var to_opp := opp.global_position - f.global_position
-	if to_opp.length() > range_m or signf(to_opp.x) != float(f.facing) or not opp.hurtbox_enabled():
-		Sfx.play("whoosh", -6)
-		return
-	var target_x := f.global_position.x + float(f.facing) * 1.25
-	opp.get_pulled(target_x, 22)
+	if GameState.free_move:
+		# along the gaze, in the same cone (docs/GDD/04-Grapple-System.md)
+		if to_opp.length() > range_m or not _in_cone(to_opp, f.forward) or not opp.hurtbox_enabled():
+			Sfx.play("whoosh", -6)
+			return
+		opp.get_pulled_to(f.global_position + f.forward * 1.25, 22)
+	else:
+		if to_opp.length() > range_m or signf(to_opp.x) != float(f.facing) or not opp.hurtbox_enabled():
+			Sfx.play("whoosh", -6)
+			return
+		var target_x := f.global_position.x + float(f.facing) * 1.25
+		opp.get_pulled(target_x, 22)
 	_draw_rope(f.global_position + HAND, opp.global_position + Vector3(0, 1.1, 0))
 	_rope.visible = true
 	_flash_time = 0.12
