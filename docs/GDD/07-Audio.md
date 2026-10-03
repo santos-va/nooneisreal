@@ -44,10 +44,54 @@
 | OpenGameArt «Swishes Sound Pack» | CC0 | 13 свистів |
 
 Ці сайти **закриті для хмарного агента** (egress), тому прямі посилання не перевірені. Завантажує Santos на Mac,
-далі зборку робить скрипт `tools/audio/build_sfx.sh` (фаза 1): бере zip-и з `~/Downloads/nir-audio/`, нарізає,
-нормалізує, шарує й кладе в `game/assets/audio/sfx/` + реєструє в [[Textures-Registry]].
+далі зборку робить скрипт `tools/audio/build_sfx.sh`: бере паки (zip або розпаковані теки) з `tools/audio/nir-audio/`
+(інакше `~/Downloads/nir-audio/`), нарізає, нормалізує, шарує й кладе в `game/assets/audio/sfx/` + реєструє в
+[[Textures-Registry]]. Стан на Mac — розділ нижче.
 
 **Не з Higgsfield:** моделі SFX/музики там заборонені для окремого аудіо описом інструмента ([[Higgsfield-Pipeline]]).
+
+## Бібліотека на Mac (2026-10-03)
+
+**Що лежить.** `tools/audio/nir-audio/` (у `.gitignore`, ~6.8 ГБ): Sonniss GDC 2024 частини 1–2 і Kenney
+Interface Sounds — 406 звуків у 92 паках (`python3 tools/audio/catalog.py`). Ліцензії прочитано у файлах паків:
+Sonniss `License - GDC Game Audio.pdf` — комерційно, з правками, без атрибуції; не продавати «як є»; **жодного
+використання для AI** (сирі звуки не вантажимо в генератори); Kenney `License.txt` — CC0. Сирі файли в цей
+публічний репо не потрапляють — лише зібрані з них ігрові звуки.
+
+**Як розкладено.** Бандли лежать як завантажені (ліцензія їде з бандлом); сортування — вид поверх:
+`tools/audio/nir-audio/_by-category/<полиця>/<пак>` (посилання). Полиці — `tools/audio/library_categories.tsv`:
+combat 9 паків · destruction 3 · energy 7 · cinematic 7 · ui 7 · mechanisms 7 · foley 6 · voices 6 ·
+ambience-city 19 · ambience-nature 11 · vehicles-guns 10. Каталог `tools/audio/library_catalog.tsv` (у git) —
+полиця, пак, файл, тривалість, пік і моменти окремих ударів у дублях до 30 с: з нього хмарні сесії пишуть рецепти,
+не бачачи бібліотеки.
+
+**Що зібрано.** 40 `.ogg` на всі 22 події `Sfx` (рецепти — `tools/audio/sfx_recipes.tsv`; `.wav`-синтетика лишилась,
+`Sfx` бере `.ogg` першим):
+
+| подія | варіанти | з чого |
+|---|---|---|
+| hit_light | 4 | картонний удар (класичний фолі-панч) + аніме «noise punch» + мокрий шльопок + трохи сабу |
+| hit_heavy | 4 | дворучна сокира в плоть (4 дублі) + аніме-панч + кам'яний тріск + кінематографічний саб |
+| block | 4 | металевий щит під ударом (4 дублі) + глухе тіло |
+| whoosh | 4 | розриви бавовни (форма «вжуху») + шматок важкого sci-fi свисту знизу |
+| kunai | 3 | рикошети металу (3 дублі) + дзенькіт сталевого прута |
+| sword | 3 | «шінг» ножиць по металу + скрегіт клинка + тіло сокири |
+| crit | 2 | хрускіт кістки + удар по склу + тихий дзвін |
+| land | 2 | картонний удар + саб |
+| grapple_fire / _hit / _release / _denied | 1 | пневмопостріл + пара · металевий удар + брязкіт ланцюга · важіль + натяг кабелю · сухий клац + Kenney error |
+| flash | 1 | sci-fi «зап» + електричне потріскування + повітря |
+| smoke | 1 | викид пари + «чорний дим» хімзброї + глухий хлопок |
+| book | 1 | важка сторінка книги + темний скляний тон |
+| rewind | 1 | реверс металу + реверс годинникових тиків |
+| time_stop | 1 | тік годинника + металевий дзвін + бум |
+| ko · ultimate · round_start | 1 | металевий трейлерний бум + сокира + хрускіт · трейлерний удар + аніме power-up · гонг |
+| ui_move · ui_confirm | 1 | Kenney select / confirmation |
+
+Добір — за огинаючою, яскравістю й назвою, **не на слух**: `start_ms` у рецептах стоїть за ~10 мс до піку кожного
+удару, щоб контакт звучав на t=0. Слух — за Santos: `bash tools/audio/audition.sh` (усі), `AB=1 bash
+tools/audio/audition.sh hit_` (синтетика → бібліотека). Вердикт — правка рядка рецепта і `bash tools/audio/build_sfx.sh`.
+Енкодер: у Homebrew-ffmpeg немає libvorbis, тому `.ogg` кодує `oggenc` (`brew install vorbis-tools`).
+Деталі сесії — [[2026-10-03-Sound-Library]].
 
 ## Напрям
 
@@ -59,4 +103,4 @@
 - Голоси й саундтреки — свої, фаза 5.
 
 ## Related
-- [[Textures-Registry]] · [[2026-10-02-Animation-Assets-Pipeline]] · [[Roadmap]]
+- [[Textures-Registry]] · [[2026-10-02-Animation-Assets-Pipeline]] · [[Roadmap]] · [[2026-10-03-Sound-Library]]
