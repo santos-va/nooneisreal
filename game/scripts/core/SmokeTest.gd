@@ -639,10 +639,66 @@ func _stage_a3_anchors_cover() -> void:
 		return
 	GameState.night = false
 	_ok("A3 anchors + cover (04 § Якорі й укриття): %s; passage walkable, stall blocks a fighter and a line of sight" % "; ".join(_a2_seen))
+	if not _check_hud():   # fountain at night: the darkest arena behind the HUD
+		return
 	_a2_k = -1
 	_a2_seen = []
 	_load_arena(2, 140)   # back to an arena without cover: the 3c stage puts the fighters at the centre (fountain bowl)
 
+
+
+## 06-UI-UX § Контраст HUD, Santos's variant 2: no plate; every bar, round pip, grapple charge and dash cell wears an ink
+## ring 2 outside a cream ring 1, both clear inside; bars keep the dark well; a cooldown fills its cell from the bottom
+## (not a darkened colour); Skea's dash is `#B679F5`.
+func _check_hud() -> bool:
+	var hud: Hud = arena.hud
+	var want := 0
+	for f: Fighter in [p1, p2]:
+		want += 2 + GameState.rounds_to_win + f.data.grapple_charges + f.data.dash_charges
+	if hud.outlines.size() != want:
+		_fail("HUD: %d outlined elements, want %d (HP + meter + round pips + grapple charges + dash, both players)" % [hud.outlines.size(), want])
+		return false
+	for ink in hud.outlines:
+		var cream := ink.get_child(0) as PanelContainer if ink.get_child_count() == 1 else null
+		var so := ink.get_theme_stylebox("panel") as StyleBoxFlat
+		var si := cream.get_theme_stylebox("panel") as StyleBoxFlat if cream != null else null
+		if so == null or si == null or so.draw_center or si.draw_center \
+				or so.border_color != Hud.INK or so.border_width_top != 2 or so.border_width_left != 2 or so.content_margin_top != 2.0 \
+				or si.border_color != Hud.CREAM or si.border_width_top != 1 or si.border_width_left != 1 or si.content_margin_top != 1.0 \
+				or so.skew != si.skew:
+			_fail("HUD: %s is not an ink 2 + cream 1 ring, clear inside, slanted alike (outer %s, inner %s)" % [ink.get_path(), so, si])
+			return false
+	for idx in [1, 2]:
+		for bar in [hud._hp_trail[idx], hud._meter[idx]]:
+			var bg := (bar as ProgressBar).get_theme_stylebox("background") as StyleBoxFlat
+			if bg == null or bg.bg_color != Hud.WELL:
+				_fail("HUD P%d: a bar's well is %s, want %s" % [idx, bg.bg_color if bg else null, Hud.WELL])
+				return false
+		for pip in hud._pips[idx]:
+			if Hud.cell_frac(pip) != 0.0:
+				_fail("HUD P%d: a round pip is filled before any round is won" % idx)
+				return false
+	# cooldowns fill from the bottom: one grapple charge a quarter into its cooldown, Skea's dash half back
+	var d1 := p1.data
+	hud._on_grapple(1, 0, d1.grapple_cooldown * 0.25, d1.grapple_charges)
+	var g: Array = hud._charges[1]
+	var g_seen := [Hud.cell_frac(g[0]), Hud.cell_frac(g[1]), (g[0] as ColorRect).color.to_html(false)]
+	var g_ok: bool = absf(g_seen[0] - 0.75) < 0.001 and g_seen[1] == 0.0 and g_seen[2] == d1.accent_color.to_html(false)
+	hud._on_grapple(1, p1.grapple.charges, p1.grapple.cooldown_left, p1.grapple.max_charges)
+	var skea: Fighter = p2 if p2.data.dash_charges > 0 else p1
+	var ds: Array = hud._dash[skea.player_index]
+	var d_ok := false
+	var d_seen: Array = ["no dash cells"]
+	if not ds.is_empty():
+		hud._on_dash(skea.player_index, 1, skea.data.dash_recharge * 0.5, skea.data.dash_charges)
+		d_seen = [Hud.cell_frac(ds[0]), Hud.cell_frac(ds[1]), (ds[1] as ColorRect).color.to_html(false)]
+		d_ok = d_seen[0] == 1.0 and absf(d_seen[1] - 0.5) < 0.001 and d_seen[2] == "b679f5"
+		hud._on_dash(skea.player_index, skea.dash_charges_left, 0.0, skea.data.dash_charges)
+	if not g_ok or not d_ok:
+		_fail("HUD: grapple [charge ¼ into cooldown, next, colour] = %s (want [0.75, 0, %s]); Skea dash [full, half back, colour] = %s (want [1, 0.5, b679f5])" % [g_seen, d1.accent_color.to_html(false), d_seen])
+		return false
+	_ok("HUD variant 2 (06-UI-UX § Рішення Santos): %d elements in ink 2 + cream 1 rings, no plate, wells %s, cooldowns fill from the bottom, Skea dash #b679f5" % [want, Hud.WELL.to_html(false)])
+	return true
 
 
 ## ADR-018: [P1 share of frame height, P2 share, worst horizontal margin to the frame edge (fraction of width)].
