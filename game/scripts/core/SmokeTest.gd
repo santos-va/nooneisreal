@@ -580,7 +580,68 @@ func _stage_a2_arenas() -> void:
 	_ok("A2 arenas: %s — each with its own light, night ≠ day, CRONSHIFT neon only on fountain/night; menu STAGE cycles river → bazaar → fountain only, TIME day ↔ night, saved as ids, --stage/--night for the run, smoke ignores settings" % ", ".join(_a2_seen))
 	_a2_k = -1
 	_a2_seen = []
-	_next_to(140)
+	_next_to(139)
+
+
+## Sprint A3 (docs/GDD/04-Grapple-System.md § Якорі й укриття): bazaar by day, then fountain by night — anchor count,
+## coverage of the 20 m circle, spacing and height; cover holds a fighter (passage open, stall shut) and cuts the
+## grapple's line of sight; lantern lights only at night.
+func _stage_a3_anchors_cover() -> void:
+	var cases := [["bazaar", false, 16, 14], ["fountain", true, 17, 1]]
+	if _a2_k < 0:
+		_a2_k = 0
+		GameState.night = cases[0][1]
+		_load_arena(GameState.stage_index_of(cases[0][0]), 139)
+		return
+	var c: Array = cases[_a2_k]
+	var anchors := get_tree().get_nodes_in_group("grapple_anchor")
+	var reach: float = p1.data.grapple_range
+	var worst := 0.0
+	for gx in range(-20, 21):
+		for gz in range(-20, 21):
+			var at := Vector3(gx, 0.0, gz)
+			if Vector2(at.x, at.z).length() > GDD_ARENA_RADIUS:
+				continue
+			var best := INF
+			for n in anchors:
+				best = minf(best, ((n as Node3D).global_position - (at + GrappleHook.HAND)).length())
+			worst = maxf(worst, best)
+	var closest := INF
+	var lowest := INF
+	for i in anchors.size():
+		var ai := (anchors[i] as Node3D).global_position
+		lowest = minf(lowest, ai.y)
+		for j in range(i + 1, anchors.size()):
+			closest = minf(closest, ai.distance_to((anchors[j] as Node3D).global_position))
+	var lamps := 0
+	for l in arena.lamp_lights:
+		lamps += int(l.visible)
+	var want_lamps: int = 8 if c[1] else 0
+	var bad := ""
+	if anchors.size() != c[2] or arena.cover_bodies.size() != c[3] or worst > reach or closest < 5.0 - 0.01 or lowest < GrappleHook.HAND.y + 1.5 or lamps != want_lamps:
+		bad = "anchors %d (want %d), cover %d (want %d), worst point %.1f m (≤ %.0f), closest pair %.1f m (≥ 5), lowest %.1f m (≥ %.2f), lamp lights %d (want %d)" % [anchors.size(), c[2], arena.cover_bodies.size(), c[3], worst, reach, closest, lowest, GrappleHook.HAND.y + 1.5, lamps, want_lamps]
+	if bad == "" and c[0] == "bazaar":
+		var y := p1.global_position.y
+		var through := not p1.test_move(Transform3D(Basis(), Vector3(0.0, y, -7.0)), Vector3(0.0, 0.0, 14.0))
+		var into := p1.test_move(Transform3D(Basis(), Vector3(5.0, y, -1.0)), Vector3(0.0, 0.0, 8.0))
+		var los_stall: bool = p1.grapple.line_clear(Vector3(5.0, 0.5, 2.0), Vector3(5.0, 0.5, 6.0))
+		var los_gap: bool = p1.grapple.line_clear(Vector3(0.0, 0.5, 2.0), Vector3(0.0, 0.5, 6.0))
+		if not through or not into or los_stall or not los_gap:
+			bad = "passage at x 0 walkable %s (want true), stall at x 5 blocks %s (want true), line through a stall clear %s (want false), through the passage %s (want true)" % [through, into, los_stall, los_gap]
+	if bad != "":
+		_fail("A3 %s %s: %s" % [c[0], "night" if c[1] else "day", bad])
+		return
+	_a2_seen.append("%s: %d anchors, %d cover, worst %.1f m, closest %.1f m, %d lamp lights" % [c[0], anchors.size(), arena.cover_bodies.size(), worst, closest, lamps])
+	_a2_k += 1
+	if _a2_k < cases.size():
+		GameState.night = cases[_a2_k][1]
+		_load_arena(GameState.stage_index_of(cases[_a2_k][0]), 139)
+		return
+	GameState.night = false
+	_ok("A3 anchors + cover (04 § Якорі й укриття): %s; passage walkable, stall blocks a fighter and a line of sight" % "; ".join(_a2_seen))
+	_a2_k = -1
+	_a2_seen = []
+	_load_arena(2, 140)   # back to an arena without cover: the 3c stage puts the fighters at the centre (fountain bowl)
 
 
 
@@ -2715,6 +2776,8 @@ func _physics_process(_delta: float) -> void:
 			_stage_a1_fixed_world()
 		138:
 			_stage_a2_arenas()
+		139:
+			_stage_a3_anchors_cover()
 		# ---------------- 3c: crystal ult (03 § Кристальна ульта Choko, Ares 3c-1) ----------------
 		140:
 			if not (flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable()):

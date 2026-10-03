@@ -30,6 +30,8 @@ func _ready() -> void:
 		_round_floor()
 		_anchors_around()
 		_drop_plane_walls()
+		_apply_layout(String(st.get("layout", "")))
+	_light_lamps(st.get("time_of_day", "day") == "night")
 	GameState.water = null
 	var water_path: String = st.get("water", "")
 	if water_path != "" and ResourceLoader.exists(water_path):
@@ -48,6 +50,8 @@ func _ready() -> void:
 	if GameState.free_move:
 		camera.process_mode = Node.PROCESS_MODE_DISABLED
 		duel_camera.setup(p1, p2)
+		for b in cover_bodies:
+			duel_camera.arm.add_excluded_object(b.get_rid())   # ADR-018 п. 5: cover never pulls the camera in
 	else:
 		camera.setup(p1, p2)
 		duel_camera.queue_free()
@@ -91,6 +95,15 @@ func _drop_plane_walls() -> void:
 			body.collision_mask = 0
 
 
+## Sprint A3: cover bodies on this arena (the camera arm ignores them).
+var cover_bodies: Array[StaticBody3D] = []
+## Lantern lights (night only).
+var lamp_lights: Array[OmniLight3D] = []
+const LAMP_LIGHT := Color(1.0, 0.74, 0.42)
+const COVER_WOOD := Color(0.3, 0.2, 0.16)    # PLACEHOLDER stall / crate tone until band C props
+const COVER_STONE := Color(0.42, 0.42, 0.48) # PLACEHOLDER fountain bowl
+const LAMP_RANGE := 9.0
+const LAMP_ENERGY := 1.6
 const ANCHOR_RING := 8
 const ANCHOR_RING_R := 14.0
 
@@ -161,3 +174,75 @@ func _unhandled_input(event: InputEvent) -> void:
 		flow.reset_positions()
 	elif event.is_action_pressed("ui_pause"):
 		hud.toggle_pause()
+
+
+## Sprint A3 (docs/GDD/04-Grapple-System.md § Якорі й укриття): an arena with a layout swaps the 0.2 anchors + ring for
+## Арес's anchors, marks lanterns, and builds its cover. No layout (river) keeps what _anchors_around() made.
+func _apply_layout(layout: String) -> void:
+	var spec := ArenaLayout.anchors(layout)
+	if spec.is_empty():
+		return
+	var root := get_node("Anchors") as Node3D
+	var proto := (root.get_node("Anchor1") as Marker3D).duplicate() as Marker3D
+	for c in root.get_children():
+		root.remove_child(c)
+		c.queue_free()
+	for i in spec.size():
+		var a: Array = spec[i]
+		var m := proto.duplicate() as Marker3D
+		m.name = "%s%d" % [layout.capitalize(), i]
+		m.position = Vector3(a[0], a[2], a[1])
+		m.set_meta("lamp", a[3])
+		root.add_child(m)
+	proto.free()
+	for cv in ArenaLayout.cover(layout):
+		var body := StaticBody3D.new()
+		body.name = "Cover%d" % cover_bodies.size()
+		body.collision_layer = 1 | ArenaLayout.COVER_LAYER
+		body.collision_mask = 0
+		var shape := CollisionShape3D.new()
+		var mi := MeshInstance3D.new()
+		if cv[0] == "cylinder":
+			var cs := CylinderShape3D.new()
+			cs.radius = cv[2].x
+			cs.height = cv[2].y
+			shape.shape = cs
+			var cm := CylinderMesh.new()
+			cm.top_radius = cv[2].x
+			cm.bottom_radius = cv[2].x
+			cm.height = cv[2].y
+			mi.mesh = cm
+		else:
+			var bs := BoxShape3D.new()
+			bs.size = cv[2]
+			shape.shape = bs
+			var bm := BoxMesh.new()
+			bm.size = cv[2]
+			mi.mesh = bm
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = COVER_STONE if cv[0] == "cylinder" else COVER_WOOD
+		mat.roughness = 1.0
+		mi.material_override = mat
+		body.add_child(shape)
+		body.add_child(mi)   # PLACEHOLDER block until band C props
+		body.position = cv[1]
+		add_child(body)
+		cover_bodies.append(body)
+
+
+## Night: every lantern anchor (A3 layouts mark them; the 0.2 / river anchors all carry a lantern) gets a warm light.
+func _light_lamps(night: bool) -> void:
+	if not night:
+		return
+	for n in get_tree().get_nodes_in_group("grapple_anchor"):
+		var m := n as Node3D
+		if m == null or not bool(m.get_meta("lamp", true)):
+			continue
+		var l := OmniLight3D.new()
+		l.name = "LampLight"
+		l.light_color = LAMP_LIGHT
+		l.omni_range = LAMP_RANGE
+		l.light_energy = LAMP_ENERGY
+		l.shadow_enabled = false
+		m.add_child(l)
+		lamp_lights.append(l)
