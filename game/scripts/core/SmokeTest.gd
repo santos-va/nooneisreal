@@ -666,16 +666,25 @@ func _check_hud() -> bool:
 	if hud.outlines.size() != want:
 		_fail("HUD: %d outlined elements, want %d (HP + meter + round pips + grapple charges + dash, both players)" % [hud.outlines.size(), want])
 		return false
-	for ink in hud.outlines:
-		var cream := ink.get_child(0) as PanelContainer if ink.get_child_count() == 1 else null
-		var so := ink.get_theme_stylebox("panel") as StyleBoxFlat
-		var si := cream.get_theme_stylebox("panel") as StyleBoxFlat if cream != null else null
-		if so == null or si == null or so.draw_center or si.draw_center \
-				or so.border_color != Hud.INK or so.border_width_top != 2 or so.border_width_left != 2 or so.content_margin_top != 2.0 \
-				or si.border_color != Hud.CREAM or si.border_width_top != 1 or si.border_width_left != 1 or si.content_margin_top != 1.0 \
-				or so.skew != si.skew:
-			_fail("HUD: %s is not an ink 2 + cream 1 ring, clear inside, slanted alike (outer %s, inner %s)" % [ink.get_path(), so, si])
+	var here_scale := hud.canvas_scale()
+	if hud.ring_units != Hud.ring_widths(here_scale) or not _check_hud_rings(hud, hud.ring_units, "this window ×%.3f" % here_scale):
+		if hud.ring_units != Hud.ring_widths(here_scale):
+			_fail("HUD: rings %s at window scale %.3f, want %s" % [hud.ring_units, here_scale, Hud.ring_widths(here_scale)])
+		return false
+	# 06-UI-UX п. 7: on a phone-sized window the rings widen so neither drops below its ×1 width in screen pixels
+	var widths := {1.2: Vector2i(2, 1), 1.0: Vector2i(2, 1), 0.8: Vector2i(3, 2), 0.4333: Vector2i(5, 3), 0.25: Vector2i(8, 4), 0.04: Vector2i(8, 4)}
+	for sc: float in widths:
+		var u := Hud.ring_widths(sc)
+		var px := Vector2(u) * sc
+		if u != widths[sc] or (sc >= Hud.RING_MIN_SCALE and (px.x < 2.0 - 0.001 or px.y < 1.0 - 0.001)):
+			_fail("HUD: ring widths at canvas scale %.4f = %s units = %s px (want %s units, ink ≥ 2 px, cream ≥ 1 px)" % [sc, u, px, widths[sc]])
 			return false
+	var here := hud.ring_units
+	hud.set_ring_units(Hud.ring_widths(0.4333))
+	var phone_ok := _check_hud_rings(hud, Vector2i(5, 3), "844×390 (×0.433)")
+	hud.set_ring_units(here)
+	if not phone_ok or not _check_hud_rings(hud, here, "back to this window"):
+		return false
 	for idx in [1, 2]:
 		for bar in [hud._hp_trail[idx], hud._meter[idx]]:
 			var bg := (bar as ProgressBar).get_theme_stylebox("background") as StyleBoxFlat
@@ -705,7 +714,22 @@ func _check_hud() -> bool:
 	if not g_ok or not d_ok:
 		_fail("HUD: grapple [charge ¼ into cooldown, next, colour] = %s (want [0.75, 0, %s]); Skea dash [full, half back, colour] = %s (want [1, 0.5, b679f5])" % [g_seen, d1.accent_color.to_html(false), d_seen])
 		return false
-	_ok("HUD variant 2 (06-UI-UX § Рішення Santos): %d elements in ink 2 + cream 1 rings, no plate, wells %s, cooldowns fill from the bottom, Skea dash #b679f5" % [want, Hud.WELL.to_html(false)])
+	_ok("HUD variant 2 (06-UI-UX § Рішення Santos): %d elements in ink 2 + cream 1 rings (5 + 3 at phone ×0.433; this window ×%.3f → %s), no plate, wells %s, cooldowns fill from the bottom, Skea dash #b679f5" % [want, here_scale, hud.ring_units, Hud.WELL.to_html(false)])
+	return true
+
+
+## Every HUD ring is ink `u.x` outside cream `u.y`, both clear inside and slanted alike.
+func _check_hud_rings(hud: Hud, u: Vector2i, where: String) -> bool:
+	for ink in hud.outlines:
+		var cream := ink.get_child(0) as PanelContainer if ink.get_child_count() == 1 else null
+		var so := ink.get_theme_stylebox("panel") as StyleBoxFlat
+		var si := cream.get_theme_stylebox("panel") as StyleBoxFlat if cream != null else null
+		if so == null or si == null or so.draw_center or si.draw_center \
+				or so.border_color != Hud.INK or so.border_width_top != u.x or so.border_width_left != u.x or so.content_margin_top != float(u.x) \
+				or si.border_color != Hud.CREAM or si.border_width_top != u.y or si.border_width_left != u.y or si.content_margin_top != float(u.y) \
+				or so.skew != si.skew:
+			_fail("HUD (%s): %s is not an ink %d + cream %d ring, clear inside, slanted alike (outer %s, inner %s)" % [where, ink.get_path(), u.x, u.y, so, si])
+			return false
 	return true
 
 
