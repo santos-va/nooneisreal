@@ -30,9 +30,12 @@ enum Kind { NORMAL, SKILL, ULTIMATE, THROW }
 @export var cooldown: float = 0.0                     # seconds, skills only
 @export var forward_step: float = 0.0                 # metres moved forward during startup+active
 ## Free movement (GameState.free_move): during startup the attack turns toward the opponent by at
-## most this many degrees in total. PLACEHOLDER — 30° is the angle from the 0.3-1 check in
-## docs/Plans/2026-10-03-Prototype-0.3-Free-Movement.md; per-move values come from T5 Арес (#25).
-@export var tracking_deg: float = 30.0
+## most this many degrees in total; locked from the first active frame. Values per move in
+## data/characters/*.tres — ДИЗАЙН, T5 Арес, docs/GDD/02-Combat-System.md § Трекінг атак.
+@export var tracking_deg: float = 0.0
+## Free movement: extra hitstun when the hit lands outside the victim's guard arc (side/back hit).
+## By move class: light 2, heavy/crouch 3, skill/ult 6 — REF VF5 via T5 Арес, docs/GDD/02 § Блок під кутом.
+@export var backhit_hitstun_bonus: int = 0
 ## Skill effect fired at the first active frame (damage = -1 → no hitbox of its own):
 ##   record · time_stop · sword_storm · kunai_rain · shadow_veil · grimoire
 ## On-hit effect for synthetic hits: armor_break · bleed · poison

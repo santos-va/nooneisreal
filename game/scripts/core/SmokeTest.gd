@@ -36,6 +36,8 @@ var _rmax: float = 0.0
 var _data0: CharacterData = null
 var _rotated: bool = false
 var _picks: Dictionary = {}
+var _v0: Vector3 = Vector3.ZERO
+var _pull_max: float = 0.0
 
 
 func _ready() -> void:
@@ -168,6 +170,15 @@ func _track_camera_turn() -> void:
 	if line.length() > 0.5:
 		var z: Vector3 = _flat(arena.duel_camera.cam.global_basis.z).normalized()
 		_rmax = maxf(_rmax, absf(90.0 - rad_to_deg(z.angle_to(line.normalized()))))
+
+
+## Puts `who` on the ground plane `dist` m from `center`, at `deg` around it from world +X (y kept),
+## and lets both look at each other (lock-on would do the same on their next ground tick).
+func _place(who: Fighter, center: Fighter, dist: float, deg: float) -> void:
+	var d := Vector3(cos(deg_to_rad(deg)), 0.0, sin(deg_to_rad(deg))) * dist
+	who.global_position = Vector3(center.global_position.x + d.x, who.global_position.y, center.global_position.z + d.z)
+	who.forward = -d.normalized()
+	center.forward = d.normalized()
 
 
 ## Records which anchor P1's grapple would pick with the current stick, and checks it is inside the
@@ -632,11 +643,17 @@ func _physics_process(_delta: float) -> void:
 				var to := _flat(p2.global_position - p1.global_position).normalized()
 				var off := rad_to_deg(p1.forward.angle_to(to))
 				var d := _flat(p1.global_position - p2.global_position).length()
+				# circling speed = circle_speed_mult × walk_speed (T5 Арес): a quarter circle of radius d takes
+				# (π/2 · d) / v seconds
+				var want_f := (PI * 0.5 * _d0) / (p1.data.circle_speed_mult * p1.data.walk_speed) * 60.0
+				if absf(float(_f - _f0) - want_f) > want_f * 0.05:
+					_fail("sidestep speed: 90° took %d frames, want %.0f ± 5 %% (circle_speed_mult %.2f × walk %.1f)" % [_f - _f0, want_f, p1.data.circle_speed_mult, p1.data.walk_speed])
+					return
 				if off >= 5.0 or absf(d - _d0) > 0.01 or absf(p1.global_position.z) < 0.5:
 					_fail("sidestep 90°: forward off by %.2f° (want < 5), distance %.3f → %.3f (want ±0.01), z %.2f" % [off, _d0, d, p1.global_position.z])
 					return
 				_shot("11_free_sidestep_90")
-				_ok("sidestep 90° in %d frames: forward %.2f° off the opponent, distance %.3f → %.3f (arc, not spiral), p1 z %.2f" % [_f - _f0, off, _d0, d, p1.global_position.z])
+				_ok("sidestep 90° in %d frames (want %.0f at %.1f × walk): forward %.2f° off the opponent, distance %.3f → %.3f (arc, not spiral), p1 z %.2f" % [_f - _f0, want_f, p1.data.circle_speed_mult, off, _d0, d, p1.global_position.z])
 				_n0 = 0
 				_data0 = p1.data
 				_next()
@@ -651,7 +668,7 @@ func _physics_process(_delta: float) -> void:
 				_next()
 		43:
 			# 0.3-1: the opponent steps 60° around the attacker at the start of a light; tracking
-			# (30°, PLACEHOLDER) turns the strike so it still lands. 60° − 30° = 30° stays inside the
+			# (light: 30°, T5 Арес) turns the strike so it still lands. 60° − 30° = 30° stays inside the
 			# hitbox at 1.5 m; 60° without tracking does not (negative control, attempt 2).
 			if p1.state == Fighter.State.ATTACK and not _rotated:
 				_rotated = true
@@ -710,11 +727,13 @@ func _physics_process(_delta: float) -> void:
 				_yaw_prev = arena.duel_camera.view_yaw()
 				_turn_max = 0.0
 				_rmax = 0.0
+				_pull_max = 0.0
 				_ang0 = _bearing(p1, p2)
 				_swept = 0.0
 			if _f > _f0 + 20:
 				InputRouter.v_set(1, "up", true)
 				_track_camera_turn()
+				_pull_max = maxf(_pull_max, arena.backdrop.view_angle(arena.duel_camera.cam))
 				var a := _bearing(p1, p2)
 				_swept += angle_difference(_ang0, a)
 				_ang0 = a
@@ -722,10 +741,10 @@ func _physics_process(_delta: float) -> void:
 					_shot("12_free_duel_camera")
 				if absf(_swept) >= TAU:
 					InputRouter.v_clear(1)
-					if _turn_max > DuelCamera.MAX_TURN_DEG_PER_FRAME or not _both_in_view() or _rmax > DuelCamera.MAX_SIDE_OFF_DEG:
-						_fail("duel camera on a 360° sidestep: max turn %.2f°/frame (bound %.1f), off side-on %.1f° (bound %.1f), both in view %s" % [_turn_max, DuelCamera.MAX_TURN_DEG_PER_FRAME, _rmax, DuelCamera.MAX_SIDE_OFF_DEG, _both_in_view()])
+					if _turn_max > (DuelCamera.YAW_CLAMP_DEG + 0.001) or not _both_in_view() or _rmax > DuelCamera.MAX_SIDE_OFF_DEG or _pull_max >= 90.0:
+						_fail("duel camera on a 360° sidestep: max turn %.2f°/frame (bound %.1f), off side-on %.1f° (bound %.1f), both in view %s, backdrop at %.1f° (want < 90)" % [_turn_max, (DuelCamera.YAW_CLAMP_DEG + 0.001), _rmax, DuelCamera.MAX_SIDE_OFF_DEG, _both_in_view(), _pull_max])
 						return
-					_ok("duel camera: 360° sidestep in %d frames, max turn %.2f°/frame ≤ %.1f, at most %.1f° off side-on ≤ %.1f (both PLACEHOLDER), both fighters in view" % [_f - _f0 - 20, _turn_max, DuelCamera.MAX_TURN_DEG_PER_FRAME, _rmax, DuelCamera.MAX_SIDE_OFF_DEG])
+					_ok("duel camera: 360° sidestep in %d frames, max turn %.2f°/frame ≤ clamp %.3f, at most %.1f° off side-on ≤ %.1f, both fighters in view, backdrop at most %.1f° off the view (< 90)" % [_f - _f0 - 20, _turn_max, (DuelCamera.YAW_CLAMP_DEG + 0.001), _rmax, DuelCamera.MAX_SIDE_OFF_DEG, _pull_max])
 					_next()
 				elif _f > _f0 + 900:
 					_fail("360° sidestep not finished (swept %.1f°)" % rad_to_deg(_swept))
@@ -744,11 +763,25 @@ func _physics_process(_delta: float) -> void:
 				var cam: Camera3D = arena.duel_camera.cam
 				var s1 := cam.unproject_position(p1.global_position + Vector3.UP).x
 				var s2 := cam.unproject_position(p2.global_position + Vector3.UP).x
-				if _turn_max > DuelCamera.MAX_TURN_DEG_PER_FRAME or not _both_in_view():
+				if _turn_max > (DuelCamera.YAW_CLAMP_DEG + 0.001) or not _both_in_view():
 					_fail("duel camera on a side swap: max turn %.2f°/frame, both in view %s" % [_turn_max, _both_in_view()])
 					return
 				_shot("13_free_side_swap")
 				_ok("duel camera: side swap without a flip, max turn %.2f°/frame; screen x p1 %.0f, p2 %.0f" % [_turn_max, s1, s2])
+				# the line jumps 90° in one frame: the yaw clamp must hold and the arm must pull back
+				_yaw_prev = arena.duel_camera.view_yaw()
+				_turn_max = 0.0
+				_pull_max = 0.0
+				var r := _flat(p2.global_position - p1.global_position).length()
+				p2.global_position = Vector3(p1.global_position.x, p2.global_position.y, p1.global_position.z - r)
+			elif _f > _f0 + 40 and _f <= _f0 + 120:
+				_pull_max = maxf(_pull_max, arena.duel_camera.pullback())
+			if _f == _f0 + 120:
+				var lag := rad_to_deg(absf(angle_difference(arena.duel_camera.view_yaw(), arena.duel_camera._target_yaw())))
+				if _turn_max > DuelCamera.YAW_CLAMP_DEG + 0.001 or _pull_max < 0.2 or lag > 1.0 or not _both_in_view():
+					_fail("duel camera on a 90° jump: max turn %.2f°/tick (clamp %.1f), max pull-back %.2f (want > 0.2), lag after 80 ticks %.1f°, both in view %s" % [_turn_max, DuelCamera.YAW_CLAMP_DEG, _pull_max, lag, _both_in_view()])
+					return
+				_ok("duel camera on a 90° jump: max turn %.2f°/tick ≤ %.1f, arm pulled back to +%.0f %%, caught up (lag %.2f°)" % [_turn_max, DuelCamera.YAW_CLAMP_DEG, _pull_max * 100.0, lag])
 				_next()
 		47:
 			# 0.3-3: the anchor is chosen inside the aim cone — of the stick when deflected, else of the
@@ -834,4 +867,197 @@ func _physics_process(_delta: float) -> void:
 					_fail("grapple pull 3D: grapples %d, P2 %.2f m from 1.25 m in front of P1 (want ≤ 0.6), z moved %.2f" % [p1.stats.grapples, miss, z_moved])
 					return
 				_ok("grapple pull 3D: P2 from (3, 3) to %.2f m off the spot 1.25 m in front of P1 (z moved %.2f)" % [miss, z_moved])
-				_finish()
+				_n0 = 0
+				_next()
+		50:
+			# Ares numbers: guard arc ±block_arc_deg; side/back hits get +backhit_hitstun_bonus
+			if not (p1.is_actionable() and p2.is_actionable()) and _f < _f0 + 300:
+				return
+			# fixed angles from the plan (T1 answer, item 4): 65° is blocked, 75° goes through (Ares: ±70°)
+			var arc: float = p2.data.block_arc_deg
+			var res := []
+			for deg in [65.0, 75.0]:
+				_place(p2, p1, 2.0, 0.0)
+				var to := _flat(p1.global_position - p2.global_position).normalized()
+				p2.forward = to.rotated(Vector3.UP, deg_to_rad(deg))
+				res.append(p2._guards_against(p1))
+			if res[0] != true or res[1] != false:
+				_fail("block arc ±%.0f°: guards at 65° %s, at 75° %s (want true, false)" % [arc, res[0], res[1]])
+				return
+			var lm: MoveData = p1.data.light
+			_place(p2, p1, 1.5, 0.0)
+			p2.forward = _flat(p2.global_position - p1.global_position).normalized()   # back to the attacker
+			p2.receive_hit(p1, lm)
+			var back := p2.stun_frames
+			if back != lm.hitstun + lm.backhit_hitstun_bonus:
+				_fail("backhit: stun %d, want %d + %d" % [back, lm.hitstun, lm.backhit_hitstun_bonus])
+				return
+			# soft wall: past the circle, the outward part of the velocity goes, the tangential part stays
+			var n := Vector3(cos(0.7), 0.0, sin(0.7))
+			var t := Vector3.UP.cross(n)
+			p1.global_position = n * (Fighter.ARENA_RADIUS + 0.2) + Vector3(0.0, p1.global_position.y, 0.0)
+			p1.velocity = n * 5.0 + t * 3.0
+			p1._soft_wall()
+			var out := p1.velocity.dot(n)
+			var tan := p1.velocity.dot(t)
+			var rad := _flat(p1.global_position).length()
+			if absf(out) > 0.001 or absf(tan - 3.0) > 0.001 or absf(rad - Fighter.ARENA_RADIUS) > 0.001:
+				_fail("soft wall: outward %.3f (want 0), tangential %.3f (want 3), radius %.3f" % [out, tan, rad])
+				return
+			p1.velocity = Vector3.ZERO
+			p1.global_position = Vector3(-2.0, p1.global_position.y, 0.0)
+			_ok("block arc ±%.0f°: attacker at 65° blocked, at 75° not; back hit stun %d = hitstun %d + %d; soft wall keeps tangential 3.0 m/s, outward → 0" % [arc, back, lm.hitstun, lm.backhit_hitstun_bonus])
+			_next()
+		51:
+			# TIME STOP is a circle in 3D: P2 off the X line inside it freezes; at |dx| = 1 but 5 m deep it does not
+			if (_n0 == 0 or _n0 == 2) and not (p1.is_actionable() and p2.is_actionable()):
+				if _f > _f0 + 400:
+					_fail("time stop 3D: never ready (p1 %d, p2 %d, cd %.1f)" % [p1.state, p2.state, p1.cooldowns.skill2])
+				return
+			if _n0 == 0:
+				p1.cooldowns.skill2 = 0.0
+				_n0 = 1
+				p1.global_position = Vector3(0.0, p1.global_position.y, 0.0)
+				p2.global_position = Vector3(1.0, p2.global_position.y, 5.0)   # |dx| 1 ≤ 4.2, distance 5.1 > 4.2
+				InputRouter.v_press(1, "skill2")
+				_f0 = _f
+				return
+			if _n0 == 1 and _f == _f0 + 20:
+				if p2.frozen_frames > 0:
+					_fail("time stop 3D: froze P2 5.1 m away (only |dx| = 1)")
+					return
+				_n0 = 2
+				p1.cooldowns.skill2 = 0.0
+			if _n0 == 2 and p1.is_actionable() and p2.is_actionable():
+				p1.cooldowns.skill2 = 0.0
+				_n0 = 3
+				_place(p2, p1, 3.0, 50.0)
+				InputRouter.v_press(1, "skill2")
+				_f0 = _f
+			if _n0 == 3 and _f == _f0 + 20:
+				if p2.frozen_frames <= 0:
+					_fail("time stop 3D: P2 3 m away at 50° not frozen (p1 state %d move %s cd %.1f, dist %.2f, p2 state %d inv %d)" % [p1.state, p1.current_move.id if p1.current_move else "-", p1.cooldowns.skill2, _flat(p2.global_position - p1.global_position).length(), p2.state, p2.invulnerable_frames])
+					return
+				_ok("TIME STOP 3D: P2 3 m away at 50° frozen; P2 at |dx| 1 but 5.1 m away untouched")
+				_n0 = 0
+				_next()
+		52:
+			# SWORD STORM: a 5.4 × 1.2 m band along the gaze. P2 at 40° off the X axis is hit; moved 2 m
+			# to the side of the band after the first tick, the rest of the storm misses
+			if _n0 == 0:
+				if p2.frozen_frames > 0 or not (p1.is_actionable() and p2.is_actionable()):
+					if _f > _f0 + 400:
+						_fail("sword storm 3D: never ready")
+					return
+				_n0 = 1
+				p2.hp = p2.data.max_hp
+				p1.meter = Fighter.MAX_METER
+				_place(p2, p1, 3.0, 40.0)
+				_hp0 = p2.hp
+				_rotated = false
+				InputRouter.v_press(1, "ultimate")
+				_f0 = _f
+				return
+			if not _rotated and p2.hp < _hp0:
+				_rotated = true
+				var fwd := p1.forward
+				var side := Vector3.UP.cross(fwd)
+				p2.global_position = p1.global_position + fwd * 3.0 + side * 2.0 + Vector3(0.0, p2.global_position.y - p1.global_position.y, 0.0)
+				_x0 = p2.hp
+			if _rotated and _f == _f0 + 110:
+				if p2.hp != _x0:
+					_fail("sword storm 3D: hit P2 2 m beside the band (hp %.0f → %.0f)" % [_x0, p2.hp])
+					return
+				_ok("SWORD STORM 3D: band along the gaze hit P2 at 40° (hp %.0f → %.0f); 2 m beside the band — no more hits" % [_hp0, _x0])
+				_n0 = 0
+				_next()
+			elif _f > _f0 + 120:
+				_fail("sword storm 3D: P2 at 40° never hit (hp %.0f)" % p2.hp)
+		53:
+			# KUNAI RAIN lands on P1's spot (off the X line) at the throw
+			if _n0 == 0:
+				if not (p1.is_actionable() and p2.is_actionable()) or p2.cooldowns.skill1 > 0.0:
+					if _f > _f0 + 600:
+						_fail("kunai 3D: never ready (p1 %d, p2 %d)" % [p1.state, p2.state])
+					return
+				_n0 = 1
+				p1.hp = p1.data.max_hp
+				p1.armor_break_frames = 0
+				_place(p1, p2, 4.0, -60.0)
+				_hp0 = p1.hp
+				InputRouter.v_press(2, "skill1")
+				_f0 = _f
+				return
+			if _f == _f0 + 80:
+				if p1.hp >= _hp0 or p1.armor_break_frames <= 0:
+					_fail("kunai 3D: P1 4 m away at -60° not hit (hp %.0f, armor %d)" % [p1.hp, p1.armor_break_frames])
+					return
+				_ok("KUNAI RAIN 3D: P1 4 m away at -60° hit (hp %.0f → %.0f), armor break %d f" % [_hp0, p1.hp, p1.armor_break_frames])
+				_n0 = 0
+				_next()
+		54:
+			# CURSED GRIMOIRE is a circle: P1 at |dx| 1 but 5 m deep is untouched; P1 2.5 m away at 60° is hit
+			if _n0 == 0 or _n0 == 2:
+				if not (p1.is_actionable() and p2.is_actionable()):
+					if _f > _f0 + 600:
+						_fail("grimoire 3D: never ready (p1 %d, p2 %d)" % [p1.state, p2.state])
+					return
+				p1.hp = p1.data.max_hp
+				p2.meter = Fighter.MAX_METER
+				if _n0 == 0:
+					p2.global_position = Vector3(0.0, p2.global_position.y, 0.0)
+					p1.global_position = Vector3(1.0, p1.global_position.y, 5.0)
+				else:
+					_place(p1, p2, 2.5, 60.0)
+				_hp0 = p1.hp
+				_x0 = float(p1.stats.ragdolls)
+				InputRouter.v_press(2, "ultimate")
+				_n0 += 1
+				_f0 = _f
+				return
+			if _n0 == 1 and _f == _f0 + 100:
+				if p1.hp < _hp0:
+					_fail("grimoire 3D: hit P1 5.1 m away (|dx| 1): hp %.0f → %.0f" % [_hp0, p1.hp])
+					return
+				_n0 = 2
+				_f0 = _f
+			if _n0 == 3 and _f == _f0 + 100:
+				if p1.hp >= _hp0 or float(p1.stats.ragdolls) <= _x0:
+					_fail("grimoire 3D: P1 2.5 m away at 60° not hit (hp %.0f, ragdolls %d)" % [p1.hp, p1.stats.ragdolls])
+					return
+				_ok("CURSED GRIMOIRE 3D: P1 2.5 m away at 60° hit and ragdolled (hp %.0f → %.0f); at |dx| 1 but 5.1 m away untouched" % [_hp0, p1.hp])
+				_n0 = 0
+				_next()
+		55:
+			# FLASH STEP goes through the opponent along the line; a sideways stick turns the exit by 45°
+			if _n0 == 0 or _n0 == 2:
+				if not (p1.is_actionable() and p2.is_actionable()) or p2.dash_charges_left <= 0:
+					if _f > _f0 + 900:
+						_fail("flash 3D: never ready (p1 %d, p2 %d, charges %d)" % [p1.state, p2.state, p2.dash_charges_left])
+					return
+				_place(p2, p1, 1.5, 135.0)
+				_v0 = p2.global_position
+				if _n0 == 2:
+					InputRouter.v_set(2, "up", true)
+				InputRouter.v_press(2, "dash")
+				_n0 += 1
+				_f0 = _f
+				return
+			if (_n0 == 1 or _n0 == 3) and _f == _f0 + 8:
+				InputRouter.v_clear(2)
+				var line := _flat(p1.global_position - _v0).normalized()
+				var went := _flat(p2.global_position - _v0)
+				var ang := rad_to_deg(line.angle_to(went.normalized()))
+				if _n0 == 1:
+					var through := _flat(p2.global_position - p1.global_position).dot(_flat(_v0 - p1.global_position)) < 0.0
+					if not through or ang > 1.0:
+						_fail("flash 3D: neutral flash from 135° — through %s, %.1f° off the line" % [through, ang])
+						return
+					_ok("FLASH STEP 3D: from 135° straight through P2's line (%.1f° off), %.2f m travelled" % [ang, went.length()])
+					_n0 = 2
+				else:
+					if absf(ang - Fighter.FLASH_SIDE_DEG) > 1.0:
+						_fail("flash 3D: sideways stick turned the exit %.1f° (want %.0f°)" % [ang, Fighter.FLASH_SIDE_DEG])
+						return
+					_ok("FLASH STEP 3D: sideways stick turned the exit %.1f° off the line (rule %.0f°)" % [ang, Fighter.FLASH_SIDE_DEG])
+					_finish()
