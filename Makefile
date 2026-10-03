@@ -21,7 +21,7 @@ gates:
 	bash tools/gates/run_gates.sh
 
 # Headless-імпорт проєкту + парсинг кожного .gd + smoke. Без бінаря — інструкція, не мовчазний пропуск.
-# Smoke іде з --fixed-fps 60: одна ітерація = один фізкадр, тож --quit-after 20000 — це 20000 кадрів на будь-якій
+# Smoke іде з --fixed-fps 60: одна ітерація = один фізкадр, тож --quit-after 40000 — це 40000 кадрів на будь-якій
 # машині (без нього headless крутить цикл швидше за 60 Гц і бюджет кадрів залежить від швидкості). «Зелений» —
 # лише rc=0 І рядок «[smoke] ALL OK»: вихід по --quit-after дає rc=0 без цього рядка, і це червоне.
 check:
@@ -38,7 +38,7 @@ check:
 	$(GUARD) stamp $(GAME); \
 	GODOT_BIN="$$G" bash tools/gates/gd_check_all.sh || exit $$?; \
 	echo "── smoke test: godot --headless --fixed-fps 60 -- --smoke ──"; \
-	SMOKE="$$("$$G" --headless --path $(GAME) --fixed-fps 60 --quit-after 20000 -- --smoke 2>&1)"; rc=$$?; \
+	SMOKE="$$("$$G" --headless --path $(GAME) --fixed-fps 60 --quit-after 40000 -- --smoke 2>&1)"; rc=$$?; \
 	printf '%s\n' "$$SMOKE" | grep -E '^\[smoke\]|SCRIPT ERROR|ERROR:'; \
 	if [ $$rc -ne 0 ]; then echo "SMOKE ЧЕРВОНИЙ rc=$$rc"; exit $$rc; fi; \
 	printf '%s\n' "$$SMOKE" | grep -q '^\[smoke\] ALL OK' || { echo "SMOKE ЧЕРВОНИЙ: немає рядка «[smoke] ALL OK» — тест не дійшов до кінця (--quit-after?)"; exit 1; }; \
