@@ -61,7 +61,7 @@ Control), F-клавіші (медіа), Caps Lock.
 
 ## Вільний рух (0.3) — лише за `GameState.free_move`
 
-Рішення — [[ADR-014-Free-Movement-Layout]] (**пропозиція**, Santos приймає). План — [[2026-10-03-Prototype-0.3-Free-Movement]] § 0.3-C.
+Рішення — [[ADR-014-Free-Movement-Layout]] (**прийнято** 2026-10-03). Перемикач режиму — [[06-UI-UX]] § Кнопка «РЕЖИМ 2.5D / 3D». План — [[2026-10-03-Prototype-0.3-Free-Movement]] § 0.3-C.
 Правила руху, швидкості й деш — [[02-Combat-System]] § Вільний 3D-рух (Арес). У режимі площини діють таблиці вище
 без змін. Нових імен дій немає: `p*_up` / `p*_down` уже є в `InputRouter.ACTIONS`.
 

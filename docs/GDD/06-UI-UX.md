@@ -203,6 +203,26 @@ yaw ±**1.5°**, pitch ±**1.0°**, згладжування `lerp` 4 /с — у
   бути чутніший за свист — інакше гравець не чує, що фокус зрушив.
 - Панорама звуку йде за екранним `x` героя (зліва → праворуч), шина `SFX`. «Менше руху» → прольоту немає → звуку теж.
 
+## Кнопка «РЕЖИМ 2.5D / 3D» (запуск 4)
+
+Запуск 4 плану [[2026-10-03-Path-to-First-Fight]]: 3D вмикається з меню, без термінала. Розкладка 3D —
+[[ADR-014-Free-Movement-Layout]], [[05-Platforms-Input]] § Вільний рух. Зараз режим перемикає лише прапорець запуску
+`-- --free-move` (`game/scripts/core/Main.gd:6–7` → `GameState.set_free_move(true)`).
+
+| що | як |
+|---|---|
+| місце | рядок у плашці меню, **одразу під** `KEYBOARD` (той самий тип рядка: ←/→ на місці) |
+| текст | `MODE:  ◂ 2.5D (plane) ▸` / `MODE:  ◂ 3D (free move) ▸`; англійською, як решта пунктів `MainMenu.gd` |
+| ввід | ←/→ (клавіатура, D-pad, стік), Enter / A — теж перемикає; миша — клік по ◂ / ▸; тач — окремі цілі ◂ і ▸ ≥ 48 dp (§ Навігація вище) |
+| дія | `GameState.set_free_move(on)` — вона ж переприв'язує клавіатуру (`InputRouter.apply_profile`); рядок-підказка внизу (`InputRouter.hint_text`) оновлюється одразу, бо гравцеві треба побачити, що стрибок тепер Space, а присід X |
+| збереження | `user://settings.cfg` → `[gameplay] free_move` (bool, дефолт `false`, доки Santos не скаже «3D за замовчуванням» — запуск 6). Пише за патерном `InputRouter.apply_profile`: `load()` → `set_value()` → `save()`, щоб не стерти `[input]` |
+| прапорець запуску | `-- --free-move` вмикає 3D **на цей запуск** і **не** пише в `settings.cfg` (тест і термінал не міняють збережений вибір гравця) |
+| де перемикається | **лише в меню**. У бою і на паузі — ні: переприв'язка клавіш посеред бою скидає буфер вводу (`_pressed_at.clear()` в `apply_profile`) |
+| з меню-діорамою (пізніше) | рядок переїжджає в SETTINGS разом із `KEYBOARD` (§ Головне меню — погляд з даху, «Вміст плашки») |
+
+Перевірка (smoke Гефеста, план § запуск 4): натиск на рядок → `GameState.free_move == true` і камера дуелі `current`;
+повторний натиск → `false`; «no key clashes» з таблицями ADR-014.
+
 ## Вибір персонажа — на тому ж даху
 
 В1 плану [[2026-10-03-Character-Select]] (santos-va/nooneisreal#11). Тло — той самий `MenuBackdrop` з розділу вище;
@@ -245,4 +265,4 @@ Choko і Skea стоять на парапеті (зона D) картками. 
 - Ввід не блокується анімаціями: «стрибок» героя на парапеті при READY — презентація, курсор уже вільний.
 
 ## Related
-- [[05-Platforms-Input]] · [[Style-Guide]] · [[2026-10-02-Grapple-Input-UI]] · [[2026-10-03-Main-Menu-Skyline]] · [[2026-10-03-Character-Select]] · [[ADR-012-Menu-As-3D-Diorama]] · [[ADR-009-Solo-Keyboard-Layout]] · [[2026-10-03-Menu-UX-Rooftop]]
+- [[05-Platforms-Input]] · [[Style-Guide]] · [[2026-10-02-Grapple-Input-UI]] · [[2026-10-03-Main-Menu-Skyline]] · [[2026-10-03-Character-Select]] · [[ADR-012-Menu-As-3D-Diorama]] · [[ADR-009-Solo-Keyboard-Layout]] · [[2026-10-03-Menu-UX-Rooftop]] · [[ADR-014-Free-Movement-Layout]] · [[2026-10-03-Path-to-First-Fight]]

@@ -1,7 +1,6 @@
 # ADR-014 — Розкладка вільного руху: WASD відносно камери, стрибок на Space, присід на X
 
-**Статус:** **пропозиція** 2026-10-03, T8 Гермес (santos-va/nooneisreal#26, план [[2026-10-03-Prototype-0.3-Free-Movement]] § 0.3-C).
-Santos приймає. Діє **лише коли ввімкнено `GameState.free_move`**. Режим площини лишається за [[ADR-009-Solo-Keyboard-Layout]] без змін.
+**Статус:** **прийнято** 2026-10-03 (Santos: «ADR-014 так»). Автор — T8 Гермес (santos-va/nooneisreal#26, план [[2026-10-03-Prototype-0.3-Free-Movement]] § 0.3-C). Діє **лише коли ввімкнено `GameState.free_move`**. Режим площини лишається за [[ADR-009-Solo-Keyboard-Layout]] без змін.
 
 ## Проблема
 
@@ -56,7 +55,7 @@ Smoke «no key clashes» після реалізації — Гефест (0.3-1
 
 `InputRouter.gd`: замінити `FREE_MOVE_UP_KEYS` / `_move_keys` таблицею з [[05-Platforms-Input]] § Вільний рух.
 Додати X / M на `p*_crouch`, а W / ↑ і S / ↓ на `up` / `down` (Space і `/` лишаються на `jump`). Додати `p*_up` / `p*_down`
-для стіка в рантаймі, лише за `free_move`. Зняти axis 1 +1 з `p*_crouch`. Оновити `hint_text()`. Прибрати `TODO #26`.
+для стіка в рантаймі, лише за `free_move`. Зняти axis 1 +1 з `p*_crouch`. Оновити `hint_text()`. Прибрати `TODO #26`. Кнопка режиму в меню — [[06-UI-UX]] § Кнопка «РЕЖИМ 2.5D / 3D» (запуск 4 [[2026-10-03-Path-to-First-Fight]]).
 
 ## Related
 - [[ADR-009-Solo-Keyboard-Layout]] · [[05-Platforms-Input]] · [[02-Combat-System]] · [[2026-10-03-Prototype-0.3-Free-Movement]] · [[ADR-004-Physics-Is-Presentation]] · [[ADR-002-2.5D-First]]
