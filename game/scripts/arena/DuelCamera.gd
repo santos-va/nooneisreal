@@ -21,16 +21,24 @@ const MAX_SIDE_OFF_DEG := 25.0
 ## Launch 6, ADR-015 + docs/GDD/02-Combat-System.md § Камера за спиною і плавність (T5 Арес, all PLACEHOLDER):
 ## `camera_yaw_accel` — the yaw's turn rate changes by at most this per physics tick (both modes).
 const YAW_ACCEL_DEG := 0.25
+## ADR-018 «the fight with air», numbers K-1 (GDD 02 § Кадр із запасом — replace ADR-015's closer ones; PLACEHOLDER).
 ## Mode `behind` (solo vs CPU): on the line P2 → P1, behind P1.
-const BEHIND_DIST := 3.4          # m behind P1 while sep ≤ BEHIND_DIST_SEP …
+const BEHIND_DIST := 5.0          # m behind P1 while sep ≤ BEHIND_DIST_SEP …
 const BEHIND_DIST_SEP := 4.0
-const BEHIND_DIST_PER_M := 0.25   # … then +0.25 m per metre of sep …
-const BEHIND_DIST_MAX := 6.0      # … up to 6 m
-const BEHIND_HEIGHT_NEAR := 3.2   # m above the floor at sep ≤ 1 m …
-const BEHIND_HEIGHT_FAR := 2.5    # … linearly down to this at sep ≥ 4 m
-const BEHIND_SHOULDER := 1.2      # m to screen-right of P1
-const BEHIND_FOCUS := 0.6         # the view aims 60 % of the way P1 → P2 …
+const BEHIND_DIST_PER_M := 0.35   # … then +0.35 m per metre of sep …
+const BEHIND_DIST_MAX := 9.0      # … up to 9 m
+const BEHIND_HEIGHT_NEAR := 3.8   # m above the floor at sep ≤ 1 m …
+const BEHIND_HEIGHT_FAR := 3.0    # … linearly down to this at sep ≥ 4 m
+const BEHIND_SHOULDER := 1.0      # m to screen-right of P1
+const BEHIND_FOCUS := 0.5         # the view aims at the pair's middle (ADR-018 п. 2, 4) …
 const BEHIND_FOCUS_Y := 1.2       # … at this height
+## Mode `side` (VERSUS): arm length = clamp(SIDE_DIST + SIDE_DIST_PER_M · sep, SIDE_DIST_MIN, SIDE_DIST_MAX).
+const SIDE_DIST := 6.0
+const SIDE_DIST_PER_M := 0.75
+const SIDE_DIST_MIN := 8.0
+const SIDE_DIST_MAX := 24.0
+## Vertical field of view of both arena cameras (Arena.tscn), 91.5° horizontal in 16:9; the ceiling (ADR-018 п. 1).
+const FOV_DEG := 60.0
 
 @onready var arm: SpringArm3D = $SpringArm3D
 @onready var cam: Camera3D = $SpringArm3D/Camera3D
@@ -142,7 +150,7 @@ func _apply(k: float) -> void:
 	var b := p2.global_position
 	var sep := Vector3(a.x - b.x, 0.0, a.z - b.z).length()
 	var hi := maxf(a.y, b.y)
-	var dist := clampf(5.5 + sep * 0.78, 7.0, 15.5)
+	var dist := clampf(SIDE_DIST + sep * SIDE_DIST_PER_M, SIDE_DIST_MIN, SIDE_DIST_MAX)
 	var focus := Vector3((a.x + b.x) * 0.5, 1.25 + hi * 0.4, (a.z + b.z) * 0.5)
 	var lift := 0.35 + hi * 0.05 + dist * 0.14
 	global_position = global_position.lerp(focus, k) if k < 1.0 else focus

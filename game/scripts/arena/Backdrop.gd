@@ -18,6 +18,12 @@ const DEFAULT_FRAME := {"size": Vector2(54.0, 30.4), "pos": Vector3(0.0, 12.0, -
 func apply(stage: Dictionary) -> void:
 	var frame: Dictionary = DEFAULT_FRAME.duplicate()
 	frame.merge(stage.get("backdrop", {}), true)
+	if GameState.free_move:
+		# launch 6: the 20 m circle and the ADR-018 camera (arm up to 24 m, fov 60) would reach past an 18 m card or
+		# see its edges; push it out beyond circle + arm, scaled so it keeps the same size seen from the centre
+		var k := free_scale()
+		frame.size = (frame.size as Vector2) * k
+		frame.pos = (frame.pos as Vector3) * k
 	quad = MeshInstance3D.new()
 	var qm := QuadMesh.new()
 	qm.size = frame.size
@@ -53,6 +59,11 @@ func _process(_delta: float) -> void:
 			quad.position.x = to_local(cam.global_position).x * 0.2
 			return
 		quad.position.x = cam.global_position.x * 0.2
+
+
+## Free movement: how much farther the card stands than in the plane — beyond the circle plus the longest camera arm.
+static func free_scale() -> float:
+	return (Fighter.ARENA_RADIUS + DuelCamera.SIDE_DIST_MAX + 4.0) / absf(float(DEFAULT_FRAME.pos.z))
 
 
 ## Angle (degrees) between where the camera looks and the card's facing: < 90° = the card is in view.

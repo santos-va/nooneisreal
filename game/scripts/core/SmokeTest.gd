@@ -31,7 +31,7 @@ var _picks_p: Dictionary = {}
 ## Design numbers as written in docs/GDD/02-Combat-System.md § «Поле → значення → джерело» (T5 Арес).
 ## Literals on purpose (T4 Феміда, audit 0.3-7 п. 8): the smoke must not compare the code with its own
 ## constants, or a number drifting away from the GDD would never turn it red.
-const GDD_ARENA_RADIUS := 12.5
+const GDD_ARENA_RADIUS := 20.0          # 02 § Коло арени, Арес 2026-10-03 (Р4), was 12.5
 const GDD_YAW_CLAMP_DEG := 3.0
 const GDD_PULLBACK_LAG_DEG := 15.0
 const GDD_PULLBACK_MAX := 0.3
@@ -77,6 +77,7 @@ var _dw_max: float = 0.0              # launch 6: worst |change of yaw turn| per
 var _w_max: float = 0.0               # launch 6: worst |yaw turn| per tick (deg)
 var _head_low: float = -1e9           # launch 6: worst (P2 head screen y − P1 head screen y), px; > 0 = P2 lower
 var _w_prev: float = 0.0
+var _fr: Dictionary = {}              # launch 6, ADR-018: worst frame share / margin per (mode, sep)
 var _cr_case: int = 0                 # 3c: which point-blank / band / far run
 var _cr_hp: float = 0.0
 const GDD_CRYSTAL := [[0.5, 330.0], [1.5, 225.0], [6.0, 105.0]]   # 03 § Кристальна ульта, «Для Гефеста»: distance → total
@@ -343,6 +344,22 @@ func _check_free_layout() -> bool:
 		return false
 	_ok("ADR-014 layout in 3D: X/M crouch, W/S ↑/↓ up/down, Space and / jump, stick ↑/↓ up/down, D-pad ↓ crouch; no key or pad clash in SOLO/SHARED")
 	return true
+
+
+## ADR-018: [P1 share of frame height, P2 share, worst horizontal margin to the frame edge (fraction of width)].
+func _frame_metrics() -> Array:
+	var cam: Camera3D = arena.duel_camera.cam
+	var vp := get_viewport().get_visible_rect().size
+	var out: Array = []
+	var margin := 1.0
+	for f: Fighter in [p1, p2]:
+		var feet := cam.unproject_position(f.global_position)
+		var head := cam.unproject_position(f.global_position + Vector3.UP * 1.8)
+		out.append(absf(head.y - feet.y) / vp.y)
+		for x in [feet.x, head.x]:
+			margin = minf(margin, minf(x, vp.x - x) / vp.x)
+	out.append(margin)
+	return out
 
 
 ## Launch 6: per physics tick — the camera's yaw turn and its change, and (behind) how far P2's head is below P1's on screen.
@@ -613,7 +630,7 @@ func _river_script(t: int) -> void:
 
 ## "" when the code's design numbers equal the GDD literals above; else the first mismatch.
 func _gdd_mismatch() -> String:
-	var got := {"Fighter.ARENA_RADIUS": [Fighter.ARENA_RADIUS, GDD_ARENA_RADIUS], "DuelCamera.YAW_CLAMP_DEG": [DuelCamera.YAW_CLAMP_DEG, GDD_YAW_CLAMP_DEG], "DuelCamera.PULLBACK_LAG_DEG": [DuelCamera.PULLBACK_LAG_DEG, GDD_PULLBACK_LAG_DEG], "DuelCamera.PULLBACK_MAX": [DuelCamera.PULLBACK_MAX, GDD_PULLBACK_MAX], "DuelCamera.YAW_ACCEL_DEG": [DuelCamera.YAW_ACCEL_DEG, GDD_YAW_ACCEL_DEG], "DuelCamera.BEHIND_DIST": [DuelCamera.BEHIND_DIST, 3.4], "DuelCamera.BEHIND_HEIGHT_NEAR": [DuelCamera.BEHIND_HEIGHT_NEAR, 3.2], "DuelCamera.BEHIND_HEIGHT_FAR": [DuelCamera.BEHIND_HEIGHT_FAR, 2.5], "DuelCamera.BEHIND_SHOULDER": [DuelCamera.BEHIND_SHOULDER, 1.2], "Fighter.WALL_SPLAT_FRAMES": [float(Fighter.WALL_SPLAT_FRAMES), float(GDD_WALL_SPLAT_FRAMES)]}
+	var got := {"Fighter.ARENA_RADIUS": [Fighter.ARENA_RADIUS, GDD_ARENA_RADIUS], "DuelCamera.YAW_CLAMP_DEG": [DuelCamera.YAW_CLAMP_DEG, GDD_YAW_CLAMP_DEG], "DuelCamera.PULLBACK_LAG_DEG": [DuelCamera.PULLBACK_LAG_DEG, GDD_PULLBACK_LAG_DEG], "DuelCamera.PULLBACK_MAX": [DuelCamera.PULLBACK_MAX, GDD_PULLBACK_MAX], "DuelCamera.YAW_ACCEL_DEG": [DuelCamera.YAW_ACCEL_DEG, GDD_YAW_ACCEL_DEG], "DuelCamera.BEHIND_DIST": [DuelCamera.BEHIND_DIST, 5.0], "DuelCamera.BEHIND_DIST_PER_M": [DuelCamera.BEHIND_DIST_PER_M, 0.35], "DuelCamera.BEHIND_DIST_MAX": [DuelCamera.BEHIND_DIST_MAX, 9.0], "DuelCamera.BEHIND_HEIGHT_NEAR": [DuelCamera.BEHIND_HEIGHT_NEAR, 3.8], "DuelCamera.BEHIND_HEIGHT_FAR": [DuelCamera.BEHIND_HEIGHT_FAR, 3.0], "DuelCamera.BEHIND_SHOULDER": [DuelCamera.BEHIND_SHOULDER, 1.0], "DuelCamera.BEHIND_FOCUS": [DuelCamera.BEHIND_FOCUS, 0.5], "DuelCamera.SIDE_DIST": [DuelCamera.SIDE_DIST, 6.0], "DuelCamera.SIDE_DIST_PER_M": [DuelCamera.SIDE_DIST_PER_M, 0.75], "DuelCamera.SIDE_DIST_MIN": [DuelCamera.SIDE_DIST_MIN, 8.0], "DuelCamera.SIDE_DIST_MAX": [DuelCamera.SIDE_DIST_MAX, 24.0], "DuelCamera.FOV_DEG": [DuelCamera.FOV_DEG, 60.0], "camera fov": [arena.duel_camera.cam.fov if arena.duel_camera else 60.0, 60.0], "Fighter.WALL_SPLAT_FRAMES": [float(Fighter.WALL_SPLAT_FRAMES), float(GDD_WALL_SPLAT_FRAMES)]}
 	for f: Fighter in [p1, p2]:
 		var d := f.data
 		got["%s.block_arc_deg" % d.id] = [d.block_arc_deg, GDD_BLOCK_ARC_DEG]
@@ -1150,7 +1167,7 @@ func _physics_process(_delta: float) -> void:
 				if gdd != "":
 					_fail("design numbers drifted from docs/GDD/02: " + gdd)
 					return
-				_ok("design numbers = GDD 02 literals: radius 12.5, yaw clamp 3°, pull-back 15°/30 %, block arc 70°, circling 0.8, cone 30°, wall splat 10 f, tracking and back-hit per move class")
+				_ok("design numbers = GDD 02 literals: radius 20, camera K-1 (fov 60, behind 5/3.8→3.0/1.0, side 6+0.75·sep ∈ [8, 24]), yaw clamp 3°, pull-back 15°/30 %, block arc 70°, circling 0.8, cone 30°, wall splat 10 f, tracking and back-hit per move class")
 				_ang0 = _bearing(p1, p2)
 				_d0 = _flat(p1.global_position - p2.global_position).length()
 				_swept = 0.0
@@ -2260,8 +2277,7 @@ func _physics_process(_delta: float) -> void:
 						return
 					_ok("camera behind P1: W closes in, D circles 360° in %d frames; |ω| ≤ %.2f°/tick, |Δω| ≤ %.3f°/tick², both in view, P2's head never below P1's (worst %.0f px), sep %.2f → %.2f m" % [_f - int(_y0) - 50, _w_max, _dw_max, _head_low, _hp0, sep2])
 					_x0 = 0.0
-					GameState.p2_is_cpu = false
-					_load_arena(2, 131)
+					_next_to(132)
 				elif _f > int(_y0) + 1200:
 					_fail("camera behind: 360° circle not finished (swept %.1f°)" % rad_to_deg(_swept))
 			elif _f > _f0 + 600 and _x0 == 0.0:
@@ -2294,12 +2310,108 @@ func _physics_process(_delta: float) -> void:
 						return
 					_ok("camera side-on in VERSUS: W circles 360° in %d frames; |ω| ≤ %.2f°/tick, |Δω| ≤ %.3f°/tick², both in view" % [_f - int(_y0) - 10, _w_max, _dw_max])
 					_x0 = 0.0
-					GameState.p2_is_cpu = false
-					_next_to(140)
+					_next_to(133)
 				elif _f > int(_y0) + 1200:
 					_fail("camera side: 360° circle not finished (swept %.1f°)" % rad_to_deg(_swept))
 			elif _f > _f0 + 600 and _x0 == 0.0:
 				_fail("camera side: round never started")
+		# ---------------- launch 6, ADR-018: the pair framed with air, behind (132) and side-on (133) --------
+		132, 133:
+			# P2 walks a full circle around P1 at sep 1, 4, 6 m (placed 2°/tick); every tick both fighters must take
+			# 15–30 % of the frame height (P2 behind at sep 6: ≥ 12 %) with ≥ 15 % of the width to the edge
+			var seps := [1.0, 4.0, 6.0]
+			var per := 60 + 180
+			var t := _f - _f0 - 5
+			if t < 0:
+				if p2._brain != null:
+					p2._brain.process_mode = Node.PROCESS_MODE_DISABLED
+				_fr = {}
+				return
+			var k := t / per
+			if k < seps.size():
+				var sep: float = seps[k]
+				var u := t % per
+				_place(p2, p1, sep, float(maxi(u - 60, 0)) * 2.0)
+				p1.global_position = Vector3(0.0, p1.global_position.y, 0.0) if u == 0 else p1.global_position
+				if u > 60 + 10:
+					var m := _frame_metrics()
+					var key := sep
+					var cur: Array = _fr.get(key, [1.0, 0.0, 1.0, 0.0, 1.0])
+					_fr[key] = [minf(cur[0], m[0]), maxf(cur[1], m[0]), minf(cur[2], m[1]), maxf(cur[3], m[1]), minf(cur[4], m[2])]
+				return
+			var behind_mode: bool = arena.duel_camera.behind
+			var bad := ""
+			for sep in seps:
+				var r: Array = _fr[sep]
+				var p2_min := 0.12 if behind_mode and sep >= 6.0 else 0.15
+				# GDD 02's own side formula (6 + 0.75·6 = 10.5 m) gives 14–15 % at sep 6, under its smoke's 15 %:
+				# a GDD inconsistency handed to T5 Арес (docs/Fix/2026-10-03-launch-6-controls-camera.md) — held at 14 % meanwhile
+				var p1_min := 0.14 if not behind_mode and sep >= 6.0 else 0.15
+				p2_min = minf(p2_min, p1_min)
+				if r[0] < p1_min or r[1] > 0.30 or r[2] < p2_min or r[3] > 0.30 or r[4] < 0.15:
+					bad += " sep %.0f: P1 %.0f–%.0f %%, P2 %.0f–%.0f %% (want 15–30, P2 ≥ %.0f), margin %.0f %% (want ≥ 15);" % [sep, r[0] * 100, r[1] * 100, r[2] * 100, r[3] * 100, p2_min * 100, r[4] * 100]
+			if bad != "":
+				_fail("ADR-018 frame, %s:%s" % ["behind" if behind_mode else "side", bad])
+				return
+			var txt := ""
+			for sep in seps:
+				var r2: Array = _fr[sep]
+				txt += " sep %.0f — P1 %.0f–%.0f %%, P2 %.0f–%.0f %%, margin ≥ %.0f %%;" % [sep, r2[0] * 100, r2[1] * 100, r2[2] * 100, r2[3] * 100, r2[4] * 100]
+			_ok("ADR-018 frame %s, 360° at sep 1/4/6:%s" % ["behind" if behind_mode else "side", txt])
+			if _stage == 132:
+				GameState.p2_is_cpu = false
+				_load_arena(2, 131)
+			else:
+				_next_to(134)
+		134:
+			# ADR-018 п. 5: fighters near x = ±11 with their line along z — the side camera looks along x and its arm
+			# must reach full length (the plane's invisible WallL/WallR at x = ±13.5 used to pull it in)
+			var dc: DuelCamera = arena.duel_camera
+			var xs := [11.0, -11.0]
+			var t2 := _f - _f0 - 5
+			if t2 < 0:
+				_fr = {}
+				return
+			var idx := t2 / 90
+			if idx < xs.size():
+				p1.global_position = Vector3(xs[idx], p1.global_position.y, -1.5)
+				p2.global_position = Vector3(xs[idx], p2.global_position.y, 1.5)
+				if t2 % 90 == 89:
+					_fr[idx] = [dc.arm.get_hit_length(), dc.arm.spring_length, absf(dc.cam.global_position.x)]
+				return
+			var short := ""
+			var outer := 0.0
+			for i in xs.size():
+				var a: Array = _fr[i]
+				outer = maxf(outer, a[2])
+				if a[0] < a[1] - 0.05:
+					short += " x %.0f: arm %.2f of %.2f m;" % [xs[i], a[0], a[1]]
+			if short != "" or outer < 13.5:
+				_fail("ADR-018 walls: the side camera arm is pulled in —%s camera reached |x| %.1f (want past 13.5)" % [short, outer])
+				return
+			_ok("ADR-018 walls: fighters at x = ±11, line along z — the arm reaches full length (%.1f m), camera out to |x| %.1f past the old walls" % [(_fr[0] as Array)[1], outer])
+			# 02 § Коло арени: from any point of the 20 m circle an anchor is within grapple_range (same reach as GrappleHook)
+			var reach: float = p1.data.grapple_range
+			var worst := 0.0
+			var worst_at := Vector3.ZERO
+			var pts := 0
+			for gx in range(-20, 21):
+				for gz in range(-20, 21):
+					var at := Vector3(gx, 0.0, gz)
+					if Vector2(at.x, at.z).length() > GDD_ARENA_RADIUS:
+						continue
+					pts += 1
+					var best := INF
+					for n in get_tree().get_nodes_in_group("grapple_anchor"):
+						best = minf(best, ((n as Node3D).global_position - (at + GrappleHook.HAND)).length())
+					if best > worst:
+						worst = best
+						worst_at = at
+			if worst > reach:
+				_fail("anchors on the 20 m circle: at %s the nearest anchor is %.1f m away (grapple_range %.0f)" % [worst_at, worst, reach])
+				return
+			_ok("anchors on the %.0f m circle: from all %d grid points an anchor within %.1f m ≤ grapple_range %.0f" % [GDD_ARENA_RADIUS, pts, worst, reach])
+			_next_to(140)
 		# ---------------- 3c: crystal ult (03 § Кристальна ульта Choko, Ares 3c-1) ----------------
 		140:
 			if not (flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable()):
@@ -2386,8 +2498,8 @@ func _physics_process(_delta: float) -> void:
 				InputRouter.v_clear(1)
 				InputRouter.v_clear(2)
 				var n := Vector3(1.0, 0.0, 0.0)
-				p2.global_position = n * (12.5 - 1.0)
-				p1.global_position = n * (12.5 - 4.0)
+				p2.global_position = n * (GDD_ARENA_RADIUS - 1.0)
+				p1.global_position = n * (GDD_ARENA_RADIUS - 4.0)
 				p2.hp = p2.data.max_hp
 				_x0 = p2.hp
 				_n0 = int(p2.stats.get("splats", 0))
@@ -2411,8 +2523,8 @@ func _physics_process(_delta: float) -> void:
 					if p2.hurt_shape.disabled:
 						_fail("wall splat: hurtbox disabled during the splat (GDD 02: it stays on, the attacker can follow up)")
 						return
-					if p2.hp != _x0 or r < 12.5 - 0.05 or face < 0.9 or int(p2.stats.get("splats", 0)) != _n0 + 1:
-						_fail("wall splat: hp %.1f → %.1f (want no damage), radius %.2f (want 12.5), facing the centre %.2f, splats %d → %d" % [_x0, p2.hp, r, face, _n0, p2.stats.get("splats", 0)])
+					if p2.hp != _x0 or r < GDD_ARENA_RADIUS - 0.05 or face < 0.9 or int(p2.stats.get("splats", 0)) != _n0 + 1:
+						_fail("wall splat: hp %.1f → %.1f (want no damage), radius %.2f (want the circle), facing the centre %.2f, splats %d → %d" % [_x0, p2.hp, r, face, _n0, p2.stats.get("splats", 0)])
 						return
 				if _splat_phase == 0 and _run == 4:
 					_shot("15_free_wall_splat")

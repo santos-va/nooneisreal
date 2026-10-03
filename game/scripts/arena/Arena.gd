@@ -29,6 +29,7 @@ func _ready() -> void:
 	if GameState.free_move:
 		_round_floor()
 		_anchors_around()
+		_drop_plane_walls()
 	GameState.water = null
 	var water_path: String = st.get("water", "")
 	if water_path != "" and ResourceLoader.exists(water_path):
@@ -70,11 +71,28 @@ func _round_floor() -> void:
 	var depth := 2.0 * (Fighter.ARENA_RADIUS + 1.0)
 	var shape := ((ground.get_node("Shape") as CollisionShape3D).shape as BoxShape3D).duplicate() as BoxShape3D
 	shape.size.z = depth
+	shape.size.x = maxf(shape.size.x, depth)   # launch 6: the circle (20 m) outgrew the 0.2 floor in x too
 	(ground.get_node("Shape") as CollisionShape3D).shape = shape
 	var mi := ground.get_node("Mesh") as MeshInstance3D
 	var mesh := (mi.mesh as BoxMesh).duplicate() as BoxMesh
 	mesh.size.z = depth
+	mesh.size.x = maxf(mesh.size.x, depth)
 	mi.mesh = mesh
+
+
+## Free movement (launch 6, ADR-018 п. 5): the plane's invisible walls WallL/WallR (x = ±13.5, layer 1) stand inside
+## the 20 m circle. They would stop fighters and pull the camera arm in, so in 3D they leave the world; the circle holds
+## the fighters (Fighter.clamp_arena).
+func _drop_plane_walls() -> void:
+	for w in ["WallL", "WallR"]:
+		var body := get_node_or_null(w) as StaticBody3D
+		if body != null:
+			body.collision_layer = 0
+			body.collision_mask = 0
+
+
+const ANCHOR_RING := 8
+const ANCHOR_RING_R := 14.0
 
 
 ## Free movement: the 0.2 anchors sit on the X line. Until a 3D anchor layout exists (PLACEHOLDER —
@@ -93,6 +111,17 @@ func _anchors_around() -> void:
 		twin.name = "%sZ" % m.name
 		twin.position = Vector3(-p.z, p.y, p.x)
 		root.add_child(twin)
+	# launch 6: the 20 m circle (02 § Коло арени) needs an anchor within grapple_range (14 m) from every point —
+	# a ring of ANCHOR_RING lamps at ANCHOR_RING_R between the axes. PLACEHOLDER layout until ADR-011's level.
+	var proto := root.get_node_or_null("Anchor1") as Marker3D
+	if proto == null:
+		return
+	for k in ANCHOR_RING:
+		var ang := TAU * (float(k) + 0.5) / float(ANCHOR_RING)
+		var ring := proto.duplicate() as Marker3D
+		ring.name = "Ring%d" % k
+		ring.position = Vector3(cos(ang) * ANCHOR_RING_R, proto.position.y, sin(ang) * ANCHOR_RING_R)
+		root.add_child(ring)
 
 
 func _spawn(idx: int, char_id: String, x: float, face: int, cpu: bool) -> Fighter:

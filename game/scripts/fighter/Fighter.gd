@@ -50,7 +50,7 @@ const WALL_SPLAT_FRAMES := 10     # `wall_splat_frames`, ДИЗАЙН (T5 Аре
 const WATER_GETUP_EXTRA := 6      # Stage-River: getting up out of the water is slower (PLACEHOLDER)
 # free movement, GameState.free_move — numbers: T5 Арес, docs/GDD/02-Combat-System.md § Вільний 3D-рух
 # (per-fighter ones live in CharacterData: block_arc_deg, circle_speed_mult, grapple_cone_deg)
-const ARENA_RADIUS := 12.5        # `arena_radius`, ДИЗАЙН (= ARENA_HALF_WIDTH)
+const ARENA_RADIUS := 20.0        # `arena_radius`, ДИЗАЙН, PLACEHOLDER (Арес 2026-10-03, Р4; ≠ ARENA_HALF_WIDTH since then)
 const FLASH_INPUT_LOCK := 6       # input stays in the pre-flash camera frame for the flash + 6 frames
 const MIN_LINE := 0.05            # below this the direction to the opponent is undefined: keep the last
 const FLASH_SIDE_DEG := 45.0      # Flash Step exit turned by a sideways stick (ДИЗАЙН, T5 Арес, docs/GDD/03 § Як у 3D)
