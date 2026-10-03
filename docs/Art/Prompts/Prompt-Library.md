@@ -311,5 +311,25 @@ Santos: V-1 «не ті» — форма має бути P-6000 з його фо
 2. **T-пози front і ¾** (замість X-0, X-3) — після вибору картки; референси: спина Z-1 `50734236`, переможець картки, X-0 `b529a3bd`
    (лише обличчя й пропорції). Шаблон § 15a з IDENTITY v5.2 без меча.
 
+## 16. Пристрій-принтер Choko — `choko-item-printer-v1` (канон H13, [[Lore]] § Портрет, пристрій і помічник)
+
+gpt_image_2_5 high 2k 16:9, `count: 2`, референс — картка годинника Choko `cecf569d` (латунь і зелене світло: ШІ живе в годиннику,
+скринька — його друк). `get_cost` 2026-10-03 → 2.75 за шт., ×2 = **5.5**. Генерація — слово Santos.
+
+```
+Item design card for a fighting game, on a flat muted mint-sage background (#B8CBB1), hand-drawn in a loose expressive western animation sketch style, NOT anime: lively plum-graphite inked lines with small line breaks, flat colors with a single magenta-violet cel shadow tone, almost no highlights, no gradients, no gloss. The item: Choko's portable printing device — a small hand-held brass box, half instant camera and half typewriter, matching the aged brass, dark plum leather and glowing green accents of the reference wristwatch: one round glass lens on the front with a brass bezel, a folding crank handle on the right side, a leather carry strap, a paper roll visible through a small side window, a slot on top where a short printed paper strip curls out, tiny warm glowing lamp windows and green-glowing tick marks like the watch hands. Shown alone four times in a row with the same scale — front view, side view with the crank, back view, three-quarter view — plus two small circled detail insets: 1) a printed sticker coming out of the slot, with a torn ragged edge and a simple sketched face silhouette on it; 2) the lens and the crank. Small hand-written numbers by each view. Title "CHOKO PRINTER". No screens, no displays, no buttons with digits, no cyberpunk, no neon cables, no hands, no characters, no letters except the title, no logos, no watermark.
+```
+
+## 17. Дрон-помічник Choko — `choko-drone-helper-v1` (канон H14-A, ім'я не обране: Tick / Spool)
+
+gpt_image_2_5 high 2k 16:9, `count: 2`, референси — годинник Choko `cecf569d` (латунь, зелене світло) і важкий дрон `e9fd9e33`
+(та сама родина машин Cronshift, але помічник — маленький і легкий). `get_cost` 2026-10-03 → 2.75 за шт., ×2 = **5.5**.
+**Розвилка Santos:** око-лінза світиться зеленим, як стрілки годинника (пропозиція T6: це той самий ШІ), а пилюжно-помаранчевий
+(як куртка Choko) — акцент на корпусі; інакше — помаранчеве око.
+
+```
+Character prop design sheet for a fighting game, on a flat muted mint-sage background (#B8CBB1), hand-drawn in a loose expressive western animation sketch style, NOT anime: lively plum-graphite inked lines with small line breaks, flat colors with a single magenta-violet cel shadow tone, no gradients, no gloss. A tiny friendly flying helper drone of the old European-industrial city of Cronshift, about the size of a teapot: a round riveted brass body with muted dusty-orange painted panels, ONE big round eye-lens in the front with a brass shutter ring and a soft green glow like the hands of the reference wristwatch, two small caged rotors on short arms, a little paper roll mounted under its belly feeding a printing slot, a short antenna with a tiny warm lamp. Much smaller, lighter and cuter than the heavy cargo drone in the second reference, same brass-and-rivets family. The same drone shown in five panels with even spacing and the same scale: 1) front view hovering; 2) side view; 3) three-quarter view tilting curiously, eye shutter half closed; 4) printing — a short sticker with a torn ragged edge coming out from under its belly; 5) back view. Small hand-written numbers by each panel. Expressive but no face other than the single lens, no mouth, no screens, no displays, no letters or words, no logos, no watermark, no people.
+```
+
 ## Related
-- [[Style-Guide]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Prompts]] · [[Choko]] · [[Skea]] · [[Stage-River]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[2026-10-03-Skea-Redesign]]
+- [[Style-Guide]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Prompts]] · [[Choko]] · [[Skea]] · [[Stage-River]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[2026-10-03-Skea-Redesign]] · [[Lore]]
