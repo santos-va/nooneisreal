@@ -31,7 +31,7 @@ check:
 	[ $$rc -eq 0 ] || { echo "ІМПОРТ ВПАВ: rc=$$rc"; exit $$rc; }; \
 	GODOT_BIN="$$G" bash tools/gates/gd_check_all.sh || exit $$?; \
 	echo "── smoke test: godot --headless -- --smoke ──"; \
-	"$$G" --headless --path $(GAME) --quit-after 4000 -- --smoke 2>&1 | grep -E '^\[smoke\]|SCRIPT ERROR|ERROR:' ; \
+	"$$G" --headless --path $(GAME) --quit-after 12000 -- --smoke 2>&1 | grep -E '^\[smoke\]|SCRIPT ERROR|ERROR:' ; \
 	rc=$${PIPESTATUS[0]}; [ $$rc -eq 0 ] && echo "SMOKE ЗЕЛЕНИЙ" || { echo "SMOKE ЧЕРВОНИЙ rc=$$rc"; exit $$rc; }
 
 # Свіжий клон не має game/.godot/ (у .gitignore), а з ним — реєстру class_name.

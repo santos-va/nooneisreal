@@ -17,6 +17,14 @@ var walk_phase: float = 0.0
 var idle_time: float = 0.0
 var flash_time: float = 0.0
 var spin: float = 0.0
+var water_tilt: float = 0.0      # river stage sway (radians, rig-local), visual only
+var flinch_zone: String = "mid"  # high | mid | low — which part of the body the last hit snaps
+
+## Attack readability (plan 2026-10-03 step 1.5). Presentation only, frame data untouched.
+const ANTICIPATION := 0.35       # wind-up: pose pulled this far *behind* rest early in startup
+const OVERSHOOT := 0.22          # extension past the key pose on the first active frame
+const STEP_FRAMES := 5           # attacks pose on 12 fps steps (60 / 5), anime limited animation
+var _step_frame: int = -1
 
 # second-order spring for flinch (x = backward tilt, y = bob, z = twist)
 var flinch_x: Vector3 = Vector3.ZERO
@@ -180,7 +188,9 @@ func flash() -> void:
 
 
 ## Impulse into the flinch spring. dir.x = direction the hit travels (world), strength ~ damage.
-func flinch(dir: Vector3, strength: float, facing: int) -> void:
+## zone picks the reaction: high = head snaps back, mid = folds over the gut, low = knees buckle.
+func flinch(dir: Vector3, strength: float, facing: int, zone: String = "mid") -> void:
+	flinch_zone = zone
 	# local: positive x = forward for the rig; a hit travelling along +facing pushes the torso backward
 	var local_back := -dir.x * float(facing)   # >0 when pushed away from where we face
 	flinch_v.x += clampf(strength / 40.0, 0.4, 2.2) * (1.0 if local_back > 0.0 else -1.0) * 6.0
@@ -197,13 +207,34 @@ func tick(delta: float, f: Fighter, frozen: bool) -> void:
 	idle_time += delta
 	rotation.y = 0.0 if f.facing == 1 else PI
 	_compute_target(f, delta)
-	var k := 1.0 - pow(0.0001, delta)  # fast exponential smoothing (≈ 10-14 frames to settle)
-	for n in parts.keys():
-		pose[n] = (pose[n] as Vector3).lerp(target_pose[n], k)
-	root_offset = root_offset.lerp(target_root_offset, k)
+	_water_sway(f)
+	if f.state == Fighter.State.ATTACK and f.current_move != null:
+		# hold each drawing, then snap to the next on a 12 fps step or on a phase boundary
+		if _is_step(f):
+			for n in parts.keys():
+				pose[n] = target_pose[n]
+			root_offset = target_root_offset
+	else:
+		_step_frame = -1
+		var k := 1.0 - pow(0.0001, delta)  # fast exponential smoothing (≈ 10-14 frames to settle)
+		for n in parts.keys():
+			pose[n] = (pose[n] as Vector3).lerp(target_pose[n], k)
+		root_offset = root_offset.lerp(target_root_offset, k)
 	_integrate_flinch(delta)
 	_apply_pose()
 	_update_flash(delta)
+
+
+## Stage-River: the pelvis follows the wave slope, amplified for unsteady fighters
+## (tilt = atan(slope) × (1.6 − water_balance)). Presentation only — hitboxes don't move.
+func _water_sway(f: Fighter) -> void:
+	var w := GameState.water
+	var target := 0.0
+	if w != null and f.on_ground() and f.state != Fighter.State.KNOCKDOWN and f.state != Fighter.State.KO:
+		target = atan(w.slope(f.global_position.x)) * (1.6 - f.data.water_balance) * float(f.facing)
+		if w.swell_started_now():
+			flinch_v.x += (1.6 - f.data.water_balance) * 3.0 * (1.0 if target >= 0.0 else -1.0)
+	water_tilt = lerpf(water_tilt, target, 0.25)
 
 
 func _update_flash(delta: float) -> void:
@@ -308,7 +339,7 @@ func _compute_target(f: Fighter, delta: float) -> void:
 			_pose_set("pelvis", Vector3(0, 0, -PI / 2.0))
 			target_root_offset = Vector3(0, -0.75, 0)
 		Fighter.State.GETUP:
-			var t := clampf(float(f.frame_in_state) / float(Fighter.GETUP_FRAMES), 0.0, 1.0)
+			var t := clampf(float(f.frame_in_state) / float(f.getup_frames()), 0.0, 1.0)
 			_pose_set("pelvis", Vector3(0, 0, -PI / 2.0 * (1.0 - t)))
 			_crouch_t(1.0 - t)
 			target_root_offset = Vector3(0, -0.75 * (1.0 - t), 0)
@@ -356,14 +387,7 @@ func _attack_pose(f: Fighter) -> void:
 		phase = 1.0 + float(fr - m.startup) / maxf(1.0, float(m.active))
 	else:
 		phase = 2.0 + float(fr - m.startup - m.active) / maxf(1.0, float(m.recovery))
-	# 0 at rest, 1 fully extended during active, back to 0 in recovery
-	var ext := 0.0
-	if phase < 1.0:
-		ext = pow(phase, 2.0)
-	elif phase < 2.0:
-		ext = 1.0
-	else:
-		ext = 1.0 - clampf(phase - 2.0, 0.0, 1.0)
+	var ext := attack_ext(phase)
 	_guard(0.0)
 	var anim := m.anim
 	if f.chain_index % 2 == 1 and m.anim_chain != "":
@@ -490,17 +514,58 @@ func _attack_pose(f: Fighter) -> void:
 			_pose_set("forearm_r", Vector3(0, 0, lerpf(1.15, 0.05, ext)))
 
 
+## Extension curve across a move: 0 = rest, 1 = key strike pose.
+##   startup 0..1: wind-up behind rest (−ANTICIPATION at 45 %), then a fast snap to 1
+##   active  1..2: overshoot to 1 + OVERSHOOT on the first active frame, settling to 1
+##   recovery 2..3: back to rest
+static func attack_ext(phase: float) -> float:
+	if phase < 1.0:
+		if phase < 0.45:
+			return -ANTICIPATION * sin(PI * 0.5 * phase / 0.45)
+		var t := (phase - 0.45) / 0.55
+		return lerpf(-ANTICIPATION, 1.0, t * t)
+	if phase < 2.0:
+		var a := phase - 1.0
+		return 1.0 + OVERSHOOT * (1.0 - a) * (1.0 - a)
+	return 1.0 - clampf(phase - 2.0, 0.0, 1.0)
+
+
+## True on the frames the attack pose may change: every STEP_FRAMES, plus the first startup,
+## first active and first recovery frame so the key drawings are never skipped.
+func _is_step(f: Fighter) -> bool:
+	var m := f.current_move
+	var fr := f.move_frame
+	var key := fr == 0 or fr == m.startup or fr == m.startup + m.active or _step_frame < 0
+	if key or fr - _step_frame >= STEP_FRAMES or fr < _step_frame:
+		_step_frame = fr
+		return true
+	return false
+
+
 func _apply_pose() -> void:
 	for n in parts.keys():
 		var pv: Node3D = parts[n]["pivot"]
 		var e: Vector3 = pose[n]
+		var fl := absf(flinch_x.x)
 		if n == "torso":
-			e.z += flinch_x.x * 0.35
+			match flinch_zone:
+				"high":
+					e.z += flinch_x.x * 0.25
+				"low":
+					e.z += flinch_x.x * 0.15 + fl * 0.2
+				_:
+					e.z += fl * 0.55          # doubled over
 			e.y += flinch_x.z * 0.2
 		elif n == "head":
-			e.z += flinch_x.x * 0.6
+			e.z += flinch_x.x * (1.1 if flinch_zone == "high" else 0.45)
+		elif (n == "thigh_l" or n == "thigh_r") and flinch_zone == "low":
+			e.z += fl * 0.45
+		elif (n == "shin_l" or n == "shin_r") and flinch_zone == "low":
+			e.z -= fl * 0.8
 		elif n == "pelvis":
 			e.y += spin
+			e.z += water_tilt
 		pv.rotation = e
 	var root: Node3D = parts["pelvis"]["pivot"]
-	root.position = Vector3(0, 0.95, 0) + root_offset + Vector3(0, flinch_x.y * 0.08, 0)
+	var buckle := absf(flinch_x.x) * 0.07 if flinch_zone == "low" else 0.0
+	root.position = Vector3(0, 0.95, 0) + root_offset + Vector3(0, flinch_x.y * 0.08 - buckle, 0)

@@ -6,6 +6,8 @@ var _buttons: Array[Button] = []
 var _p1_btn: Button
 var _p2_btn: Button
 var _stage_btn: Button
+var _keys_btn: Button
+var _foot: Label
 var _card1: TextureRect
 var _card2: TextureRect
 
@@ -52,22 +54,21 @@ func _ready() -> void:
 	spacer.custom_minimum_size = Vector2(0, 30)
 	center.add_child(spacer)
 	_add(center, "FIGHT  ·  P1 vs CPU", func(): GameState.p2_is_cpu = true; GameState.training_mode = false; _go())
-	_add(center, "VERSUS  ·  P1 vs P2 (one keyboard)", func(): GameState.p2_is_cpu = false; GameState.training_mode = false; _go())
+	_add(center, "VERSUS  ·  P1 vs P2", func(): GameState.p2_is_cpu = false; GameState.training_mode = false; _go())
 	_add(center, "TRAINING", func(): GameState.p2_is_cpu = true; GameState.training_mode = true; _go())
 	_p1_btn = _add(center, "", func(): GameState.cycle_character(1, 1); _refresh())
 	_p2_btn = _add(center, "", func(): GameState.cycle_character(2, 1); _refresh())
 	_stage_btn = _add(center, "", func(): GameState.cycle_stage(1); _refresh())
+	_keys_btn = _add(center, "", func(): InputRouter.cycle_profile(); _refresh())
 	_add(center, "QUIT", func(): get_tree().quit())
-	for b in [_p1_btn, _p2_btn, _stage_btn]:
+	for b in [_p1_btn, _p2_btn, _stage_btn, _keys_btn]:
 		b.gui_input.connect(_cycle_input.bind(b))
 	_card1 = _card_rect(Vector2(24, 470))
 	_card2 = _card_rect(Vector2(-504, 470))
 	_card2.anchor_left = 1.0
 	_card2.anchor_right = 1.0
-	_refresh()
-	_buttons[0].grab_focus()
 	var foot := Label.new()
-	foot.text = "P1: WASD · F/G attacks · LShift guard · Q/E skills · R grapple · C dash · V ultimate      P2: arrows · K/L · RShift · ; ' · I · . · ,"
+	_foot = foot
 	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	foot.add_theme_font_size_override("font_size", 15)
 	foot.add_theme_color_override("font_color", Color(0.75, 0.72, 0.7))
@@ -75,6 +76,8 @@ func _ready() -> void:
 	foot.anchor_top = 1.0
 	foot.offset_top = -40
 	add_child(foot)
+	_refresh()
+	_buttons[0].grab_focus()
 
 
 func _add(parent: Control, text: String, cb: Callable) -> Button:
@@ -102,6 +105,8 @@ func _cycle_input(event: InputEvent, b: Button) -> void:
 		GameState.cycle_character(1, dir)
 	elif b == _p2_btn:
 		GameState.cycle_character(2, dir)
+	elif b == _keys_btn:
+		InputRouter.cycle_profile()
 	else:
 		GameState.cycle_stage(dir)
 	Sfx.play("ui_move", -10)
@@ -115,6 +120,10 @@ func _refresh() -> void:
 	_p1_btn.text = "P1:  ◂ %s ▸" % (c1.display_name if c1 else GameState.p1_character)
 	_p2_btn.text = "P2:  ◂ %s ▸" % (c2.display_name if c2 else GameState.p2_character)
 	_stage_btn.text = "STAGE:  ◂ %s ▸" % GameState.stage().name
+	var solo := InputRouter.profile == InputRouter.PROFILE_SOLO
+	_keys_btn.text = "KEYBOARD:  ◂ %s ▸" % ("SOLO (P2 on gamepad)" if solo else "SHARED (two on one keyboard)")
+	if _foot:
+		_foot.text = InputRouter.hint_text(false)
 	if _card1:
 		_card1.texture = _card_tex(c1)
 		_card2.texture = _card_tex(c2)
