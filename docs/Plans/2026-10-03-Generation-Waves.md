@@ -1,8 +1,8 @@
 # План — хвилі генерації: картинки, картки предметів, фон, анімації (Sketch-Cel)
 
-**Дата:** 2026-10-03 · **Роль:** T1 Дедал · **Статус:** draft (кожна хвиля — RED, слово Santos у сесії T6) · **Issue:** santos-va/nooneisreal#14 (Х0 + Х1)
+**Дата:** 2026-10-03 · **Роль:** T1 Дедал · **Статус:** approved — Х1 зроблено, Santos: «стиль так» (2026-10-03); Х2 — RED, слово Santos у сесії T6 · **Issue:** santos-va/nooneisreal#14 (Х0–Х2), #19 (якорі й дрони)
 **Зустріч:** [[2026-10-03-Generation-Kickoff]] · **Виріс із:** [[2026-10-03-Production-Plan]] (фази 2–3), [[2026-10-03-Main-Menu-Skyline]] (М2),
-[[Menu-Skyline-Prompts]] (робота T6, santos-va/nooneisreal#13) · **Рішення:** [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-010-City-Name-Cronshift]]
+[[Menu-Skyline-Prompts]] (робота T6, santos-va/nooneisreal#13) · **Рішення:** [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-010-City-Name-Cronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]]
 
 ## Що хоче Santos (2026-10-03)
 
@@ -66,6 +66,21 @@
 **Ворота Santos:** 1 переможець із 4 у кожній партії + «стиль так» або правки. Правки → T6 правит `{STYLE}` у
 [[Prompt-Library]] і повторює лише провалену партію. Без «стиль так» Х2 не стартує.
 
+### Х1 — підсумок (2026-10-03)
+
+Santos: **«стиль так»**. Переможці — посилання Santos на Higgsfield (з хмари `higgsfield.ai` закритий: `curl` → 000,
+WebFetch → `EGRESS_BLOCKED`, тож job-id **не перевірено**; T6 розв'язує посилання своїми інструментами або питає номер
+з галереї: 0–3 Choko, 4–7 річка, 8–11 меню; job-id — [[Menu-Skyline-Prompts]] § Журнал запусків):
+
+| партія | переможець |
+|---|---|
+| 1a `choko-sheet-v1` | https://higgsfield.ai/s/OQ3QH4YcfpI |
+| 1b `stage-river-plate-v1` | https://higgsfield.ai/s/aWWwF1-VmvU |
+| 1c `menu-skyline-plate-v1` | https://higgsfield.ai/s/lETtqHDD-LI |
+
+**Помилка Дедала в цьому плані:** Х3a (ціни 3D, 0 кр.) і Х1-Л (ліцензія, T3) не залежать від стилю, але стояли в
+черзі за ним. Тепер вони йдуть **одразу**, паралельно з Х2.
+
 ### Х2 — персонажі, картки предметів, шари фону, меню (RED, після «стиль так»)
 
 | партія | id | модель | шт | кр. | бюджет |
@@ -78,8 +93,13 @@
 | 2f | M2-B `menu-roof-edge-v1`, M2-C `menu-skyline-layers`, M2-D outpaint за потреби | див. [[Menu-Skyline-Prompts]] | 2 + 1 + 0–1 | 7.5–11.46 | меню |
 | 2g | M2-E проба `sprite-pedestrian-worker-walk` → решта 3 типи лише після проби | gpt_image_2_5 high 2k transparent | 1 → 3 | 2.75 → 8.25 | меню |
 | 2h | M2-F `sprite-steamcar-a/b`, M2-G `vfx-steam-puff` | gpt_image_2_5 high 2k transparent | 2 + 2 | 11 | меню |
+| 2i | `props-anchors-v1` — лист пропсів-якорів ([[ADR-011-Diegetic-Grapple-Anchors]]): великий кований ліхтар, білборд на опорах **з картинкою без літер**, промислова труба з драбиною й хомутами, вентиляційний стовп; кожен — фронт і ¾ | gpt_image_2_5 high 2k 16:9, референс — переможець 1b | 4 | 11 | 600 |
+| 2j | `drone-heavy-v1` — лист дрона: важкий тихий вантажний дрон у стилі міста (латунь, клепаний корпус, 4–6 закритих роторів, гак під черевом), пози: висить · нахил до тяги · просідання з напругою · повернення; окремо — силует знизу | gpt_image_2_5 high 2k 16:9, референс — переможець 1b | 4 | 11 | 600 |
+| 2k | `menu-depth-cards-v1` — картки глибини для діорами ([[ADR-012-Menu-As-3D-Diorama]]): квартали ближнього й середнього плану, видимі з даху, прозоре тло; на дахах — труби й ліхтарі, за які чіпляються герої | gpt_image_2_5 high 2k 21:9 transparent, референс — переможець 1c | 2 | 5.5 | меню |
 
-Порядок усередині: 2a → (2b, 2c, 2d, 2e паралельно) ; 2f–2h — паралельно з 2a, бо спираються на переможця 1c.
+Порядок усередині: 2a → (2b, 2c, 2d, 2e паралельно) ; 2f–2h, 2k — паралельно з 2a, бо спираються на переможця 1c ; 2i, 2j — паралельно, спираються на 1b.
+
+**Разом Х2:** стеля 600 — 69.96 + 11 + 11 = **91.96**; меню — 29.5–33.46 + 5.5 = **35–38.96**; усього **≈ 126.96–130.92**. Ціни — `get_cost` хвилі 1 (2k 16:9 і 2k 21:9 = 2.75 за шт.); решта — з [[Menu-Skyline-Prompts]], T6 переміряє.
 
 ### Х3 — анімації (RED; спершу ціни)
 
@@ -120,15 +140,20 @@
 | Х3a | T6 + T3 | ціни в [[Higgsfield-Pipeline]]; ліцензії CC0-бібліотек у `docs/Research/` | рішення 3c без чисел | числа `get_cost` у чаті й у файлі; ліцензії з URL |
 | Х3b–d | T6 · **RED**, далі T2 | GLB у `game/assets/characters/`; заміна капсульного рига — **окремий план** Дедала після 3b | ретаргет ламає `RigAnimator` | `make check` → smoke 20/20; `make gates` → rc=0 |
 
-## Стартове повідомлення для сесії T6 (скопіюй Santos)
+## Стартове повідомлення для сесії T6 — хвиля 2 (скопіюй Santos)
 
 ```
-T6 Аполлон. Виконай docs/Plans/2026-10-03-Generation-Waves.md: спершу Х0 (правки промптів, 0 кредитів, gates rc=0), потім Х1.
-Прочитай CLAUDE.md, docs/system/state.md, roles/t6-apollon.md і план. R0: кожен факт перевіряй у джерелі.
-Моє слово на Х1: так, 12 зображень, до 39 кредитів — лист Choko ×4, фон річки ×4 (референс bg_kronshift_river.jpg), панорама меню 4k ×4.
-Перед запуском — balance і get_cost у чат; якщо ціна вища за план — стоп і питай. Після — balance (різниця), job-id і CDN-URL у журнал,
-усі 12 варіантів мені на вибір. Push у гілку claude/…, draft PR.
+T6 Аполлон. Виконай хвилю 2 з docs/Plans/2026-10-03-Generation-Waves.md (партії 2a–2k), issue #14 і #19.
+Прочитай CLAUDE.md, docs/system/state.md, roles/t6-apollon.md, план, ADR-011 (якорі й дрони) і ADR-012 (меню — 3D-діорама). R0.
+Стиль так. Переможці хвилі 1: Choko — https://higgsfield.ai/s/OQ3QH4YcfpI , річка — https://higgsfield.ai/s/aWWwF1-VmvU ,
+меню — https://higgsfield.ai/s/lETtqHDD-LI . Розв'яжи їх у job-id (журнал у Menu-Skyline-Prompts); не вийде — спитай мене номер з галереї.
+Моє слово на хвилю 2: так, усі партії 2a–2k однією сесією, стеля 135 кредитів.
+Перед кожною партією — get_cost; ціна за шт. вища за план або сума перевищить 135 — стоп і питай. balance до/після кожної партії — різниця в журнал.
+2g (перехожі): спершу 1 проба; петля ходи не сходиться — решту 3 типи не запускай, спитай мене.
+Х3a паралельно, 0 кредитів: get_cost на multi_image_to_3d з ригом, 3d_rigging, кліп анімації — числа в Higgsfield-Pipeline і в чат.
+Звуки дрона (м'який гул, напруга) — підбери з моїх паків (tools/audio/sfx_sources.tsv), не з Higgsfield.
+Усі варіанти мені на вибір галереєю; job-id і CDN-URL у журнал; рядки в Asset-Manifest. Push у гілку claude/…, draft PR.
 ```
 
 ## Related
-- [[2026-10-03-Generation-Kickoff]] · [[2026-10-03-Production-Plan]] · [[2026-10-03-Main-Menu-Skyline]] · [[Menu-Skyline-Prompts]] · [[2026-10-03-Menu-Art-Estimate]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[Stage-River]] · [[Animation-Plan]] · [[Library]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-010-City-Name-Cronshift]] · [[state]]
+- [[2026-10-03-Generation-Kickoff]] · [[2026-10-03-Production-Plan]] · [[2026-10-03-Main-Menu-Skyline]] · [[Menu-Skyline-Prompts]] · [[2026-10-03-Menu-Art-Estimate]] · [[Asset-Manifest]] · [[Prompt-Library]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Textures-Registry]] · [[Stage-River]] · [[Animation-Plan]] · [[Library]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-010-City-Name-Cronshift]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[state]]
