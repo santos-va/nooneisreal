@@ -786,6 +786,65 @@ func _check_flipbook_part2() -> bool:
 		_fail("lane B part 2:" + bad)
 		return false
 	_ok("lane B part 2: Printer sticker = sticker_patch on a plane at the pick-up point, RECORD sticker, %d looping weak marks; Seen over the head while it lasts, Patch, Spring and rewind each drawn once" % loops)
+	return _check_flipbook_step3(dir)
+
+
+## Lane B step 3: skid dust along the soft wall (and nowhere else), speed lines on a zip, metal sparks on a block only.
+func _check_flipbook_step3(dir: FxDirector) -> bool:
+	var bad := ""
+	var free_was := GameState.free_move
+	GameState.free_move = true
+	var r := Fighter.ARENA_RADIUS
+	var on_wall := Vector3(r, 0.0, 0.0)
+	var along := Vector3(0.0, 0.0, 6.0)   # tangential at (r, 0, 0)
+	# the predicate: on the circle, grounded and moving along it — not inside, not airborne, not straight into the wall
+	var cases := [
+		["slide", on_wall, along, true, true],
+		["inside", Vector3(r - 1.0, 0.0, 0.0), along, true, false],
+		["air", on_wall, along, false, false],
+		["into the wall", on_wall, Vector3(6.0, 0.0, 0.0), true, false],
+		["slow", on_wall, Vector3(0.0, 0.0, FxDirector.SKID_SPEED * 0.5), true, false],
+		["other side", Vector3(0.0, 0.0, -r), Vector3(-6.0, 0.0, 0.0), true, true],
+	]
+	for c in cases:
+		var got := FxDirector.wall_slide_speed(c[1], c[2], c[3]) >= FxDirector.SKID_SPEED
+		if got != c[4]:
+			bad += " skid '%s' = %s (want %s);" % [c[0], got, c[4]]
+	var snap := Flipbook.spawned.duplicate()
+	var base := FxDirector._snap(p1)
+	base[0] = Fighter.State.WALK
+	base[1] = true
+	var slide := base.duplicate()
+	slide[10] = on_wall
+	slide[11] = along
+	dir._skid_at.erase(p1)
+	dir._events(p1, base, slide)
+	dir._events(p1, slide, slide)          # same frame: the cooldown holds it to one sheet
+	dir._frame += FxDirector.SKID_EVERY
+	dir._events(p1, slide, slide)          # SKID_EVERY later, still sliding: one more
+	var zip := base.duplicate()
+	zip[0] = Fighter.State.GRAPPLE
+	dir._events(p1, base, zip)
+	dir._events(p1, zip, zip)              # staying in GRAPPLE draws no more
+	var lines: Flipbook = null
+	for c in p1.get_children():
+		if c is Flipbook and (c as Flipbook).id == "speed_lines":
+			lines = c
+	var at := p2.global_position + Vector3.UP
+	FxDirector.hit_spark(arena, at, p1, 50.0, false, false)
+	FxDirector.hit_spark(arena, at, p1, 50.0, true, false)
+	var drawn := _flipbooks_since(snap)
+	GameState.free_move = free_was
+	for k in {"skid_dust": 2, "speed_lines": 1, "spark_metal": 1, "spark_hit": 2}:
+		var want: int = {"skid_dust": 2, "speed_lines": 1, "spark_metal": 1, "spark_hit": 2}[k]
+		if int(drawn.get(k, 0)) != want:
+			bad += " %s drawn %d times (want %d);" % [k, int(drawn.get(k, 0)), want]
+	if lines == null:
+		bad += " speed_lines do not ride with the fighter;"
+	if bad != "":
+		_fail("lane B step 3:" + bad)
+		return false
+	_ok("lane B step 3: skid dust only when grounded on the wall circle and sliding along it (%d cases), twice in %d frames; speed lines ride a zip once; spark_metal on the blocked hit only" % [cases.size(), FxDirector.SKID_EVERY])
 	return true
 
 
