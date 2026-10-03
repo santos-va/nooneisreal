@@ -8,7 +8,7 @@ SHELL := /usr/bin/env bash
 GODOT ?= $(if $(GODOT_BIN),$(GODOT_BIN),godot)
 GAME  := game
 
-.PHONY: roles gates check import run editor fetch-assets hooks-check
+.PHONY: roles gates check import run editor update fetch-assets hooks-check
 
 # Таблиця ролей із tools/hooks/roles.map: аляс · тіло · Claude skill · мітка.
 roles:
@@ -53,6 +53,25 @@ run:
 editor:
 	@[ -f $(CLASS_CACHE) ] || $(MAKE) --no-print-directory import
 	$(GODOT) --editor --path $(GAME)
+
+# Оновити гру з GitHub і переімпортувати проєкт (нові class_name інакше не видно).
+#   make update                                   # поточна гілка
+#   make update BRANCH=claude/friendly-ritchie-3ti2sm   # перейти на гілку PR і оновити
+# Незакомічені зміни → відмова (нічого не стирає). Лише fast-forward: розійшлася історія → відмова.
+update:
+	@set -e; \
+	if [ -n "$$(git status --porcelain --untracked-files=no)" ]; then \
+	  echo "ВІДМОВА: є незакомічені зміни — закоміть або git stash, потім знову make update"; \
+	  git status --short --untracked-files=no; exit 1; fi; \
+	git fetch origin; \
+	if [ -n "$(BRANCH)" ]; then git checkout "$(BRANCH)"; fi; \
+	CUR="$$(git rev-parse --abbrev-ref HEAD)"; OLD="$$(git rev-parse HEAD)"; \
+	git merge --ff-only "origin/$$CUR" || { echo "ВІДМОВА: гілка $$CUR розійшлася з origin/$$CUR — потрібне ручне злиття"; exit 1; }; \
+	NEW="$$(git rev-parse HEAD)"; \
+	if [ "$$OLD" = "$$NEW" ]; then echo "гілка $$CUR: уже актуальна ($$(git log --oneline -1))"; \
+	else echo "гілка $$CUR: нові коміти"; git log --oneline "$$OLD..$$NEW"; fi; \
+	$(MAKE) --no-print-directory import; \
+	echo "готово: make run"
 
 # Підтягнути ассети за реєстром (скрипт пише лід).
 fetch-assets:
