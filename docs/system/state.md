@@ -15,7 +15,7 @@
 | **T6·A** (t6) | C — арт арен | промпти + `get_cost`: 3 арени × день/ніч у Sketch-Cel, 360°, текстури підлоги, пропи; потім меню M2 | `game/assets/backgrounds/`, `game/assets/textures/`, реєстр |
 | **T6·B** (новий) | D — VFX-арт | промпти + `get_cost`: флипбуки диму, слідів, іскор, електро, гліфи Choko; тест 1 кліпу Kling | `game/assets/vfx/`, [[VFX-Direction]], реєстр |
 | **T3** (t3) | E — R11 | 360° фон у Godot 4.7, бібліотеки текстур під наш стиль (ліцензії), що вміє Higgsfield — ≤ 45 хв; потім R10 і частина A | `docs/Research/2026-10-03-Arena-360-Textures.md` |
-| **T5** Арес | F | RED Феміди п. 3 (0.68 чи 14.8 %); якорі й укриття `bazaar`/`fountain`; потім В-1 | [[02-Combat-System]], [[04-Grapple-System]] |
+| **T5** Арес | F | **зроблено** ([[2026-10-03-Ares-Lane-F]]): RED п. 3 → 0.68; якорі/укриття `bazaar` 16 / `fountain` 17; В-1 втома — далі Гефест | [[02-Combat-System]], [[04-Grapple-System]] |
 | **T8** Гермес | G | вибір арени й DAY/NIGHT у меню; контраст HUD | [[06-UI-UX]] |
 | **T7** Кліо (знято з паузи) | H | сторінки трьох арен, підписи й wikilinks нових ассетів, індекс | `docs/World/`, `docs/Art/` |
 | **T4** Феміда | I | аудит кожного PR смуг A–D | `docs/Audit/` |
