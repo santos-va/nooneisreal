@@ -143,6 +143,15 @@ func _in_cone(to: Vector3, axis: Vector3) -> bool:
 
 
 ## The anchor fire() would pick right now (null = none); public for the smoke test.
+## Sprint A3: true when no cover (ArenaLayout.COVER_LAYER) lies on the segment `from` → `to`. Cover only — the floor and
+## the fighters never cut a rope.
+func line_clear(from: Vector3, to: Vector3) -> bool:
+	if not is_inside_tree():
+		return true
+	var q := PhysicsRayQueryParameters3D.create(from, to, ArenaLayout.COVER_LAYER)
+	return fighter.get_world_3d().direct_space_state.intersect_ray(q).is_empty()
+
+
 func best_anchor() -> Node3D:
 	return _best_anchor()
 
@@ -162,6 +171,8 @@ func _best_anchor() -> Node3D:
 			continue
 		if to.y < 1.5:
 			continue
+		if not line_clear(origin, a.global_position):
+			continue   # A3: an anchor behind cover is not picked (04 § Правило укриття)
 		var fwd := to.x * float(fighter.facing)
 		if GameState.free_move:
 			if not _in_cone(to, axis):
@@ -208,6 +219,9 @@ func drive(delta: float, held: bool) -> void:
 	if f.velocity.length() > max_speed:
 		f.velocity = f.velocity.normalized() * max_speed
 	f.move_and_slide()
+	if not line_clear(f.global_position + HAND, anchor_point):
+		_release(false)   # A3: cover cuts the rope (04 § Правило укриття)
+		return
 	_draw_rope(f.global_position + HAND, anchor_point)
 	var reached := (anchor_point - (f.global_position + HAND)).length() < 1.4
 	var landed := f.on_ground() and f.velocity.y <= 0.0 and _frames > 8

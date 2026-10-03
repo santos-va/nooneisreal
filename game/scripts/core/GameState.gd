@@ -23,9 +23,9 @@ const STAGES := [
 	{"id": "city_reference", "name": "Kronshift — City (reference)", "texture": "res://assets/backgrounds/bg_kronshift_city_reference.webp", "sun": Color(1.0, 0.8, 0.6), "ambient": Color(0.3, 0.3, 0.38), "sky_top": Color(0.18, 0.24, 0.34), "sky_bottom": Color(0.7, 0.4, 0.28)},
 	# sprint A2 (docs/Plans/2026-10-03-Sprint-Arenas-VFX.md; canon docs/World/Cronshift.md § Нові арени). PLACEHOLDER art:
 	# the old-style cards stand in until band C (T6·A) delivers the Sketch-Cel arenas; colours too (T6 retunes them).
-	{"id": "bazaar", "label": "Bazaar", "name": "Bazaar", "texture": "res://assets/backgrounds/bg_kronshift_market_street.webp", "sun": Color(1.0, 0.86, 0.66), "ambient": Color(0.42, 0.38, 0.44), "sky_top": Color(0.3, 0.42, 0.56), "sky_bottom": Color(0.86, 0.6, 0.4),
+	{"id": "bazaar", "label": "Bazaar", "name": "Bazaar", "layout": "bazaar", "texture": "res://assets/backgrounds/bg_kronshift_market_street.webp", "sun": Color(1.0, 0.86, 0.66), "ambient": Color(0.42, 0.38, 0.44), "sky_top": Color(0.3, 0.42, 0.56), "sky_bottom": Color(0.86, 0.6, 0.4),
 		"night": {"texture": "res://assets/backgrounds/bg_kronshift_back_alley.webp", "sun": Color(0.55, 0.72, 0.95), "ambient": Color(0.12, 0.17, 0.26), "sky_top": Color(0.04, 0.06, 0.12), "sky_bottom": Color(0.12, 0.3, 0.36), "tint": Color(0.85, 0.88, 1.0)}},
-	{"id": "fountain", "label": "Fountain Square", "name": "Fountain Square", "texture": "res://assets/backgrounds/bg_kronshift_main_street.webp", "sun": Color(1.0, 0.84, 0.62), "ambient": Color(0.4, 0.37, 0.44), "sky_top": Color(0.28, 0.4, 0.56), "sky_bottom": Color(0.9, 0.62, 0.42),
+	{"id": "fountain", "label": "Fountain Square", "name": "Fountain Square", "layout": "fountain", "texture": "res://assets/backgrounds/bg_kronshift_main_street.webp", "sun": Color(1.0, 0.84, 0.62), "ambient": Color(0.4, 0.37, 0.44), "sky_top": Color(0.28, 0.4, 0.56), "sky_bottom": Color(0.9, 0.62, 0.42),
 		"night": {"sun": Color(0.5, 0.62, 0.9), "ambient": Color(0.13, 0.15, 0.25), "sky_top": Color(0.03, 0.05, 0.11), "sky_bottom": Color(0.1, 0.16, 0.3), "tint": Color(0.4, 0.46, 0.68), "neon": "CRONSHIFT"}},
 ]
 ## The arenas in rotation (menu STAGE row, settings), in order; the rest of STAGES stays for the smoke and old saves.
