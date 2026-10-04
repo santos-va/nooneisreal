@@ -72,4 +72,18 @@ fetch "$CDN3D/hf_20261003_013436_e9fd9e33-beaa-43b7-8e1c-573c12691253.png" "$PRO
 fetch "$CDN3D/hf_20261003_160102_e74e5c35-1c47-4581-ad11-22c471a1a8a5.png" "$CARDS/choko_printer_v1.png"
 fetch "$CDN3D/hf_20261003_160106_d829cadc-41cf-480c-836c-0681c85024ac.png" "$CARDS/choko_drone_helper_v1.png"
 
+# Arena cut-out strips v2 (Arena-Depth-Life F3.1, T6 2026-10-04): 12 directions, 77 credits spent earlier on lane C.
+mkdir -p "$BG/river"; fetch "$CDN3D/hf_20261003_103524_9d96757d-da5c-4491-9134-311113be796a.png" "$BG/river/stage_river_n_strips.png"
+mkdir -p "$BG/bazaar"; fetch "$CDN3D/hf_20261003_103525_bc50c97d-27f6-41d5-be65-3799cb4a45d1.png" "$BG/bazaar/stage_bazaar_n_strips.png"
+mkdir -p "$BG/river"; fetch "$CDN3D/hf_20261003_105011_6a0d67d3-9ee7-43df-b1c7-f62b8f3e0b6c.png" "$BG/river/stage_river_e_strips.png"
+mkdir -p "$BG/river"; fetch "$CDN3D/hf_20261003_105012_8dfc14ec-fe34-42b8-911f-2755bd8cb4ef.png" "$BG/river/stage_river_s_strips.png"
+mkdir -p "$BG/river"; fetch "$CDN3D/hf_20261003_105011_58ae71af-8b94-4c48-b9e4-bbc408737744.png" "$BG/river/stage_river_w_strips.png"
+mkdir -p "$BG/bazaar"; fetch "$CDN3D/hf_20261003_105011_9a1f06b2-6661-4fef-8ba5-773eb89cc3a9.png" "$BG/bazaar/stage_bazaar_e_strips.png"
+mkdir -p "$BG/bazaar"; fetch "$CDN3D/hf_20261003_105012_19181cec-e4bc-4a4e-b299-590d33622f90.png" "$BG/bazaar/stage_bazaar_s_strips.png"
+mkdir -p "$BG/bazaar"; fetch "$CDN3D/hf_20261003_105013_039a422b-0076-48ed-b186-73ee3b0faffd.png" "$BG/bazaar/stage_bazaar_w_strips.png"
+mkdir -p "$BG/fountain"; fetch "$CDN3D/hf_20261003_105057_c190a897-5057-417e-ac06-bebf3f3fba18.png" "$BG/fountain/stage_fountain_n_strips.png"
+mkdir -p "$BG/fountain"; fetch "$CDN3D/hf_20261003_105056_3b78eacc-4038-4c13-b876-f5e6d6b1fec0.png" "$BG/fountain/stage_fountain_e_strips.png"
+mkdir -p "$BG/fountain"; fetch "$CDN3D/hf_20261003_105055_39b433fa-becf-4c77-a05d-48b97b12bed2.png" "$BG/fountain/stage_fountain_s_strips.png"
+mkdir -p "$BG/fountain"; fetch "$CDN3D/hf_20261003_105056_df3b68bb-5041-41ad-a7e8-fcc1ca8e2931.png" "$BG/fountain/stage_fountain_w_strips.png"
+
 echo "done. Now run: make check   (re-imports the new textures headlessly)"
