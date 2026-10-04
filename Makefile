@@ -23,7 +23,7 @@ gates:
 # Headless-імпорт проєкту + парсинг кожного .gd + smoke. Без бінаря — інструкція, не мовчазний пропуск.
 # Smoke іде з --fixed-fps 60: одна ітерація = один фізкадр, тож --quit-after 40000 — це 40000 кадрів на будь-якій
 # машині (без нього headless крутить цикл швидше за 60 Гц і бюджет кадрів залежить від швидкості). «Зелений» —
-# лише rc=0 І рядок «[smoke] ALL OK»: вихід по --quit-after дає rc=0 без цього рядка, і це червоне.
+# лише rc=0, рядок «[smoke] ALL OK» і відсутність runtime ERROR: вихід по --quit-after дає rc=0 без цього рядка, і це червоне.
 check:
 	@G="$(GODOT)"; case "$$G" in */*) ;; *) G="$$(command -v "$$G" 2>/dev/null)";; esac; \
 	if [ -z "$$G" ] || [ ! -f "$$G" ] || [ ! -x "$$G" ]; then \
@@ -42,6 +42,7 @@ check:
 	printf '%s\n' "$$SMOKE" | grep -E '^\[smoke\]|SCRIPT ERROR|ERROR:'; \
 	if [ $$rc -ne 0 ]; then echo "SMOKE ЧЕРВОНИЙ rc=$$rc"; exit $$rc; fi; \
 	printf '%s\n' "$$SMOKE" | grep -q '^\[smoke\] ALL OK' || { echo "SMOKE ЧЕРВОНИЙ: немає рядка «[smoke] ALL OK» — тест не дійшов до кінця (--quit-after?)"; exit 1; }; \
+	if printf '%s\n' "$$SMOKE" | grep -qE '^[[:space:]]*(SCRIPT ERROR|ERROR):'; then echo "SMOKE ЧЕРВОНИЙ: runtime ERROR попри завершення тесту"; exit 1; fi; \
 	J="$$(printf '%s\n' "$$SMOKE" | grep -c 'not supported by Jolt')"; \
 	[ "$$J" -eq 0 ] || { echo "SMOKE ЧЕРВОНИЙ: $$J попереджень Jolt про масштаб тіла (Н7, запуск 7.1)"; exit 1; }; \
 	echo "SMOKE ЗЕЛЕНИЙ"

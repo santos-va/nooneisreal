@@ -17,6 +17,7 @@ extends Node3D
 ## from rest. Bone lengths stay the hero's; only the hips move, scaled by the hip-height ratio.
 
 const MotionFallback = preload("res://scripts/fighter/ProceduralMotionFallback.gd")
+const FootContact = preload("res://scripts/fighter/HeroFootContact.gd")
 const StancePresence = preload("res://scripts/fighter/IdlePresence.gd")
 
 const MANNEQUIN := "res://assets/animations/ual/UAL1.glb"
@@ -78,6 +79,7 @@ var _hip_scale: float = 1.0
 ## Launch 7.1: the skeleton ragdoll running on the mannequin (null = none); while set, the hero is drawn.
 var ragdoll: BoneRagdoll = null
 var idle_presence = StancePresence.new()
+var foot_contact = FootContact.new()
 
 
 func setup(f: Fighter) -> void:
@@ -133,6 +135,7 @@ func _setup_hero(path: String) -> void:
 		else:
 			var hp := hero_skeleton.get_bone_parent(hi)
 			_align[hi] = _align.get(hp, Quaternion.IDENTITY)
+	foot_contact.setup(hero_skeleton, hero_mesh)
 	var hips := hero_skeleton.find_bone("Hips")
 	_hip_scale = hero_skeleton.get_bone_global_rest(hips).origin.y / maxf(skeleton.get_bone_global_rest(skeleton.find_bone("pelvis")).origin.y, 1e-4)
 
@@ -318,5 +321,10 @@ func uses_procedural_motion() -> bool:
 
 
 func _on_mannequin_updated() -> void:
-	if hero_skeleton != null:
-		retarget()
+	# A queued skeleton update can arrive while the arena is being removed/replaced.
+	if not is_inside_tree() or not is_instance_valid(_fighter) or not is_instance_valid(hero_skeleton):
+		return
+	if get_tree().paused or _fighter.frozen_frames > 0 or _fighter.hitstop_frames > 0:
+		return
+	retarget()
+	foot_contact.apply(_fighter, ragdoll)
