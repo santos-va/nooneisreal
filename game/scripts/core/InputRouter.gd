@@ -5,7 +5,7 @@ extends Node
 ## as a human player. Docs: docs/GDD/05-Platforms-Input.md
 
 const BUFFER_FRAMES := 6
-const ACTIONS := ["left", "right", "jump", "crouch", "light", "heavy", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "ultimate", "grapple_enemy", "grapple_parkour", "grapple", "dash", "up", "down"]
+const ACTIONS := ["left", "right", "jump", "crouch", "light", "heavy", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "ultimate", "grapple_enemy", "grapple_parkour", "grapple", "dash", "weapon_swap", "up", "down"]
 ## Free movement (GameState.free_move) — docs/Decisions/ADR-014-Free-Movement-Layout.md: W/↑ and S/↓ move
 ## off `jump` / `crouch` onto `up` / `down` (camera-relative movement); jump is Space (P1) and `/` (P2) only;
 ## crouch is X (P1) and M (P2, SHARED). Gamepad: left stick ↑/↓ drives up/down and leaves crouch, which is
@@ -34,7 +34,7 @@ const SOLO_KEYS := {
 	"p1_left": [KEY_A], "p1_right": [KEY_D], "p1_jump": [KEY_W, KEY_SPACE], "p1_crouch": [KEY_S],
 	"p1_dash": [KEY_SHIFT], "p1_grapple_enemy": [KEY_Q], "p1_grapple_parkour": [KEY_E],
 	"p1_left_hand": [KEY_J], "p1_right_hand": [KEY_K], "p1_left_leg": [KEY_M], "p1_right_leg": [KEY_COMMA], "p1_block": [KEY_L],
-	"p1_skill1": [KEY_U], "p1_skill2": [KEY_I], "p1_ultimate": [KEY_O],
+	"p1_weapon_swap": [KEY_V], "p1_skill1": [KEY_U], "p1_skill2": [KEY_I], "p1_ultimate": [KEY_O],
 }
 
 const LIMBS := ["left_hand", "right_hand", "left_leg", "right_leg"]
@@ -192,7 +192,7 @@ func _hint_profile(vs_cpu: bool) -> String:
 	var text := ""
 	for p in ([1] if vs_cpu or profile == PROFILE_SOLO else [1, 2]):
 		text += "P%d\n" % p
-		for action in ["left", "right", "up", "down", "jump", "crouch", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "grapple_enemy", "grapple_parkour", "dash", "ultimate"]:
+		for action in ["left", "right", "up", "down", "jump", "crouch", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "grapple_enemy", "grapple_parkour", "dash", "weapon_swap", "ultimate"]:
 			var label := binding_label(p, action, false)
 			if not label.is_empty():
 				text += action.capitalize() + ": " + label + " · "
@@ -213,7 +213,7 @@ func binding_label(player: int, action: String, gamepad: bool) -> String:
 			var prefix := "Left " if event.location == KEY_LOCATION_LEFT else ("Right " if event.location == KEY_LOCATION_RIGHT else "")
 			labels.append(prefix + ("Comma (<)" if event.physical_keycode == KEY_COMMA else OS.get_keycode_string(event.physical_keycode)))
 		elif gamepad and event is InputEventJoypadButton:
-			var names := {JOY_BUTTON_A: "A / Cross", JOY_BUTTON_B: "B / Circle", JOY_BUTTON_X: "X / Square", JOY_BUTTON_DPAD_UP: "D-pad Up", JOY_BUTTON_DPAD_DOWN: "D-pad Down"}
+			var names := {JOY_BUTTON_A: "A / Cross", JOY_BUTTON_B: "B / Circle", JOY_BUTTON_X: "X / Square", JOY_BUTTON_DPAD_UP: "D-pad Up", JOY_BUTTON_DPAD_DOWN: "D-pad Down", JOY_BUTTON_RIGHT_STICK: "R3 / Right stick click"}
 			labels.append(str(names.get(event.button_index, "D-pad")))
 		elif gamepad and event is InputEventJoypadMotion:
 			labels.append("Left stick")
