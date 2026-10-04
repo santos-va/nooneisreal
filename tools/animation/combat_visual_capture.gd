@@ -115,6 +115,31 @@ func run() -> void:
 		wave_script.spawn(f, f.current_move)
 	await capture("09_skea_wave", "Skea | physical strike with purple extension")
 	grimoire.cancel_owner(f)
+	f.free()
+	for hero: String in ["skea", "choko"]:
+		_make_fighter(hero)
+		for technique: String in ["elbow", "air", "roundhouse"]:
+			var action: String = "right_hand" if technique == "elbow" else "right_leg"
+			var step: int = 2 if technique == "elbow" else (1 if technique == "roundhouse" else 0)
+			f.current_move = limbs.resolve(f.data, action, step, "left_hand", false, technique == "air", "", "right_hand>left_hand>right_hand" if technique == "elbow" else "")
+			f.state = actor.State.ATTACK
+			f.position.y = 0.65 if technique == "air" else 0.0
+			var phases: Dictionary = {
+				"chamber": int(f.current_move.startup / 2),
+				"contact": f.current_move.startup,
+				"recovery": f.current_move.startup + f.current_move.active + int(f.current_move.recovery / 2),
+			}
+			for phase_name: String in phases:
+				f.move_frame = phases[phase_name]
+				f.animator._step_frame = -1
+				await capture("identity_%s_%s_%s" % [hero, technique, phase_name], "%s | %s | %s" % [hero, technique, phase_name])
+				if technique == "elbow" and phase_name == "contact":
+					camera.position = Vector3(0.3, 1.8, 5.5)
+					camera.look_at(Vector3(0, 1.1, 0))
+					await capture("identity_%s_elbow_contact_side" % hero, "%s | elbow route | side contact" % hero)
+					camera.position = Vector3(3.3, 2.2, 4.8)
+					camera.look_at(Vector3(0, 1.0, 0))
+		f.free()
 	world.queue_free()
 	await process_frame
 	root.get_node("UltMusic").queue_free()

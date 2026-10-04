@@ -46,6 +46,7 @@ cases = [
     ('match-lifecycle', 'tools/match/match_lifecycle_check.gd', r'MATCH_LIFECYCLE PASS \([1-9][0-9]* checks, 0 failures; mutation=\)', [], 0),
     ('weighted-swing', 'tools/grapple/weighted_swing_check.gd', r'WEIGHTED_SWING_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('ultimate-wave', 'tools/skills/ultimate_wave_check.gd', r'ULTIMATE_WAVE_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('combat-identity', 'tools/animation/combat_identity_check.gd', r'COMBAT_IDENTITY checks=[1-9][0-9]* failures=0', [], 0),
     ('combat-presentation', 'tools/animation/combat_presentation_check.gd', r'COMBAT_PRESENTATION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('combat-control', 'tools/combat/control_check.gd', r'COMBAT_CONTROL_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-geometry', 'tools/world/city_geometry_check.gd', r'CITY_GEOMETRY_COMPLETE checks=[1-9][0-9]* failures=0 meshes=[1-9][0-9]*', [], 0),

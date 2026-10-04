@@ -443,10 +443,10 @@ func _attack_pose(f: Fighter) -> void:
 	if f.chain_index % 2 == 1 and m.anim_chain != "":
 		anim = m.anim_chain
 	if f.data.id == "choko" and anim == "crouch_light" and f.attack_sword_hand == "left":
-		SwordMotion.apply(self, "sword_left_hand_lowcut", ext)
+		SwordMotion.apply(self, "sword_left_hand_lowcut", ext, phase)
 		return
 	if SwordMotion.supports(anim):
-		SwordMotion.apply(self, anim, ext)
+		SwordMotion.apply(self, anim, ext, phase)
 		return
 	if LimbMotion.supports(anim):
 		LimbMotion.apply(self, anim, ext, phase, f.data.id)

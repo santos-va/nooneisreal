@@ -8,7 +8,9 @@ static func supports(anim: String) -> bool:
 	var fields := anim.split("_")
 	return fields.size() == 4 and fields[0] == "sword" and fields[1] in ["left", "right"] and fields[2] == "hand" and fields[3] in VARIANTS
 
-static func apply(rig: RigAnimator, anim: String, ext: float) -> void:
+static func apply(rig: RigAnimator, anim: String, ext: float, phase: float = -1.0) -> void:
+	LimbMotion.apply_guard(rig, "choko")
+	var guard_pose: Dictionary = rig.target_pose.duplicate()
 	var fields := anim.split("_")
 	var side := "l" if fields[1] == "left" else "r"
 	var other := "r" if side == "l" else "l"
@@ -47,6 +49,18 @@ static func apply(rig: RigAnimator, anim: String, ext: float) -> void:
 	rig._pose_set("forearm_" + other, Vector3(0, 0, 1.4))
 	rig._pose_set("pelvis", Vector3(0, mirror * twist * 0.3 * ext, 0))
 	rig._pose_set("torso", Vector3(0, mirror * twist * 0.7 * ext, -0.05 * ext))
+
+	# Braced lower body and a protecting off-hand make the blade feel carried by a fighter.
+	if variant not in ["lowcut", "aircut"]:
+		rig._pose_set("thigh_" + other, Vector3(0, 0, 0.18 + 0.22 * maxf(ext, 0.0)))
+		rig._pose_set("shin_" + other, Vector3(0, 0, -0.3 - 0.25 * maxf(ext, 0.0)))
+		rig.target_root_offset.y = -0.045 * maxf(ext, 0.0)
+	rig._pose_set("head", Vector3(0, -mirror * twist * 0.3 * ext, -0.08))
+	if phase >= 2.0:
+		var settle: float = smoothstep(0.12, 1.0, phase - 2.0)
+		for part: String in guard_pose:
+			rig.target_pose[part] = (rig.target_pose[part] as Vector3).lerp(guard_pose[part], settle)
+		rig.target_root_offset *= 1.0 - settle
 
 static func transfer_weight(progress: float) -> float:
 	return smoothstep(0.0, 0.35, progress) * (1.0 - smoothstep(0.65, 1.0, progress))

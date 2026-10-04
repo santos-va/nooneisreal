@@ -564,14 +564,17 @@ func _confirm_pull(opp: Fighter) -> void:
 
 
 func _draw_rope(a: Vector3, b: Vector3) -> void:
+	# Compute slack at the physical attachment BEFORE substituting the skinned hand.
+	# An overhead animated hand is closer to the anchor, but that is not spare cable.
+	var physical_slack := maxf(0.0, rope_length - a.distance_to(b)) if phase == Phase.HANG else 0.0
 	# The skinned hand only anchors the rendered line, never the sweep or constraint.
 	if is_instance_valid(fighter.skeletal):
 		a = fighter.skeletal.hand_world("Right")
 	if _rope_visual != null:
 		_rope.visible = false
 		_rope_visual.visible = true
-		var length := recovery_remaining if phase == Phase.MISS_REWIND else (rope_length if phase == Phase.HANG else a.distance_to(b))
-		var slack := phase == Phase.MISS_REWIND or (phase == Phase.HANG and length > a.distance_to(b) + 0.02)
+		var length := recovery_remaining if phase == Phase.MISS_REWIND else a.distance_to(b) + physical_slack
+		var slack := phase == Phase.MISS_REWIND or (phase == Phase.HANG and physical_slack > 0.02)
 		_rope_visual.update_rope(a, b, length, get_physics_process_delta_time(), GameState.water, slack)
 		return
 	_rope.visible = true
