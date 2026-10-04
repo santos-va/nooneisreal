@@ -1,7 +1,13 @@
 # state — поточна правда
 
-**Оновлено:** 2026-10-04, T1 Дедал — [[Plans/2026-10-04-Choko-Stance-Sword]] завершено: стійка Choko, один активний меч, передача V/R3. Гілка `codex/choko-stance-sword` поверх [PR #167](https://github.com/santos-va/nooneisreal/pull/167); [PR #168](https://github.com/santos-va/nooneisreal/pull/168), CI очікується; main не змінено. Перевірки — у поточному розділі T2. [[Art/2026-10-04-City-NPC-Development]] лишається передвиробництвом. Історія — git та журнали.
-**Фаза:** хвиля 2 (запуски 7–11, [[2026-10-03-Living-Combat]]) іде; `git log -1 origin/main` → `e0ea616` (PR #156). 7.1 — у `main`; 7.1b (кінематика після регдола, ADR-017 (а)) — наступний крок T2·A. Запуск 11 «живе оточення» піднято раніше — план [[2026-10-03-Arena-Depth-Life]] **approved**. Аудит T1: T2·B, T2·C, T4, T5 після старту хвилі — 0 комітів; 13 PR (#144–#155) змерджено без вердикту Феміди; 24 оплачені вирізки фонів (77 кр.) — на гілці `claude/practical-hopper-rmfgi4`, не в `main`. Кредити: `balance` → 4685.75, лишок стелі спринту ≈ 130.5.
+**Оновлено:** 2026-10-04, T1 — контекст звірено з GitHub: PR #164–168 змерджено; main `a401e6c`, CI зелений. Англомовний старт нової сесії: [[Handoff/2026-10-04-Start-Here]]. Незавершене: [[Handoff/2026-10-04-Remaining-Work]]. Приймання на M3, місто/NPC та Codex adapter не оголошені готовими.
+**Фаза:** приймання змердженого ігрового зрізу та відновлена черга; старі хвилі нижче — історія, не поточні доручення.
+
+## Current routing — reconciled 2026-10-04
+
+Read [[Handoff/2026-10-04-Start-Here]] and the delivery ledger before resuming. GitHub reports #164–168 merged and no open PRs at this snapshot; fetched main is `a401e6c`. The merged #166 coworker plan remains a draft implementation proposal. Current priority is target-device acceptance and bounded follow-up fixes; city/NPC preproduction and other unfinished work are explicitly retained in [[Handoff/2026-10-04-Remaining-Work]]. English handoff pages follow Santos's explicit request.
+
+The T2 implementation reports below retain their original branch names and recorded test results. Their PRs have since merged; they are not pending branch work.
 
 ## Меч Choko — статус реалізації T2 (2026-10-04)
 
@@ -39,7 +45,11 @@ aim **21/0**. Фінальні гейти зелені; native-прогін T1 *
 |---|---|
 | T2 · налаштування, UI та ввід | Реалізовано на `codex/comfort-settings-input` після злиття PR #164: звук/тряска, панель меню й паузи, підказки та геймпадна навігація; бойовий ввід ізольований від UI і потребує нейтралі після утримання через паузу. Перевірено журнали: settings 28/0, input 31/0, UI PASS, `make check-playable` 19/0 та `make gates` зелений. [[2026-10-04-Comfort-Input]] · [[Plans/2026-10-04-Comfort]]; слухове приймання та FPS на M3 ще не підтверджені. |
 
-## ▶ Хвиля 2 — хто що робить зараз (T1 Дедал, аудит 2026-10-03) — важливіше за спринт і чергу нижче
+## Historical snapshots — not current assignments
+
+Everything below preserves dated history. Old main SHAs, balances, controls, “zero work” claims and incomplete merge statuses must not be used as current facts. Consult the English handoff and current code first; historical evidence is retained rather than silently rewritten.
+
+## ▶ Хвиля 2 — historical routing snapshot (audit 2026-10-03)
 
 Плани — [[2026-10-03-Wave-2-Kickoff]] і [[2026-10-03-Arena-Depth-Life]]; хендофи з виправленнями — [[2026-10-03-T1-Arena-Depth-Audit]]. `Fighter.gd` — лише T2·A. Конфлікт у цьому файлі — **не в браузері**: терміналу «злий main», зберегти обидва боки.
 

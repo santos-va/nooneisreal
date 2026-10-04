@@ -3,6 +3,10 @@
 Хаб. Кожна сторінка має `## Related`; кожен `[[wikilink]]` резолвиться (гейт `make gates`).
 Поточна правда — [[state]]. Закон — [[constitution]]. Журнал зустрічей — `docs/Meetings/`.
 
+## English handoff — 2026-10-04
+
+[[Handoff/2026-10-04-Start-Here|Start here]] · [[Handoff/2026-10-04-Delivery-Ledger|Merged delivery ledger]] · [[Handoff/2026-10-04-Remaining-Work|Remaining work]] · [[Handoff/2026-10-04-Decisions-And-Validation|Decisions and validation]] · [[Meetings/2026-10-04-Context-Reconciliation|Journal]]. This dated handoff separates merged deliveries, historical evidence and unfinished work.
+
 ## Що це
 
 3D cel-shaded файтинг на арені (динаміка як у *Naruto Storm*, малюнок — власний «Sketch-Cel», **не аніме**),
