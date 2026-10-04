@@ -24,6 +24,7 @@ GameState="*res://scripts/core/GameState.gd"
 InputRouter="*res://scripts/core/InputRouter.gd"
 Sfx="*res://scripts/core/Sfx.gd"
 UltMusic="*res://scripts/core/UltMusic.gd"
+Music="*res://scripts/core/Music.gd"
 ComfortSettings="*res://scripts/core/ComfortSettings.gd"
 
 [debug]

@@ -15,10 +15,15 @@ var pause_button: Button
 var objective_label: Label
 var hint_label: Label
 var resource_label: Label
+var _status_card: PanelContainer
 var _objective_title: Label
 var _root: Control
 var _rope_text: String = ""
 var _dash_text: String = ""
+var _player: Fighter
+var _aim_cue: Label
+var _stamina_bar: ProgressBar
+var _stamina_text: String = ""
 
 
 func setup(model: CityOnboarding) -> void:
@@ -37,31 +42,45 @@ func _ready() -> void:
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
 	var card := PanelContainer.new()
-	card.position = Vector2(24, 24)
-	card.custom_minimum_size.x = 780
+	_status_card = card
+	card.position = Vector2(18, 18)
+	card.custom_minimum_size.x = 390
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(card)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 8)
+	column.add_theme_constant_override("separation", 4)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(column)
-	column.add_child(_label("CITY EXPLORATION · PROTOTYPE", 32))
-	column.add_child(_label("Opening sketch · Find your bearings beneath the clocktower.", 24))
-	_objective_title = _label("", 32)
+
+	_objective_title = _label("CRONSHIFT", 18)
 	column.add_child(_objective_title)
-	objective_label = _label("", 32)
+	objective_label = _label("", 20)
 	objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	objective_label.custom_minimum_size.x = 750
+	objective_label.custom_minimum_size.x = 380
 	column.add_child(objective_label)
-	resource_label = _label("", 32)
+	resource_label = _label("", 18)
 	resource_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(resource_label)
-	pause_button = _button("PAUSE / HELP · Esc", func(): set_paused(true))
+	_stamina_bar = ProgressBar.new()
+	_stamina_bar.max_value = 1.0
+	_stamina_bar.show_percentage = false
+	_stamina_bar.custom_minimum_size.y = 5
+	_stamina_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(_stamina_bar)
+	_aim_cue = _label("", 20)
+	_aim_cue.add_theme_color_override("font_outline_color", Color("171322"))
+	_aim_cue.add_theme_constant_override("outline_size", 6)
+	_aim_cue.hide()
+	_root.add_child(_aim_cue)
+	pause_button = _button("Esc · Help", func(): set_paused(true))
 	pause_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	pause_button.position = Vector2(-400, 24)
-	pause_button.size = Vector2(376, 56)
+	pause_button.add_theme_font_size_override("font_size", 20)
+	pause_button.custom_minimum_size.y = 34
+	pause_button.position = Vector2(-158, 18)
+	pause_button.size = Vector2(140, 34)
 	_root.add_child(pause_button)
-	hint_label = _label("Movement / parkour preview. Encounters and skills come later.", 32)
+	hint_label = _label("", 18)
+	hint_label.hide()
 	hint_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	hint_label.offset_left = 24
 	hint_label.offset_right = -24
@@ -88,7 +107,7 @@ func _build_pause() -> void:
 	column.add_theme_constant_override("separation", 12)
 	center.add_child(column)
 	column.add_child(_label("EXPLORATION PAUSED", 40))
-	var help := _label("Move: WASD / left stick · Look: hold RMB + drag / right stick\nJump: Space / A · Parkour: hold E / Y + LT\nHold jump to reel. Release parkour and jump to detach.\nMove closer beneath an anchor for lift; distant ropes pull you toward it.\nHooks are finite: reuse ropes or restart exploration.\nDash: Shift / X · Strikes: J K M , · Sword: V / R3\nCombat skills, ultimates and enemy hooks are unavailable.\nBattle sites and portals are not active yet.", 30)
+	var help := _label(exploration_help(), 28)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(help)
 	resume_button = _button("RESUME", func(): set_paused(false))
@@ -104,6 +123,17 @@ func _build_pause() -> void:
 		buttons[i].focus_previous = buttons[i].focus_neighbor_top
 		buttons[i].focus_next = buttons[i].focus_neighbor_bottom
 	pause_panel.hide()
+
+
+func exploration_help() -> String:
+	var text := "Move: WASD / left stick · Look: RMB + drag / right stick\n"
+	text += "Jump / reel: %s / A · Parkour: tap %s / L3 (or Y + LT)\n" % [InputRouter.binding_label(1, "jump", false), InputRouter.binding_label(1, "grapple_parkour", false)]
+	text += "Aim at the next lamp and tap parkour to transfer.\n"
+	text += "Detach: %s / B · Dodge: %s / X · Dash skill: %s / Y + X\n" % [InputRouter.binding_label(1, "grapple_detach", false), InputRouter.binding_label(1, "dodge", false), InputRouter.binding_label(1, "dash", false)]
+	text += "Hooks are finite. GRAB ROPE reuses a line; PREPARE GRAB reaches for it.\n"
+	text += "Strikes: %s; %s; %s; %s\n" % [InputRouter.binding_label(1, "left_hand", false), InputRouter.binding_label(1, "right_hand", false), InputRouter.binding_label(1, "left_leg", false), InputRouter.binding_label(1, "right_leg", false)]
+	text += "Sword: %s / R3 · Talk: %s / Y + D-pad Down\n" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
+	return text + "Battle sites, combat skills, ultimates and enemy hooks are not active yet."
 
 
 func set_paused(value: bool) -> void:
@@ -129,7 +159,7 @@ func set_paused(value: bool) -> void:
 func _input(event: InputEvent) -> void:
 	if event.is_echo():
 		return
-	if event.is_action_pressed("ui_pause") or event.is_action_pressed("ui_cancel"):
+	if event.is_action_pressed("ui_pause") or (paused_ui and event.is_action_pressed("ui_cancel")):
 		if not paused_ui and InputRouter.ui_suppressed():
 			return
 		get_viewport().set_input_as_handled()
@@ -155,20 +185,24 @@ func _exit() -> void:
 func _refresh() -> void:
 	if onboarding == null or objective_label == null:
 		return
-	_objective_title.text = onboarding.title()
+	_objective_title.text = "CRONSHIFT"
 	var prompts := {
-		"move": "Walk along the street. WASD / left stick.",
-		"look": "Look toward the upper route. Hold RMB + drag / right stick.",
-		"jump": "Jump from the ground. Space / A.",
-		"rope": "Hold E / Y + LT at a visible anchor. Move closer beneath it; hold jump to reel and lift.",
-		"explore": "Cronshift is yours to explore. Battle sites come later.",
+		"move": "Walk · WASD / left stick",
+		"look": "Look up · RMB + drag / right stick",
+		"jump": "Jump · %s / A" % InputRouter.binding_label(1, "jump", false),
+		"rope": "Aim at a lamp · %s / L3 to hook" % InputRouter.binding_label(1, "grapple_parkour", false),
+		"explore": "",
 	}
 	objective_label.text = String(prompts[onboarding.current_id()])
+	objective_label.visible = not onboarding.is_complete()
 	if skip_button != null:
 		skip_button.disabled = onboarding.is_complete()
 
 
 func bind_player(player: Fighter) -> void:
+	_player = player
+	player.dodge_stamina_changed.connect(_on_stamina)
+	_on_stamina(player.dodge_stamina, player.dodge_stamina_max())
 	player.grapple_changed.connect(_on_rope)
 	player.dash_changed.connect(_on_dash)
 	_on_rope(player.grapple.charges, player.grapple.cooldown_left, player.grapple.max_charges)
@@ -178,20 +212,59 @@ func bind_player(player: Fighter) -> void:
 func _on_rope(charges: int, _cooldown: float, maximum: int) -> void:
 	_rope_text = "HOOKS %d / %d" % [charges, maximum]
 	if charges == 0:
-		_rope_text += " · Reuse a hanging rope, or restart from pause."
+		_rope_text += " · Reuse rope"
 	_refresh_resources()
 
 
 func _on_dash(charges: int, cooldown: float, maximum: int) -> void:
 	_dash_text = "DASH %d / %d" % [charges, maximum]
 	if cooldown > 0.0:
-		_dash_text += " · Rest %.1fs" % cooldown
+		_dash_text += " · %.1fs" % cooldown
 	_refresh_resources()
 
 
 func _refresh_resources() -> void:
 	if resource_label != null:
-		resource_label.text = _rope_text + "\n" + _dash_text
+		resource_label.text = _rope_text + " · " + _stamina_text + "\n" + _dash_text
+
+
+func _on_stamina(value: float, maximum: float) -> void:
+	_stamina_text = "STAMINA %d%%" % roundi(value / maxf(maximum, 0.001) * 100.0)
+	if _stamina_bar != null:
+		_stamina_bar.value = value / maxf(maximum, 0.001)
+	_refresh_resources()
+
+
+func _process(_delta: float) -> void:
+	if _aim_cue == null:
+		return
+	_aim_cue.hide()
+	if not is_instance_valid(_player) or paused_ui or InputRouter.ui_suppressed():
+		return
+	var camera := get_viewport().get_camera_3d()
+	if camera == null or not camera.has_meta("harpoon_aim"):
+		return
+	var helper: HarpoonAim = camera.get_meta("harpoon_aim")
+	var intent := helper.capture(_player, false, false)
+	var point: Vector3 = intent.point
+	if camera.is_position_behind(point) or (intent.target_id.is_empty() and not intent.manual):
+		return
+	var screen := camera.unproject_position(point)
+	if not get_viewport().get_visible_rect().has_point(screen):
+		return
+	var kind: String = intent.get("candidate_kind", "")
+	var verb := "GRAB ROPE" if kind == "rope" else ("TRANSFER" if _player.grapple.busy() else "HOOK")
+	if kind == "rope" and not intent.get("reachable", true):
+		verb = "PREPARE GRAB"
+	_aim_cue.text = "◇ %s · %s · %.1fm" % [InputRouter.binding_label(_player.player_index, "grapple_parkour", helper.last_gamepad), verb, _player.global_position.distance_to(point)]
+	_aim_cue.position = _root.get_global_transform_with_canvas().affine_inverse() * screen + Vector2(-18, -32)
+	var bounds := get_viewport().get_visible_rect().size
+	var extent := _aim_cue.get_minimum_size()
+	_aim_cue.position.x = clampf(_aim_cue.position.x, 12.0, maxf(12.0, bounds.x - extent.x - 12.0))
+	_aim_cue.position.y = clampf(_aim_cue.position.y, 12.0, maxf(12.0, bounds.y - extent.y - 80.0))
+	if _status_card.get_rect().intersects(Rect2(_aim_cue.position, extent)):
+		_aim_cue.position.y = _status_card.get_rect().end.y + 8.0
+	_aim_cue.show()
 
 
 func _label(text: String, font_size: int) -> Label:

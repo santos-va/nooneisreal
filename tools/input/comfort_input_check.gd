@@ -110,21 +110,18 @@ func _run() -> void:
 	_expect(ir.axis(1) > 0.9 and ir.buffered(1, "left_hand"), "release and new press recover keyboard")
 	_key(KEY_D, false)
 	_key(KEY_J, false)
-	var dash_button: int = -1
-	for event in InputMap.action_get_events("p1_dash"):
-		if event is InputEventJoypadButton:
-			dash_button = event.button_index
+	var dash_button: int = JOY_BUTTON_X
 	_expect(dash_button >= 0, "existing gamepad dash binding")
 	_stick(0.8)
 	_pad(dash_button, true)
 	ir.acquire_ui(pause_owner)
 	ir.release_ui(pause_owner)
-	_expect(ir.move(1) == Vector2.ZERO and not ir.held(1, "dash") and not ir.buffered(1, "dash"), "resume fences gamepad axis and dash")
+	_expect(ir.move(1) == Vector2.ZERO and not ir.held(1, "dodge") and not ir.buffered(1, "dodge"), "resume fences gamepad axis and dash")
 	_stick(0.0)
 	_pad(dash_button, false)
 	_stick(0.8)
 	_pad(dash_button, true)
-	_expect(ir.axis(1) > 0.5 and ir.buffered(1, "dash"), "neutral and new press recover gamepad")
+	_expect(ir.axis(1) > 0.5 and ir.buffered(1, "dodge"), "neutral and new press recover gamepad")
 	_stick(0.0)
 	_pad(dash_button, false)
 	ir.acquire_ui(panel_owner)

@@ -11,6 +11,7 @@ var district: Node3D
 var ropes: MatchRopes
 var onboarding: CityOnboarding
 var hud: CityHud
+var npc_director: CityNpcDirector
 var _prior_free_move: bool
 var _prior_profile: String
 var _prior_water: WaveField
@@ -23,6 +24,7 @@ var _last_attached: bool = false
 var _last_state: int = Fighter.State.IDLE
 
 func _ready() -> void:
+	Music.stop_music()
 	process_physics_priority = 20 # Observe actual fighter movement after its simulation tick.
 	_prior_free_move = GameState.free_move
 	_prior_profile = InputRouter.profile
@@ -66,6 +68,10 @@ func _ready() -> void:
 	hud.bind_player(player)
 	hud.restart_requested.connect(restart_exploration)
 	hud.exit_requested.connect(return_to_menu)
+	npc_director = CityNpcDirector.new()
+	npc_director.name = "Residents"
+	add_child(npc_director)
+	npc_director.setup(player)
 	_reset_observation()
 
 func _physics_process(_delta: float) -> void:

@@ -37,6 +37,8 @@ var flow: MatchFlow
 var _root: Control
 var _hp: Dictionary = {}
 var _hp_trail: Dictionary = {}
+var _stamina: Dictionary = {}
+var _vitals: Dictionary = {}
 var _meter: Dictionary = {}
 var _pips: Dictionary = {}
 var _charges: Dictionary = {}
@@ -76,9 +78,11 @@ func bind(a: Fighter, b: Fighter, f: MatchFlow) -> void:
 		pl.meter_changed.connect(func(m: float, mx: float): _on_meter(idx, m, mx))
 		pl.grapple_changed.connect(func(c: int, cd: float, mc: int): _on_grapple(idx, c, cd, mc))
 		pl.cooldowns_changed.connect(func(cd: Dictionary): _on_cooldowns(idx, cd))
+		pl.dodge_stamina_changed.connect(func(value: float, maximum: float): _on_stamina(idx, value, maximum))
 		pl.dash_changed.connect(func(c: int, r: float, mc: int): _on_dash(idx, c, r, mc))
 		pl.status_changed.connect(func(t: String): (_status[idx] as Label).text = t)
 		_on_hp(idx, pl.hp, pl.data.max_hp)
+		_on_stamina(idx, pl.dodge_stamina, pl.dodge_stamina_max())
 		_on_meter(idx, pl.meter, Fighter.MAX_METER)
 		_on_grapple(idx, pl.grapple.charges, pl.grapple.cooldown_left, pl.grapple.max_charges)
 		_on_cooldowns(idx, pl.cooldowns)
@@ -222,6 +226,14 @@ func _player_panel(f: Fighter, mirrored: bool) -> Control:
 	box.add_child(_outlined(hp_stack, -SKEW if mirrored else SKEW))
 	_hp[idx] = live
 	_hp_trail[idx] = trail
+	# One narrow stamina seam beside health, with explicit words at critical levels.
+	var stamina := _bar(Color("79d6ce"), WELL, mirrored)
+	stamina.custom_minimum_size.y = 6
+	box.add_child(stamina)
+	_stamina[idx] = stamina
+	var vitals := _label("", FONT_SMALL, HORIZONTAL_ALIGNMENT_RIGHT if mirrored else HORIZONTAL_ALIGNMENT_LEFT)
+	box.add_child(vitals)
+	_vitals[idx] = vitals
 	# resources row: meter + grapple pips + cooldowns
 	var res := HBoxContainer.new()
 	res.add_theme_constant_override("separation", 10)
@@ -467,7 +479,20 @@ func _hint_text() -> String:
 
 # --- updates --------------------------------------------------------------------------------
 func _on_hp(idx: int, hp: float, mx: float) -> void:
-	(_hp[idx] as ProgressBar).value = clampf(hp / mx, 0.0, 1.0)
+	(_hp[idx] as ProgressBar).value = clampf(hp / maxf(mx, 0.001), 0.0, 1.0)
+	_refresh_vitals(idx)
+
+
+func _on_stamina(idx: int, value: float, maximum: float) -> void:
+	(_stamina[idx] as ProgressBar).value = clampf(value / maxf(maximum, 0.001), 0.0, 1.0)
+	_refresh_vitals(idx)
+
+
+func _refresh_vitals(idx: int) -> void:
+	var hp := (_hp[idx] as ProgressBar).value
+	var stamina := (_stamina[idx] as ProgressBar).value
+	(_vitals[idx] as Label).text = "%s · %s" % ["CRITICAL" if hp <= 0.25 else "HEALTH", "DODGE · REST" if stamina < (p1 if idx == 1 else p2).dodge_profile().stamina_cost / maxf((p1 if idx == 1 else p2).dodge_stamina_max(), 0.001) else "STAMINA"]
+	(_vitals[idx] as Label).modulate = Color("ffae98") if hp <= 0.25 else Color.WHITE
 
 
 func _on_meter(idx: int, m: float, mx: float) -> void:
@@ -595,8 +620,6 @@ func _update_aim_cues() -> void:
 	if camera == null or p1 == null or InputRouter.ui_suppressed() or not camera.has_meta("harpoon_aim"):
 		return
 	var helper: HarpoonAim = camera.get_meta("harpoon_aim")
-	if p1.grapple.busy() or (p1.grapple.charges <= 0 and p1.grapple.reusable_rope() == 0):
-		return
 	for mode in 2:
 		if mode == 0 and p1.grapple.charges <= 0:
 			continue
@@ -608,7 +631,11 @@ func _update_aim_cues() -> void:
 		if not get_viewport().get_visible_rect().has_point(screen):
 			continue
 		var cue := _aim_cues[mode]
-		cue.text = ("◇ " if not intent.target_id.is_empty() else "+ ") + aim_binding(mode, helper.last_gamepad)
+		var kind: String = intent.get("candidate_kind", "")
+		var verb := "GRAB ROPE" if kind == "rope" else ("TRANSFER" if p1.grapple.busy() else "HOOK")
+		if kind == "rope" and not intent.get("reachable", true):
+			verb = "PREPARE GRAB"
+		cue.text = ("◇ " if not intent.target_id.is_empty() else "+ ") + aim_binding(mode, helper.last_gamepad) + " · " + verb
 		cue.position = _root.get_global_transform_with_canvas().affine_inverse() * screen + Vector2(-16, -16 + mode * 26)
 		cue.show()
 

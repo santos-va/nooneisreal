@@ -23,6 +23,45 @@ static func apply(rig: RigAnimator, fighter: Fighter) -> void:
 		rig._pose_set("upper_arm_l", Vector3(0.0, 0.0, 1.1 + 0.2 * load_amount))
 		rig._pose_set("forearm_l", Vector3(0.0, 0.0, 1.1))
 		return
+	if hook.phase == GrappleHook.Phase.ROPE_REACH:
+		# Ready hands layer over travel; preparation must not skate in a hanging pose.
+		var moving: float = clampf(Vector2(fighter.velocity.x, fighter.velocity.z).length() / maxf(fighter.data.walk_speed, 0.001), 0.0, 1.0)
+		var stride: float = sin(rig.idle_time * 9.0) * moving # Same provisional cadence as RigAnimator WALK.
+		rig._pose_set("torso", Vector3(0.0, aim_yaw * 0.2, 0.08))
+		rig._pose_set("head", Vector3(0.0, aim_yaw * 0.2, -0.2 * elevation))
+		rig._pose_set("upper_arm_r", Vector3(0.0, aim_yaw * 0.5, aim))
+		rig._pose_set("forearm_r", Vector3(0.0, 0.0, 0.25))
+		rig._pose_set("upper_arm_l", Vector3(0.0, 0.0, 0.85))
+		rig._pose_set("forearm_l", Vector3(0.0, 0.0, 1.1))
+		if fighter.on_ground():
+			rig._pose_set("thigh_l", Vector3(0.0, 0.0, 0.55 * stride))
+			rig._pose_set("thigh_r", Vector3(0.0, 0.0, -0.55 * stride))
+			rig._pose_set("shin_l", Vector3(0.0, 0.0, -0.5 * maxf(0.0, -stride)))
+			rig._pose_set("shin_r", Vector3(0.0, 0.0, -0.5 * maxf(0.0, stride)))
+		else:
+			rig._pose_set("thigh_l", Vector3(0.0, 0.0, 0.7))
+			rig._pose_set("thigh_r", Vector3(0.0, 0.0, 0.4))
+			rig._pose_set("shin_l", Vector3(0.0, 0.0, -1.1))
+			rig._pose_set("shin_r", Vector3(0.0, 0.0, -0.8))
+		return
+	if hook.phase == GrappleHook.Phase.FLIGHT and hook.chain_throw:
+		# A new device is drawn during the real swept flight, never a gameplay teleport.
+		# PLACEHOLDER art pose: Choko draws compactly from the belt, Skea sweeps wider.
+		var travel: float = hook._flight_distance / maxf(hook._launch_origin.distance_to(hook.anchor_point), 0.001)
+		var release: float = smoothstep(0.0, 0.6, travel)
+		var profile: CombatMotionProfile = LimbMotion.PROFILES.get(fighter.data.id, LimbMotion.default_profile)
+		var compact: bool = profile.compact_guard
+		rig._pose_set("pelvis", Vector3(0.0, (-0.15 if compact else -0.3) * (1.0 - release), 0.0))
+		rig._pose_set("torso", Vector3(0.0, aim_yaw * release, (-0.08 if compact else -0.18) * (1.0 - release)))
+		rig._pose_set("upper_arm_r", Vector3(0.0, aim_yaw * release, lerpf(-0.2 if compact else -0.65, aim, release)))
+		rig._pose_set("forearm_r", Vector3(0.0, 0.0, lerpf(1.7, 0.08, release)))
+		rig._pose_set("upper_arm_l", Vector3(0.0, 0.0, 0.9 if compact else 0.4))
+		rig._pose_set("forearm_l", Vector3(0.0, 0.0, 1.3 if compact else 0.6))
+		rig._pose_set("thigh_l", Vector3(0.0, 0.0, 0.25))
+		rig._pose_set("thigh_r", Vector3(0.0, 0.0, 0.45))
+		rig._pose_set("shin_l", Vector3(0.0, 0.0, -0.7))
+		rig._pose_set("shin_r", Vector3(0.0, 0.0, -1.0))
+		return
 	# During flight the reaching arm remains extended; after attachment the second hand supports it.
 	var hanging: bool = hook.phase == GrappleHook.Phase.HANG
 	var local_velocity: Vector3 = rig.global_basis.inverse() * fighter.velocity

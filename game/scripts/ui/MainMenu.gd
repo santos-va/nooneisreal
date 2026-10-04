@@ -28,6 +28,7 @@ const PORTRAITS := {"choko": "res://assets/ui/portraits/portrait_choko.png", "sk
 
 
 func _ready() -> void:
+	Music.play_menu()
 	InputRouter.acquire_ui(self)
 	var bg := ColorRect.new()
 	bg.color = Color(0.07, 0.06, 0.09)

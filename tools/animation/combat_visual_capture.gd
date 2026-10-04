@@ -140,6 +140,32 @@ func run() -> void:
 					camera.position = Vector3(3.3, 2.2, 4.8)
 					camera.look_at(Vector3(0, 1.0, 0))
 		f.free()
+	# A real collision floor lets dodge captures sample the same physical hop as gameplay.
+	var floor_body := StaticBody3D.new()
+	var floor_shape := CollisionShape3D.new()
+	var floor_box := BoxShape3D.new()
+	floor_box.size = Vector3(20, 0.2, 20)
+	floor_shape.shape = floor_box
+	floor_body.position.y = -0.1
+	floor_body.add_child(floor_shape)
+	world.add_child(floor_body)
+	for hero: String in ["choko", "skea"]:
+		for direction_name: String in ["forward", "back", "side"]:
+			_make_fighter(hero)
+			f.set_control(true)
+			await physics_frame
+			await process_frame
+			f._ground_physics(1.0 / 60.0, 0.0)
+			f._wish = {"forward": Vector3.RIGHT, "back": Vector3.LEFT, "side": Vector3.BACK}[direction_name]
+			f._start_dodge(0.0)
+			for frame in int(f.dodge_profile().frames / 2):
+				f._tick_dash(1.0 / 60.0)
+				f._post_move()
+				f.animator.tick(1.0 / 60.0, f, false)
+				f.skeletal._physics_process(1.0 / 60.0)
+				f.skeletal._on_mannequin_updated()
+			await capture("dodge_%s_%s" % [hero, direction_name], "%s | short %s dodge | stamina %.0f" % [hero, direction_name, f.dodge_stamina])
+			f.free()
 	world.queue_free()
 	await process_frame
 	root.get_node("UltMusic").queue_free()

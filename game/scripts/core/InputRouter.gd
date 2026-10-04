@@ -5,7 +5,7 @@ extends Node
 ## as a human player. Docs: docs/GDD/05-Platforms-Input.md
 
 const BUFFER_FRAMES := 6
-const ACTIONS := ["left", "right", "jump", "crouch", "light", "heavy", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "ultimate", "grapple_enemy", "grapple_parkour", "grapple", "dash", "weapon_swap", "up", "down"]
+const ACTIONS := ["left", "right", "jump", "crouch", "light", "heavy", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "ultimate", "grapple_enemy", "grapple_parkour", "grapple", "grapple_detach", "dodge", "dash", "interact", "weapon_swap", "up", "down"]
 ## Free movement (GameState.free_move) — docs/Decisions/ADR-014-Free-Movement-Layout.md: W/↑ and S/↓ move
 ## off `jump` / `crouch` onto `up` / `down` (camera-relative movement); jump is Space (P1) and `/` (P2) only;
 ## crouch is X (P1) and M (P2, SHARED). Gamepad: left stick ↑/↓ drives up/down and leaves crouch, which is
@@ -32,10 +32,12 @@ const PROFILE_SHARED := "shared"
 const PROFILES := [PROFILE_SOLO, PROFILE_SHARED]
 const SOLO_KEYS := {
 	"p1_left": [KEY_A], "p1_right": [KEY_D], "p1_jump": [KEY_W, KEY_SPACE], "p1_crouch": [KEY_S],
-	"p1_dash": [KEY_SHIFT], "p1_grapple_enemy": [KEY_Q], "p1_grapple_parkour": [KEY_E],
-	"p1_left_hand": [KEY_J], "p1_right_hand": [KEY_K], "p1_left_leg": [KEY_M], "p1_right_leg": [KEY_COMMA], "p1_block": [KEY_L],
-	"p1_weapon_swap": [KEY_V], "p1_skill1": [KEY_U], "p1_skill2": [KEY_I], "p1_ultimate": [KEY_O],
+	"p1_dash": [KEY_ALT], "p1_dodge": [KEY_SHIFT], "p1_grapple_detach": [KEY_Z], "p1_interact": [KEY_G], "p1_grapple_enemy": [KEY_Q], "p1_grapple_parkour": [KEY_E],
+	"p1_left_hand": [KEY_J], "p1_right_hand": [KEY_K], "p1_left_leg": [KEY_M], "p1_right_leg": [KEY_COMMA], "p1_block": [KEY_L, KEY_F],
+	"p1_weapon_swap": [KEY_V], "p1_skill1": [KEY_U, KEY_R], "p1_skill2": [KEY_I, KEY_T], "p1_ultimate": [KEY_O, KEY_C],
 }
+
+const SOLO_MOUSE := {"left_hand": MOUSE_BUTTON_LEFT, "right_hand": MOUSE_BUTTON_MIDDLE, "left_leg": MOUSE_BUTTON_XBUTTON1, "right_leg": MOUSE_BUTTON_XBUTTON2}
 
 const LIMBS := ["left_hand", "right_hand", "left_leg", "right_leg"]
 const PAD_CHORDS := ["skill1", "skill2", "grapple_parkour", "grapple_enemy"]
@@ -119,16 +121,28 @@ func apply_profile(prof: String, save: bool = true) -> void:
 				if ev is InputEventKey:
 					InputMap.action_erase_event(n, ev)
 			if prof == PROFILE_SHARED:
-				for ev in _shared_keys.get(n, []):
-					InputMap.action_add_event(n, ev)
+				if a in ["dash", "dodge", "grapple_detach", "interact"]:
+					var key := InputEventKey.new()
+					key.physical_keycode = {"dash": KEY_ALT, "dodge": KEY_C if p == 1 else KEY_PERIOD, "grapple_detach": KEY_CTRL, "interact": KEY_Y if p == 1 else KEY_BACKSLASH}[a]
+					if a in ["dash", "grapple_detach"]:
+						key.location = KEY_LOCATION_LEFT if p == 1 else KEY_LOCATION_RIGHT
+					InputMap.action_add_event(n, key)
+				else:
+					for ev in _shared_keys.get(n, []):
+						InputMap.action_add_event(n, ev)
 			else:
 				for code in SOLO_KEYS.get(n, []):
 					var k := InputEventKey.new()
 					k.physical_keycode = code
-					if code == KEY_SHIFT:
+					if code == KEY_SHIFT or code == KEY_ALT:
 						k.location = KEY_LOCATION_LEFT   # RShift stays free
 					InputMap.action_add_event(n, k)
 		_apply_pad(p)
+		if prof == PROFILE_SOLO and p == 1:
+			for action: String in SOLO_MOUSE:
+				var mouse := InputEventMouseButton.new()
+				mouse.button_index = SOLO_MOUSE[action]
+				InputMap.action_add_event(action_name(p, action), mouse)
 		if GameState.free_move:
 			_move_keys(action_name(p, "jump"), action_name(p, "up"), FREE_MOVE_UP_KEYS)
 			_move_keys(action_name(p, "crouch"), action_name(p, "down"), FREE_MOVE_DOWN_KEYS)
@@ -153,9 +167,20 @@ func _apply_pad(p: int) -> void:
 			if not ev is InputEventKey:
 				InputMap.action_erase_event(n, ev)
 		for ev in _pad_events.get(n, []):
+			if a in ["dash", "block"]:
+				continue # X is routed to dodge or Y+X dash on its rising edge.
 			if GameState.free_move and a == "crouch" and ev is InputEventJoypadMotion and (ev as InputEventJoypadMotion).axis == STICK_Y:
 				continue
 			InputMap.action_add_event(n, ev)
+	# Direct parkour keeps the right thumb available for aiming; legacy Y + LT remains.
+	var parkour := InputEventJoypadButton.new()
+	parkour.device = p - 1
+	parkour.button_index = JOY_BUTTON_LEFT_STICK
+	InputMap.action_add_event(action_name(p, "grapple_parkour"), parkour)
+	var detach := InputEventJoypadButton.new()
+	detach.device = p - 1
+	detach.button_index = JOY_BUTTON_B
+	InputMap.action_add_event(action_name(p, "block"), detach)
 	if GameState.free_move:
 		for pair in [["up", -1.0], ["down", 1.0]]:
 			var m := InputEventJoypadMotion.new()
@@ -192,7 +217,7 @@ func _hint_profile(vs_cpu: bool) -> String:
 	var text := ""
 	for p in ([1] if vs_cpu or profile == PROFILE_SOLO else [1, 2]):
 		text += "P%d\n" % p
-		for action in ["left", "right", "up", "down", "jump", "crouch", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "grapple_enemy", "grapple_parkour", "dash", "weapon_swap", "ultimate"]:
+		for action in ["left", "right", "up", "down", "jump", "crouch", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "grapple_enemy", "grapple_parkour", "grapple_detach", "dodge", "dash", "weapon_swap", "ultimate", "interact"]:
 			var label := binding_label(p, action, false)
 			if not label.is_empty():
 				text += action.capitalize() + ": " + label + " · "
@@ -203,15 +228,25 @@ func _hint_profile(vs_cpu: bool) -> String:
 ## A single source for physical key labels and routed controller chords.
 func binding_label(player: int, action: String, gamepad: bool) -> String:
 	if gamepad:
+		if action == "grapple_detach":
+			return "B / Circle (while hanging)"
+		if action == "dodge":
+			return "X / Square"
+		if action == "dash":
+			return "Y / Triangle + X / Square"
+		if action == "interact":
+			return "Y / Triangle + D-pad Down"
 		if action in LIMBS:
 			return PAD_LIMB_LABELS[LIMBS.find(action)]
 		if action in PAD_CHORDS and not action.is_empty():
-			return "Y / Triangle + " + PAD_LIMB_LABELS[PAD_CHORDS.find(action)]
+			return "Y / Triangle + " + PAD_LIMB_LABELS[PAD_CHORDS.find(action)] + (" / L3" if action == "grapple_parkour" else "")
 	var labels: PackedStringArray = []
 	for event in InputMap.action_get_events(action_name(player, action)):
 		if not gamepad and event is InputEventKey:
 			var prefix := "Left " if event.location == KEY_LOCATION_LEFT else ("Right " if event.location == KEY_LOCATION_RIGHT else "")
 			labels.append(prefix + ("Comma (<)" if event.physical_keycode == KEY_COMMA else OS.get_keycode_string(event.physical_keycode)))
+		elif not gamepad and event is InputEventMouseButton:
+			labels.append(str({MOUSE_BUTTON_LEFT: "LMB", MOUSE_BUTTON_MIDDLE: "MMB", MOUSE_BUTTON_XBUTTON1: "Mouse 4", MOUSE_BUTTON_XBUTTON2: "Mouse 5"}.get(event.button_index, "Mouse")))
 		elif gamepad and event is InputEventJoypadButton:
 			var names := {JOY_BUTTON_A: "A / Cross", JOY_BUTTON_B: "B / Circle", JOY_BUTTON_X: "X / Square", JOY_BUTTON_DPAD_UP: "D-pad Up", JOY_BUTTON_DPAD_DOWN: "D-pad Down", JOY_BUTTON_RIGHT_STICK: "R3 / Right stick click"}
 			labels.append(str(names.get(event.button_index, "D-pad")))
@@ -273,6 +308,8 @@ func _clear_ui_history() -> void:
 func _physical_allowed(n: String) -> bool:
 	if ui_suppressed():
 		return false
+	if n.ends_with("_crouch") and _pad_routes.values().has(n.replace("_crouch", "_interact")):
+		return false
 	if _neutral_pending.has(n):
 		if not Input.is_action_pressed(n):
 			_neutral_pending.erase(n)
@@ -299,7 +336,7 @@ func _input(event: InputEvent) -> void:
 	if ui_suppressed():
 		_clear_ui_history()
 		return
-	if not (event is InputEventKey or event is InputEventJoypadButton or event is InputEventJoypadMotion):
+	if not (event is InputEventKey or event is InputEventMouseButton or event is InputEventJoypadButton or event is InputEventJoypadMotion):
 		return
 	if event is InputEventKey and (event as InputEventKey).echo:
 		return
@@ -440,6 +477,10 @@ func _route_pad(event: InputEvent) -> void:
 			slot = 0
 		elif event.button_index == JOY_BUTTON_RIGHT_SHOULDER:
 			slot = 1
+		elif event.button_index == JOY_BUTTON_X:
+			slot = 4
+		elif event.button_index == JOY_BUTTON_DPAD_DOWN and (_pad_modifier.get(device, false) or _pad_down.get("%d:5" % device, false)):
+			slot = 5
 	elif event.axis == JOY_AXIS_TRIGGER_LEFT:
 		slot = 2
 	elif event.axis == JOY_AXIS_TRIGGER_RIGHT:
@@ -455,7 +496,13 @@ func _route_pad(event: InputEvent) -> void:
 		return
 	if was or ui_suppressed() or _pad_modifier_blocked.has(device):
 		return
-	var action: String = PAD_CHORDS[slot] if _pad_modifier.get(device, false) else LIMBS[slot]
+	var action: String
+	if slot == 4:
+		action = "dash" if _pad_modifier.get(device, false) else "dodge"
+	elif slot == 5:
+		action = "interact"
+	else:
+		action = PAD_CHORDS[slot] if _pad_modifier.get(device, false) else LIMBS[slot]
 	if action.is_empty():
 		return
 	var name := action_name(device + 1, action)
@@ -472,7 +519,7 @@ func _pad_connection_changed(device: int, connected: bool) -> void:
 	clear_recorded_view_basis(device + 1)
 	GameState.duel.clear_human_gestures(device + 1)
 	_pad_modifier_blocked.erase(device)
-	for slot in range(4):
+	for slot in range(6):
 		var source := "%d:%d" % [device, slot]
 		_pad_down.erase(source)
 		var name: String = _pad_routes.get(source, "")

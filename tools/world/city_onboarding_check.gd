@@ -57,6 +57,11 @@ func _run() -> void:
 	hud.restart_requested.connect(func(): restart_requests += 1; model.restart())
 	hud.exit_requested.connect(func(): exit_requests += 1)
 	await _settle()
+	await _pad(JOY_BUTTON_B)
+	_check(not paused and not hud.paused_ui, "B stays gameplay detach/block outside pause")
+	_check(not hud.hint_label.visible, "permanent footer removed from exploration")
+	_check(hud.get("_status_card").size.x <= 410.0 and hud.get("_status_card").size.y <= 155.0, "compact status card leaves city visible")
+	_check(hud.objective_label.get_theme_font_size("font_size") == 20, "compact guidance keeps readable type")
 	await _key(KEY_ESCAPE)
 	_check(paused and hud.paused_ui and router.ui_suppressed(), "Escape pauses simulation and owns gameplay input")
 	_check(model.suspended and hud.resume_button.has_focus(), "pause suspends guidance and focuses resume")
@@ -136,6 +141,16 @@ func _key(code: Key) -> void:
 		var event := InputEventKey.new()
 		event.physical_keycode = code
 		event.keycode = code
+		event.pressed = down
+		viewport.push_input(event, true)
+		await _settle()
+
+
+func _pad(code: JoyButton) -> void:
+	for down: bool in [true, false]:
+		var event := InputEventJoypadButton.new()
+		event.device = 0
+		event.button_index = code
 		event.pressed = down
 		viewport.push_input(event, true)
 		await _settle()

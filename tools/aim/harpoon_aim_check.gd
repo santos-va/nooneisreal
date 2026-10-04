@@ -104,6 +104,7 @@ func _selection(helper: Node, camera: Camera3D) -> void:
 	far.position = Vector3(7, 4, 0)
 	far.add_to_group("grapple_anchor")
 	await physics_frame
+	helper.setup(camera, false)
 	var intent: Dictionary = helper.capture(f, false)
 	expect(intent.target_id == String(near.get_path()), "nearest usable candidate wins")
 	near.remove_from_group("grapple_anchor")
@@ -129,6 +130,9 @@ func _selection(helper: Node, camera: Camera3D) -> void:
 	camera.position = Vector3(-5, 4, 0)
 	camera.look_at(near.position, Vector3.UP)
 	helper.setup(camera, true)
+	await physics_frame
+	var settled: Dictionary = helper.capture(f, false)
+	expect(not settled.manual and settled.camera_aim and settled.target_id == String(near.get_path()), "settled solo camera retains distant anchor selection")
 	helper.apply_look(Vector2(0.001, 0.0))
 	await physics_frame
 	var aimed: Dictionary = helper.capture(f, false)

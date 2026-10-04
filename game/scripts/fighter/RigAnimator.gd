@@ -222,6 +222,14 @@ func tick(delta: float, f: Fighter, frozen: bool) -> void:
 			for n in parts.keys():
 				pose[n] = target_pose[n]
 			root_offset = target_root_offset
+	elif f.dodging:
+		# An 18–20 frame hop cannot use the idle body's 10–14 frame settling lag.
+		# Respond within a few frames so the guard and lifted knee lead the travel.
+		_step_frame = -1
+		var response: float = 1.0 - exp(-32.0 * delta)
+		for n in parts.keys():
+			pose[n] = (pose[n] as Vector3).lerp(target_pose[n], response)
+		root_offset = root_offset.lerp(target_root_offset, response)
 	elif f.state == Fighter.State.WALL_SPLAT:
 		# the splat lasts 10 frames — shorter than the smoothing (≈ 10–14) — so it snaps to its
 		# drawing on the first frame, or it never reads on screen
@@ -305,6 +313,8 @@ func _compute_target(f: Fighter, delta: float) -> void:
 			_pose_set("upper_arm_l", Vector3(0, 0, 2.3))
 			_pose_set("upper_arm_r", Vector3(0, 0, 1.0))
 			_pose_set("forearm_r", Vector3(0, 0, 0.8))
+		Fighter.State.DASH when f.dodging:
+			DodgeMotion.apply(self, f)
 		Fighter.State.DASH when f.flashing:
 			_pose_set("torso", Vector3(0, 0, 0.75))
 			_pose_set("head", Vector3(0, 0, -0.45))

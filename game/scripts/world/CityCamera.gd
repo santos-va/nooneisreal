@@ -5,6 +5,8 @@ signal looked(radians: float)
 
 @export var follow_distance: float = 6.0 # PLACEHOLDER city framing; device review pending.
 @export var focus_height: float = 1.4
+@export var aim_shoulder_offset: float = 1.0 # PLACEHOLDER metres, clear torso when aiming up.
+var _shoulder_shape: SphereShape3D
 @export var base_pitch: float = -0.24
 var player: CityFighter
 var arm: SpringArm3D
@@ -24,6 +26,8 @@ func _ready() -> void:
 	var shape := SphereShape3D.new()
 	shape.radius = 0.18
 	arm.shape = shape
+	_shoulder_shape = SphereShape3D.new()
+	_shoulder_shape.radius = 0.25
 	add_child(arm)
 	camera = Camera3D.new()
 	camera.name = "Camera3D"
@@ -61,6 +65,7 @@ func reset_view() -> void:
 	_pitch = 0.0
 	rotation = Vector3.ZERO
 	arm.rotation.x = base_pitch
+	arm.position = Vector3.ZERO
 	global_position = player.global_position + Vector3.UP * focus_height
 	_publish_basis()
 
@@ -75,6 +80,7 @@ func _physics_process(delta: float) -> void:
 	rotation.y = _yaw
 	arm.rotation.x = base_pitch + aim.pitch_offset
 	global_position = global_position.lerp(player.global_position + Vector3.UP * focus_height, 1.0 - exp(-15.0 * delta))
+	_update_shoulder(delta)
 	_publish_basis()
 	var turn := Vector2(angle_difference(previous, _yaw), _pitch - previous_pitch).length()
 	if turn > 0.00001:
@@ -83,6 +89,24 @@ func _physics_process(delta: float) -> void:
 	_cue.visible = not String(packet.target_id).is_empty() and not InputRouter.ui_suppressed()
 	if _cue.visible:
 		_cue.global_position = packet.point
+
+func _update_shoulder(delta: float) -> void:
+	# Shift the arm pivot, not its camera child: the existing spring-arm sweep
+	# still covers the complete back-to-front path after the lateral sweep.
+	var wanted := aim_shoulder_offset * smoothstep(0.1, 0.6, aim.pitch_offset)
+	var offset := lerpf(arm.position.x, wanted, 1.0 - exp(-12.0 * delta))
+	var motion := global_basis.x * offset
+	if motion.length_squared() > 0.000001:
+		var query := PhysicsShapeQueryParameters3D.new()
+		query.shape = _shoulder_shape
+		query.transform = Transform3D(Basis.IDENTITY, global_position)
+		query.motion = motion
+		query.collision_mask = arm.collision_mask
+		query.exclude = [player.get_rid()]
+		var fractions := get_world_3d().direct_space_state.cast_motion(query)
+		if not fractions.is_empty():
+			offset *= fractions[0]
+	arm.position.x = offset
 
 func _publish_basis() -> void:
 	InputRouter.set_view_basis(player.player_index, Vector3(-sin(_yaw), 0.0, -cos(_yaw)))
