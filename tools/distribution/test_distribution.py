@@ -419,13 +419,15 @@ cp "$dir/manifest.json" "$TEST_ROOT/built-manifest.json"
         git('init', '-q'); git('add', '.')
         git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'Fixture')
         revision = git('rev-parse', 'HEAD')
+        (repo / 'game/project.godot').write_text('new HEAD project')
+        git('add', '.'); git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'New HEAD')
         (repo / 'game/project.godot').write_text('uncommitted user edits')
         home = self.root / 'Mac Home'
         template = home / 'Library/Application Support/Godot/export_templates/4.7.stable/macos.zip'
         template.parent.mkdir(parents=True); template.write_bytes(b'fixture template')
         fake_godot = self.root / 'godot fixture'
         fake_godot.write_text(r'''#!/bin/bash
-if [ "$1" = --version ]; then echo 4.7.stable.fixture; exit; fi
+if [ "$2" = --version ]; then echo 4.7.stable.fixture; exit; fi
 [ "$(cat "$3/project.godot")" = 'committed project' ] || exit 2
 grep -F "$TEST_REVISION" "$3/export_presets.cfg" >/dev/null || exit 3
 if [ "$4" = --export-release ]; then printf 'export fixture' > "$6"; fi
@@ -456,6 +458,50 @@ export -f uname pgrep plutil stat
         self.assertEqual(manifest['sha256'], hashlib.sha256(b'export fixture').hexdigest())
         self.assertEqual((repo / 'game/project.godot').read_text(), 'uncommitted user edits')
         self.assertEqual(git('status', '--porcelain'), 'M game/project.godot')
+
+    def test_local_godot_selection_skips_invalid_environment_and_downloads_verified(self):
+        source = SCRIPT.with_name('install-local-macos.sh').read_text()
+        selection = source[source.index('base=https:'):source.index('template="$HOME')]
+        selection = selection.replace('/Applications/Godot.app/Contents/MacOS/Godot', str(self.root / 'absent app'))
+        good = self.root / 'godot'
+        good.write_text('#!/bin/bash\n[ "$1 $2" = "--headless --version" ] || exit 9\nprintf "banner\\n4.7.stable.official.5b4e0cb0f\\r\\n"\n')
+        good.chmod(0o755)
+        bad = self.root / 'old godot'
+        for body in ['echo 4.6.3.stable', 'exit 2', 'exit 0', 'echo 4.7.stablewrong']:
+            with self.subTest(body=body):
+                bad.write_text('#!/bin/bash\n' + body + '\n'); bad.chmod(0o755)
+                env = dict(os.environ, GODOT_BIN=str(bad), PATH=str(self.root)+':'+os.environ['PATH'])
+                result = subprocess.run(['/bin/bash', '-c', 'set -euo pipefail\n'+selection], env=env, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('Using Godot 4.7.stable.official', result.stdout)
+                self.assertIn('Skipping Godot candidate', result.stdout)
+        # A command-name override resolves through PATH, without changing GODOT_BIN.
+        env = dict(os.environ, GODOT_BIN='godot', PATH=str(self.root)+':'+os.environ['PATH'])
+        result = subprocess.run(['/bin/bash', '-c', 'set -euo pipefail\n'+selection+'\n[ "$GODOT_BIN" = godot ]'], env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # No usable candidates: real SHA512 validation precedes extraction of the mock official download.
+        stage = self.root / 'download-stage'; stage.mkdir()
+        payload = self.root / 'official.zip'; payload.write_bytes(b'official fixture')
+        sums = self.root / 'SHA512-SUMS.txt'
+        sums.write_text(hashlib.sha512(payload.read_bytes()).hexdigest()+'  Godot_v4.7-stable_macos.universal.zip\n')
+        prelude = r'''
+fail() { echo "$*" >&2; exit 1; }
+curl() {
+    local dest="${@: -2:1}" url="${@: -1}"
+    if [[ "$url" = */SHA512-SUMS.txt ]]; then cp "$TEST_ROOT/SHA512-SUMS.txt" "$dest"; else cp "$TEST_ROOT/official.zip" "$dest"; fi
+}
+ditto() { mkdir -p "$4/Godot.app/Contents/MacOS"; cp "$TEST_ROOT/godot" "$4/Godot.app/Contents/MacOS/Godot"; }
+'''
+        isolated = selection.replace('"$(command -v godot || true)"', '""')
+        env = dict(os.environ, GODOT_BIN=str(self.root / 'missing'), TEST_ROOT=str(self.root), stage=str(stage))
+        result = subprocess.run(['/bin/bash', '-c', 'set -euo pipefail\n'+prelude+isolated], env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Downloading official Godot', result.stdout)
+        sums.write_text('0'*128+'  Godot_v4.7-stable_macos.universal.zip\n')
+        shutil.rmtree(stage); stage.mkdir()
+        result = subprocess.run(['/bin/bash', '-c', 'set -euo pipefail\n'+prelude+isolated], env=env, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('SHA512 mismatch', result.stderr)
 
 
 if __name__ == '__main__':

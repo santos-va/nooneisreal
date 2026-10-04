@@ -32,22 +32,34 @@ verified_download() {
     actual=$(shasum -a 512 "$stage/$name" | awk '{print $1}')
     [ "$actual" = "$expected" ] || fail "Official SHA512 mismatch: $name"
 }
-godot_bin=${GODOT_BIN:-}
-if [ -n "$godot_bin" ]; then
-    [ -x "$godot_bin" ] || fail 'GODOT_BIN must name an executable.'
-else
-    for candidate in /Applications/Godot.app/Contents/MacOS/Godot "$(command -v godot || true)"; do
-        if [ -n "$candidate" ] && [ -x "$candidate" ] && [[ "$("$candidate" --version)" = 4.7.stable* ]]; then godot_bin="$candidate"; break; fi
-    done
-fi
+# Probe candidates before selection; an old GODOT_BIN must not block installation.
+probe_godot() {
+    local candidate="$1" output
+    probe_version='not executable'
+    [ -n "$candidate" ] && [ -x "$candidate" ] || return 1
+    if ! output=$("$candidate" --headless --version 2>&1); then
+        probe_version="probe failed: ${output:-no output}"
+        return 1
+    fi
+    probe_version=$(printf '%s\n' "$output" | tr -d '\r' | awk '/^4\.7\.stable(\.[A-Za-z0-9_-]+)*$/ {print; exit}')
+    if [ -z "$probe_version" ]; then probe_version="${output:-no output}"; return 1; fi
+}
+godot_bin=''
+for candidate in "${GODOT_BIN:-}" /Applications/Godot.app/Contents/MacOS/Godot "$(command -v godot || true)"; do
+    [ -n "$candidate" ] || continue
+    case "$candidate" in */*) ;; *) candidate=$(command -v "$candidate" || printf '%s' "$candidate") ;; esac
+    if probe_godot "$candidate"; then godot_bin="$candidate"; break; fi
+    printf 'Skipping Godot candidate %s: %s\n' "$candidate" "$probe_version"
+done
 if [ -z "$godot_bin" ]; then
     printf 'Downloading official Godot 4.7 editor for this temporary build.\n'
     verified_download Godot_v4.7-stable_macos.universal.zip
     mkdir "$stage/editor"
     ditto -x -k "$stage/Godot_v4.7-stable_macos.universal.zip" "$stage/editor"
     godot_bin="$stage/editor/Godot.app/Contents/MacOS/Godot"
+    probe_godot "$godot_bin" || fail "Downloaded Godot is incompatible at $godot_bin: $probe_version"
 fi
-[[ "$("$godot_bin" --version)" = 4.7.stable* ]] || fail 'Godot 4.7 stable is required.'
+printf 'Using Godot %s at %s\n' "$probe_version" "$godot_bin"
 template="$HOME/Library/Application Support/Godot/export_templates/4.7.stable/macos.zip"
 if [ ! -f "$template" ]; then
     printf 'macOS export template missing: downloading official template pack (about 1.28 GB).\n'
