@@ -14,6 +14,8 @@ var _keys_btn: Button
 ## CPU, VERSUS → two players; every other row keeps the last of the three. Starts on FIGHT.
 var hint_vs_cpu: bool = true
 var mode_btn: Button   # MODE 2.5D / 3D (docs/GDD/06-UI-UX.md § Кнопка «РЕЖИМ 2.5D / 3D»); the smoke presses it
+var _comfort: ComfortPanel
+var _comfort_button: Button
 var _foot: Label
 var _card1: TextureRect
 var _card2: TextureRect
@@ -25,6 +27,7 @@ const PORTRAITS := {"choko": "res://assets/ui/portraits/portrait_choko.png", "sk
 
 
 func _ready() -> void:
+	InputRouter.acquire_ui(self)
 	var bg := ColorRect.new()
 	bg.color = Color(0.07, 0.06, 0.09)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -99,12 +102,28 @@ func _ready() -> void:
 	var foot := Label.new()
 	_foot = foot
 	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	foot.add_theme_font_size_override("font_size", 15)
+	foot.add_theme_font_size_override("font_size", 32)
+	foot.clip_text = true
 	foot.add_theme_color_override("font_color", Color(0.75, 0.72, 0.7))
 	foot.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	foot.anchor_top = 1.0
-	foot.offset_top = -40
+	foot.offset_top = -58
+	foot.offset_bottom = -12
 	add_child(foot)
+	_comfort_button = Button.new()
+	_comfort_button.text = "COMFORT & CONTROLS"
+	_comfort_button.add_theme_font_size_override("font_size", 32)
+	_comfort_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_comfort_button.position = Vector2(-450, 18)
+	_comfort_button.size = Vector2(430, 48)
+	add_child(_comfort_button)
+	_comfort = ComfortPanel.new()
+	add_child(_comfort)
+	_comfort_button.pressed.connect(func(): _comfort.show_panel(_comfort_button, InputRouter.hint_text(hint_vs_cpu)))
+	_buttons[-1].focus_neighbor_bottom = _buttons[-1].get_path_to(_comfort_button)
+	_comfort_button.focus_neighbor_top = _comfort_button.get_path_to(_buttons[-1])
+	_comfort_button.focus_neighbor_bottom = _comfort_button.get_path_to(_buttons[0])
+	_buttons[0].focus_neighbor_top = _buttons[0].get_path_to(_comfort_button)
 	_refresh()
 	_buttons[0].grab_focus()
 
@@ -161,7 +180,7 @@ func _refresh() -> void:
 	_keys_btn.text = "KEYBOARD:  ◂ %s ▸" % ("SOLO (P2 on gamepad)" if solo else "SHARED (two on one keyboard)")
 	mode_btn.text = "MODE:  ◂ %s ▸" % ("3D (free move)" if GameState.free_move else "2.5D (plane)")
 	if _foot:
-		_foot.text = InputRouter.hint_text(hint_vs_cpu)
+		_foot.text = compact_hint_text()
 	if _card1:
 		_card1.texture = _card_tex(c1)
 		_card2.texture = _card_tex(c2)
@@ -172,7 +191,7 @@ func _refresh() -> void:
 func _set_hint(vs_cpu: bool) -> void:
 	hint_vs_cpu = vs_cpu
 	if _foot:
-		_foot.text = InputRouter.hint_text(hint_vs_cpu)
+		_foot.text = compact_hint_text()
 
 
 ## STAGE row: the next rotation arena, remembered in settings.cfg [gameplay] stage (id, not index).
@@ -239,3 +258,11 @@ func _set_portrait(rect: TextureRect, c: CharacterData) -> void:
 func _go() -> void:
 	Sfx.play("ui_confirm", -6)
 	GameState.start_match()
+
+
+func compact_hint_text() -> String:
+	return "%s · %s · %s · Comfort & controls ↗" % ["P1 vs CPU" if hint_vs_cpu else "P1 vs P2", "3D" if GameState.free_move else "2.5D", "SOLO" if InputRouter.profile == InputRouter.PROFILE_SOLO else "SHARED"]
+
+
+func _exit_tree() -> void:
+	InputRouter.release_ui(self)

@@ -173,7 +173,7 @@ func _process(delta: float) -> void:
 	rotation = Vector3(0.0, lerp_angle(_yaw_prev, _yaw, Engine.get_physics_interpolation_fraction()), 0.0)
 	_apply(1.0 - pow(0.0015, delta))
 	_apply_readability(1.0 - pow(0.0015, delta))
-	var offset: Vector2 = _impact.step(delta, impact_scale)
+	var offset: Vector2 = _impact.step(delta, impact_scale * ComfortSettings.get_value("shake"))
 	cam.h_offset = offset.x
 	cam.v_offset = offset.y
 

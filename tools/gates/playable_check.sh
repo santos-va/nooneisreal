@@ -30,10 +30,17 @@ cases = [
     ('impact', 'tools/camera/impact_check.gd', r'impact-check: OK \([1-9][0-9]* checks, 0 failures\)', [], 0),
     ('foot', 'tools/animation/foot_contact_check.gd', r'FOOT CONTACT: [1-9][0-9]* checks, 0 failures', [], 0),
     ('audio', 'tools/audio/sfx_check.gd', r'sfx-check: OK \([1-9][0-9]* checks, 0 failures\)', [], 0),
+    ('comfort-settings', 'tools/settings/comfort_check.gd', r'COMFORT_CHECK_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('comfort-input', 'tools/input/comfort_input_check.gd', r'COMFORT_INPUT_CHECK checks=[1-9][0-9]* failures=0', [], 0),
+    ('comfort-ui', 'tools/ui/comfort_ui_check.gd', r'COMFORT_UI PASS \(0 failures; mutation=\)', [], 0),
 ]
 for mutation in ('portrait', 'icon', 'input'):
     cases.append(('ui-negative-' + mutation, 'tools/ui/layout_check.gd',
                   rf'UI_LAYOUT FAIL \([1-9][0-9]* failures; mutation={mutation}\)',
+                  ['--', '--break=' + mutation], 1))
+for mutation in ('footer', 'focus', 'bounds'):
+    cases.append(('comfort-ui-negative-' + mutation, 'tools/ui/comfort_ui_check.gd',
+                  rf'COMFORT_UI FAIL \([1-9][0-9]* failures; mutation={mutation}\)',
                   ['--', '--break=' + mutation], 1))
 failures = 0
 for name, script, sentinel, args, expected_rc in cases:
@@ -55,8 +62,9 @@ for name, script, sentinel, args, expected_rc in cases:
     complete = re.search('^' + sentinel + '$', output, re.MULTILINE) is not None
     errors = [line.strip() for line in output.splitlines()
               if re.match(r'^\s*(?:SCRIPT ERROR|ERROR):', line)]
+    assertion_prefix = 'ERROR: COMFORT_UI: ' if name.startswith('comfort-ui-negative-') else 'ERROR: UI_LAYOUT: '
     unexpected = [line for line in errors
-                  if expected_rc == 0 or not line.startswith('ERROR: UI_LAYOUT: ')]
+                  if expected_rc == 0 or not line.startswith(assertion_prefix)]
     ok = rc == expected_rc and complete and not unexpected and 'SCRIPT ERROR' not in output
     print(f'PLAYABLE {name}: {"PASS" if ok else "FAIL"} rc={rc} log={path}', flush=True)
     if not ok:

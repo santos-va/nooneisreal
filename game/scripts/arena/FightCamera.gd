@@ -33,7 +33,7 @@ func _process(delta: float) -> void:
 	var hi := maxf(p1.global_position.y, p2.global_position.y)
 	var look := Vector3(global_position.x, 1.25 + hi * 0.4, 0.0)
 	cam.look_at(look, Vector3.UP)
-	var offset: Vector2 = _impact.step(delta, impact_scale)
+	var offset: Vector2 = _impact.step(delta, impact_scale * ComfortSettings.get_value("shake"))
 	cam.h_offset = offset.x
 	cam.v_offset = offset.y
 
