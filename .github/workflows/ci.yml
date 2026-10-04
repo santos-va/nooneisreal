@@ -17,7 +17,7 @@ jobs:
       - name: Run gates (wikilinks, asset registry, role parity)
         run: bash tools/gates/run_gates.sh
   godot:
-    name: godot headless check + smoke
+    name: godot smoke + playable regressions
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,5 +27,5 @@ jobs:
           unzip -q godot.zip
           chmod +x Godot_v${GODOT_VERSION}_linux.x86_64
           echo "GODOT_BIN=$PWD/Godot_v${GODOT_VERSION}_linux.x86_64" >> "$GITHUB_ENV"
-      - name: make check (import, parse, smoke)
-        run: make check
+      - name: make check-playable (import, parse, smoke, presentation regressions)
+        run: make check-playable

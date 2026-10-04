@@ -1,7 +1,7 @@
 extends Node
 ## Autoload: SFX player with a voice pool. Streams live in res://assets/audio/sfx/:
 ##   <name>.ogg|.wav           variant 1
-##   <name>_2.ogg|.wav, _3 ... more variants → one AudioStreamRandomizer (no immediate repeats)
+##   <name>_2.ogg|.wav, _3 ... more variants → cached AudioStreamRandomizer container (private RNG; no immediate repeats)
 ## Everything plays on the "SFX" bus: compressor (attack 1 ms, 4:1) → limiter −1 dB, per
 ## docs/GDD/07-Audio.md. A missing file is a silent no-op so the game never crashes on absent audio.
 
@@ -10,10 +10,16 @@ const BASE := "res://assets/audio/sfx/"
 const EXTS := ["ogg", "wav"]
 const MAX_VARIANTS := 8
 const BUS := "SFX"
+## Presentation-only PLACEHOLDER spacing in physics ticks; independent for both fighter slots.
+const WATER_GAP := {"step": 10, "land": 8, "dash": 12, "skid": 12}
+const WATER_VOLUME_DB := {"step": -12.0, "land": -5.0, "dash": -8.0, "skid": -12.0}
 
 var _players: Array[AudioStreamPlayer] = []
 var _cache: Dictionary = {}
 var _next: int = 0
+var _water_last: Dictionary = {}
+var _variant_last: Dictionary = {}
+var _audio_rng := RandomNumberGenerator.new()
 ## sfx name → physics frame of its last play() (smoke: hit sound on the hit frame, launch 4 § C1).
 var last_frame: Dictionary = {}
 
@@ -30,14 +36,66 @@ func _ready() -> void:
 func play(sfx_name: String, volume_db: float = 0.0, pitch_jitter: float = 0.06) -> void:
 	last_frame[sfx_name] = Engine.get_physics_frames()
 	var stream := _stream(sfx_name)
-	if stream == null:
+	if stream == null or _players.is_empty():
 		return
+	_play_stream(_select_variant(sfx_name, stream), volume_db, 1.0 + _audio_rng.randf_range(-pitch_jitter, pitch_jitter))
+
+
+## No placeholder impact is substituted for absent water recordings. The caller owns the surface test.
+## Returns whether a voice was started; never use this presentation result to drive combat.
+func play_surface_water(event: String, actor_slot: int = 0) -> bool:
+	if not WATER_GAP.has(event) or actor_slot < 0 or actor_slot > 1 or _players.is_empty():
+		return false
+	var frame := Engine.get_physics_frames()
+	var key := "%d:%s" % [actor_slot, event]
+	if _water_last.has(key) and frame - int(_water_last[key]) < int(WATER_GAP[event]):
+		return false
+	var sfx_name := "water_" + event
+	var stream := _stream(sfx_name)
+	if stream == null:
+		return false
+	_water_last[key] = frame
+	last_frame[sfx_name] = frame
+	_play_stream(_select_variant(sfx_name, stream), float(WATER_VOLUME_DB[event]), 1.0 + _audio_rng.randf_range(-0.04, 0.04))
+	return true
+
+
+func _select_variant(sfx_name: String, stream: AudioStream) -> AudioStream:
+	# Keep the cached variant container for inspection, but never let it consume shared RNG.
+	if stream is AudioStreamRandomizer:
+		var variants := stream as AudioStreamRandomizer
+		var count := variants.streams_count
+		var previous: int = int(_variant_last.get(sfx_name, -1))
+		var index := _audio_rng.randi_range(0, count - 2 if previous >= 0 else count - 1)
+		if previous >= 0 and index >= previous:
+			index += 1
+		_variant_last[sfx_name] = index
+		return variants.get_stream(index)
+	return stream
+
+
+func _play_stream(stream: AudioStream, volume_db: float, pitch: float) -> void:
 	var p := _players[_next]
 	_next = (_next + 1) % POOL
+	p.stop()
 	p.stream = stream
 	p.volume_db = volume_db
-	p.pitch_scale = 1.0 + randf_range(-pitch_jitter, pitch_jitter)
+	p.pitch_scale = pitch
 	p.play()
+
+
+func _exit_tree() -> void:
+	# Release active playback before dropping cached randomizers and their source streams.
+	for p in _players:
+		if is_instance_valid(p):
+			p.stop()
+			p.stream = null
+	_players.clear()
+	_cache.clear()
+	_water_last.clear()
+	_variant_last.clear()
+	last_frame.clear()
+	_next = 0
 
 
 ## Number of variants found for a name (0 = missing). Used by the smoke test.

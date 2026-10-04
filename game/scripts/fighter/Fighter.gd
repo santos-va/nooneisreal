@@ -421,7 +421,7 @@ func _tick_status(delta: float) -> void:
 	if veil_frames > 0:
 		veil_frames -= 1
 		if veil_frames % 7 == 0:
-			Afterimage.spawn(Fx.root(self), animator.part_snapshot(), data.vfx_primary, 0.3, 0.13, true)
+			Afterimage.spawn(Fx.root(self), Afterimage.snapshot(animator, skeletal), data.vfx_primary, 0.3, 0.13, true)
 		if veil_frames == 0:
 			end_veil()
 		elif state != State.LAUNCHED and state != State.KO:
@@ -646,7 +646,7 @@ func _start_dash(axis: float) -> bool:
 	if dash_dir != facing:
 		invulnerable_frames = 6
 	flashing = false
-	Afterimage.spawn(Fx.root(self), animator.part_snapshot(), data.vfx_secondary, 0.22, 0.3, true)
+	Afterimage.spawn(Fx.root(self), Afterimage.snapshot(animator, skeletal), data.vfx_secondary, 0.22, 0.3, true)
 	_set_state(State.DASH)
 	Sfx.play("whoosh", -6)
 	return true
@@ -679,8 +679,8 @@ func _start_flash(axis: float) -> bool:
 	current_move = null
 	stats.flashes += 1
 	var root := Fx.root(self)
-	Afterimage.spawn(root, animator.part_snapshot(), data.vfx_primary, 0.4, 0.7, true)
-	Afterimage.spawn(root, animator.part_snapshot(), Color(0.05, 0.03, 0.08), 0.3, 0.55, false, 1.0, Vector3(0, 0, -0.05))
+	Afterimage.spawn(root, Afterimage.snapshot(animator, skeletal), data.vfx_primary, 0.4, 0.7, true)
+	Afterimage.spawn(root, Afterimage.snapshot(animator, skeletal), Color(0.05, 0.03, 0.08), 0.3, 0.55, false, 1.0, Vector3(0, 0, -0.05))
 	SmearShards.burst(root, _flash_from, _flash_to, [data.vfx_primary, data.vfx_secondary, data.accent_color, Color(0.04, 0.03, 0.06)], 16, 5)
 	Sfx.play("flash", -2)
 	_set_state(State.DASH)
@@ -734,7 +734,7 @@ func _tick_flash(delta: float) -> void:
 		var a := float(idx + 1) / float(FLASH_TRAVEL)
 		global_position = _flash_from.lerp(_flash_to, a)
 		velocity = Vector3.ZERO
-		Afterimage.spawn(Fx.root(self), animator.part_snapshot(), data.vfx_primary, 0.32, 0.5 - 0.08 * float(idx), true)
+		Afterimage.spawn(Fx.root(self), Afterimage.snapshot(animator, skeletal), data.vfx_primary, 0.32, 0.5 - 0.08 * float(idx), true)
 		if idx == FLASH_TRAVEL - 1:
 			_update_facing()
 			animator.flinch(Vector3(float(-dash_dir), 0.0, 0.0), 70.0, facing)
@@ -1089,7 +1089,7 @@ func beat_flash(to: Vector3) -> void:
 	dash_frames_left = FLASH_TRAVEL + FLASH_RECOVER
 	velocity = Vector3.ZERO
 	current_move = null
-	Afterimage.spawn(Fx.root(self), animator.part_snapshot(), data.vfx_primary, 0.4, 0.7, true)
+	Afterimage.spawn(Fx.root(self), Afterimage.snapshot(animator, skeletal), data.vfx_primary, 0.4, 0.7, true)
 	Sfx.play("flash", -6)
 	_set_state(State.DASH)
 
@@ -1272,7 +1272,7 @@ func rewind() -> void:
 	var from := global_position
 	for i in 5:
 		var k := float(i) / 4.0
-		Afterimage.spawn(root, animator.part_snapshot(), data.vfx_secondary, 0.25 + 0.06 * float(i), 0.45 * (1.0 - k * 0.6),
+		Afterimage.spawn(root, Afterimage.snapshot(animator, skeletal), data.vfx_secondary, 0.25 + 0.06 * float(i), 0.45 * (1.0 - k * 0.6),
 			true, 1.0, (target - from) * k)
 	SmearShards.burst(root, from, target, [data.vfx_primary, data.vfx_secondary, Color(0.9, 0.95, 1.0)], 12, 4)
 	_clear_ragdoll()

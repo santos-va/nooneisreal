@@ -10,7 +10,7 @@ GAME  := game
 # Чесний run: відмова при другому Godot на ту саму теку + імпорт, коли HEAD змінився (tools/run/godot_guard.sh).
 GUARD := bash tools/run/godot_guard.sh
 
-.PHONY: roles gates check import run run-plane run-rig editor update fetch-assets hooks-check
+.PHONY: roles gates check check-playable import run run-plane run-rig editor update fetch-assets hooks-check
 
 # Таблиця ролей із tools/hooks/roles.map: аляс · тіло · Claude skill · мітка.
 roles:
@@ -45,6 +45,10 @@ check:
 	J="$$(printf '%s\n' "$$SMOKE" | grep -c 'not supported by Jolt')"; \
 	[ "$$J" -eq 0 ] || { echo "SMOKE ЧЕРВОНИЙ: $$J попереджень Jolt про масштаб тіла (Н7, запуск 7.1)"; exit 1; }; \
 	echo "SMOKE ЗЕЛЕНИЙ"
+
+# Retain the full smoke, then verify the playable presentation and its negative controls.
+check-playable: check
+	GODOT_BIN="$(GODOT)" bash tools/gates/playable_check.sh
 
 # Свіжий клон не має game/.godot/ (у .gitignore), а з ним — реєстру class_name.
 # Без імпорту гра падає з «Could not find type CharacterData». Тому run/editor
