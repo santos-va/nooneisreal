@@ -68,9 +68,8 @@ func configure(data: Variant) -> bool:
 		for required: Variant in q.requires:
 			if not required is String or required not in ids or required == q.id:
 				return false
-	for q: Dictionary in data.quests:
-		if _cycle(q.id, data.quests, []):
-			return false
+	if not _dependencies_acyclic(data.quests):
+		return false
 	var palette_ids: Array[String] = []
 	for p: Variant in data.palettes:
 		if not p is Dictionary or p.keys().size() != 4 or not p.get("id") is String or not _safe_id(p.id) or p.id in palette_ids or not p.get("title") is String or p.title.length() > 80 or not p.get("color") is String or not Color.html_is_valid(p.color) or not NpcPopulation._integer(p.get("price"), 0, 20):
@@ -102,17 +101,26 @@ static func _event_id_valid(kind: String, id: String) -> bool:
 		return id in ["original", "mint", "amber", "plum"]
 	return false
 
-static func _cycle(id: String, definitions: Array, trail: Array[String]) -> bool:
-	if id in trail:
-		return true
-	var next: Array[String] = trail.duplicate()
-	next.append(id)
-	for q: Dictionary in definitions:
-		if q.id == id:
+static func _dependencies_acyclic(definitions: Array) -> bool:
+	# Bounded topological passes avoid exponential recursion in dense mod graphs.
+	var resolved: Array[String] = []
+	for pass_index: int in definitions.size():
+		var before: int = resolved.size()
+		for q: Dictionary in definitions:
+			if q.id in resolved:
+				continue
+			var ready: bool = true
 			for dependency: String in q.requires:
-				if _cycle(dependency, definitions, next):
-					return true
-	return false
+				if dependency not in resolved:
+					ready = false
+					break
+			if ready:
+				resolved.append(q.id)
+		if resolved.size() == definitions.size():
+			return true
+		if resolved.size() == before:
+			return false
+	return definitions.is_empty()
 
 static func has_saved_hero(hero: String) -> bool:
 	if hero not in HEROES or not FileAccess.file_exists(SAVE_PATH):

@@ -24,10 +24,13 @@ const SOURCES: Dictionary = {
 	"lowcut": ["Sword_Regular_A", "Sword_Regular_A_Rec", "right", 0.233, 0.433],
 	"spin": ["Kick", "", "right", 0.517, 0.583],
 	"hookspin": ["Kick", "", "right", 0.517, 0.583],
-	"hammer": ["Sword_GroundPound", "", "right", 0.283, 0.350],
+	"hammer": ["OverhandThrow", "", "right", 0.383, 0.393],
 }
 var _base: Array[Transform3D] = []
 var _crouch: Dictionary = {}
+var _hero_contact_move: MoveData
+var _hero_contact_frame: int = -1
+var _hero_plants: Dictionary = {}
 
 func setup(player: AnimationPlayer, skeleton: Skeleton3D) -> void:
 	player.play("Crouch_Idle")
@@ -130,21 +133,75 @@ func _apply_variant(skeleton: Skeleton3D, source: Dictionary, fighter: Fighter) 
 	var foot: bool = source.limb == "leg"
 	var end: int = skeleton.find_bone(("foot_" if foot else "hand_") + side)
 	var source_target: Vector3 = skeleton.global_transform * skeleton.get_bone_global_pose(end).origin
+	var source_rotation: Quaternion = _global_rotation(skeleton, end)
 	for bone: int in _crouch:
 		_set_pose(skeleton, bone, _crouch[bone])
-	var actual: Vector3 = skeleton.global_transform * skeleton.get_bone_global_pose(end).origin
 	var weight: float = smoothstep(0.0, float(maxi(move.startup, 1)), float(frame))
 	if frame >= move.startup + move.active:
 		weight = 1.0 - smoothstep(0.0, float(maxi(move.recovery, 1)), float(frame - move.startup - move.active))
+	if source.variant == "lowhand":
+		# Carry the short hero arm forward with a small source-space weight transfer.
+		# Solve both support legs back to their sampled crouch contacts; do not drag feet
+		# or stretch the arm to compensate for the donor/hero proportion difference.
+		var contacts: Dictionary = {}
+		for leg: String in ["l", "r"]:
+			contacts[leg] = skeleton.get_bone_global_pose(skeleton.find_bone("foot_" + leg)).origin
+		var hips: int = skeleton.find_bone("pelvis")
+		var forward: Vector3 = fighter.forward if GameState.free_move else Vector3(float(fighter.facing), 0.0, 0.0)
+		# PLACEHOLDER art weight shift; Fighter position and hitboxes are untouched.
+		var shifted: Vector3 = skeleton.get_bone_global_pose(hips).origin + skeleton.global_basis.inverse() * (forward * 0.18 * weight)
+		var parent: int = skeleton.get_bone_parent(hips)
+		skeleton.set_bone_pose_position(hips, skeleton.get_bone_global_pose(parent).affine_inverse() * shifted)
+		for leg: String in contacts:
+			_solve_chain(skeleton, skeleton.find_bone("thigh_" + leg), skeleton.find_bone("calf_" + leg), skeleton.find_bone("foot_" + leg), contacts[leg])
+	var actual: Vector3 = skeleton.global_transform * skeleton.get_bone_global_pose(end).origin
 	var target: Vector3 = source_target if foot else actual
 	if foot:
 		target.y = fighter.global_position.y + 0.10 + maxf(0.0, source_target.y - fighter.global_position.y - 0.10) * 0.28
 		target = actual.lerp(target, weight)
 	else:
-		target.y = lerpf(actual.y, fighter.global_position.y + move.hitbox_offset.y, weight)
+		# Crouch replaces the pelvis orientation: keep the original strike's forward
+		# reach instead of inheriting the wrist folded beside the crouching knee.
+		target = source_target
+		target.y = fighter.global_position.y + move.hitbox_offset.y
+		target = actual.lerp(target, weight)
 	var a: int = skeleton.find_bone(("thigh_" if foot else "upperarm_") + side)
 	var b: int = skeleton.find_bone(("calf_" if foot else "lowerarm_") + side)
 	_solve_chain(skeleton, a, b, end, skeleton.global_transform.affine_inverse() * target)
+	if not foot:
+		_set_global_rotation(skeleton, end, source_rotation)
+
+
+## The final short-armed hero needs a proportion-aware contact solve, not donor-length
+## assumptions. Keep the actual hero feet planted while its authored low weight shift plays.
+func adjust_hero_contact(hero: Skeleton3D, fighter: Fighter) -> void:
+	var source: Dictionary = resolve(fighter.current_move, fighter.data.id) if fighter.state == Fighter.State.ATTACK else {}
+	if source.is_empty() or source.variant != "lowhand":
+		_hero_plants.clear()
+		_hero_contact_move = null
+		return
+	var move: MoveData = fighter.current_move
+	if _hero_contact_move != move or fighter.move_frame < _hero_contact_frame:
+		_hero_plants.clear()
+		for side: String in ["Left", "Right"]:
+			_hero_plants[side] = hero.get_bone_global_pose(hero.find_bone(side + "Foot")).origin
+		_hero_contact_move = move
+	_hero_contact_frame = fighter.move_frame
+	for side: String in _hero_plants:
+		_solve_chain(hero, hero.find_bone(side + "UpLeg"), hero.find_bone(side + "Leg"), hero.find_bone(side + "Foot"), _hero_plants[side])
+	var side: String = "Left" if source.side == "left" else "Right"
+	var hand: int = hero.find_bone(side + "Hand")
+	var actual: Vector3 = hero.global_transform * hero.get_bone_global_pose(hand).origin
+	var forward: Vector3 = fighter.forward if GameState.free_move else Vector3(float(fighter.facing), 0.0, 0.0)
+	var reach: float = (actual - fighter.global_position).dot(forward)
+	var near_edge: float = move.hitbox_offset.x - move.hitbox_size.x * 0.5
+	var target: Vector3 = actual + forward * maxf(0.0, near_edge + 0.08 - reach)
+	target.y = fighter.global_position.y + move.hitbox_offset.y
+	var weight: float = smoothstep(0.0, float(maxi(move.startup, 1)), float(fighter.move_frame))
+	if fighter.move_frame >= move.startup + move.active:
+		weight = 1.0 - smoothstep(0.0, float(maxi(move.recovery, 1)), float(fighter.move_frame - move.startup - move.active))
+	target = actual.lerp(target, weight)
+	_solve_chain(hero, hero.find_bone(side + "Arm"), hero.find_bone(side + "ForeArm"), hand, hero.global_transform.affine_inverse() * target)
 
 
 static func _solve_chain(skeleton: Skeleton3D, a: int, b: int, end: int, target: Vector3) -> void:

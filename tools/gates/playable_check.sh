@@ -57,6 +57,8 @@ cases = [
     ('music', 'tools/audio/music_check.gd', r'\[music\] failures=0', [], 0),
     ('district-life', 'tools/npc/district_life_check.gd', r'\[district-life\] [1-9][0-9]* checks / 0 failures', [], 0),
     ('district-progress', 'tools/npc/district_progress_check.gd', r'\[district-progress\] [1-9][0-9]* checks / 0 failures', [], 0),
+    ('district-quest-hooks', 'tools/npc/remaining_quest_hooks_check.gd', r'T4_REMAINING_HOOKS_COMPLETE checks=[1-9][0-9]* failures=0 credits=21', [], 0),
+    ('district-save-negative', 'tools/npc/save_content_negative_check.gd', r'T4_NEGATIVE_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('npc', 'tools/npc/npc_check.gd', r'\[npc\] [0-9]+ checks / 0 failures', [], 0),
     ('npc-runtime', 'tools/npc/npc_runtime_check.gd', r'\[npc-runtime\] [0-9]+ checks / 0 failures', [], 0),
     ('npc-appearance', 'tools/npc/appearance_check.gd', r'\[npc-appearance\] stable seeds, role independence, humanoid build, locomotion OK', [], 0),

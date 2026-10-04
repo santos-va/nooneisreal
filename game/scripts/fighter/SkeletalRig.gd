@@ -211,6 +211,7 @@ func retarget() -> void:
 			var s_rest := skeleton.get_bone_global_rest(si).origin
 			var s_now := skeleton.get_bone_global_pose(si).origin
 			hero_skeleton.set_bone_pose_position(hi, hero_skeleton.get_bone_rest(hi).origin + (s_now - s_rest) * _hip_scale)
+	authored_combat.adjust_hero_contact(hero_skeleton, _fighter)
 	_align_attack_gaze()
 
 
