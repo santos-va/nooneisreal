@@ -76,6 +76,23 @@ headless version banner/CRLF та продовжує до офіційного S
 
 Повний попередній state винесено до [[Handoff/2026-10-04-State-History]]. Датовані журнали й аудити зберігають свої історичні результати; виконані PR та старі числові виміри не повторюються тут як поточні призначення чи баланс провайдера.
 
+## Нативна metadata після експорту — T8, 2026-10-05
+
+Santos успішно пройшов import/export, але отримав GNU `stat` помилку для `%z`.
+Helper тепер викликає `/usr/bin/stat`, `/usr/bin/plutil` і `/usr/bin/ditto`
+явно, не змінюючи PATH для пошуку Godot/git. Розмір і SHA256 обчислюються
+окремо з перевіркою статусу та формату до створення manifest. Невдала metadata
+зупиняє встановлення; завершений пакет після подальшої помилки installer
+зберігається в надрукованій `/tmp/nir-completed-package.*` директорії для retry.
+Офіційні editor/template downloads кешуються в `~/Library/Caches/No One Is Real/Installer/4.7-stable`; повторне використання щоразу звіряє SHA512 з офіційним списком, пошкоджений кеш завантажується заново. Це зменшує повторні завантаження пакета 1,28 GB.
+Updater вже задає системний PATH, тому його BSD stat не затінюється Homebrew.
+
+PR CI distribution тепер має Ubuntu/macOS matrix; на macOS metadata-regression
+використовує справжні `/usr/bin/stat` та `plutil`, а PATH містить шкідливу для
+цього виклику підміну `stat`. Linux використовує ізольований native shim та
+справжній GNU stat на початку PATH. Перевірено відмову native stat до install.
+Результат нового native CI ще очікується; усі помилки на M3 не оголошені усуненими.
+
 ## Related
 
 - [[index]] · [[constitution]] · [[Handoff/2026-10-04-Start-Here]] · [[Handoff/2026-10-04-Remaining-Work]]

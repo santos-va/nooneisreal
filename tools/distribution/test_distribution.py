@@ -441,15 +441,26 @@ elif args[0]=='-insert':
  p=args[-1]; d=json.load(open(p)); d[args[1]]=int(args[3]) if args[2]=='-integer' else args[3]; json.dump(d,open(p,'w'))
 """)
         script = self.root / 'local-installer.sh'
-        script.write_text(SCRIPT.with_name('install-local-macos.sh').read_text().replace('[ -w /Applications ]', '[ -w "$TEST_ROOT/Applications" ]'))
+        installer_source = SCRIPT.with_name('install-local-macos.sh').read_text().replace('[ -w /Applications ]', '[ -w "$TEST_ROOT/Applications" ]')
+        if sys.platform != 'darwin':
+            installer_source = installer_source.replace('/usr/bin/stat', 'native_stat').replace('/usr/bin/plutil', 'plutil')
+        script.write_text(installer_source)
         command = r'''
 uname() { echo Darwin; }; pgrep() { return 1; }
 plutil() { "$TEST_PY" "$TEST_ROOT/native_mock.py" "$@"; }
-stat() { "$TEST_PY" "$TEST_ROOT/native_mock.py" stat "$@"; }
-export -f uname pgrep plutil stat
+native_stat() { "$TEST_PY" "$TEST_ROOT/native_mock.py" stat "$@"; }
+export -f uname pgrep plutil native_stat
 /bin/bash "$TEST_ROOT/local-installer.sh" "$TEST_REPO" "$TEST_REVISION"
 '''
+        shadow_bin = self.root / 'gnu tools'
+        shadow_bin.mkdir()
+        if sys.platform == 'linux':
+            (shadow_bin / 'stat').symlink_to('/usr/bin/stat')  # Actual GNU stat first on PATH.
+        else:
+            (shadow_bin / 'stat').write_text('#!/bin/sh\necho GNU-stat-poison >&2\nexit 87\n')
+            (shadow_bin / 'stat').chmod(0o755)
         env = dict(os.environ, HOME=str(home), TEST_ROOT=str(self.root), TEST_PY=sys.executable,
+                   PATH=str(shadow_bin)+':'+os.environ['PATH'],
                    TEST_REPO=str(repo), TEST_REVISION=revision, GODOT_BIN=str(fake_godot))
         result = subprocess.run(['/bin/bash', '-c', command], env=env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -458,6 +469,16 @@ export -f uname pgrep plutil stat
         self.assertEqual(manifest['sha256'], hashlib.sha256(b'export fixture').hexdigest())
         self.assertEqual((repo / 'game/project.godot').read_text(), 'uncommitted user edits')
         self.assertEqual(git('status', '--porcelain'), 'M game/project.godot')
+        # Failed native metadata lookup must stop before manifest/install, even when
+        # the exporter succeeded; command substitution failure cannot become size 0.
+        (self.root / 'built-manifest.json').unlink()
+        script.write_text(installer_source.replace('/usr/bin/stat', 'native_stat'))
+        failed_command = command.replace('native_stat() { "$TEST_PY" "$TEST_ROOT/native_mock.py" stat "$@"; }', 'native_stat() { return 9; }')
+        result = subprocess.run(['/bin/bash', '-c', failed_command], env=env, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Cannot determine exported archive size', result.stderr)
+        self.assertFalse((self.root / 'built-manifest.json').exists())
+
 
     def test_local_godot_selection_skips_invalid_environment_and_downloads_verified(self):
         source = SCRIPT.with_name('install-local-macos.sh').read_text()
@@ -492,11 +513,18 @@ curl() {
 }
 ditto() { mkdir -p "$4/Godot.app/Contents/MacOS"; cp "$TEST_ROOT/godot" "$4/Godot.app/Contents/MacOS/Godot"; }
 '''
-        isolated = selection.replace('"$(command -v godot || true)"', '""')
-        env = dict(os.environ, GODOT_BIN=str(self.root / 'missing'), TEST_ROOT=str(self.root), stage=str(stage))
+        isolated = selection.replace('"$(command -v godot || true)"', '""').replace('/usr/bin/ditto', 'ditto')
+        env = dict(os.environ, GODOT_BIN=str(self.root / 'missing'), TEST_ROOT=str(self.root), HOME=str(self.root / 'cache home'), stage=str(stage))
         result = subprocess.run(['/bin/bash', '-c', 'set -euo pipefail\n'+prelude+isolated], env=env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('Downloading official Godot', result.stdout)
+        payload.unlink()  # A repeat must use the cached payload after official SHA512 recheck.
+        shutil.rmtree(stage); stage.mkdir()
+        result = subprocess.run(['/bin/bash', '-c', 'set -euo pipefail\n'+prelude+isolated], env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Reusing SHA512-verified cached download', result.stdout)
+        payload.write_bytes(b'official fixture')
+
         sums.write_text('0'*128+'  Godot_v4.7-stable_macos.universal.zip\n')
         shutil.rmtree(stage); stage.mkdir()
         result = subprocess.run(['/bin/bash', '-c', 'set -euo pipefail\n'+prelude+isolated], env=env, capture_output=True, text=True)

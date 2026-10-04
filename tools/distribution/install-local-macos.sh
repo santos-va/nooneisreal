@@ -13,7 +13,18 @@ git -C "$repo" cat-file -e "$tooling^{commit}"
 if pgrep -x 'No One Is Real' >/dev/null 2>&1; then fail 'Quit No One Is Real before installing.'; fi
 printf 'Building pinned game revision %s. Your checkout and uncommitted edits are untouched.\n' "$revision"
 stage=$(mktemp -d /tmp/nir-local-install.XXXXXX)
-trap 'rm -rf -- "$stage"' EXIT
+package_ready=false
+cleanup_local_install() {
+    local status=$? recovery
+    if [ "$status" -ne 0 ] && $package_ready && [ -s "$stage/package/manifest.json" ] && [ -s "$stage/package/NoOneIsReal-macos.zip" ]; then
+        recovery=$(mktemp -d /tmp/nir-completed-package.XXXXXX)
+        if mv "$stage/package" "$recovery/package"; then
+            printf 'Completed package retained for installation retry: %s/package\n' "$recovery" >&2
+        fi
+    fi
+    rm -rf -- "$stage"
+}
+trap cleanup_local_install EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM HUP
 mkdir -p "$stage/source" "$stage/package"
@@ -24,13 +35,29 @@ sed "s|application/additional_plist_content=\"\"|application/additional_plist_co
 base=https://github.com/godotengine/godot-builds/releases/download/4.7-stable
 fetch() { curl --fail --location --show-error --proto '=https' --proto-redir '=https' --connect-timeout 30 --retry 3 --output "$2" "$1"; }
 verified_download() {
-    local name="$1" expected actual
+    local name="$1" expected actual cached cache_dir cache_tmp
     [ -f "$stage/SHA512-SUMS.txt" ] || fetch "$base/SHA512-SUMS.txt" "$stage/SHA512-SUMS.txt"
     expected=$(awk -v name="$name" '$2==name || $2=="*"name {print $1}' "$stage/SHA512-SUMS.txt")
     [[ "$expected" =~ ^[0-9a-fA-F]{128}$ ]] || fail "Missing official checksum for $name"
+    cache_dir="$HOME/Library/Caches/No One Is Real/Installer/4.7-stable"
+    [ ! -L "$HOME/Library/Caches/No One Is Real" ] && [ ! -L "${cache_dir%/*}" ] && [ ! -L "$cache_dir" ] || fail 'Installer cache must not be a symlink.'
+    mkdir -p "$cache_dir"
+    cached="$cache_dir/$name"
+    [ ! -L "$cached" ] || fail 'Cached download must not be a symlink.'
+    if [ -f "$cached" ]; then
+        actual=$(/usr/bin/shasum -a 512 "$cached" | /usr/bin/awk '{print $1}')
+        if [ "$actual" = "$expected" ]; then
+            printf 'Reusing SHA512-verified cached download: %s\n' "$name"
+            cp "$cached" "$stage/$name"
+            return
+        fi
+    fi
     fetch "$base/$name" "$stage/$name"
-    actual=$(shasum -a 512 "$stage/$name" | awk '{print $1}')
+    actual=$(/usr/bin/shasum -a 512 "$stage/$name" | /usr/bin/awk '{print $1}')
     [ "$actual" = "$expected" ] || fail "Official SHA512 mismatch: $name"
+    cache_tmp=$(mktemp "$cache_dir/.download.XXXXXX")
+    cp "$stage/$name" "$cache_tmp"
+    mv "$cache_tmp" "$cached"
 }
 # Probe candidates before selection; an old GODOT_BIN must not block installation.
 probe_godot() {
@@ -55,7 +82,7 @@ if [ -z "$godot_bin" ]; then
     printf 'Downloading official Godot 4.7 editor for this temporary build.\n'
     verified_download Godot_v4.7-stable_macos.universal.zip
     mkdir "$stage/editor"
-    ditto -x -k "$stage/Godot_v4.7-stable_macos.universal.zip" "$stage/editor"
+    /usr/bin/ditto -x -k "$stage/Godot_v4.7-stable_macos.universal.zip" "$stage/editor"
     godot_bin="$stage/editor/Godot.app/Contents/MacOS/Godot"
     probe_godot "$godot_bin" || fail "Downloaded Godot is incompatible at $godot_bin: $probe_version"
 fi
@@ -86,12 +113,19 @@ run_godot local-import --editor --import --quit
 run_godot local-export --export-release macOS "$stage/package/NoOneIsReal-macos.zip"
 archive="$stage/package/NoOneIsReal-macos.zip"
 [ -s "$archive" ] || fail 'Exporter produced no app archive.'
+# BSD stat is required; Homebrew GNU coreutils may precede system tools in PATH.
+archive_size=$(/usr/bin/stat -f '%z' "$archive") || fail 'Cannot determine exported archive size with native macOS stat.'
+[[ "$archive_size" =~ ^[1-9][0-9]{0,9}$ ]] || fail "Invalid archive size: $archive_size"
+[ "$archive_size" -le 2000000000 ] || fail "Archive exceeds supported size: $archive_size"
+archive_hash=$(/usr/bin/shasum -a 256 "$archive" | /usr/bin/awk '{print $1}') || fail 'Cannot hash exported archive.'
+[[ "$archive_hash" =~ ^[0-9a-f]{64}$ ]] || fail 'Invalid archive SHA256.'
 manifest="$stage/package/manifest.json"
-plutil -create xml1 "$manifest"
-plutil -insert schema -integer 1 "$manifest"
-plutil -insert revision -string "$revision" "$manifest"
-plutil -insert sha256 -string "$(shasum -a 256 "$archive" | awk '{print $1}')" "$manifest"
-plutil -insert size -integer "$(stat -f '%z' "$archive")" "$manifest"
-plutil -convert json "$manifest"
+/usr/bin/plutil -create xml1 "$manifest"
+/usr/bin/plutil -insert schema -integer 1 "$manifest"
+/usr/bin/plutil -insert revision -string "$revision" "$manifest"
+/usr/bin/plutil -insert sha256 -string "$archive_hash" "$manifest"
+/usr/bin/plutil -insert size -integer "$archive_size" "$manifest"
+/usr/bin/plutil -convert json "$manifest"
+package_ready=true
 printf 'Installing the locally built app and enabling future main updates.\n'
 /bin/bash "$stage/package/update-macos.sh" --install

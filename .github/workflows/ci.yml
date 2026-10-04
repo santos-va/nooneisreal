@@ -17,8 +17,11 @@ jobs:
       - name: Run gates (wikilinks, asset registry, role parity)
         run: bash tools/gates/run_gates.sh
   distribution:
-    name: macOS updater safety
-    runs-on: ubuntu-latest
+    name: macOS updater safety (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Updater regression tests
