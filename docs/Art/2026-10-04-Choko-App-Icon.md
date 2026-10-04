@@ -29,4 +29,4 @@ Root повідомив після перегляду зображення, вс
 
 ## Related
 
-- [[Textures-Registry]] · [[Style-Guide]] · [[Choko]] · [[ADR-013-License-Check-At-Release]]
+- [[Textures-Registry]] · [[Style-Guide]] · [[Choko]] · [[ADR-013-License-Check-At-Release]] · [[2026-10-05-City-Texture-And-Icon]]

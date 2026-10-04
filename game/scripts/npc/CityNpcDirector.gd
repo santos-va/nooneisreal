@@ -4,8 +4,14 @@ extends Node3D
 @export var active_radius: float = 24.0 # PLACEHOLDER streaming budget.
 @export var tick_seconds: float = 6.0 # PLACEHOLDER fictional schedule clock.
 @export var talk_radius: float = 3.0
+@export var social_radius: float = 4.2 # PLACEHOLDER nearby greeting distance.
+@export var social_seconds: float = 2.6 # PLACEHOLDER speech visibility.
+@export var social_cooldown: float = 18.0 # PLACEHOLDER quiet interval per resident.
 var population := NpcPopulation.new()
 var actors: Dictionary = {}
+var actor_states: Dictionary = {}
+var social_ready: Dictionary = {}
+var runtime: float = 0.0
 var player: Node3D
 var dialogue: NpcDialogue
 var elapsed: float = 0.0
@@ -29,6 +35,7 @@ func _physics_process(delta: float) -> void:
 	if player == null:
 		return
 	elapsed += delta
+	runtime += delta
 	refresh_elapsed += delta
 	if elapsed >= tick_seconds:
 		elapsed -= tick_seconds
@@ -38,6 +45,8 @@ func _physics_process(delta: float) -> void:
 	if refresh_elapsed >= 0.5:
 		refresh_elapsed = 0.0
 		_refresh_actors()
+		if not dialogue.opened:
+			_update_conversations()
 	if dialogue.opened:
 		return
 	nearest = find_nearest()
@@ -71,18 +80,44 @@ func find_nearest() -> int:
 
 func _refresh_actors() -> void:
 	for index: int in population.people.size():
-		var center := Vector3(-5.0 + (index % 4) * 3.2, 0.0, 2.0 + (index / 4) * 7.0)
-		var active: bool = center.distance_to(player.global_position) < active_radius
+		var center: Vector3 = to_global(CityNpcActor.home_for(index))
+		# Include the complete local route so walking cannot cross the streaming edge.
+		var active: bool = center.distance_to(player.global_position) < active_radius + 4.1
 		if active and not actors.has(index):
 			var actor := CityNpcActor.new()
 			add_child(actor)
 			actor.setup(index, population.people[index])
+			if actor_states.has(index):
+				actor.restore_motion(actor_states[index])
 			actors[index] = actor
 		elif not active and actors.has(index):
+			actor_states[index] = actors[index].motion_state()
 			actors[index].queue_free()
 			actors.erase(index)
 		if actors.has(index):
-			actors[index].walking = population.people[index].goal == "гуляє районом" and not dialogue.opened
+			# Work/rest goals describe the routine, not a command to freeze the actor.
+			actors[index].walking = not dialogue.opened
+
+func _update_conversations() -> void:
+	for index: int in actors:
+		if runtime < float(social_ready.get(index, 1.0)):
+			continue
+		var actor: CityNpcActor = actors[index]
+		for other: int in actors:
+			if other <= index or runtime < float(social_ready.get(other, 1.0)):
+				continue
+			var peer: CityNpcActor = actors[other]
+			if actor.global_position.distance_to(peer.global_position) > social_radius:
+				continue
+			var query := PhysicsRayQueryParameters3D.create(actor.global_position + Vector3.UP, peer.global_position + Vector3.UP, 1)
+			if not get_world_3d().direct_space_state.intersect_ray(query).is_empty():
+				continue
+			var lines: Array[String] = population.greet(index, other)
+			actor.say(lines[0], peer.global_position, social_seconds)
+			peer.say(lines[1], actor.global_position, social_seconds)
+			social_ready[index] = runtime + social_cooldown
+			social_ready[other] = runtime + social_cooldown
+			break
 
 func persist() -> bool:
 	if not save_enabled:

@@ -56,16 +56,42 @@ void fragment() {
 		float joint = 1.0 - smoothstep(joint_metres, joint_metres + max(pixel_metres, 0.001), nearest);
 		paint *= 1.0 + (cell_hash(cell) - 0.5) * variation * 2.0 * detail_visibility;
 		paint = mix(paint, ink_color.rgb, joint * ink_strength * detail_visibility);
+		if (surface_kind == 1) {
+			// Broad stone faces; the edge tint stays subordinate to the traversal silhouette.
+			float edge_wash = 1.0 - smoothstep(0.0, 0.09, nearest);
+			paint *= 1.0 - edge_wash * variation * detail_visibility;
+		} else if (surface_kind == 2) {
+			// Brick has a pale mortar lip, unlike the dark joints of paving.
+			float mortar_lip = smoothstep(joint_metres, joint_metres + pixel_metres + 0.008, nearest);
+			mortar_lip *= 1.0 - smoothstep(joint_metres + 0.008, joint_metres + pixel_metres + 0.024, nearest);
+			paint = mix(paint, albedo.rgb * 1.12, mortar_lip * 0.22 * detail_visibility);
+		} else {
+			// Shingle overlaps darken one end of each slate, without a specular/normal-map pass.
+			float overlap = 1.0 - smoothstep(0.0, 0.20, local.y);
+			paint *= 1.0 - overlap * 0.16 * detail_visibility;
+		}
 	} else if (surface_kind == 4) {
 		float across = metres.x / max(cell_metres.x, 0.01);
 		float edge = min(fract(across), 1.0 - fract(across)) * cell_metres.x;
 		float seam = 1.0 - smoothstep(joint_metres, joint_metres + max(pixel_metres, 0.001), edge);
-		float grain = sin(metres.y * 1.7 + sin(metres.x * 7.0) * 0.5);
-		paint *= 1.0 + grain * variation * 0.4 * detail_visibility;
+		float board = floor(across);
+		float along = metres.y / max(cell_metres.y, 0.01) + cell_hash(vec2(board, 0.0));
+		float end_distance = min(fract(along), 1.0 - fract(along)) * cell_metres.y;
+		float end_seam = 1.0 - smoothstep(joint_metres, joint_metres + max(pixel_metres, 0.001), end_distance);
+		seam = max(seam, end_seam * 0.7);
+		float grain = sin(across * 13.0 + sin(metres.y * 2.0 + board) * 0.8);
+		float board_tint = cell_hash(vec2(board, floor(along))) - 0.5;
+		paint *= 1.0 + (grain * 0.35 + board_tint) * variation * detail_visibility;
 		paint = mix(paint, ink_color.rgb, seam * ink_strength * detail_visibility);
 	} else if (surface_kind == 5 || surface_kind == 6) {
 		float wash = sin(metres.x * 1.3 + sin(metres.y * 0.7)) * sin(metres.y * 1.1);
 		paint *= 1.0 + wash * variation;
+		if (surface_kind == 6) {
+			// Coarse woven threads appear only at arm's length and fade before aliasing.
+			float weave_visibility = 1.0 - smoothstep(0.003, 0.014, pixel_metres);
+			vec2 threads = cos(metres * 210.0);
+			paint *= 1.0 + threads.x * threads.y * 0.045 * weave_visibility;
+		}
 	}
 	ALBEDO = paint;
 	ROUGHNESS = 1.0;

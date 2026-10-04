@@ -7,6 +7,9 @@ extends Node
 @export var return_delay: float = 2.0
 @export var return_speed: float = 2.0
 @export var assist_degrees: float = 10.0
+# PLACEHOLDER action assistance: visible anchors, movement intent, stable preview.
+@export var traversal_assist_degrees: float = 42.0
+@export var traversal_stickiness: float = 0.12
 @export var pitch_limit: float = 1.25 # PLACEHOLDER: allow aiming at overhead street anchors.
 var camera: Camera3D
 var solo: bool = false
@@ -80,15 +83,20 @@ func resolve_anchor(id: String) -> Node3D:
 	return get_node_or_null(NodePath(id)) as Node3D if not id.is_empty() else null
 
 func _clear(f: Fighter, origin: Vector3, point: Vector3) -> bool:
-	var ray := PhysicsRayQueryParameters3D.create(origin, point, ArenaLayout.COVER_LAYER | 1)
-	ray.exclude = [f.get_rid(), f.hurtbox.get_rid()]
-	return f.get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
+	return f.grapple.line_clear(origin, point)
 
 func capture(f: Fighter, enemy_mode: bool, remember: bool = true) -> Dictionary:
 	var origin := f.global_position + Vector3(0, 1.25, 0)
 	var manual := is_manual() and f.player_index == 1 and not f.is_cpu
 	# Solo traversal targets the current camera even after orbit input settles.
-	var camera_aim := manual or (not enemy_mode and solo and f.player_index == 1 and not f.is_cpu)
+	var camera_aim := camera != null and (manual or (not enemy_mode and solo and f.player_index == 1 and not f.is_cpu))
+	var traversal_assist := camera_aim and not enemy_mode
+	var wish := f.wish()
+	var travel_axis := Vector3(wish.x, 0.0, wish.z)
+	var moving := travel_axis.length_squared() > 0.01
+	if not moving:
+		travel_axis = Vector3(f.forward.x, 0.0, f.forward.z)
+	travel_axis = travel_axis.normalized()
 	var grab: Dictionary = f.grapple.rope_grab_candidate() if not enemy_mode else {}
 	var ray_origin := origin
 	var direction := f.forward
@@ -98,7 +106,6 @@ func capture(f: Fighter, enemy_mode: bool, remember: bool = true) -> Dictionary:
 		ray_origin = camera.project_ray_origin(center)
 		direction = camera.project_ray_normal(center)
 	else:
-		var wish := f.wish()
 		if wish.length_squared() > 0.01:
 			direction = wish.normalized()
 	var point := origin + direction * distance
@@ -141,9 +148,25 @@ func capture(f: Fighter, enemy_mode: bool, remember: bool = true) -> Dictionary:
 		var score := length
 		if camera_aim:
 			var alignment := direction.dot((position - ray_origin).normalized())
-			if alignment < cos(deg_to_rad(assist_degrees)):
+			var cone := traversal_assist_degrees if traversal_assist else assist_degrees
+			if alignment < cos(deg_to_rad(cone)):
 				continue
-			score = (1.0 - alignment) * 1000.0 + length * 0.01
+			if traversal_assist:
+				# Only suggest a target that the on-screen cue can actually show.
+				if camera.is_position_behind(position) or not camera.get_viewport().get_visible_rect().has_point(camera.unproject_position(position)):
+					continue
+				if not _clear(f, ray_origin, position):
+					continue
+				var flat := Vector3(offset.x, 0.0, offset.z)
+				var travel_alignment := flat.normalized().dot(travel_axis) if flat.length() > 1.5 else 1.0
+				# Orbit is an explicit override; ordinary action follows travel/facing.
+				if not manual and travel_alignment < -0.2:
+					continue
+				var screen_cost := (1.0 - alignment) / maxf(0.001, 1.0 - cos(deg_to_rad(cone)))
+				var travel_weight := 0.0 if manual else (0.6 if moving else 0.3)
+				score = screen_cost * (1.0 - travel_weight) + (1.0 - travel_alignment) * travel_weight + length / distance * 0.1
+			else:
+				score = (1.0 - alignment) * 1000.0 + length * 0.01
 		else:
 			var flat := Vector3(offset.x, 0, offset.z)
 			var axis := Vector3(direction.x, 0, direction.z).normalized()
@@ -167,7 +190,7 @@ func capture(f: Fighter, enemy_mode: bool, remember: bool = true) -> Dictionary:
 	if not candidates.is_empty():
 		var chosen: Dictionary = candidates[0]
 		for candidate in candidates:
-			if candidate.id == _previous.get(key, "") and candidate.score <= chosen.score + (0.15 if manual else 0.5):
+			if candidate.id == _previous.get(key, "") and candidate.score <= chosen.score + (traversal_stickiness if traversal_assist else (0.15 if manual else 0.5)):
 				chosen = candidate
 		id = chosen.id
 		point = chosen.point

@@ -20,6 +20,9 @@ func _run() -> void:
 	current_scene = city
 	var director = city.npc_director
 	director.save_enabled = false
+	director.population.initialize(123456)
+	city.player.global_position = Vector3(0, 0, 5)
+	director._refresh_actors()
 	await ticks(5)
 	check(director.actors.size() > 0 and director.actors.size() <= 12, "bounded nearby population")
 	var shape := CapsuleShape3D.new()
@@ -27,13 +30,41 @@ func _run() -> void:
 	shape.height = 1.7
 	for index: int in director.actors:
 		var actor: Node3D = director.actors[index]
-		for offset: float in [-1.6, 0.0, 1.6]:
+		for point: Vector3 in actor.route:
 			var query := PhysicsShapeQueryParameters3D.new()
 			query.shape = shape
 			query.collision_mask = 1
 			query.exclude = [city.player.get_rid()]
-			query.transform.origin = actor.home + Vector3(0, 0.9, offset)
-			check(city.get_world_3d().direct_space_state.intersect_shape(query).is_empty(), "pedestrian route clear %d/%s" % [index, offset])
+			query.transform.origin = point + Vector3(0, 0.9, 0)
+			check(city.get_world_3d().direct_space_state.intersect_shape(query).is_empty(), "pedestrian route clear %d/%s" % [index, point])
+	var starts: Dictionary = {}
+	var excursions: Dictionary = {}
+	for index: int in director.actors:
+		starts[index] = director.actors[index].position
+		excursions[index] = 0.0
+	var minimum_gap: float = INF
+	var routes_clear: bool = true
+	for sample: int in 24:
+		await ticks(30)
+		for index: int in director.actors:
+			excursions[index] = maxf(excursions[index], director.actors[index].position.distance_to(starts[index]))
+			var query := PhysicsShapeQueryParameters3D.new()
+			query.shape = shape
+			query.collision_mask = 1
+			query.exclude = [city.player.get_rid()]
+			query.transform.origin = director.actors[index].global_position + Vector3(0, 0.9, 0)
+			routes_clear = routes_clear and city.get_world_3d().direct_space_state.intersect_shape(query).is_empty()
+			for other: int in director.actors:
+				if other > index:
+					minimum_gap = minf(minimum_gap, director.actors[index].position.distance_to(director.actors[other].position))
+	check(minimum_gap > 1.5, "residents retain personal space across route and greetings")
+	check(routes_clear, "moving residents remain outside district collision")
+	for index: int in starts:
+		check(excursions[index] > 0.5, "resident moves even while work/rest schedule active %d" % index)
+	check(director.population.people.any(func(p: Dictionary) -> bool: return p.memory.any(func(fact: Dictionary) -> bool: return fact.kind == "neighbour")), "nearby residents exchange grounded memories")
+	var social_snapshot: Dictionary = director.population.snapshot()
+	director._update_conversations()
+	check(director.population.snapshot() == social_snapshot, "social cooldown prevents greeting spam")
 	var first: Node3D = director.actors[0]
 	city.player.global_position = first.global_position + Vector3(0, 0, 1.5)
 	await ticks(2)
@@ -43,6 +74,7 @@ func _run() -> void:
 	director.dialogue.close()
 	check(not root.get_node("InputRouter").ui_suppressed(), "closing releases gameplay input")
 	var seed_before: int = director.population.people[0].appearance_seed
+	var position_before: Vector3 = first.position
 	city.player.global_position = Vector3(30, 4, -25)
 	director._refresh_actors()
 	await ticks(2)
@@ -50,6 +82,7 @@ func _run() -> void:
 	city.player.global_position = Vector3(0, 0, 10)
 	director._refresh_actors()
 	check(director.actors.has(0) and director.population.people[0].appearance_seed == seed_before, "reload keeps identity")
+	check(director.actors[0].position.is_equal_approx(position_before), "reload resumes position instead of respawning at home")
 	if "--capture" in OS.get_cmdline_user_args():
 		var camera := Camera3D.new()
 		city.add_child(camera)

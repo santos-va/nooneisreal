@@ -600,11 +600,11 @@ static func attack_ext(phase: float) -> float:
 
 
 ## True on the frames the attack pose may change: every STEP_FRAMES, plus the first startup,
-## first active and first recovery frame so the key drawings are never skipped.
+## first active, first recovery and final recovery frame so key drawings are never skipped.
 func _is_step(f: Fighter) -> bool:
 	var m := f.current_move
 	var fr := f.move_frame
-	var key := fr == 0 or fr == m.startup or fr == m.startup + m.active or _step_frame < 0
+	var key := fr == 0 or fr == m.startup or fr == m.startup + m.active or fr == m.startup + m.active + m.recovery - 1 or _step_frame < 0
 	if key or fr - _step_frame >= STEP_FRAMES or fr < _step_frame:
 		_step_frame = fr
 		return true

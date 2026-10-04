@@ -136,6 +136,13 @@ func _initialize() -> void:
 			f.current_move = f.data.light
 			f.move_frame = 0
 			sk._physics_process(1.0 / 60.0)
+			# ATTACK -> WALK now owns a short return overlay. Compare its settled target,
+			# retaining the independent fresh-rig check below for stale/unkeyed offsets.
+			for return_frame in 15:
+				if sk._attack_return_source.is_empty():
+					break
+				sk._physics_process(1.0 / 60.0)
+			check(sk._attack_return_source.is_empty() and sk._attack_return_base.is_empty(), id + " non-idle return releases all offsets")
 			var pose: Array = bones(source)
 			sk.player.seek(sk.clip_pos, true)
 			check(bones(source) == pose and sk.idle_presence.phase == phase, id + " non-idle clean baseline")

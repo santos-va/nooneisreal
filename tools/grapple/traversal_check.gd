@@ -79,7 +79,9 @@ func run() -> void:
 	var momentum: Vector3 = f.velocity
 	var stock: int = f.grapple.charges
 	var old_token: int = f.grapple._deployed_token
-	check(f.grapple.retarget(target_packet()), "second parkour chooses a valid new anchor")
+	var stale_point := target_packet()
+	stale_point.point = Vector3(-100, -100, -100)
+	check(f.grapple.retarget(stale_point), "second parkour validates anchor and refreshes stale snapshot point")
 	check(f.grapple.phase == Hook.Phase.FLIGHT and f.grapple.chain_throw, "transfer skips windup into swept device flight")
 	check(f.velocity.is_equal_approx(momentum), "new device never brakes or manufactures momentum")
 	check(f.grapple.charges == stock - 1 and f.grapple.token != 0, "exactly one finite device issued")
@@ -224,6 +226,7 @@ func run() -> void:
 	pad_b.pressed = false
 	Input.parse_input_event(pad_b)
 	Input.flush_buffered_events()
+	await assistance()
 	registry.clear_match()
 	check(f.grapple._pending_rope == 0 and not f.grapple.busy(), "match clear removes catch and attachment state")
 	f.free()
@@ -241,3 +244,72 @@ func run() -> void:
 		OS.delay_msec(1)
 	print("TRAVERSAL_COMPLETE checks=%d failures=%d" % [checks, failures])
 	quit(1 if failures else 0)
+
+
+func assistance() -> void:
+	registry.clear_match()
+	f.position = Vector3(0, 3, 0)
+	f.velocity = Vector3.ZERO
+	f._wish = Vector3.RIGHT
+	f.forward = Vector3.RIGHT
+	first.position = Vector3(4, 7, 0)
+	next.position = Vector3(-4, 7, 0)
+	camera.position = Vector3(0, 4.25, 8)
+	camera.look_at(Vector3(0, 4.25, 0))
+	helper.setup(camera, true)
+	await physics_frame
+	var candidate: Dictionary = helper.capture(f, false)
+	var center_axis: Vector3 = -camera.global_basis.z
+	var angle: float = rad_to_deg(acos(center_axis.dot((first.position - camera.position).normalized())))
+	check(angle > 10.0 and candidate.target_id == String(first.get_path()), "action assistance selects visible off-center anchor along movement")
+	f._wish = Vector3.LEFT
+	check(helper.capture(f, false).target_id == String(next.get_path()), "changing travel direction replaces opposite-side sticky target")
+	f._wish = Vector3.RIGHT
+	camera.look_at(next.position)
+	helper.apply_look(Vector2(0.001, 0.0))
+	check(helper.capture(f, false).target_id == String(next.get_path()), "explicit orbit overrides movement preference")
+	helper.reset()
+	camera.look_at(first.position)
+	next.position = first.position + Vector3(0, 0, 0.05)
+	candidate = helper.capture(f, false)
+	var remembered: String = candidate.target_id
+	first.position.z += 0.03
+	next.position.z -= 0.03
+	check(helper.capture(f, false, false).target_id == remembered, "small score crossover preserves visible preview target")
+	next.position = Vector3(60, 7, 0)
+	first.position = Vector3(4, 7, 0)
+	# Three separate invalidation classes: hand obstruction, camera obstruction, range.
+	var wall := StaticBody3D.new()
+	wall.collision_layer = 1
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.5, 0.8, 0.8)
+	shape.shape = box
+	wall.add_child(shape)
+	root.add_child(wall)
+	wall.position = (f.position + Hook.HAND).lerp(first.position, 0.5)
+	await physics_frame
+	check(helper.capture(f, false).target_id.is_empty(), "solid world hand obstruction immediately invalidates assisted candidate")
+	check(not f.grapple.line_clear(f.position + Hook.HAND, first.position), "hook and preview agree on layer-one geometry")
+	wall.position = camera.position.lerp(first.position, 0.5)
+	await physics_frame
+	check(helper.capture(f, false).target_id.is_empty(), "camera-hidden anchor is not advertised through walls")
+	wall.position = Vector3(50, 50, 50)
+	await physics_frame
+	check(helper.capture(f, false).target_id == String(first.get_path()), "removing obstruction restores assisted target")
+	first.position = Vector3(40, 7, 0)
+	check(helper.capture(f, false).target_id.is_empty(), "sticky assisted target cannot survive range invalidation")
+	hang()
+	wall.position = (f.position + Hook.HAND).lerp(next.position, 0.5)
+	await physics_frame
+	var stock: int = f.grapple.charges
+	check(not f.grapple.retarget(target_packet()) and f.grapple.attached and f.grapple.charges == stock, "solid wall rejects transfer without dropping support or spending")
+	f.grapple.detach()
+	f.grapple.fire(false, "grapple_parkour", target_packet())
+	f.grapple._launch()
+	for frame: int in 40:
+		f.grapple._flight(1.0 / 60.0, true)
+		if f.grapple.phase != Hook.Phase.FLIGHT:
+			break
+	check(f.grapple.phase == Hook.Phase.MISS_REWIND and f.grapple.token != 0, "solid world collision stops projectile and keeps its token recoverable")
+	wall.free()
