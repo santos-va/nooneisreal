@@ -20,6 +20,8 @@
 
 **YELLOW, ширше UI приймання:** SubViewport-тест має logical розміри, не фізичне вікно/DPI. Окремий render capture пройшов normal boot → pointer FIGHT → ESC pause на 1152×648 DAY та 844×390 NIGHT; T4 переглянув PNG, кнопки й HUD у кадрі. Нижній hint на 844×390 дуже дрібний. Це ще не VERSUS/TRAINING/resume, Retina, gamepad чи mobile safe area.
 
+**YELLOW, камера й читабельність бійців:** T4 додатково переглянув `/workspace/nooneisreal-env/playable/render/final-day/arena.png` після фінальних перевірок: високий гард Choko видно, але далека Skea істотно менша через глибину 3D-сцени та чинну камеру. Камера й читабельність суперника на великій дистанції — наступна окрема робота. Цей зріз підтверджує точність масштабу afterimage щодо його героя; однаковий або стабільно читабельний екранний розмір двох героїв не виправлено й не оголошено перевіреним.
+
 **YELLOW, анімація:** T4 переглянув contact sheets із 32 рендерів startup/contact/recovery/idle-return та authored references. Fallback виходить назад у відповідну idle позу; Skea low_kick має видимий винос ноги, veil — поворот. У Choko crouch_light різниця startup/contact/recovery в цих кадрах слабко читається; це конкретне обмеження художнього приймання. Bone pose та clip_pos не доводять плавність, контакт стоп чи відсутність ковзання в динаміці.
 
 **YELLOW, clock:** Water.tick уже раніше продовжувався під локальним frozen_frames бійця. Shader слідує його clock; нової механіки глобального заморожування води тут немає. Бризки окремо тримають age під freeze/hitstop власника. Перевіряти незмінний field.frame або tree pause, не вимагати потайної зміни gameplay.
