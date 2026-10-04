@@ -1,6 +1,6 @@
 # state — поточна правда
 
-**Оновлено:** 2026-10-05, T1 — зріз [[2026-10-05-Playable-District]] пройшов локальне та незалежне native-приймання, production `0999c77`; [PR #175](https://github.com/santos-va/nooneisreal/pull/175), гілка `codex/playable-district`. Lowhand/hammer/sword blockers закриті, full playable **57/0**. Мерджить Santos; новий пакет ще не оголошений установленим в Applications. Точні докази й межі — [[2026-10-05-Playable-District-Review]] та [[2026-10-05-Playable-District-Session]]. Історичний checkpoint [[2026-10-05-Playable-District-Checkpoint]] закрито.
+**Оновлено:** 2026-10-05, T1 — [PR #175](https://github.com/santos-va/nooneisreal/pull/175) змерджено у `d9d12ec`. Santos доручив продовжувати незакрите: [[2026-10-05-District-Journey-Continuity]], гілка `codex/district-journey-continuity`, журнал [[2026-10-05-District-Journey-Session]]. Попередній зріз пройшов native review і **57/0**; доставка перевіряється окремо, installed SHA Mac невідомий. Іконка лишається за вибором Santos до потрібного PNG.
 **Фаза:** прохідний 3D-квартал Cronshift і локальний бій інтегровані; напрям розвитку — спільне місто, далі бої всередині нього. Чинний художній еталон — свіжі окремі текстури/вирізки Higgsfield; старі панорами — чернетки. Фінальний арт і приймання на M3 відкриті.
 
 ## macOS застосунок та канал main — реалізація T8, 2026-10-04
@@ -81,7 +81,7 @@ headless version banner/CRLF та продовжує до офіційного S
 
 ## ▶ Хвиля — поточний маршрут
 
-[[2026-10-05-Playable-District]]: завершений перевірений зріз передано в PR #175. Наступний крок — мердж Santos, автоматична main-збірка та приймання фактично встановленої версії на Mac. Не повторювати закриті роботи з історичного checkpoint; докази й обмеження — [[2026-10-05-Playable-District-Session]].
+[[2026-10-05-District-Journey-Continuity]]: безпечні per-hero checkpoint-и, вибір відстежуваного доручення та видимий напрям до цілі. Попередній [[2026-10-05-Playable-District]] уже в main; його закриті роботи не починаються заново. Mac-приймання й перевірка main-публікації лишаються окремими від нового PR.
 
 Модинг і комерційна модель — [[2026-10-05-Modding-And-Ownership]], окрема пропозиція без зміни ліцензій/DRM. PNG іконки недоступний; M3 й суб'єктивне півгодинне проходження не оголошувати перевіреними з Linux.
 
