@@ -14,6 +14,9 @@ var hud: CityHud
 var npc_director: CityNpcDirector
 var progress: CityProgress
 var cosmetics: CityCosmetics
+var journey: CityJourney
+@export var journey_save_path: String = CityJourney.SAVE_PATH
+@export var journey_save_enabled: bool = true
 var _prior_free_move: bool
 var _prior_profile: String
 var _prior_water: WaveField
@@ -56,7 +59,11 @@ func _ready() -> void:
 	player.player_index = 1
 	player.is_cpu = false
 	add_child(player)
-	player.restart_at(CityLayout.spawn_position())
+	journey = CityJourney.new()
+	journey.name = "DistrictJourney"
+	add_child(journey)
+	journey.setup(GameState.p1_character, journey_save_enabled, journey_save_path)
+	player.restart_at(journey.resume_position())
 	camera_rig = CityCamera.new()
 	camera_rig.name = "CityCamera"
 	add_child(camera_rig)
@@ -68,6 +75,7 @@ func _ready() -> void:
 	hud.setup(onboarding)
 	add_child(hud)
 	hud.bind_player(player)
+	hud.bind_journey(journey)
 	progress = CityProgress.new()
 	progress.name = "DistrictProgress"
 	add_child(progress)
@@ -83,9 +91,10 @@ func _ready() -> void:
 	npc_director.name = "Residents"
 	add_child(npc_director)
 	npc_director.setup(player, progress)
+	hud.bind_quest_context(npc_director)
 	_reset_observation()
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if player == null:
 		return
 	var bounds := CityLayout.district_bounds()
@@ -94,6 +103,7 @@ func _physics_process(_delta: float) -> void:
 		recover_to_spawn()
 		return
 	var distance := Vector2(point.x - _last_position.x, point.z - _last_position.z).length()
+	journey.observe(player, delta)
 	if distance < 2.0 and player.on_ground():
 		onboarding.record_event("move", distance)
 	if _last_grounded and player.state == Fighter.State.JUMP and _last_state != Fighter.State.JUMP and player.velocity.y > 0.0:
@@ -118,9 +128,9 @@ func _reset_observation() -> void:
 	_last_state = player.state
 
 func recover_to_spawn() -> void:
-	# Recovery is an explicit fresh attempt, including finite rope inventory.
+	# Fall recovery resets runtime motion, but retains the last safe place.
 	ropes.clear_match()
-	player.restart_at(CityLayout.spawn_position())
+	player.restart_at(journey.resume_position())
 	camera_rig.reset_view()
 	InputRouter.acquire_ui(self)
 	InputRouter.release_ui(self)
@@ -130,6 +140,7 @@ func restart_exploration() -> void:
 	get_tree().paused = false
 	hud.set_paused(false)
 	onboarding.restart()
+	journey.restart_walk()
 	recover_to_spawn()
 	for node: Node in get_node("FX").get_children():
 		node.queue_free()
