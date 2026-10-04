@@ -1,0 +1,142 @@
+name: macOS main app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: macos-main-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: 4.7-stable
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download pinned editor and export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}"
+          curl -fL --retry 3 -O "$base/SHA512-SUMS.txt"
+          curl -fL --retry 3 -O "$base/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          curl -fL --retry 3 -O "$base/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          grep -E "Godot_v${GODOT_VERSION}_(linux.x86_64.zip|export_templates.tpz)$" SHA512-SUMS.txt > required.sha512
+          test "$(wc -l < required.sha512)" -eq 2
+          sha512sum --check required.sha512
+          unzip -q "Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          chmod +x "Godot_v${GODOT_VERSION}_linux.x86_64"
+          echo "GODOT_BIN=$PWD/Godot_v${GODOT_VERSION}_linux.x86_64" >> "$GITHUB_ENV"
+          mkdir -p "$HOME/.local/share/godot/export_templates/4.7.stable"
+          unzip -p "Godot_v${GODOT_VERSION}_export_templates.tpz" templates/macos.zip > "$HOME/.local/share/godot/export_templates/4.7.stable/macos.zip"
+      - name: Verify game and updater before publishing
+        run: |
+          make check-playable
+          make gates
+          python3 tools/distribution/test_distribution.py
+      - name: Export standalone universal macOS app and offline installer
+        run: bash tools/distribution/export-macos.sh "$RUNNER_TEMP/macos" "$GITHUB_SHA"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-main-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/macos/NoOneIsReal-macos.zip
+            ${{ runner.temp }}/macos/NoOneIsReal-Installer.zip
+            ${{ runner.temp }}/macos/manifest.json
+            ${{ runner.temp }}/macos/import.log
+            ${{ runner.temp }}/macos/export.log
+          if-no-files-found: error
+          retention-days: 14
+  verify-macos:
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-main-${{ github.sha }}
+          path: release
+      - name: Verify real macOS bundle acceptance and exported smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          ci_python=$(command -v python3)
+          source tools/distribution/update-macos.sh
+          validate_archive release/NoOneIsReal-macos.zip "$RUNNER_TEMP/members.txt"
+          ditto -x -k release/NoOneIsReal-macos.zip "$RUNNER_TEMP/verify-app"
+          check_bundle "$RUNNER_TEMP/verify-app/No One Is Real.app" "$GITHUB_SHA"
+          "$ci_python" - <<'PYTHON'
+          import os, pathlib, subprocess
+          output=pathlib.Path(os.environ['RUNNER_TEMP'])/'exported-smoke.log'
+          executable=pathlib.Path(os.environ['RUNNER_TEMP'])/'verify-app/No One Is Real.app/Contents/MacOS/No One Is Real'
+          with output.open('w') as log:
+              result=subprocess.run([str(executable),'--headless','--fixed-fps','60','--','--smoke'],stdout=log,stderr=subprocess.STDOUT,timeout=300)
+          text=output.read_text()
+          print(text)
+          if result.returncode or 'ERROR:' in text or '[smoke] ALL OK' not in text:
+              raise SystemExit('Exported macOS smoke did not pass')
+          PYTHON
+          "$ci_python" tools/distribution/test_distribution.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-native-verification-${{ github.sha }}
+          path: ${{ runner.temp }}/exported-smoke.log
+          if-no-files-found: warn
+  publish:
+    needs: [build, verify-macos]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-main-${{ github.sha }}
+          path: release
+      - name: Publish immutable build, then advance verified main pointer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release
+          current=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
+          if [ "$current" != "$GITHUB_SHA" ]; then
+            echo 'A newer main exists; leaving current update channel untouched.'
+            exit 0
+          fi
+          tag="macos-$GITHUB_SHA"
+          printf 'Standalone universal macOS app from main commit %s. Built with Godot 4.7 stable; ad-hoc signed, not Apple-notarized. Quit the game before updating.\n' "$GITHUB_SHA" > notes.txt
+          if ! gh release view "$tag" --json isDraft > existing.json 2>/dev/null; then
+            gh release create "$tag" --draft --prerelease --target "$GITHUB_SHA" --title "macOS ${GITHUB_SHA:0:7}" --notes-file notes.txt
+            printf '{"isDraft":true}\n' > existing.json
+          fi
+          if [ "$(jq -r .isDraft existing.json)" = true ]; then
+            # A failed draft upload can be retried. Published builds are immutable.
+            gh release upload "$tag" NoOneIsReal-macos.zip NoOneIsReal-Installer.zip manifest.json --clobber
+            gh release edit "$tag" --draft=false
+          else
+            # Reruns reuse the original signed archive's manifest, never a new ZIP hash.
+            gh release download "$tag" --pattern manifest.json --dir original
+            cp original/manifest.json manifest.json
+            test "$(jq -r .revision manifest.json)" = "$GITHUB_SHA"
+          fi
+          # Recheck after uploads, so a concurrent main merge cannot roll back the channel.
+          test "$(gh api "repos/$GH_REPO/commits/main" --jq .sha)" = "$GITHUB_SHA" || exit 0
+          if ! gh release view macos-main >/dev/null 2>&1; then
+            gh release create macos-main --prerelease --target "$GITHUB_SHA" --title 'Latest verified main for macOS' --notes-file notes.txt
+          fi
+          gh release upload macos-main manifest.json --clobber
+          # Installer download remains a convenience; update resolution uses immutable tag + manifest.
+          gh release upload macos-main NoOneIsReal-Installer.zip --clobber
+          gh release edit macos-main --notes-file notes.txt
