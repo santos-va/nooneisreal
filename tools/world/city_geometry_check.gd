@@ -89,6 +89,23 @@ func _run() -> void:
 	_expect(not mansard.is_empty() and float(mansard.position.y) > 11.4, "mansard crown has physical support")
 	var dome: Dictionary = _ray(Vector3(-22, 24, -25), Vector3(-22, 16.3, -25))
 	_expect(not dome.is_empty() and float(dome.position.y) > 17.0, "domed tower roof has physical support")
+	for shop: Dictionary in CityPlaces.shops():
+		var approach: Vector3 = shop.approach
+		var visit: Vector3 = shop.visit
+		for step: int in 18:
+			_probe(approach.lerp(visit, float(step) / 17.0), String(shop.id) + " door walk " + str(step))
+		var path: Array = shop.worker_path
+		for index: int in range(path.size() - 1):
+			for step: int in 9:
+				_probe((path[index] as Vector3).lerp(path[index + 1], float(step) / 8.0), String(shop.id) + " work aisle")
+		_expect(_ray(approach + Vector3.UP * 1.5, visit + Vector3.UP * 1.5).is_empty(), String(shop.id) + " doorway has no hidden solid facade")
+		_expect(_ray(visit + Vector3.UP * 1.5, (shop.worker as Vector3) + Vector3.UP * 1.5).is_empty(), String(shop.id) + " counter permits face-to-face conversation")
+		_expect(not _clear_body(Vector3(shop.door.x - 0.2, 0, 17.6)), String(shop.id) + " counter is solid")
+		_expect(not _clear_body(Vector3(shop.door.x + 3.3, 0, 15)), String(shop.id) + " side wall is solid")
+		_expect(not _ray(Vector3(shop.door.x, 1.5, 19), Vector3(shop.door.x, 1.5, 21)).is_empty(), String(shop.id) + " back wall closes room")
+	var interiors: Node = district.get_node("CityInteriors")
+	_expect(interiors.get_meta("visual_parts", 0) > 250, "three interiors contain real furnishings")
+	_expect(interiors.get_meta("material_batches", 99) <= 19, "interior kit batches shared materials")
 	var anchors: Array[Node] = get_nodes_in_group("grapple_anchor")
 	_expect(anchors.size() == 4, "four sparse street anchors")
 	for node: Node in anchors:

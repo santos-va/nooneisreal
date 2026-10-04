@@ -32,6 +32,26 @@ git -C "$repo" archive "$revision" game | tar -xf - -C "$stage/source"
 git -C "$repo" show "$tooling:game/export_presets.cfg" > "$stage/preset.cfg"
 git -C "$repo" show "$tooling:tools/distribution/update-macos.sh" > "$stage/package/update-macos.sh"
 sed "s|application/additional_plist_content=\"\"|application/additional_plist_content=\"<key>NIRBuildRevision</key><string>$revision</string>\"|" "$stage/preset.cfg" > "$stage/source/game/export_presets.cfg"
+printf '[build]\nrevision="%s"\n' "$revision" > "$stage/source/game/build_info.cfg"
+awk '
+/^include_filter="/ {
+    value=$0; sub(/^include_filter="/, "", value); sub(/"$/, "", value)
+    split("data/audio/*.cfg,data/city/*.json,build_info.cfg", required, ",")
+    for (r=1; r<=3; r++) {
+        found=0; n=split(value, existing, ",")
+        for (i=1; i<=n; i++) { item=existing[i]; gsub(/^[ \t]+|[ \t]+$/, "", item); if (item==required[r]) found=1 }
+        if (!found) value=value (value=="" ? "" : ",") required[r]
+    }
+    print "include_filter=\"" value "\""; next
+}
+{ print }
+' "$stage/source/game/export_presets.cfg" > "$stage/preset.marker"
+mv "$stage/preset.marker" "$stage/source/game/export_presets.cfg"
+app_version=$(sed -n 's/^config\/version="\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)"$/\1/p' "$stage/source/game/project.godot")
+if [ -n "$app_version" ]; then
+    sed -e "s|application/short_version=\"\"|application/short_version=\"$app_version\"|" -e "s|application/version=\"\"|application/version=\"$app_version\"|" "$stage/source/game/export_presets.cfg" > "$stage/preset.version"
+    mv "$stage/preset.version" "$stage/source/game/export_presets.cfg"
+fi
 base=https://github.com/godotengine/godot-builds/releases/download/4.7-stable
 fetch() { curl --fail --location --show-error --proto '=https' --proto-redir '=https' --connect-timeout 30 --retry 3 --output "$2" "$1"; }
 verified_download() {

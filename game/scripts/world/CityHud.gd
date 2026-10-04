@@ -24,6 +24,12 @@ var _player: Fighter
 var _aim_cue: Label
 var _stamina_bar: ProgressBar
 var _stamina_text: String = ""
+var _progress: Node
+var _quest_card: PanelContainer
+var _quest_title: Label
+var _quest_hint: Label
+var _quest_totals: Label
+var _journal: Label
 
 
 func setup(model: CityOnboarding) -> void:
@@ -45,6 +51,7 @@ func _ready() -> void:
 	_status_card = card
 	card.position = Vector2(18, 18)
 	card.custom_minimum_size.x = 390
+	card.add_theme_stylebox_override("panel", _panel_style())
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(card)
 	var column := VBoxContainer.new()
@@ -87,6 +94,7 @@ func _ready() -> void:
 	hint_label.offset_top = -58
 	hint_label.offset_bottom = -14
 	_root.add_child(hint_label)
+	_build_quest()
 	_build_pause()
 	_refresh()
 
@@ -103,20 +111,37 @@ func _build_pause() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	pause_panel.add_child(center)
 	var column := VBoxContainer.new()
-	column.custom_minimum_size.x = 850
+	column.custom_minimum_size.x = 1000
 	column.add_theme_constant_override("separation", 12)
 	center.add_child(column)
-	column.add_child(_label("EXPLORATION PAUSED", 40))
-	var help := _label(exploration_help(), 28)
+	column.add_child(_label("CRONSHIFT  /  JOURNEY PAUSED", 36))
+	column.add_child(_label(BuildInfo.label(), 18))
+	var help := _label(exploration_help(), 24)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(help)
+	var journal_scroll := ScrollContainer.new()
+	journal_scroll.custom_minimum_size.y = 130
+	journal_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(journal_scroll)
+	_journal = _label("Meet residents to discover district tasks.", 22)
+	_journal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_journal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_journal.focus_mode = Control.FOCUS_ALL
+	journal_scroll.add_child(_journal)
 	resume_button = _button("RESUME", func(): set_paused(false))
 	skip_button = _button("SKIP GUIDANCE · EXPLORE FREELY", _skip)
-	restart_button = _button("RESTART EXPLORATION & GUIDANCE", _restart)
+	restart_button = _button("RESTART WALK & GUIDANCE · KEEP PROGRESS", _restart)
 	exit_button = _button("RETURN TO MAIN MENU", _exit)
-	var buttons: Array[Button] = [resume_button, skip_button, restart_button, exit_button]
-	for button: Button in buttons:
+	var buttons: Array[Control] = [resume_button, skip_button, restart_button, exit_button]
+	for button: Control in buttons:
 		column.add_child(button)
+	buttons.append(_journal)
+	_journal.gui_input.connect(func(event: InputEvent):
+		if event.is_action_pressed("ui_down") or event.is_action_pressed("ui_up"):
+			journal_scroll.scroll_vertical += 32 if event.is_action_pressed("ui_down") else -32
+			_journal.accept_event())
+	_journal.focus_neighbor_left = _journal.get_path_to(resume_button)
+	_journal.focus_neighbor_right = _journal.get_path_to(resume_button)
 	for i: int in buttons.size():
 		buttons[i].focus_neighbor_top = buttons[i].get_path_to(buttons[posmod(i - 1, buttons.size())])
 		buttons[i].focus_neighbor_bottom = buttons[i].get_path_to(buttons[(i + 1) % buttons.size()])
@@ -125,15 +150,81 @@ func _build_pause() -> void:
 	pause_panel.hide()
 
 
+func _panel_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.035, 0.06, 0.08, 0.9)
+	style.border_color = Color("557a7c")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 10
+	style.content_margin_right = 10
+	style.content_margin_top = 7
+	style.content_margin_bottom = 7
+	return style
+
+
+func _build_quest() -> void:
+	_quest_card = PanelContainer.new()
+	_quest_card.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_quest_card.position = Vector2(-418, 68)
+	_quest_card.custom_minimum_size.x = 400
+	_quest_card.add_theme_stylebox_override("panel", _panel_style())
+	_quest_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_quest_card)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 5)
+	_quest_card.add_child(column)
+	var heading := _label("DISTRICT JOURNAL", 17)
+	heading.add_theme_color_override("font_color", Color("7bc9c6"))
+	column.add_child(heading)
+	_quest_title = _label("", 23)
+	_quest_hint = _label("", 20)
+	for label: Label in [_quest_title, _quest_hint]:
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.custom_minimum_size.x = 378
+		column.add_child(label)
+	_quest_totals = _label("", 18)
+	_quest_totals.add_theme_color_override("font_color", Color("b9c9ce"))
+	column.add_child(_quest_totals)
+	_quest_card.hide()
+
+
+func bind_progress(model: Node) -> void:
+	if is_instance_valid(_progress) and _progress.changed.is_connected(_refresh_progress):
+		_progress.changed.disconnect(_refresh_progress)
+	_progress = model
+	_progress.changed.connect(_refresh_progress)
+	_refresh_progress()
+
+
+func _refresh_progress() -> void:
+	if not is_instance_valid(_progress) or _quest_title == null:
+		return
+	var summary: Dictionary = _progress.summary()
+	_quest_title.text = str(summary.get("active_title", "Explore the district"))
+	_quest_hint.text = str(summary.get("active_hint", "Talk to nearby residents."))
+	_quest_totals.text = "%d / %d tasks · %d credits" % [summary.get("completed", 0), summary.get("total", 0), summary.get("credits", 0)]
+	if not summary.get("save_ok", true):
+		_quest_totals.text += " · Save unavailable"
+	_quest_card.show()
+	if _journal != null:
+		var entries := PackedStringArray()
+		for entry: Dictionary in _progress.journal():
+			if entry.get("status", "locked") == "locked":
+				continue
+			entries.append("%s · %s  (%d / %d)" % [str(entry.get("status", "")).to_upper(), entry.get("title", ""), entry.get("progress", 0), entry.get("target", 1)])
+		_journal.text = "\n".join(entries) if not entries.is_empty() else "Meet residents to discover district tasks."
+
+
 func exploration_help() -> String:
 	var text := "Move: WASD / left stick · Look: RMB + drag / right stick\n"
 	text += "Jump / reel: %s / A · Parkour: tap %s / L3 (or Y + LT)\n" % [InputRouter.binding_label(1, "jump", false), InputRouter.binding_label(1, "grapple_parkour", false)]
-	text += "Aim at the next lamp and tap parkour to transfer.\n"
+	text += "Face a nearby anchor and tap parkour to hook or transfer.\n"
 	text += "Detach: %s / B · Dodge: %s / X · Dash skill: %s / Y + X\n" % [InputRouter.binding_label(1, "grapple_detach", false), InputRouter.binding_label(1, "dodge", false), InputRouter.binding_label(1, "dash", false)]
 	text += "Hooks are finite. GRAB ROPE reuses a line; PREPARE GRAB reaches for it.\n"
 	text += "Strikes: %s; %s; %s; %s\n" % [InputRouter.binding_label(1, "left_hand", false), InputRouter.binding_label(1, "right_hand", false), InputRouter.binding_label(1, "left_leg", false), InputRouter.binding_label(1, "right_leg", false)]
 	text += "Sword: %s / R3 · Talk: %s / Y + D-pad Down\n" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
-	return text + "Battle sites, combat skills, ultimates and enemy hooks are not active yet."
+	return text + "Talk to residents for tasks. Your hero’s district progress is saved automatically."
 
 
 func set_paused(value: bool) -> void:
@@ -264,6 +355,8 @@ func _process(_delta: float) -> void:
 	_aim_cue.position.y = clampf(_aim_cue.position.y, 12.0, maxf(12.0, bounds.y - extent.y - 80.0))
 	if _status_card.get_rect().intersects(Rect2(_aim_cue.position, extent)):
 		_aim_cue.position.y = _status_card.get_rect().end.y + 8.0
+	if _quest_card.visible and _quest_card.get_rect().intersects(Rect2(_aim_cue.position, extent)):
+		_aim_cue.position.y = _quest_card.get_rect().end.y + 8.0
 	_aim_cue.show()
 
 
@@ -282,6 +375,12 @@ func _button(text: String, callback: Callable) -> Button:
 	button.custom_minimum_size.y = 56
 	button.add_theme_font_size_override("font_size", 32)
 	button.pressed.connect(callback)
+	for state: String in ["normal", "hover", "pressed", "focus"]:
+		var style := _panel_style()
+		style.bg_color = Color("183039") if state != "pressed" else Color("285456")
+		style.border_color = Color("e5b178") if state == "focus" else Color("527478")
+		style.set_border_width_all(3 if state == "focus" else 1)
+		button.add_theme_stylebox_override(state, style)
 	return button
 
 

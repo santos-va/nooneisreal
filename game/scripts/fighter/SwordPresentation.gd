@@ -180,6 +180,15 @@ func update_pose() -> void:
 		var normal := -facing
 		var across := up.cross(normal).normalized()
 		var carry := Transform3D(Basis(across, up, across.cross(up)), fighter.global_position + Vector3.UP * 0.8 - facing * 0.30 - right * 0.20)
+		# Follow the actual torso when the authored animation crouches, turns or leans.
+		# A mount fixed to Fighter's root floats above the back during those poses.
+		var body: Skeleton3D = rig.hero_skeleton if rig.hero_skeleton != null else rig.skeleton
+		var torso: int = body.find_bone("Spine01" if rig.hero_skeleton != null else "spine_02")
+		if torso >= 0:
+			var rest: Transform3D = body.global_transform * body.get_bone_global_rest(torso)
+			var current: Transform3D = body.global_transform * body.get_bone_global_pose(torso)
+			var turn: Basis = current.basis.orthonormalized() * rest.basis.orthonormalized().inverse()
+			carry = Transform3D(turn * carry.basis, current.origin + turn * (carry.origin - rest.origin))
 		pose = pose.interpolate_with(carry, smoothstep(0.0, 1.0, stow_weight))
 	global_transform = pose
 	var ultimate := fighter.state == Fighter.State.ATTACK and fighter.current_move != null and fighter.current_move.effect == "sword_storm"

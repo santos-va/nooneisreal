@@ -1,6 +1,6 @@
 # state — поточна правда
 
-**Оновлено:** 2026-10-05, T1 — PR #174 у main `f24d973`, macOS build/verify/publish успішні; installed SHA Santos ще невідомий. Новий маршрут: [[2026-10-05-Playable-District]], гілка `codex/playable-district`; чекпойнти [[2026-10-05-Playable-District-Session]]. Попередній пакет не закрив очікуване візуальне/playable приймання.
+**Оновлено:** 2026-10-05, T1 — гілка `codex/playable-district`, checkpoint [[2026-10-05-Playable-District-Checkpoint]]. Агенти зупинені service usage limit; залишились combat visual blockers, фінальний native review і документація реалізації. Draft не мерджити до їх закриття. PR #174 у main `f24d973`, published channel підтверджений; installed SHA Santos невідомий. Маршрут [[2026-10-05-Playable-District]], журнал [[2026-10-05-Playable-District-Session]].
 **Фаза:** прохідний 3D-квартал Cronshift і локальний бій інтегровані; напрям розвитку — спільне місто, далі бої всередині нього. Чинний художній еталон — свіжі окремі текстури/вирізки Higgsfield; старі панорами — чернетки. Фінальний арт і приймання на M3 відкриті.
 
 ## macOS застосунок та канал main — реалізація T8, 2026-10-04

@@ -21,6 +21,8 @@ const Cadence = preload("res://scripts/fighter/LocomotionCadence.gd")
 const MotionFallback = preload("res://scripts/fighter/ProceduralMotionFallback.gd")
 const FootContact = preload("res://scripts/fighter/HeroFootContact.gd")
 const StancePresence = preload("res://scripts/fighter/IdlePresence.gd")
+const AuthoredCombat = preload("res://scripts/fighter/AuthoredCombatMotion.gd")
+const GroundMotion = preload("res://scripts/fighter/AuthoredLocomotion.gd")
 
 const MANNEQUIN := "res://assets/animations/ual/UAL1.glb"
 const EXTRA_LIBRARY := "res://assets/animations/ual/UAL2.glb"
@@ -95,6 +97,8 @@ var _attack_return_source: Array[Transform3D] = []
 var _attack_return_base: Array[Transform3D] = []
 var _attack_return_elapsed: float = 0.0
 var _had_procedural_motion: bool = false
+var authored_combat = AuthoredCombat.new()
+var locomotion = GroundMotion.new()
 
 
 func setup(f: Fighter) -> void:
@@ -110,6 +114,7 @@ func setup(f: Fighter) -> void:
 	player.add_animation_library(EXTRA_PREFIX, lib)
 	extra.free()
 	player.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
+	authored_combat.setup(player, skeleton)
 	# retarget after the mannequin's modifiers ran: outside this signal get_bone_global_pose() gives the clip's pose,
 	# not the skeleton ragdoll's (launch 7.1)
 	skeleton.skeleton_updated.connect(_on_mannequin_updated)
@@ -206,6 +211,33 @@ func retarget() -> void:
 			var s_rest := skeleton.get_bone_global_rest(si).origin
 			var s_now := skeleton.get_bone_global_pose(si).origin
 			hero_skeleton.set_bone_pose_position(hi, hero_skeleton.get_bone_rest(hi).origin + (s_now - s_rest) * _hip_scale)
+	_align_attack_gaze()
+
+
+## Meshy face direction differs from the donor's Head rest. Limit the actual hero's
+## face pitch after retarget; the neck/head positions and authored body arc stay intact.
+func _align_attack_gaze() -> void:
+	if _fighter.state != Fighter.State.ATTACK or AuthoredCombat.resolve(_fighter.current_move, _fighter.data.id).is_empty():
+		return
+	var head: int = hero_skeleton.find_bone("Head")
+	var front: int = hero_skeleton.find_bone("headfront")
+	if mini(head, front) < 0:
+		return
+	var direction: Vector3 = (hero_skeleton.get_bone_global_pose(front).origin - hero_skeleton.get_bone_global_pose(head).origin).normalized()
+	var world: Vector3 = (hero_skeleton.global_basis * direction).normalized()
+	var pitch: float = asin(clampf(world.y, -1.0, 1.0))
+	# PLACEHOLDER anatomical presentation range: a collected chin, not a face buried in the chest.
+	var limited: float = clampf(pitch, deg_to_rad(-20.0), deg_to_rad(15.0))
+	if is_equal_approx(pitch, limited):
+		return
+	var flat: Vector3 = Vector3(world.x, 0.0, world.z).normalized()
+	if flat.length_squared() < 0.001:
+		flat = _fighter.forward
+	var desired: Vector3 = (hero_skeleton.global_basis.inverse() * (flat * cos(limited) + Vector3.UP * sin(limited))).normalized()
+	var rotation: Quaternion = Quaternion(direction, desired) * hero_skeleton.get_bone_global_pose(head).basis.orthonormalized().get_rotation_quaternion()
+	var parent: int = hero_skeleton.get_bone_parent(head)
+	var parent_rotation: Quaternion = hero_skeleton.get_bone_global_pose(parent).basis.orthonormalized().get_rotation_quaternion()
+	hero_skeleton.set_bone_pose_rotation(head, (parent_rotation.inverse() * rotation).normalized())
 
 
 ## Presentation endpoint only; physics keeps GrappleHook.HAND and its deterministic rope constraint.
@@ -279,10 +311,19 @@ static func walk_clip(velocity: Vector3, forward: Vector3) -> String:
 ## GLB clip this fighter state plays. Empty attack clips use the explicit procedural bridge when supported;
 ## otherwise the stance remains the safe fallback. The bridge runs after seeking the base clip.
 func state_clip(f: Fighter) -> String:
+	if not locomotion.special_clip.is_empty() and f.state in [Fighter.State.IDLE, Fighter.State.WALK, Fighter.State.JUMP]:
+		return locomotion.special_clip
+	if f.state in [Fighter.State.IDLE, Fighter.State.WALK] and locomotion.moving():
+		return locomotion.source_clip
+	if f.state == Fighter.State.WALK and locomotion.active and not locomotion.moving():
+		return f.data.idle_clip
 	match f.state:
 		Fighter.State.ATTACK:
 			if f.current_move == null:
 				return ""
+			var authored: Dictionary = AuthoredCombat.resolve(f.current_move, f.data.id)
+			if not authored.is_empty():
+				return authored.recovery if authored.recovery != "" and f.move_frame >= f.current_move.startup + f.current_move.active else authored.clip
 			var c := attack_clips(f.current_move, f.chain_index)
 			var m := f.current_move
 			return c[1] if c[1] != "" and f.move_frame >= m.startup + m.active else c[0]
@@ -351,7 +392,9 @@ func _physics_process(delta: float) -> void:
 	var distance: float = Vector2(_fighter.global_position.x - previous_position.x, _fighter.global_position.z - previous_position.z).length()
 	if not _gait_position_valid:
 		distance = Vector2(_fighter.velocity.x, _fighter.velocity.z).length() * delta
-	_gait_position_valid = _fighter.state == Fighter.State.WALK
+	_gait_position_valid = _fighter.state in [Fighter.State.IDLE, Fighter.State.WALK]
+	locomotion.update(_fighter, distance, delta, _gait_scale, ragdoll == null and not RigAnimator.levitating(_fighter) and _crouch_exit_frames < 0)
+	var source: Dictionary = AuthoredCombat.resolve(_fighter.current_move, _fighter.data.id) if _fighter.state == Fighter.State.ATTACK else {}
 	var want := clip_name(state_clip(_fighter))
 	if want == "":
 		want = clip_name(_fighter.data.idle_clip)
@@ -361,7 +404,12 @@ func _physics_process(delta: float) -> void:
 	if want != clip:
 		clip = want
 		player.play(clip)
-	if _fighter.state == Fighter.State.ATTACK and _fighter.current_move != null and clip_name(state_clip(_fighter)) == clip:
+	var ground_time: float = locomotion.special_time(anim.length)
+	if ground_time >= 0.0:
+		clip_pos = ground_time
+	elif not source.is_empty():
+		clip_pos = AuthoredCombat.clip_time(_fighter.current_move, _fighter.move_frame, source, anim.length)
+	elif _fighter.state == Fighter.State.ATTACK and _fighter.current_move != null and clip_name(state_clip(_fighter)) == clip:
 		var m := _fighter.current_move
 		var c := attack_clips(m, _fighter.chain_index)
 		var window := m.startup + m.active
@@ -370,7 +418,7 @@ func _physics_process(delta: float) -> void:
 		else:
 			var span := window if c[1] != "" else window + m.recovery
 			clip_pos = attack_clip_time(_fighter.move_frame, m.startup, span, anim.length, c[2])
-	elif _fighter.state == Fighter.State.WALK:
+	elif locomotion.moving():
 		clip_pos = cadence.advance(distance, state_clip(_fighter), anim.length, _gait_scale)
 	elif _crouch_exit_frames >= 0:
 		clip_pos = minf(float(_crouch_exit_frames) * delta, anim.length)
@@ -383,20 +431,24 @@ func _physics_process(delta: float) -> void:
 		clip_pos = minf(float(_state_frames) * delta, anim.length)
 	# Undo our previous overlay before seeking: constant tracks may be absent in a clip.
 	_restore_attack_return_base()
+	authored_combat.restore(skeleton)
 	SwordMotion.restore_mirror(skeleton, _sword_mirror_base)
 	idle_presence.restore_base(skeleton)
 	var procedural: bool = uses_procedural_motion()
 	if _had_procedural_motion and not procedural and ragdoll == null:
 		skeleton.reset_bone_poses()
 	_had_procedural_motion = procedural
+	locomotion.restore(skeleton)
 	player.seek(clip_pos, true)
+	locomotion.apply(skeleton, clip, delta)
+	authored_combat.apply(skeleton, source, _fighter)
 	_sword_mirror_base = SwordMotion.mirror_authored(skeleton, _fighter)
 	var recovering: bool = HookMotion.recovery_active(_fighter)
 	if procedural:
 		MotionFallback.apply(skeleton, _fighter.animator)
 	elif ragdoll == null and recovering:
 		MotionFallback.apply(skeleton, _fighter.animator, true)
-	if ragdoll == null and not recovering and not RigAnimator.levitating(_fighter):
+	if ragdoll == null and not recovering and not RigAnimator.levitating(_fighter) and not locomotion.moving():
 		idle_presence.apply(skeleton, _fighter, delta)
 	_apply_attack_return(delta)
 
@@ -436,7 +488,7 @@ func _apply_attack_return(delta: float) -> void:
 func uses_procedural_motion() -> bool:
 	if ragdoll != null:
 		return false
-	return _fighter.dodging or RigAnimator.levitating(_fighter) or _fighter.state == Fighter.State.GRAPPLE or (_fighter.state == Fighter.State.ATTACK and MotionFallback.supports(_fighter.data.id, _fighter.current_move))
+	return _fighter.dodging or RigAnimator.levitating(_fighter) or _fighter.state == Fighter.State.GRAPPLE or (_fighter.state == Fighter.State.ATTACK and MotionFallback.supports(_fighter.data.id, _fighter.current_move) and AuthoredCombat.resolve(_fighter.current_move, _fighter.data.id).is_empty())
 
 
 func _on_mannequin_updated() -> void:

@@ -17,7 +17,7 @@ func _build(district: Node3D) -> void:
 		if spec.id in ["SouthWestBlock", "SouthEastWestWing", "SouthEastEastWing"]:
 			var center: Vector3 = spec.center
 			var size: Vector3 = spec.size
-			_building(center, size, 0.0)
+			_building(center, size, 4.0 if spec.id == "SouthWestBlock" else 0.0)
 		elif spec.id in ["NorthWestRoof", "NorthEastRoof"]:
 			# Low bodies are explicitly terraces, framed with stone arcades and coping.
 			var center: Vector3 = spec.center

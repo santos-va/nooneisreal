@@ -35,7 +35,7 @@ func _run() -> void:
 		await _settle()
 		var buttons: Array = menu.get("_buttons")
 		_check(buttons.size() == 11, "menu contains eleven actions")
-		_check("PROTOTYPE" in (menu.get("city_button") as Button).text, "city action clearly labels prototype")
+		_check("DISTRICT" in (menu.get("city_button") as Button).text, "district is the primary journey action")
 		for button: Button in buttons:
 			_check(_inside(button), "visible menu action: %s at %s" % [button.text, dimensions])
 		for field in ["_portrait1", "_portrait2"]:

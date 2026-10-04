@@ -10,12 +10,14 @@ var world_seed: int
 var tick: int = 0
 var community_support: int = 0
 var people: Array[Dictionary] = []
+var relationships: Dictionary = {}
 
 func initialize(seed_value: int) -> void:
 	world_seed = clampi(seed_value, 1, 2147483646)
 	tick = 0
 	community_support = 0
 	people.clear()
+	relationships.clear()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = world_seed
 	for index: int in COUNT:
@@ -50,13 +52,56 @@ func step() -> void:
 			community_support -= 4
 			remember(index, "opportunity", "Скористався підтримкою району, щоб почати вчитися новому ремеслу.")
 
-func meet(index: int) -> String:
+func _legacy_meet(index: int) -> String:
 	var p: Dictionary = people[index]
 	p.meetings = int(p.meetings) + 1
 	p.trust = mini(int(p.trust) + 1, 10)
 	community_support = mini(community_support + 1, 100)
 	remember(index, "meeting", "Ми зустрілися в районі. Це наша зустріч №%d." % int(p.meetings), "player")
-	return dialogue(index)
+	return _legacy_dialogue(index)
+
+func relationship(index: int, hero: String) -> Dictionary:
+	if hero not in ["choko", "skea"] or index < 0 or index >= people.size():
+		return {}
+	if not relationships.has(hero):
+		relationships[hero] = {}
+	var id: String = people[index].id
+	if not relationships[hero].has(id):
+		relationships[hero][id] = {"trust": 0, "meetings": 0, "memory": [], "topics": []}
+	return relationships[hero][id]
+
+func meet(index: int, hero: String = "") -> String:
+	# An omitted hero keeps old tooling compatible; live city always supplies its hero.
+	if hero.is_empty():
+		return _legacy_meet(index)
+	var bond := relationship(index, hero)
+	if bond.is_empty():
+		return ""
+	bond.meetings = mini(int(bond.meetings) + 1, 100000000)
+	bond_once(index, hero, "introduction", "Ми познайомилися особисто.")
+	return dialogue(index, hero)
+
+func bond_once(index: int, hero: String, topic: String, fact: String, amount: int = 1) -> bool:
+	var bond := relationship(index, hero)
+	if bond.is_empty() or topic in bond.topics or bond.topics.size() >= 32:
+		return false
+	bond.topics.append(topic)
+	bond.trust = mini(int(bond.trust) + clampi(amount, 0, 2), 10)
+	bond.memory.append(fact.left(256))
+	while bond.memory.size() > MEMORY_LIMIT:
+		bond.memory.pop_front()
+	return true
+
+func dialogue(index: int, hero: String = "") -> String:
+	if hero.is_empty():
+		return _legacy_dialogue(index)
+	var p: Dictionary = people[index]
+	var bond := relationship(index, hero)
+	var relation: String = "друзі" if int(bond.trust) >= 6 else ("довіра" if int(bond.trust) >= 3 else "знайомі")
+	var lines: Array[String] = [str(p.name) + " · " + hero.capitalize(), relation + " · " + str(bond.trust) + "/10"]
+	for fact: String in bond.memory:
+		lines.append(fact)
+	return "\n\n".join(lines)
 
 func greet(index: int, other: int) -> Array[String]:
 	if index == other or index < 0 or other < 0 or index >= people.size() or other >= people.size():
@@ -67,7 +112,7 @@ func greet(index: int, other: int) -> Array[String]:
 	remember(other, "neighbour", "Перекинувся словами з " + str(first.name) + ": зараз " + str(first.goal) + ".")
 	return ["Привіт, " + str(second.name) + "!", "Привіт! Зараз " + str(second.goal) + "."]
 
-func dialogue(index: int) -> String:
+func _legacy_dialogue(index: int) -> String:
 	var p: Dictionary = people[index]
 	var lines: Array[String] = [str(p.name) + " · " + str(p.role), "Зараз: " + str(p.goal) + "."]
 	var memory: Array = p.memory
@@ -77,12 +122,12 @@ func dialogue(index: int) -> String:
 	return "\n\n".join(lines)
 
 func snapshot() -> Dictionary:
-	return {"version": 1, "world_seed": world_seed, "tick": tick, "community_support": community_support, "people": people.duplicate(true)}
+	return {"version": 2, "world_seed": world_seed, "tick": tick, "community_support": community_support, "people": people.duplicate(true), "relationships": relationships.duplicate(true)}
 
 func restore(data: Variant) -> bool:
 	if not data is Dictionary:
 		return false
-	if data.get("version") != 1 or not _integer(data.get("world_seed"), 1, 2147483646) or not _integer(data.get("tick"), 0, 100000000):
+	if not _integer(data.get("version"), 1, 2) or not _integer(data.get("world_seed"), 1, 2147483646) or not _integer(data.get("tick"), 0, 100000000):
 		return false
 	if not _integer(data.get("community_support"), 0, 100):
 		return false
@@ -111,6 +156,30 @@ func restore(data: Variant) -> bool:
 				return false
 			if fact.get("kind") not in ["arrival", "routine", "meeting", "opportunity", "neighbour"] or not fact.get("text") is String or fact.text.length() > 256:
 				return false
+	var incoming: Variant = data.get("relationships", {}) if data.version == 2 else {}
+	if not incoming is Dictionary or incoming.size() > 2:
+		return false
+	for hero: Variant in incoming:
+		if hero not in ["choko", "skea"] or not incoming[hero] is Dictionary or incoming[hero].size() > COUNT:
+			return false
+		for id: Variant in incoming[hero]:
+			if not id is String or not records.any(func(p: Dictionary) -> bool: return p.id == id):
+				return false
+			var bond: Variant = incoming[hero][id]
+			if not bond is Dictionary or not _integer(bond.get("trust"), 0, 10) or not _integer(bond.get("meetings"), 0, 100000000) or not bond.get("memory") is Array or bond.memory.size() > MEMORY_LIMIT or not bond.get("topics") is Array or bond.topics.size() > 32:
+				return false
+			for fact: Variant in bond.memory:
+				if not fact is String or fact.length() > 256:
+					return false
+			for topic: Variant in bond.topics:
+				if not topic is String or topic.length() > 80:
+					return false
+	# v1 player history has no hero identity: retain it as legacy, never attribute it.
+	relationships = incoming.duplicate(true)
+	for residents: Dictionary in relationships.values():
+		for bond: Dictionary in residents.values():
+			bond.trust = int(bond.trust)
+			bond.meetings = int(bond.meetings)
 	world_seed = int(data.world_seed)
 	tick = int(data.tick)
 	community_support = int(data.community_support)
@@ -140,4 +209,5 @@ func load_from(path: String = SAVE_PATH) -> bool:
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null or file.get_length() > 262144:
 		return false
-	return restore(JSON.parse_string(file.get_as_text()))
+	var parser := JSON.new()
+	return parser.parse(file.get_as_text()) == OK and restore(parser.data)

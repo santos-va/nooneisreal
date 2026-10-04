@@ -5,6 +5,7 @@ const Layout = preload("res://scripts/world/CityLayout.gd")
 const Materials = preload("res://scripts/world/CityMaterials.gd")
 const Architecture = preload("res://scripts/world/CityArchitecture.gd")
 const Market = preload("res://scripts/world/CityMarket.gd")
+const Interiors = preload("res://scripts/world/CityInteriors.gd")
 var materials: Dictionary = {}
 var geometry_count: int = 0
 
@@ -17,6 +18,7 @@ func _ready() -> void:
 	_roofs_and_rails()
 	Architecture.populate(self)
 	add_child(Market.new())
+	add_child(Interiors.new())
 	_street_details()
 	_markers()
 

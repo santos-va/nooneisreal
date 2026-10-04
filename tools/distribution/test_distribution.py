@@ -130,8 +130,28 @@ class DistributionTests(unittest.TestCase):
 
     def test_current_revision_skips_extraction(self):
         (self.app / 'Contents/Info.plist').write_bytes(plistlib.dumps(metadata(NEW)))
-        self.assertEqual(self.run_update().returncode, 0)
+        result = self.run_update()
+        self.assertEqual(result.returncode, 0)
+        self.assertIn('Installed build: ' + NEW, result.stdout)
+        self.assertIn('Available main build: ' + NEW, result.stdout)
+        self.assertIn('No update available; this is a successful check.', result.stdout)
         self.assertFalse((self.root / 'extractor-ran').exists())
+
+    def test_read_only_status_reports_builds_without_installing(self):
+        command = MOCKS.replace('if [ "${TEST_NETWORK:-}" = yes ]; then update; else update "$TEST_ROOT/feed"; fi',
+                                'AGENT="$TEST_ROOT/absent-agent.plist"; status')
+        env = dict(os.environ, TEST_SCRIPT=str(SCRIPT), TEST_ROOT=str(self.root), TEST_PY=sys.executable)
+        before = (self.app / 'Contents/Info.plist').read_bytes()
+        result = subprocess.run(['/bin/bash', '-c', command], env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('Installed build: ' + OLD, result.stdout)
+        self.assertIn('Available main build: ' + NEW, result.stdout)
+        self.assertIn('Diagnostic only:', result.stdout)
+        self.assertIn('not configured', result.stdout)
+        self.assertEqual((self.app / 'Contents/Info.plist').read_bytes(), before)
+        self.assertFalse((self.root / 'extractor-ran').exists())
+        self.assertFalse(self.backup.exists())
+        self.assertEqual((self.root / 'downloads').read_text().splitlines(), ['manifest.json'])
 
     def test_checksum_failure_preserves_app(self):
         self.manifest['sha256'] = 'f' * 64
@@ -183,7 +203,9 @@ class DistributionTests(unittest.TestCase):
 
     def test_running_game_defers_before_and_after_download(self):
         (self.root / 'game-running').touch()
-        self.assertEqual(self.run_update().returncode, 0)
+        result = self.run_update()
+        self.assertEqual(result.returncode, 0)
+        self.assertIn('Game is running; update deferred', result.stdout)
         self.assertFalse((self.root / 'extractor-ran').exists())
         (self.root / 'game-running').unlink()
         self.assertEqual(self.run_update(TEST_START_GAME='yes').returncode, 0)
@@ -403,9 +425,9 @@ install_agent
         repo = self.root / 'repo with spaces'
         (repo / 'game').mkdir(parents=True)
         (repo / 'tools/distribution').mkdir(parents=True)
-        (repo / 'game/project.godot').write_text('committed project')
+        (repo / 'game/project.godot').write_text('committed project\nconfig/version="0.4.0"\n')
         preset = SCRIPT.parents[2] / 'game/export_presets.cfg'
-        shutil.copy2(preset, repo / 'game/export_presets.cfg')
+        (repo / 'game/export_presets.cfg').write_text(preset.read_text().replace('include_filter="data/audio/*.cfg,data/city/*.json"', 'include_filter="custom/*.json,data/audio/*.cfg,data/city/*.json"'))
         # Boundary stub verifies the real builder supplies its offline installer inputs.
         (repo / 'tools/distribution/update-macos.sh').write_text(r'''
 set -eu
@@ -428,8 +450,11 @@ cp "$dir/manifest.json" "$TEST_ROOT/built-manifest.json"
         fake_godot = self.root / 'godot fixture'
         fake_godot.write_text(r'''#!/bin/bash
 if [ "$2" = --version ]; then echo 4.7.stable.fixture; exit; fi
-[ "$(cat "$3/project.godot")" = 'committed project' ] || exit 2
+[ "$(head -n 1 "$3/project.godot")" = 'committed project' ] || exit 2
 grep -F "$TEST_REVISION" "$3/export_presets.cfg" >/dev/null || exit 3
+grep -F "$TEST_REVISION" "$3/build_info.cfg" >/dev/null || exit 4
+grep -F 'include_filter="custom/*.json,data/audio/*.cfg,data/city/*.json,build_info.cfg"' "$3/export_presets.cfg" >/dev/null || exit 5
+grep -F 'application/short_version="0.4.0"' "$3/export_presets.cfg" >/dev/null || exit 6
 if [ "$4" = --export-release ]; then printf 'export fixture' > "$6"; fi
 '''); fake_godot.chmod(0o755)
         helper = self.root / 'native_mock.py'

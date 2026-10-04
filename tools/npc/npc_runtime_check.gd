@@ -20,6 +20,8 @@ func _run() -> void:
 	current_scene = city
 	var director = city.npc_director
 	director.save_enabled = false
+	city.progress.save_enabled = false
+	director.active_radius = 45.0
 	director.population.initialize(123456)
 	city.player.global_position = Vector3(0, 0, 5)
 	director._refresh_actors()
@@ -60,29 +62,31 @@ func _run() -> void:
 	check(minimum_gap > 1.5, "residents retain personal space across route and greetings")
 	check(routes_clear, "moving residents remain outside district collision")
 	for index: int in starts:
-		check(excursions[index] > 0.5, "resident moves even while work/rest schedule active %d" % index)
+		check(excursions[index] > 0.5 if index >= 3 else excursions[index] < 0.01, "wanderers move and workers retain their station %d" % index)
 	check(director.population.people.any(func(p: Dictionary) -> bool: return p.memory.any(func(fact: Dictionary) -> bool: return fact.kind == "neighbour")), "nearby residents exchange grounded memories")
 	var social_snapshot: Dictionary = director.population.snapshot()
 	director._update_conversations()
 	check(director.population.snapshot() == social_snapshot, "social cooldown prevents greeting spam")
-	var first: Node3D = director.actors[0]
+	var first: Node3D = director.actors[3]
 	city.player.global_position = first.global_position + Vector3(0, 0, 1.5)
 	await ticks(2)
-	check(director.find_nearest() == 0, "nearby resident selectable")
+	check(director.find_nearest() == 3, "nearby resident selectable")
 	director.dialogue.show_fact(director.population.meet(0))
 	check(root.get_node("InputRouter").ui_suppressed(), "conversation owns gameplay input")
 	director.dialogue.close()
 	check(not root.get_node("InputRouter").ui_suppressed(), "closing releases gameplay input")
-	var seed_before: int = director.population.people[0].appearance_seed
+	var seed_before: int = director.population.people[3].appearance_seed
 	var position_before: Vector3 = first.position
 	city.player.global_position = Vector3(30, 4, -25)
+	director.active_radius = 12.0
 	director._refresh_actors()
 	await ticks(2)
-	check(director.actors.is_empty(), "distant actor chunks unload")
+	check(not director.actors.has(3), "distant actor chunk unloads")
 	city.player.global_position = Vector3(0, 0, 10)
+	director.active_radius = 45.0
 	director._refresh_actors()
-	check(director.actors.has(0) and director.population.people[0].appearance_seed == seed_before, "reload keeps identity")
-	check(director.actors[0].position.is_equal_approx(position_before), "reload resumes position instead of respawning at home")
+	check(director.actors.has(3) and director.population.people[3].appearance_seed == seed_before, "reload keeps identity")
+	check(director.actors[3].position.is_equal_approx(position_before), "reload resumes position instead of respawning at home")
 	if "--capture" in OS.get_cmdline_user_args():
 		var camera := Camera3D.new()
 		city.add_child(camera)

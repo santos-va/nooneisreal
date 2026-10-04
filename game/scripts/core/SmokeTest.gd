@@ -415,8 +415,8 @@ func _check_mode_row() -> bool:
 	# 06 § «підказка внизу меню» (T8): the hint follows the focus — VERSUS → two players, FIGHT/TRAINING → solo vs CPU,
 	# any other row keeps the last
 	var focus_hint: Array = []
-	for i in [1, 4, 0, 2]:   # VERSUS, a character row, FIGHT, TRAINING
-		(menu._buttons[i] as Button).grab_focus()
+	for button: Button in [menu.find_child("VersusButton", true, false), menu._p1_btn, menu.find_child("FightButton", true, false), menu.find_child("TrainingButton", true, false)]:
+		button.grab_focus()
 		focus_hint.append(menu._foot.text)
 	menu._comfort_button.pressed.emit()
 	var full_controls: String = menu._comfort.controls_label.text

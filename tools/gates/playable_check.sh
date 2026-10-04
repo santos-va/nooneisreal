@@ -21,6 +21,9 @@ logs = Path(os.environ.get('PLAYABLE_LOG_DIR') or tempfile.mkdtemp(prefix='nir-p
 logs.mkdir(parents=True, exist_ok=True)
 cases = [
     ('ui', 'tools/ui/layout_check.gd', r'UI_LAYOUT PASS \(0 failures; mutation=\)', [], 0),
+    ('district-ui', 'tools/ui/district_ui_check.gd', r'DISTRICT_UI_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('locomotion-states', 'tools/animation/locomotion_states_check.gd', r'LOCOMOTION_STATES_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('authored-combat', 'tools/animation/authored_combat_check.gd', r'AUTHORED_COMBAT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('motion', 'tools/animation/character_motion_check.gd', r'CHARACTER MOTION: [1-9][0-9]* checks, 0 failures', [], 0),
     ('idle', 'tools/animation/idle_presence_check.gd', r'IDLE PRESENCE: [1-9][0-9]* checks, 0 failures', [], 0),
     ('afterimage', 'tools/fx/afterimage_check.gd', r'afterimage: [1-9][0-9]* checks, 0 failures', [], 0),
@@ -52,6 +55,8 @@ cases = [
     ('traversal', 'tools/grapple/traversal_check.gd', r'TRAVERSAL_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('dodge-stamina', 'tools/combat/dodge_stamina_check.gd', r'DODGE_STAMINA_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('music', 'tools/audio/music_check.gd', r'\[music\] failures=0', [], 0),
+    ('district-life', 'tools/npc/district_life_check.gd', r'\[district-life\] [1-9][0-9]* checks / 0 failures', [], 0),
+    ('district-progress', 'tools/npc/district_progress_check.gd', r'\[district-progress\] [1-9][0-9]* checks / 0 failures', [], 0),
     ('npc', 'tools/npc/npc_check.gd', r'\[npc\] [0-9]+ checks / 0 failures', [], 0),
     ('npc-runtime', 'tools/npc/npc_runtime_check.gd', r'\[npc-runtime\] [0-9]+ checks / 0 failures', [], 0),
     ('npc-appearance', 'tools/npc/appearance_check.gd', r'\[npc-appearance\] stable seeds, role independence, humanoid build, locomotion OK', [], 0),

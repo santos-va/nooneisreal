@@ -105,3 +105,13 @@ func set_motion(speed: float, time: float) -> void:
 		var side := 1.0 if i == 0 else -1.0
 		_legs[i].rotation.x = stride * side * 0.38
 		_arms[i].rotation.x = -stride * side * 0.3
+
+func set_work(kind: String, time: float) -> void:
+	# Bounded hand tasks for the existing lightweight residents, separate from gait.
+	if _arms.size() < 2:
+		return
+	var beat: float = sin(time * (3.5 if kind == "workshop" else 1.7))
+	_arms[0].rotation.x = -0.65 + beat * (0.38 if kind == "workshop" else 0.12)
+	_arms[1].rotation.x = -0.55 - beat * 0.15
+	_arms[0].rotation.z = 0.15 + (0.1 * beat if kind == "tailor" else 0.0)
+	_arms[1].rotation.z = -0.15

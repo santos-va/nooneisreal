@@ -212,7 +212,9 @@ update() {
     [[ "$expected_size" =~ ^[0-9]{1,10}$ ]] || fail 'Invalid archive size.'
     [ "$expected_size" -gt 0 ] && [ "$expected_size" -le 2000000000 ] || fail 'Archive exceeds supported size.'
     current=$(bundle_field "$APP" NIRBuildRevision 2>/dev/null || true)
-    if [ "$current" = "$revision" ]; then log "Already current: $revision"; return 0; fi
+    log "Installed build: ${current:-unknown or not installed}"
+    log "Available main build: $revision"
+    if [ "$current" = "$revision" ]; then log "Already current: $revision. No update available; this is a successful check."; return 0; fi
     local incremental
     incremental=$(field "$manifest" incremental_schema 2>/dev/null || true)
     if [ "$incremental" = 1 ] && [ -d "$APP" ] && [ -z "$offline_dir" ]; then
@@ -297,13 +299,36 @@ install_agent() {
     log "Updater logs: $STATE_DIR/update.log and update-error.log"
     if [ "${1:-}" != --enable-only ]; then open "$APP"; fi
 }
+status() {
+    [ "$(uname -s)" = Darwin ] || fail 'Run this diagnostic on macOS.'
+    STAGE=$(mktemp -d "${TMPDIR:-/tmp}/nir-update-status.XXXXXX")
+    trap cleanup EXIT
+    local manifest="$STAGE/manifest.json" current available
+    current=$(bundle_field "$APP" NIRBuildRevision 2>/dev/null || true)
+    log "Installed build: ${current:-unknown or not installed}"
+    fetch "https://github.com/$REPOSITORY/releases/download/macos-main/manifest.json" "$manifest" 1048576
+    [ "$(field "$manifest" schema)" = 1 ] || fail 'Unsupported update manifest.'
+    available=$(field "$manifest" revision)
+    [[ "$available" =~ ^[0-9a-f]{40}$ ]] || fail 'Invalid available revision.'
+    log "Available main build: $available"
+    if [ "$current" = "$available" ]; then
+        log 'No update available; this is a successful check.'
+    else
+        log 'Builds differ. Close the game and run the updater to install the published main build.'
+    fi
+    if running; then log 'Game is running; automatic replacement will wait until it is closed.'; fi
+    if [ -f "$AGENT" ]; then log 'Automatic updater configuration exists.';
+    else log 'Automatic updater is not configured for this user.'; fi
+    log 'Diagnostic only: no app, save data or updater configuration was changed.'
+}
 main() {
     case "${1:-}" in
+        --status) status ;;
         --install) install_agent ;;
         --enable-updates) install_agent --enable-only ;;
         --validate-archive) validate_archive "$2" "$3" ;;
         '') update ;;
-        *) fail 'Usage: update-macos.sh [--install]' ;;
+        *) fail 'Usage: update-macos.sh [--install | --enable-updates | --status]'  ;;
     esac
 }
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then main "$@"; fi
