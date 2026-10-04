@@ -88,7 +88,7 @@ func _build_pause() -> void:
 	column.add_theme_constant_override("separation", 12)
 	center.add_child(column)
 	column.add_child(_label("EXPLORATION PAUSED", 40))
-	var help := _label("Move: WASD / left stick · Look: hold RMB + drag / right stick\nJump: Space / A · Parkour: hold E / Y + LT\nHold jump to reel. Release parkour and jump to detach.\nMove closer beneath an anchor for lift; distant ropes pull you toward it.\nHooks are finite: reuse ropes or restart exploration.\nDash: Shift / X · Strikes: J K M , · Sword: V / R3\nCombat skills, ultimates and enemy hooks are unavailable.\nBattle sites and portals are not active yet.", 30)
+	var help := _label("Move: WASD / left stick · Look: hold RMB + drag / right stick\nJump: Space / A · Parkour: hold E / Y + LT\nHold jump to reel. Release parkour and jump to detach.\nMove closer beneath an anchor for lift; distant ropes pull you toward it.\nHooks are finite: reuse ropes or restart exploration.\nDash: Shift / B (Circle) · Strikes: J K M , · Sword: V / R3\nCombat skills, ultimates and enemy hooks are unavailable.\nBattle sites and portals are not active yet.", 30)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(help)
 	resume_button = _button("RESUME", func(): set_paused(false))

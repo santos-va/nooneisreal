@@ -1,18 +1,12 @@
 # Decisions and validation — 2026-10-04
 
-English handoff requested by Santos. This page separates the current gameplay contract from superseded proposals and records prior validation without claiming a new engine run. Read it with the delivery ledger and remaining-work pages maintained by T1. Repository inspected for this reconciliation: `origin/main` / HEAD `a401e6c`; working branch `codex/context-handoff`.
+English handoff requested by Santos. Current code baseline: merged main `2c50938` (#170). Historical Fix/Audit counts below remain recorded implementation evidence, not new gameplay runs performed by this documentation pass. The coordinator verified GitHub merge and CI metadata; T7 inspected current source and reports.
 
-## Later local contract update
+## Delivery and evidence boundaries
 
-The new player-feedback work is governed by [[ADR-022-Combat-Control-And-Match-Resources]] and [[Plans/2026-10-04-Combat-Control]]. It is local implementation, not another merged release. In that work, held movement uses the current recorded physics view basis, Choko/Skea have5/3 dash charges with increasing recovery, Skea travels a visible directional arc, Space reels a bounded distance, occupied anchors reject duplicate deployment, and rematch clears the existing rope registry. Alternating hand/leg strings have distinct third strikes; V/R3 first draws the back-carried sword and later transfers/reforms it. A sword attack may also draw during startup. Active Skea ult normals have one authoritative forward extension of about1m, with matching purple presentation.
+PRs #164–#170 are merged. #170 supersedes the old world-direction latch, leg-finisher restriction and initially drawn sword. The governing current contracts are [[ADR-022-Combat-Control-And-Match-Resources]] and [[ADR-023-City-First-Exploration]].
 
-The old gesture-latch, leg-finisher and initially-drawn-sword statements below describe the merged snapshot before this follow-up. Final follow-up evidence and art/device limitations are recorded in [[Audit/2026-10-04-Combat-Control-Review]], not inferred from historical test totals.
-
-## Delivery status and evidence boundaries
-
-T1's current GitHub reconciliation reports PRs #164–#168 merged. In particular, #167 merged at **2026-10-04 15:34:20 UTC**, and #168 at **15:34:26 UTC**. Their older journals saying “open”, “stacked”, or “CI pending” describe the historical handoff, not current delivery status. These merge facts are supplied by T1's GitHub check; T7 did not independently repeat the API query. This documentation pass does not rerun the gameplay suite or alter gameplay. The coordinator ran the documentation gate battery, including Godot parse checks.
-
-The most recent recorded runtime acceptance is the Choko sword slice: 164 smoke checks / 19824 frames, 32 presentation/regression scenarios, zero failures; gates green with 59 GDScript files and zero parse failures. This is prior acceptance evidence recorded in the Fix/Audit documents, **not a fresh run of merged main**. No result here establishes M3 performance, physical-controller behavior, audio listening acceptance, or online determinism.
+Latest recorded complete acceptance: **43 scenarios/0 failures, smoke 164 checks/19847 frames; gates green, 70 GDScript files/0 parse failures**. Final native material checks passed 23/0; 18 city captures were inspected. GitHub CI succeeded on PR-head `1773ac2` ([run 37224056701](https://github.com/santos-va/nooneisreal/actions/runs/37224056701)). Neither these records nor merge establish final human art, M3 performance, physical-controller behavior, audio listening or online acceptance.
 
 ## Current controls and superseded proposals
 
@@ -30,7 +24,7 @@ The latest sections of [[GDD/05-Platforms-Input]] and the runtime `InputRouter` 
 | Enemy harpoon | Q | T | O | Y / Triangle + RT / R2 |
 | Parkour harpoon | E | R | I | Y / Triangle + LT / L2 |
 | Ultimate | O | V | comma | D-pad up |
-| Choko sword transfer | V | H | P | R3, press right stick |
+| Choko sword draw / transfer / reform | V | H | P | R3, press right stick |
 
 SOLO movement is WASD, jump Space, crouch X and dash Left Shift. Manual solo camera uses RMB + mouse movement or the right stick. The right-stick press for transfer is distinct from its look axes. Consult the live in-game controls panel for the active profile rather than applying SOLO labels to SHARED.
 
@@ -40,20 +34,24 @@ Gamepad chord routing is selected on a fresh shoulder/trigger press and held unt
 
 ## Movement, camera and attack variety
 
-A held movement gesture must continue in the same world direction after crossing an opponent. Human movement is no longer projected onto an orbit around the one enemy; facing follows movement, while attack targeting remains explicit. At the start of a new SOLO P1 gesture, a recorded horizontal view-basis input packet can supply direction after manual camera movement. That basis stays latched until neutral. Fighter does not continuously read the smoothing Camera3D transform, and replay uses the recorded packet. CPU and shared framing use their own paths. See [[Fix/2026-10-04-Free-Movement-Limbs]] and [[Fix/2026-10-04-Harpoon-Aim]].
+Human movement uses the **current recorded horizontal physics view basis throughout the held input**, so camera turns do not leave W locked to an obsolete world direction. Fighter reads the input packet, not the smoothing Camera3D transform; recorded playback takes precedence over the live adapter. Shared human input uses a common basis; CPU retains its tactical path. A stable fallback applies without an adapter. This replaces the old neutral-to-neutral world latch. See [[Fix/2026-10-04-Combat-Control]].
+
+Choko has **5** dash charges and Skea **3**. Spending more charges lengthens recovery; a full rest restores the budget and a new round resets it. Skea's dash travels visibly along the chosen direction with an arc, shadow/afterimage and retained jump/fall momentum, including simultaneous jump+dash. Cooldown and trajectory tuning remain PLACEHOLDER until playtest.
 
 Automatic camera continuity preserves its side when fighters cross; impact is communicated through bounded, comfort-scaled lens displacement. Shared camera framing remains symmetric. Independent manual orbit/aim for two players on one screen is not delivered. Manual aim records world origin/point/direction and target identity; a visible cue is a candidate, never proof of a hit. The swept hook contact remains authoritative. Scene-path IDs used locally are not a finished online identity protocol.
 
 Existing registered UAL Source clips supply Walk/Jog/Crouch and attacks. Gait phase follows distance and speed rather than assuming a fixed walk cadence at every velocity. Procedural poses and mirroring expand handedness and motion; this is a bounded authored/procedural set, not unlimited anatomical animation generation or real muscle simulation. A new sprint mechanic was not delivered merely because source Sprint clips exist.
 
-Normal strings contain at most three normal attacks, with a fresh press per attack. Continuation requires a confirmed hit, not whiff/block/invulnerability. A leg ends the normal string. Hand sequences vary by side and order; crouch/air use their existing donors. Numeric combat fields remain donor values: visual variation does not secretly increase damage, hitboxes or range. “Body hook” and “uppercut” describe trajectories, not separate jaw/abdomen damage systems. The user's four-limb request explicitly authorized the exception to the older nine-action limit. Detailed combat rules belong to [[GDD/02-Combat-System]] and [[GDD/03-Skills-Framework]].
+Normal strings contain at most three normal attacks, with a fresh press per attack. Continuation requires a confirmed hit, not whiff/block/invulnerability. Confirmed hand and leg attacks can continue the string; LRL/RLR have distinct third-strike trajectories. Side and order select the bounded variants; crouch/air use their existing donors. Numeric combat fields remain donor values: visual variation does not secretly increase damage, hitboxes or range. “Body hook” and “uppercut” describe trajectories, not separate jaw/abdomen damage systems. The user's four-limb request explicitly authorized the exception to the older nine-action limit. Detailed combat rules belong to [[GDD/02-Combat-System]] and [[GDD/03-Skills-Framework]].
 
 ## Harpoons, stock and ropes
 
 - Choko owns **7**, Skea **2**. This replaces the old three-charge timer regeneration. The invariant is `available + active/recovering + deployed = capacity`; ownership tokens prevent duplicate refunds.
 - Enemy and parkour are explicit intents. A hit requires swept contact after windup, not immediate attraction from a preview marker. The accepted foundation includes a 30-frame windup and bounded range; design values remain subject to playtest.
+- Holding jump/Space while attached reels a bounded distance; gravity, damping and limited steering constrain the swing. Near an anchor this can lift without walking; a shallow rope first pulls along the ground.
+- One physical anchor accepts one newly deployed rope per match; concurrent/duplicate attempts recover through the existing inventory path. Reusing a rope remains allowed.
 - Leaving a parkour hang leaves a match-owned rope usable by either fighter, including an opponent with no available stock. Reuse does not transfer the inventory owner or issue another token.
-- Round reset preserves deployed ropes and spent stock, while unfinished recoverable shots refund once. A new match clears the registry and restores capacity. This is the delivered inventory contract, not a future passive unique to Choko.
+- Round reset preserves deployed ropes and spent stock, while unfinished recoverable shots refund once. Rematch/new match clears the registry before fighter reset and restores capacity. The default is first to two wins, ordinarily two or three decisive rounds. This is the delivered inventory contract, not a future passive unique to Choko.
 - A miss enters visible rewind. Recovery progress survives interrupts; incapacitated states pause it. Another shot cannot bypass unfinished recovery. Ground/water appearance does not resolve combat damage.
 - After enemy pull, extraction occupies the hands but permits kicks. A committed kick refunds on its first active frame; ordinary extraction cannot refund early during kick startup. Interrupted startup is not successful extraction.
 - The decorative segmented rope is bounded and separate from authoritative endpoint, length, hit and inventory logic. It is not a full rigid-body rope, general obstacle wrapping, or a cross-platform lockstep guarantee.
@@ -62,13 +60,23 @@ Sources: [[Fix/2026-10-04-Harpoon-Inventory]], [[Fix/2026-10-04-Rope-Presentatio
 
 ## Choko stance and one active sword
 
-Santos confirmed **one active emerald shuka**, right hand by default, and visible transfer via V/R3. The free hand punches; legs remain kicks. Armed-hand normals use sword presentation without changing their donor combat fields. The golden crystal ultimate is a temporary sword variant, not a second permanent sword. The obsolete “eight spectral blades / 256” character-card description is superseded by the crystal-ultimate contract in [[GDD/03-Skills-Framework]].
+Choko begins each round with **one active sword carried on the back** and right-hand ownership. The first V/R3 (SHARED H/P) draws it; later uses transfer/reform it through dust. An armed-hand attack can also draw during startup. The free hand punches; legs remain kicks. Armed-hand normals use sword presentation without changing their donor combat fields. The golden crystal ultimate is a temporary sword variant, not a second permanent sword. The obsolete “eight spectral blades / 256” character-card description is superseded by the crystal-ultimate contract in [[GDD/03-Skills-Framework]].
 
-Transfer has a separate SWAP state: **24 frames, contact at 12**, explicitly PLACEHOLDER design values. Input interruption is handled before advancing the counter. Before contact, interruption preserves the old owner; after contact, the new owner remains. Feet and dash interrupt and execute; hand attacks, skills, grapples and repeated transfer requests during SWAP are discarded rather than queued. Start is restricted to grounded Choko IDLE/WALK with no busy hook. Pause, hitstop and time freeze do not advance it; round reset restores right ownership and presentation. Each attack snapshots its sword hand.
+Transfer has a separate SWAP state: **24 frames, contact at 12**, explicitly PLACEHOLDER design values. Input interruption is handled before advancing the counter. Before contact, interruption preserves the old owner; after contact, the new owner remains. Feet and dash interrupt and execute; hand attacks, skills, grapples and repeated transfer requests during SWAP are discarded rather than queued. Start is restricted to grounded Choko IDLE/WALK with no busy hook. Pause, hitstop and time freeze do not advance it; round reset restores right ownership and back carry. Each attack snapshots its sword hand.
+
+Active Skea ultimate normals have a single authoritative forward extension of about 1 m, with matching purple waves and a crossed-leg levitation/book-gesture pose. These presentation effects do not create extra hits; disabling FX does not alter damage. Round/KO cleanup ends active ultimate effects. See [[ADR-022-Combat-Control-And-Match-Resources]].
 
 The lower asymmetric ready stance and actual-hand weapon attachment replace the raised-arm stance and hidden capsule weapon. Both transfer directions and left/right legacy/ultimate presentation were examined. The mesh is a stylized procedural implementation using existing visual references, not a newly purchased/generated weapon GLB. Sampled centerline clearance against simplified body cores does **not** guarantee all blade surfaces avoid every skinned-mesh intersection.
 
 Sources: [[Fix/2026-10-04-Sword-Input-State]], [[Fix/2026-10-04-Choko-Sword-Presentation]], [[Fix/2026-10-04-Choko-Idle-Guard]], [[Characters/Choko]].
+
+## City exploration and style
+
+EXPLORE CITY launches the selected P1 hero in a bounded 64×64 m district with real collision, streets, ramps, roofs, bridge and four street anchors. A city camera records the physics view basis; optional guidance observes actual movement, look, jump and rope contact. City mode temporarily uses SOLO/free movement and restores the prior arena settings on exit. Restart clears local ropes, effects and guidance.
+
+Skills, ultimate, enemy harpoon and Printer are disabled only in this noncombat city mode and explained in the HUD. Ordinary strikes and sword presentation remain available without an opponent. Fight-site markers are candidates, not implemented city encounters. No story, save system, populated NPC district, portals or streaming world is delivered.
+
+The latest selected separate bazaar strips define architecture, palette and simplification; old panoramas are historical drafts. Modular facades, mansard roofs, clock dome, four market stalls and matte procedural materials form the current art pass. Final human style acceptance and M3 profiling remain pending. Sources: [[Fix/2026-10-04-City-Runtime]], [[Audit/2026-10-04-City-Style-Review]].
 
 ## Comfort, water and production decisions retained
 
@@ -76,7 +84,7 @@ Comfort defaults are Master/SFX/Music/shake **80/80/60/50%**, provisional rather
 
 The earlier slice fixed UI image sizing, added procedural toon-water presentation and bounded 3D splashes, reused drawn accents, introduced original synthesized water sounds and actual-mesh afterimages. This is not evidence that water density, the sound mix or final art polish is accepted on the target Mac. Asset rights remain tracked in the texture registry; no new paid generation was required for these motion/rope/sword changes.
 
-Game Development Studio CLI and callable Higgsfield generation tools were unavailable in the recorded implementation environment. Blender was available locally; Ableton was not connected. Plugin mentions are not evidence of a completed provider job. [[Art/2026-10-04-City-NPC-Development]] contains five citizen concepts, gadgets, prompts and a room brief: **preproduction only**, no delivered NPC models or populated runtime district.
+Provider/CLI availability in earlier implementation sessions is historical, not a current capability inventory. No new paid generation is claimed for the city pass. Plugin mentions are not evidence of a completed provider job; fresh sessions must check actual access. [[Art/2026-10-04-City-NPC-Development]] contains five citizen concepts, gadgets, prompts and a room brief: **preproduction only**, no delivered NPC models or populated runtime district.
 
 ## Recorded validation, not rerun in this reconciliation
 
@@ -87,11 +95,12 @@ Game Development Studio CLI and callable Higgsfield generation tools were unavai
 | Rope inventory, [[Audit/2026-10-04-Harpoon-Inventory-Ropes]] | smoke 164/19824; 30 scenarios/0; gates 57 GDS/0 | Technical GREEN with stated limits |
 | Rope targeted checks | movement 54/0, aim 21/0, harpoon 55/0, limb input 177/0, limb combat 2950/0, rope geometry 24732/0, recovery 284/0 | Final rope-stage logs, not fresh counts after later changes |
 | Rope native | `ACTUAL_INVENTORY_COMPLETE shots=11 failures=0` | Actual-input scenarios; Linux llvmpipe |
-| Sword, [[Audit/2026-10-04-Choko-Stance-Sword]] | smoke 164/19824; 32 scenarios/0; gates 59 GDS/0 | Latest recorded complete suite |
+| Sword, [[Audit/2026-10-04-Choko-Stance-Sword]] | smoke 164/19824; 32 scenarios/0; gates 59 GDS/0 | Earlier sword-stage suite |
+| Final city-style / combat integration, [[Audit/2026-10-04-City-Style-Review]] | 43 scenarios/0; smoke 164/19847; gates 70 GDS/0; geometry 1133/0, runtime 60/0, onboarding 52/0; native material 23/0, capture 18/0 | Latest recorded full implementation suite |
 | Sword targeted checks | state 797/0, presentation 228/0, idle 18114/0 | Technical GREEN, no open blockers in that scope |
 | Sword native / clearance | 45 snapshots/0; 40 sampled cases/0 simplified-core intersections | Actual-input captures plus a limited geometric probe |
 
-The sword runner contained 23 positive scenarios and nine deliberate negative controls. Negative rc=1 is success only for that named mutation, expected assertion and sentinel; runtime or SCRIPT ERROR is never waived generically. An rc=0 frame-cap exit without completion is not a pass. The narrow deliberately corrupt comfort-file test restores error printing immediately after asserting its expected parse rejection.
+The current full runner has 31 positive scenarios and 12 scoped negative controls. Historically, the sword runner contained 23 positive scenarios and nine deliberate negative controls. Negative rc=1 is success only for that named mutation, expected assertion and sentinel; runtime or SCRIPT ERROR is never waived generically. An rc=0 frame-cap exit without completion is not a pass. The narrow deliberately corrupt comfort-file test restores error printing immediately after asserting its expected parse rejection.
 
 Earlier failed native captures are not accepted evidence. Final rope and sword logs retained only the known unsupported-VSync warning. Reviewers read logs and native evidence independently; Godot was run serially by the coordinator. T4's GREEN is bounded technical acceptance, not blanket visual perfection or physical-device acceptance.
 
@@ -131,9 +140,11 @@ A focused check can be run after import, for example:
 
 Required sentinels are `SWORD_STATE_COMPLETE` or `HARPOON_AIM_COMPLETE`, failures=0, clean runtime output and exit 0. The complete authoritative scenario list and negative-control rules live in `tools/gates/playable_check.sh`.
 
-Recorded artifacts are under `/workspace/nooneisreal-env/{playable,contact-camera,comfort,free-limbs,rope-inventory,choko-sword}/`. In the final two directories, use `logs/check-playable-final.log`, `logs/gates-final.log` and `regression-final/`. Final native logs are `rope-inventory/logs/actual-inventory.log` and `choko-sword/logs/actual-sword-final.log`; the sword clearance probe log is `choko-sword/logs/sword-clearance2.log`.
+Latest final artifacts are under `/workspace/nooneisreal-env/city-style/`: `playable-final.log`, `regression-final/`, `gates-final.log`, `style-final.log`, `capture-final.log` and `captures/`. The city capture harness is committed as `tools/world/city_capture.gd`; its native material check `city_style_check.gd` requires a rendering display and intentionally rejects headless mode.
 
-Native captures used Xorg dummy display `:99`, `LIBGL_ALWAYS_SOFTWARE=1`, `--audio-driver Dummy`, `--rendering-method gl_compatibility`, and an 1152×648 window. Earlier comfort captures also covered 844×390 and 1024×768. These external capture helpers and images are workspace artifacts, not guaranteed to survive a fresh cloud environment. Do not claim to reproduce them from git alone: restore/rebuild the helper and display setup, then repeat actual input and inspect the resulting images. Core headless harnesses are committed under `tools/`.
+Earlier recorded artifacts are under `/workspace/nooneisreal-env/{playable,contact-camera,comfort,free-limbs,rope-inventory,choko-sword}/`. In the final two directories, use `logs/check-playable-final.log`, `logs/gates-final.log` and `regression-final/`. Final native logs are `rope-inventory/logs/actual-inventory.log` and `choko-sword/logs/actual-sword-final.log`; the sword clearance probe log is `choko-sword/logs/sword-clearance2.log`.
+
+Native captures used Xorg dummy display `:99`, `LIBGL_ALWAYS_SOFTWARE=1`, `--audio-driver Dummy`, `--rendering-method gl_compatibility`, and an 1152×648 window. Earlier comfort captures also covered 844×390 and 1024×768. Images, logs and the display setup are external workspace artifacts and may not survive a fresh environment. The current city harnesses are committed under `tools/world/`; recreate a working native display, regenerate captures and inspect them. Earlier ad hoc capture helpers may need restoration. Core headless harnesses are committed under `tools/`.
 
 ## Related
 
