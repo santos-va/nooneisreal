@@ -24,6 +24,12 @@ T2-звіти: [[2026-10-04-Rope-Traversal]], [[2026-10-04-Dodge-Stamina]], [[20
 
 Native `/tmp/nir-traversal-shoulder.log`, `/tmp/nir-living-combat-final.log`, `/tmp/nir-npc-capture.log` завершилися без ERROR, лише непідтримуваний VSync llvmpipe. T1 переглянув фактичні ліхтар/cue, low HP/stamina/CD, dodge Choko/Skea, NPC у районі. Кадри `/workspace/scratch/nir-living-review/`; це не FPS-приймання.
 
+## Інтеграція зі свіжим main
+
+Після push `f17cba3` відкрито [PR #172](https://github.com/santos-va/nooneisreal/pull/172). Main просунувся до `32d7d32` (cleanup #171), що спричинило чотири текстові конфлікти. Збережено короткий state/історію cleanup, актуальну назву Cronshift, draw/reform та reel-пояснення; нові latch/відчеплення/stamina/компактний HUD збережено. README й чинні довідки узгоджено з новою гілкою, а не повернуто старі інструкції.
+
+Фінальні `/tmp/nir-merged-check.log` — **make check-playable: smoke164/19847, 50/0**; `/tmp/nir-merged-gates.log` — **БАТАРЕЯ ЗЕЛЕНА, 80GDS/0**. Незалежний T4 звірив source з обома батьками: gameplay не втрачено, `_key_clash`/`_pad_clash` не послаблено. Це merge main у робочу гілку, не merge PR у main.
+
 ## Відкрито
 
 Santos Soundtracks не в доступному дереві, у користувача запитано повний шлях. Всі числа нової рухової презентації — PLACEHOLDER до приймання. Фізичного геймпада і цільового Mac у цьому середовищі немає. Результати виконання додаються після фактичних перевірок.

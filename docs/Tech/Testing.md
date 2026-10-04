@@ -1,21 +1,50 @@
-# Тестування без GPU
+# Перевірка гри
 
-Хмарний агент не має GPU, тому все, що вирішує «готово», має працювати headless.
+Headless-тести перевіряють логіку й життєвий цикл. Пікселі, звук, комфорт керування
+та продуктивність потребують окремих перевірок із рендерером і на цільовому пристрої.
+Використовуйте Godot **4.7-stable** через `GODOT_BIN`; запускайте його послідовно на одному checkout.
 
-| рівень | команда | що ловить |
+| рівень | команда | що перевіряє |
 |---|---|---|
-| Парс | `godot --headless --path game --check-only --script res://…` (гейт `gd_check_all.sh`) | синтаксис, типи, сигнатури; фільтр autoload-ідентифікаторів |
-| Імпорт | `godot --headless --path game --import` | биті ресурси, `.import` |
-| Smoke бою | `godot --headless --path game --fixed-fps 60 -- --smoke` (`scripts/core/SmokeTest.gd`; `make check` вимагає рядок `[smoke] ALL OK`) | 81 перевірка (0.3-6 + wall splat + дизайн-числа з GDD 02; лише дуель-реплей і splat — `-- --smoke --smoke-only=duel`); з них 36 площини (2026-10-03): кіти обох бійців, шина SFX і варіанти, читабельність ударів (крива, крок 12 fps), профілі SOLO/SHARED справжніми `InputEventKey`, стадія `river` двічі (не провалюються, детермінізм на кадрі 600, вал/STUMBLE/блок) |
-| Рендер | `xvfb-run godot --path game --rendering-driver opengl3 --rendering-method gl_compatibility -- --screenshot=DIR` | компіляція шейдерів у Compatibility, PNG-кадри |
-| Докі | `make gates` | wikilinks, реєстр, парність ролей |
+| Імпорт, парсинг, smoke | `make check` | ресурси, GDScript, бойова симуляція; потрібні rc=0, `[smoke] ALL OK` та відсутність runtime ERROR |
+| Повна регресія | `make check-playable` | включає `make check`; керування, комбінації, камера, мотузки, матч, UI, геометрія/рух/навчання міста та негативні контролі |
+| Документація й контракти | `make gates` | wikilinks, реєстр ассетів, парність ролей, якорі state, R8 у планах і парсинг GDScript |
+| Міські матеріали | native-команда нижче | реальні пікселі: масштаб матеріалу, вплив ambient, згасання далеких деталей і палітра |
+| Кадри міста | native-команда нижче | геометрія та production-камера; PNG і metadata для ручного огляду |
 
-Smoke-тест керує P1 через `InputRouter.v_*` — той самий шлях, що в CPU і гравця. Додаючи механіку,
-додай стадію в `SmokeTest._physics_process`.
+Строгий runner — `tools/gates/playable_check.sh`. Зберігайте raw-журнали, наприклад:
 
-## Далі
+```bash
+PLAYABLE_LOG_DIR=/tmp/nooneisreal-regression make check-playable
+make gates
+```
 
-gdUnit4 для юніт-тестів `MoveData`/`InputRouter`; CI у `.github/workflows/ci.yml` (Godot з GitHub Releases).
+Негативний сценарій може навмисно завершитися ненульовим кодом: runner перевіряє
+очікуваний тип збою. Сам rc=0 без completion-маркера не означає успіх. Кількість
+сценаріїв беріть із журналу поточного запуску, а не зі старої таблиці. CI вже виконує
+`make check-playable` у Godot job; конфігурація — `.github/workflows/ci.yml`.
+
+## Native-перевірка
+
+Після імпорту, у терміналі з доступним віконним дисплеєм:
+
+```bash
+"$GODOT_BIN" --path game --audio-driver Dummy --rendering-method gl_compatibility --fixed-fps 60 --script ../tools/world/city_style_check.gd
+"$GODOT_BIN" --path game --audio-driver Dummy --rendering-method gl_compatibility --fixed-fps 60 --script ../tools/world/city_capture.gd -- --output=/tmp/nooneisreal-city-captures
+```
+
+На Linux без апаратного GPU потрібен робочий X-дисплей і Mesa llvmpipe (наприклад,
+`DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1` у підготовленому середовищі). Це справжній
+програмний рендер; він не вимірює FPS на Mac. `city_style_check.gd` навмисно відмовляє
+в headless, де немає потрібних пікселів. Кадри оглядайте на пропущені поверхні,
+перекриття маршрутів, читабельність героя й відповідність чинним арт-референсам.
+
+## Межі доказів
+
+Позитивний технічний прогін не підтверджує остаточні анімації, баланс, слухове
+приймання, фізичний геймпад або M3. Поточні відкриті критерії —
+[[Handoff/2026-10-04-Remaining-Work]]. Локальні журнали поза репозиторієм не є
+довічним артефактом: у новому середовищі перевірки потрібно відтворити.
 
 ## Related
-- [[Build-and-Run]] · [[Architecture]] · [[recurring_class_register]]
+- [[Build-and-Run]] · [[Architecture]] · [[recurring_class_register]] · [[Handoff/2026-10-04-Remaining-Work]]

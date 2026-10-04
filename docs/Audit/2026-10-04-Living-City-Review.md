@@ -49,5 +49,13 @@
 - Replay перевіряє fixed-step стан. Повного запису/відтворення людської камери й усіх parkour ланцюжків аудит не підтверджує.
 - Фізичний геймпад, Mac/Godot 4.7, комфорт пальців, фінальний художній вигляд і продуктивність не виміряні. Це межі технічного GREEN, не нові approval blockers.
 
+## Інтеграція cleanup #171 у PR #172
+
+**GREEN — перевірка злитого дерева** `HEAD f17cba3` + `origin/main 32d7d32` перед merge-комітом. Власноруч виконано `git diff HEAD` і `git diff origin/main` для конфліктних файлів; `git ls-files -u` порожній, `git diff --check` чистий. Нові gameplay-файли пакета залишилися ідентичними перевіреному HEAD. Зміни source від HEAD — лише назва меню, уточнені тексти ComfortPanel та відповідна smoke-перевірка help.
+
+Збережено обидві зміни довідки: tap latch/transfer, Z/B detach, jump reel — із цього пакета; близький підхід під опору та draw/reform меча — із cleanup. `_key_clash` та `_pad_clash` не послаблені. CityHud і всі нові NPC/music/dodge/rope mechanics збережені. У скороченому state попередній cleanup відділено як базу до PR #172, історію винесено в окремий файл, нові NPC/save позначені поточним пакетом.
+
+Незалежно прочитано `/tmp/nir-merged-check.log`: smoke **164 / 19847 кадрів**, `SMOKE ЗЕЛЕНИЙ`, `PLAYABLE CHECK: 50 scenarios, 0 failures`. Окремо прочитано `/tmp/nir-merged-regression/{music,traversal,dodge-stamina}.log`: music **0 failures**, traversal **29/0**, dodge **198/0**, чистий вихід. Гейти після цієї останньої doc-нотатки запускає координатор; цей розділ не стверджує їх повторний запуск наперед.
+
 ## Related
 - [[2026-10-04-Living-City-Traversal]] · [[2026-10-04-Living-Npc-Slice]] · [[2026-10-04-Santos-Soundtracks]] · [[2026-10-04-Dodge-Stamina]] · [[constitution]]

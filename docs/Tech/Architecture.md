@@ -1,49 +1,67 @@
 # Архітектура Godot-проєкту
 
-`game/` — Godot 4.7, GDScript, Forward+ (desktop) / Mobile (мобільні), Jolt, 60 Гц.
+`game/` — Godot 4.7, GDScript, Jolt, фізика 60 Гц. Проєкт задає Forward+ для desktop
+і Mobile для мобільного профілю; автоматизовані native-кадри також перевіряють
+Compatibility. Підтримка рендерера в конфігурації не є прийманням цільового пристрою.
 
-```
-game/
-  project.godot            автолоади, інпут-мапа, фізика, рендер
-  scenes/main/Main.tscn    бут → меню або --smoke / --screenshot
-  scenes/ui/MainMenu.tscn  меню (код у scripts/ui/MainMenu.gd)
-  scenes/arena/Arena.tscn  арена: env, сонце, підлога, стіни, фон, якорі-ліхтарі, камера, HUD, MatchFlow
-  scenes/fighter/Fighter.tscn  CharacterBody3D + Rig(RigAnimator) + Hurtbox + HitboxDebug + GrappleHook
-  scripts/core/            GameState · InputRouter · Sfx · Main · SmokeTest · Screenshot
-  scripts/fighter/         Fighter (стейт-машина) · RigAnimator (процедурний риг) · Ragdoll · CpuBrain · MoveData · CharacterData
-  scripts/grapple/         GrappleHook
-  scripts/arena/           Arena · FightCamera · Backdrop · MatchFlow
-  scripts/ui/              Hud · MainMenu
-  scripts/fx/              HitSpark · Fx · Afterimage · SmearShards · SmokeCloud · WeakMarks
-  scripts/skills/          SkillHit · KunaiRain · TimeStopFx · RecordMarker · SwordStormFx · GrimoireFx
-  shaders/                 toon · outline · backdrop · backdrop_fallback
-  data/characters/*.tres   Choko, Skea (MoveData як саб-ресурси)
-  assets/                  audio/sfx (є) · backgrounds, characters/cards (fetch_assets.sh)
-```
+## Сцени й модулі
 
-## Потік кадру (60 Гц)
+| шлях | поточна відповідальність |
+|---|---|
+| `scenes/main/Main.tscn`, `scripts/core/Main.gd` | завантажити налаштування/launch flags, відкрити меню або smoke/screenshot runner |
+| `scenes/ui/MainMenu.tscn`, `scripts/ui/` | меню, HUD, комфорт/пауза, вибір режиму та міського прототипу |
+| `scenes/arena/Arena.tscn`, `scripts/arena/` | оточення, камера бою, HUD, MatchFlow, раунди до заданої кількості перемог |
+| `scenes/fighter/Fighter.tscn`, `scripts/fighter/Fighter.gd` | CharacterBody3D, наміри, стейт-машина, бойова геометрія та життєвий цикл |
+| `scripts/fighter/SkeletalRig.gd` | GLB героя, поза з прихованого UAL-скелета, ретаргетинг; процедурні доповнення для кінцівок, меча й контакту стоп |
+| `scripts/fighter/RigAnimator.gd` | процедурна поза/капсульна діагностика й дані презентації; працює також під видимим скелетним героєм |
+| `scripts/grapple/` | політ/контакт GrappleHook, обмежене підтягування/маятник, MatchRopes із запасом і власністю мотузок, RopeVisual |
+| `scripts/skills/`, `scripts/fx/` | навички та ефекти; SkeaWave відображає розширення одного звичайного удару під ультою, без другої шкоди |
+| `scenes/world/CityWorld.tscn`, `scripts/world/` | окремий режим дослідження: район, герой, камера, HUD і навчання |
+| `data/characters/*.tres` | CharacterData/MoveData, модель, бойові параметри й кліпи; налаштування PLACEHOLDER лишаються прототипними |
+| `assets/`, `shaders/` | зареєстровані моделі/текстури/анімації/аудіо та матеріали; місто має ізольований `city_surface.gdshader` |
 
-`InputRouter` (пріоритет −100) фіксує just_pressed у буфер 6 кадрів → кожен `Fighter` читає
-наміри (`buffered()` споживає натискання лише коли може діяти) → стейт-машина → `move_and_slide`
-→ `_post_move` (межі арени, push-box) → `RigAnimator.tick` (пози + спринг-флінч). Хітбокс —
-`intersect_shape` на активних кадрах; `receive_hit` на жертві; `hit_landed` → камера, HitSpark.
+Скелетні герої вже ввімкнені за замовчуванням (`GameState.skeletal_rig`);
+`-- --capsules` — діагностична капсульна подача. Це не обіцянка фінальних авторських
+анімацій чи завершеного симулятора анатомії. Фізика презентації не визначає влучання.
+
+## Потік симуляції
+
+InputRouter має physics priority −100 і буфер 6 кадрів. Fighter читає наміри та
+записаний physics-базис камери, виконує стейт-машину й `move_and_slide`; далі працюють
+підтримка поверхні/межі й презентація. Людський рух перетворюється в DuelFrame на
+кожному physics tick за поточним view packet: утримана клавіша лишається відносною
+до екрана. UI-блокування та reset очищають ввід і вимагають повернення утриманих дій
+у нейтраль. Геометрію влучань Fighter перевіряє на активних кадрах атаки.
+
+MatchRopes володіє жетонами гарпунів у межах матчу. Зайнята точка не приймає другий
+гачок; залишені мотузки переживають раунд. Новий матч/рематч очищає їх, тоді як
+раунд перезапускає бійців. Типовий матч — до двох перемог, максимум три раунди.
+
+## Окремий міський режим
+
+CityWorld створює CityDistrict і CityFighter без прихованого суперника. CityLayout
+задає маршрутну геометрію кварталу 64×64 м; CityArchitecture і CityMarket додають
+фасади, дахи, вежу та ятки з колізіями. CityMaterials задає матові матеріали у
+світових метрах. CityCamera передає physics-базис, CityOnboarding спостерігає
+фактичні дії, CityHud пояснює рух і обмеження.
+
+CityFighter успадковує бойовий контролер, змінюючи підтримку реальних поверхонь і
+межі пересування; навички, ульта, ворожий гарпун та Printer тут вимкнені. Вихід
+відновлює налаштування арени, restart очищає локальні мотузки/ввід. Позначені місця
+майбутніх боїв ще не запускають сутички. CityNpcDirector додає 12 постійних мешканців; NpcPopulation зберігає seed, розклад і факти, а близькі CityNpcActor завантажуються за відстанню. NpcAppearance відтворює одяг/тіло за seed, NpcDialogue показує збережені факти. Це не повний стримінг світу, кампанія чи портали; NpcDecisionGateway поки не має підключеної локальної моделі.
 
 ## Автолоади
 
-- `GameState` — конфіг матчу (персонажі, стадія, CPU, тренування), реєстр стадій, роутинг сцен.
-- `InputRouter` — дії `p{1,2}_*`, буфер, віртуальний ввід для CPU і тестів.
-- `Sfx` — пул плеєрів, кеш, без-файлу = тиша.
+- `Music` — меню/бойова музика за трьома слотами; відсутні треки мовчать, ульта приглушує фон. Джерельні біти ще не надані.
 
-## Дані
+- `GameState` — конфігурація, стадії та перехід між сценами.
+- `InputRouter` — SOLO/SHARED, геймпади, буфер, UI-ізоляція, virtual/replay input.
+- `Sfx` — звукові події та плеєри.
+- `UltMusic` — музична презентація ультимейту.
+- `ComfortSettings` — збережені налаштування комфорту.
 
-`CharacterData` (`.tres`): статі, кольори плейсхолдера, мувсет (8 `MoveData`), гарпун, пасивка.
-Редагується в інспекторі Godot або текстом. Числа `PLACEHOLDER` — див. [[02-Combat-System]].
-
-## Що замінити у фазі 2
-
-`RigAnimator` (капсули) → `Skeleton3D` з GLB + `AnimationTree`; `Ragdoll` → `PhysicalBoneSimulator3D`
-на тому ж скелеті ([[Active-Ragdoll]]). Інтерфейс для `Fighter` лишається: `tick`, `flinch`,
-`flash`, `part_snapshot`.
+Докази працездатності й обмеження перевірок — [[Testing]]; поточні незавершені
+напрями — [[Handoff/2026-10-04-Remaining-Work]].
 
 ## Related
-- [[Build-and-Run]] · [[Testing]] · [[02-Combat-System]] · [[04-Grapple-System]] · [[Cel-Shading]]
+- [[Build-and-Run]] · [[Testing]] · [[02-Combat-System]] · [[04-Grapple-System]] · [[Cel-Shading]] · [[Handoff/2026-10-04-Remaining-Work]]

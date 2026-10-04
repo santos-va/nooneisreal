@@ -424,7 +424,7 @@ func _check_mode_row() -> bool:
 	# The expanded help must expose every new limb and its current physical binding.
 	for action: String in ["left_hand", "right_hand", "left_leg", "right_leg"]:
 		reachable = reachable and (action.capitalize() + ": " + InputRouter.binding_label(1, action, false)) in full_controls
-	reachable = reachable and "Comma (<)" in full_controls and "Parkour is latched: tap to attach" in full_controls and "Detach: Z / B, or dodge" in full_controls
+	reachable = reachable and "Comma (<)" in full_controls and "Parkour is latched: tap to attach" in full_controls and "Detach: Z / B, or dodge" in full_controls and "Hold jump to reel in" in full_controls
 	menu._comfort.close_panel()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(ComfortSettings.storage_path))
 	ComfortSettings.storage_path = comfort_old_path
@@ -446,7 +446,7 @@ func _check_mode_row() -> bool:
 		_fail("MODE row, second press (2.5D → 3D): free_move %s, saved %s, X on crouch %s, row '%s', hint '%s'" % on)
 		return false
 	if not hint_ok:
-		_fail("menu hint by focus: VERSUS '%s', P1 row '%s', FIGHT '%s', TRAINING '%s' — want two-player, unchanged, solo, solo" % focus_hint)
+		_fail("menu hint by focus: VERSUS '%s', P1 row '%s', FIGHT '%s', TRAINING '%s' — want two-player, unchanged, solo, solo; complete controls reachable=%s" % (focus_hint + [reachable]))
 		return false
 	_ok("MODE row: 3D → 2.5D → 3D, saved to [gameplay] free_move each time, keys re-bound (X crouch only in 3D), hint follows; settings file restored; bottom hint follows the focus (VERSUS → two players, FIGHT/TRAINING → solo)")
 	return true

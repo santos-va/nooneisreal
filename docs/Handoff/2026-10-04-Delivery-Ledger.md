@@ -1,6 +1,6 @@
 # Delivery ledger — merged work and its limits
 
-Snapshot: 2026-10-04, main `a401e6c`. Merge states below were checked with GitHub; source files and linked audits were inspected. Test figures are recorded results from the implementation sessions, not new gameplay runs performed for this documentation-only reconciliation.
+Snapshot: 2026-10-04, main `2c50938`. Merge states below were checked with GitHub; source files and linked audits were inspected. Test figures are recorded results from the implementation sessions, not new gameplay runs performed for this documentation-only reconciliation.
 
 ## Merged delivery
 
@@ -12,9 +12,12 @@ Snapshot: 2026-10-04, main `a401e6c`. Merge states below were checked with GitHu
 | [#167](https://github.com/santos-va/nooneisreal/pull/167) / 15:34:20 | Free human movement, J/K/M/comma limb inputs, finite confirmed-hit combinations, distance-driven walk/jog/crouch; Q/E harpoons, actual contact, bounded length and full-body windup; 7/2 finite charges, persistent match ropes, miss rewind/extraction; manual camera aim and target cues | [[Plans/2026-10-04-Free-Movement-Limbs]], [[Plans/2026-10-04-Harpoon-Inventory-Ropes]], corresponding [[Audit/2026-10-04-Free-Movement-Limbs]] and [[Audit/2026-10-04-Harpoon-Inventory-Ropes]]. 30 playable scenarios passed before sword expansion. Not multi-enemy, unlimited animation generation or full terrain rope physics. |
 | [#168](https://github.com/santos-va/nooneisreal/pull/168) / 15:34:26 | Choko guard/gaze correction and unkeyed spine-drift fix; one visible sword, V/R3 transfer, armed-hand sword/free-hand fist, mirrored poses, gold ultimate and recovery carry | [[Plans/2026-10-04-Choko-Stance-Sword]], [[Audit/2026-10-04-Choko-Stance-Sword]]. Final recorded32 playable scenarios,164 smoke checks,797 sword-state,228 presentation,18114 idle checks and45 native captures passed. Timings/geometry remain provisional; no fingers or blade-shaped hitbox added. |
 
+| [#169](https://github.com/santos-va/nooneisreal/pull/169) / merge `65435de` | English handoff and historical context reconciliation | Documentation only; superseded snapshot details are updated by this cleanup. |
+| [#170](https://github.com/santos-va/nooneisreal/pull/170) / 18:37:42 | Consolidated combat-control fixes, first explorable Cronshift district and style pass matching the latest separate strips | [[Plans/2026-10-04-Combat-Control]], [[Plans/2026-10-04-City-First]], [[Plans/2026-10-04-City-Style-Match]]. Recorded final suite: 43 scenarios/0 failures, smoke 164/19847 frames; gates 70 GDS/0 parse failures; native material checks 23/0 and 18 captures. Local technical acceptance does not close M3, final art or player-feel acceptance. |
+
 #167 and #168 were originally stacked branches. GitHub now records both with base `main` and merged state; no stacked-merge action remains for these two PRs.
 
-GitHub also reports successful CI for merged main `a401e6c`: [run37213512143](https://github.com/santos-va/nooneisreal/actions/runs/37213512143). This is CI evidence; it does not supply a Mac playtest.
+GitHub also reports successful CI for merged main `2c50938`: [run37213512143](https://github.com/santos-va/nooneisreal/actions/runs/37213512143). This is CI evidence; it does not supply a Mac playtest.
 
 ## Earlier foundation already present
 
@@ -29,7 +32,7 @@ Use [[Plans/2026-10-03-Living-Combat]], [[Plans/2026-10-03-Arena-Depth-Life]], [
 - Afterimage hero scaling, free movement, Choko guard and sword hand transfer have concrete implementations; do not restart them from scratch.
 - Water recordings were absent, but eight original procedural water WAVs were created and registered. Do not call them recorded water or Sonniss samples: [[Fix/2026-10-04-Playable-Audio]], [[Art/Procedural-Water-Audio]].
 - A voice recording/naming guide already exists: [[Tech/Character-Voice-Recording]]. Character takes, runtime voice integration and listening acceptance are still pending.
-- City/five-NPC work exists as preproduction: [[Art/2026-10-04-City-NPC-Development]]. No corresponding five finished NPC models or city scene were delivered by that track.
+- Five-NPC work remains preproduction: [[Art/2026-10-04-City-NPC-Development]]. That track did not deliver five finished NPC models. The explorable district and its procedural architecture were delivered separately in #170; do not label all city work preproduction.
 - Historical credit values are dated observations. Current balance, provider availability and access from a new session require fresh checks.
 
 ## Related
