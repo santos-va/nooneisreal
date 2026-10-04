@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="CombatMotionProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighter/CombatMotionProfile.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+elbow_finisher = true
+airborne_knee = true

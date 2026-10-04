@@ -115,6 +115,57 @@ func run() -> void:
 		wave_script.spawn(f, f.current_move)
 	await capture("09_skea_wave", "Skea | physical strike with purple extension")
 	grimoire.cancel_owner(f)
+	f.free()
+	for hero: String in ["skea", "choko"]:
+		_make_fighter(hero)
+		for technique: String in ["elbow", "air", "roundhouse"]:
+			var action: String = "right_hand" if technique == "elbow" else "right_leg"
+			var step: int = 2 if technique == "elbow" else (1 if technique == "roundhouse" else 0)
+			f.current_move = limbs.resolve(f.data, action, step, "left_hand", false, technique == "air", "", "right_hand>left_hand>right_hand" if technique == "elbow" else "")
+			f.state = actor.State.ATTACK
+			f.position.y = 0.65 if technique == "air" else 0.0
+			var phases: Dictionary = {
+				"chamber": int(f.current_move.startup / 2),
+				"contact": f.current_move.startup,
+				"recovery": f.current_move.startup + f.current_move.active + int(f.current_move.recovery / 2),
+			}
+			for phase_name: String in phases:
+				f.move_frame = phases[phase_name]
+				f.animator._step_frame = -1
+				await capture("identity_%s_%s_%s" % [hero, technique, phase_name], "%s | %s | %s" % [hero, technique, phase_name])
+				if technique == "elbow" and phase_name == "contact":
+					camera.position = Vector3(0.3, 1.8, 5.5)
+					camera.look_at(Vector3(0, 1.1, 0))
+					await capture("identity_%s_elbow_contact_side" % hero, "%s | elbow route | side contact" % hero)
+					camera.position = Vector3(3.3, 2.2, 4.8)
+					camera.look_at(Vector3(0, 1.0, 0))
+		f.free()
+	# A real collision floor lets dodge captures sample the same physical hop as gameplay.
+	var floor_body := StaticBody3D.new()
+	var floor_shape := CollisionShape3D.new()
+	var floor_box := BoxShape3D.new()
+	floor_box.size = Vector3(20, 0.2, 20)
+	floor_shape.shape = floor_box
+	floor_body.position.y = -0.1
+	floor_body.add_child(floor_shape)
+	world.add_child(floor_body)
+	for hero: String in ["choko", "skea"]:
+		for direction_name: String in ["forward", "back", "side"]:
+			_make_fighter(hero)
+			f.set_control(true)
+			await physics_frame
+			await process_frame
+			f._ground_physics(1.0 / 60.0, 0.0)
+			f._wish = {"forward": Vector3.RIGHT, "back": Vector3.LEFT, "side": Vector3.BACK}[direction_name]
+			f._start_dodge(0.0)
+			for frame in int(f.dodge_profile().frames / 2):
+				f._tick_dash(1.0 / 60.0)
+				f._post_move()
+				f.animator.tick(1.0 / 60.0, f, false)
+				f.skeletal._physics_process(1.0 / 60.0)
+				f.skeletal._on_mannequin_updated()
+			await capture("dodge_%s_%s" % [hero, direction_name], "%s | short %s dodge | stamina %.0f" % [hero, direction_name, f.dodge_stamina])
+			f.free()
 	world.queue_free()
 	await process_frame
 	root.get_node("UltMusic").queue_free()

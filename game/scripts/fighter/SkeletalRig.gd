@@ -291,7 +291,7 @@ func state_clip(f: Fighter) -> String:
 		Fighter.State.JUMP, Fighter.State.GRAPPLE:
 			return STATE_CLIPS["jump"]
 		Fighter.State.DASH:
-			return f.data.dash_clip
+			return f.data.idle_clip if f.dodging else f.data.dash_clip
 		Fighter.State.BLOCK, Fighter.State.BLOCKSTUN:
 			return STATE_CLIPS["crouch"] if f.crouching else STATE_CLIPS["block"]
 		Fighter.State.HITSTUN, Fighter.State.STUMBLE:
@@ -385,7 +385,7 @@ func _physics_process(delta: float) -> void:
 func uses_procedural_motion() -> bool:
 	if ragdoll != null:
 		return false
-	return RigAnimator.levitating(_fighter) or _fighter.state == Fighter.State.GRAPPLE or (_fighter.state == Fighter.State.ATTACK and MotionFallback.supports(_fighter.data.id, _fighter.current_move))
+	return _fighter.dodging or RigAnimator.levitating(_fighter) or _fighter.state == Fighter.State.GRAPPLE or (_fighter.state == Fighter.State.ATTACK and MotionFallback.supports(_fighter.data.id, _fighter.current_move))
 
 
 func _on_mannequin_updated() -> void:

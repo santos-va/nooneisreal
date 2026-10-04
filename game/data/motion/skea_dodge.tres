@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="DodgeProfile" load_steps=2 format=3]
+[ext_resource type="Script" path="res://scripts/fighter/DodgeProfile.gd" id="1"]
+[resource]
+script = ExtResource("1")
+stamina_cost = 10.0
+frames = 20
+speed = 8.4
+hop_velocity = 4.0
+compact = false

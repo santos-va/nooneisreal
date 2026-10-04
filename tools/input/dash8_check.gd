@@ -124,21 +124,20 @@ func _pad_dirs() -> void:
 	print("── геймпад ──")
 	for p in [1, 2]:
 		var dev: int = p - 1
-		var btn := -1
-		for ev in InputMap.action_get_events(ir.action_name(p, "dash")):
-			if ev is InputEventJoypadButton:
-				btn = (ev as InputEventJoypadButton).button_index
+		var btn := JOY_BUTTON_X
 		var row := []
 		for name in DIRS:
 			var d: Vector2i = DIRS[name]
 			var v := Vector2(d).normalized()
 			_axis(dev, JOY_AXIS_LEFT_X, v.x)
 			_axis(dev, JOY_AXIS_LEFT_Y, -v.y)   # стік: −1 = вгору
+			_button(dev, JOY_BUTTON_Y, true)
 			_button(dev, btn, true)
 			var mv: Vector2 = ir.move(p)
 			var got := Vector2i(int(signf(snappedf(mv.x, 0.01))), int(signf(snappedf(mv.y, 0.01))))
 			var ok: bool = got == d and ir.held(p, "dash") and not ir.held(p, "crouch")
 			_button(dev, btn, false)
+			_button(dev, JOY_BUTTON_Y, false)
 			_axis(dev, JOY_AXIS_LEFT_X, 0.0)
 			_axis(dev, JOY_AXIS_LEFT_Y, 0.0)
 			if not ok:

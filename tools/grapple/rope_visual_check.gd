@@ -43,6 +43,26 @@ func _initialize() -> void:
 		print("ROPE_VISUAL_TRACE wet=", wet, " entries=", rope.water_entries, " points=", rope.points.size())
 		if wet:
 			check(rope.water_entries > 0, "miss enters water")
+	# Independent failure classes: static gravity bow, moving-end lag and stale
+	# velocity after slack is caught. A loaded cable must satisfy all three.
+	for mode: String in ["static", "moving", "catch"]:
+		var start := Vector3(0, 8, 0)
+		var end := Vector3(1, 2, 0)
+		rope.reset_rope(start, end)
+		if mode == "catch":
+			for frame: int in 90:
+				rope.update_rope(start, end, 10.0, 1.0 / 60.0, null, true)
+		for frame: int in 120:
+			if mode == "moving":
+				end = Vector3(sin(frame * 0.1) * 2.0, 2.0, cos(frame * 0.1))
+			rope.update_rope(start, end, start.distance_to(end), 1.0 / 60.0)
+			var arc: float = 0.0
+			for i: int in Script.SEGMENTS + 1:
+				check(rope.points[i].distance_to(start.lerp(end, float(i) / Script.SEGMENTS)) < 0.0001, mode + " loaded span has no transverse bow")
+				check(rope.previous[i].is_equal_approx(rope.points[i]), mode + " load clears residual waves")
+				if i > 0:
+					arc += rope.points[i - 1].distance_to(rope.points[i])
+			check(absf(arc - start.distance_to(end)) < 0.0001, mode + " loaded cable cannot stretch")
 	var snapshot: PackedVector3Array = rope.points.duplicate()
 	rope.update_rope(Vector3.ZERO, Vector3.ONE, 2.0, 0.0)
 	check(rope.points == snapshot, "zero delta holds complete drawing")

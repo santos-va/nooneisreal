@@ -1,5 +1,7 @@
 # Remaining work — explicit recovery queue
 
+**Current branch update — PR #172:** the working branch adds aimed/latched rope traversal, separate stamina dodges, revised controls, and a persistent 12-resident city slice with seeded appearance, factual dialogue and NPC saves. The merged-baseline descriptions below predate this branch; full campaign saves, authored story NPCs and a local LLM remain unfinished. Real Santos soundtrack files are still unavailable. See [[2026-10-04-Living-City-Session]] and [[2026-10-04-Living-City-Traversal]].
+
 Snapshot: **2026-10-04**, merged main `2c50938` (#170). This is a recovery queue, not a current assignment or purchase authorization. Santos requested cleanup after the consolidated delivery; further gameplay work awaits the next instruction.
 
 ## Product priority — city first

@@ -9,7 +9,9 @@ signal changed(charges: int, cooldown_left: float, max_charges: int)
 
 enum Target { NONE, ANCHOR, ENEMY }
 
-enum Phase { IDLE, WINDUP, FLIGHT, HANG, MISS_REWIND, ENEMY_EXTRACT }
+enum Phase { IDLE, WINDUP, FLIGHT, HANG, MISS_REWIND, ENEMY_EXTRACT, ROPE_REACH }
+var _pending_rope: int = 0
+var chain_throw: bool = false
 const WINDUP_FRAMES := 30
 @export var projectile_speed: float = 36.0 # PLACEHOLDER pending playtest.
 var phase: Phase = Phase.IDLE
@@ -165,16 +167,91 @@ func busy() -> bool:
 	return phase != Phase.IDLE
 
 
-func reusable_rope() -> int:
+## Current/predicted hand path can catch a nearby deployed span before spending.
+## The existing 2 m pickup radius is unchanged; prediction is one physics step.
+func rope_grab_candidate(preferred_token: int = 0) -> Dictionary:
 	if registry == null:
-		return 0
-	var existing := registry.nearby(fighter.global_position + HAND)
+		return {}
+	var hand := fighter.global_position + HAND
+	var predicted := hand + fighter.velocity * get_physics_process_delta_time()
+	var best: Dictionary = {}
+	var best_distance := INF
+	for key: int in registry.records:
+		var record: Dictionary = registry.records[key]
+		if not record.deployed or key == _deployed_token or (preferred_token != 0 and key != preferred_token):
+			continue
+		if hand.distance_to(record.anchor) > minf(record.length, range_m) + 0.001 or not line_clear(hand, record.anchor):
+			continue
+		var nearest := Geometry3D.get_closest_point_to_segment(hand, record.anchor, record.tail)
+		var swept := Geometry3D.get_closest_points_between_segments(hand, predicted, record.anchor, record.tail)
+		var distance := minf(hand.distance_to(nearest), swept[0].distance_to(swept[1]))
+		if distance <= 2.0 and (distance < best_distance or (is_equal_approx(distance, best_distance) and key < int(best.get("token", key)))):
+			best_distance = distance
+			best = {"token": key, "point": nearest, "reachable": true}
+	return best
+
+
+func reusable_rope() -> int:
+	return int(rope_grab_candidate().get("token", 0))
+
+
+func _attach_existing(existing: int) -> void:
+	if _deployed_token != 0:
+		registry.detach_user(_deployed_token, self)
+	var record: Dictionary = registry.records[existing]
+	_deployed_token = existing
+	registry.attach_user(existing, self)
+	anchor_point = record.anchor
+	rope_length = minf(record.length, (anchor_point - (fighter.global_position + HAND)).length())
+	_hang_start_length = rope_length
+	attached = true
+	phase = Phase.HANG
+	_frames = 0
+	if _tip != null:
+		_tip.visible = false
+
+
+## A deliberate second parkour press changes support without braking momentum.
+## Failed aim/stock validation keeps the current rope; the old device stays deployed.
+func retarget(recorded_aim: Dictionary = {}) -> bool:
+	if not attached or phase != Phase.HANG or fighter.control_locked:
+		return false
+	var existing := reusable_rope()
 	if existing != 0:
-		var record: Dictionary = registry.records[existing]
-		var hand := fighter.global_position + HAND
-		if hand.distance_to(record.anchor) <= minf(record.length, range_m) + 0.001 and line_clear(hand, record.anchor):
-			return existing
-	return 0
+		_attach_existing(existing)
+		return true
+	var packet := recorded_aim.duplicate(true)
+	if packet.is_empty():
+		var camera := get_viewport().get_camera_3d()
+		if camera != null and camera.has_meta("harpoon_aim"):
+			packet = camera.get_meta("harpoon_aim").capture(fighter, false)
+	var id := String(packet.get("target_id", ""))
+	var selected := get_node_or_null(NodePath(id)) as Node3D if not id.is_empty() else null
+	if selected != null and selected.is_in_group("deployed_rope"):
+		var old_intent := aim_intent
+		aim_intent = packet
+		if _prepare_rope_catch():
+			registry.detach_user(_deployed_token, self)
+			_deployed_token = 0
+			attached = false
+			return true
+		aim_intent = old_intent
+		return false
+	if selected == null or not selected.is_in_group("grapple_anchor") or charges <= 0 or registry.occupied(selected.global_position):
+		return false
+	var hand := fighter.global_position + HAND
+	if hand.distance_to(selected.global_position) > range_m or not line_clear(hand, selected.global_position):
+		return false
+	# The target is validated before releasing support. Launch spends exactly once.
+	registry.detach_user(_deployed_token, self)
+	_deployed_token = 0
+	attached = false
+	action = "grapple_parkour"
+	_prefer_enemy = false
+	aim_intent = packet
+	chain_throw = true
+	_launch()
+	return phase == Phase.FLIGHT
 
 
 func fire(prefer_enemy: bool, shot_action: String = "grapple", recorded_aim: Dictionary = {}) -> int:
@@ -190,20 +267,11 @@ func fire(prefer_enemy: bool, shot_action: String = "grapple", recorded_aim: Dic
 			aim_intent = aim.capture(fighter, prefer_enemy)
 	if not prefer_enemy:
 		var existing := reusable_rope()
-		if existing != 0 and not aim_intent.is_empty():
-			var marker: Node = registry.records[existing].marker
-			if String(aim_intent.get("target_id", "")) != String(marker.get_path()):
-				existing = 0 # A recorded/manual choice has priority over proximity assistance.
 		if existing != 0:
-			var record: Dictionary = registry.records[existing]
-			_deployed_token = existing
-			registry.attach_user(existing, self)
-			anchor_point = record.anchor
-			rope_length = minf(record.length, (anchor_point - (fighter.global_position + HAND)).length())
-			_hang_start_length = rope_length
-			attached = true
-			phase = Phase.HANG
+			_attach_existing(existing)
 			return Target.ANCHOR
+	if not prefer_enemy and _prepare_rope_catch():
+		return Target.ANCHOR
 	if _recorded_anchor_occupied():
 		Sfx.play("grapple_denied", -4)
 		return Target.NONE
@@ -214,6 +282,56 @@ func fire(prefer_enemy: bool, shot_action: String = "grapple", recorded_aim: Dic
 	_frames = 0
 	windup_progress = 0.0
 	return Target.ENEMY if prefer_enemy else Target.ANCHOR
+
+
+func _prepare_rope_catch() -> bool:
+	var id := String(aim_intent.get("target_id", ""))
+	var marker := get_node_or_null(NodePath(id)) as Node3D if not id.is_empty() else null
+	if marker == null or not marker.is_in_group("deployed_rope"):
+		return false
+	var key := int(marker.get_meta("rope_token", 0))
+	var record: Dictionary = registry.records.get(key, {})
+	if record.is_empty() or not record.deployed:
+		return false
+	var hand := fighter.global_position + HAND
+	var grip := Geometry3D.get_closest_point_to_segment(hand, record.anchor, record.tail)
+	if hand.distance_to(grip) > range_m or not line_clear(hand, grip):
+		return false
+	_pending_rope = key
+	_rope.visible = false
+	if _rope_visual != null:
+		_rope_visual.visible = false
+	anchor_point = grip
+	phase = Phase.ROPE_REACH
+	return true
+
+
+func _drive_rope_reach(delta: float, held: bool) -> void:
+	if not held or not registry.records.has(_pending_rope):
+		_finish_idle()
+		return
+	var record: Dictionary = registry.records[_pending_rope]
+	var hand := fighter.global_position + HAND
+	anchor_point = Geometry3D.get_closest_point_to_segment(hand, record.anchor, record.tail)
+	if not line_clear(hand, anchor_point) or hand.distance_to(anchor_point) > range_m:
+		_finish_idle()
+		return
+	var grab := rope_grab_candidate(_pending_rope)
+	if int(grab.get("token", 0)) == _pending_rope:
+		_attach_existing(_pending_rope)
+		_pending_rope = 0
+		_draw_rope(hand, record.anchor)
+		return
+	# Ready hands do not stop ordinary travel toward the existing rope.
+	if fighter.on_ground():
+		fighter._walk_free(delta)
+	else:
+		var wish := fighter.wish()
+		var rate: float = fighter.data.air_control * fighter.data.walk_speed * 3.0 * delta
+		fighter.velocity.x = move_toward(fighter.velocity.x, wish.x * fighter.data.walk_speed * fighter.speed_mult(), rate)
+		fighter.velocity.z = move_toward(fighter.velocity.z, wish.z * fighter.data.walk_speed * fighter.speed_mult(), rate)
+		fighter.velocity.y -= Fighter.GRAVITY * delta
+		fighter.move_and_slide()
 
 
 func _recorded_anchor_occupied() -> bool:
@@ -242,6 +360,7 @@ func _launch() -> void:
 	if not aim_intent.is_empty():
 		aim = Vector3(aim_intent.point) - _launch_origin
 		_selected_anchor = get_node_or_null(NodePath(String(aim_intent.get("target_id", "")))) as Node3D if not _prefer_enemy and String(aim_intent.get("target_id", "")) != "" else null
+	anchor_point = _launch_origin + aim
 	_flight_direction = aim.normalized()
 	_flight_distance = 0.0
 	phase = Phase.FLIGHT
@@ -393,7 +512,16 @@ func _best_anchor() -> Node3D:
 func drive(delta: float, held: bool, reel_held: bool = false) -> void:
 	if delta <= 0.0:
 		return
+	if phase == Phase.ROPE_REACH:
+		_drive_rope_reach(delta, held or reel_held)
+		return
 	if phase == Phase.WINDUP:
+		if not _prefer_enemy:
+			var existing := reusable_rope()
+			if existing != 0:
+				_attach_existing(existing)
+				_draw_rope(fighter.global_position + HAND, anchor_point)
+				return
 		_frames += 1
 		windup_progress = float(_frames) / float(WINDUP_FRAMES)
 		fighter.velocity.x = move_toward(fighter.velocity.x, 0.0, 30.0 * delta)
@@ -478,6 +606,8 @@ func _finish_idle() -> void:
 	if _deployed_token != 0 and is_instance_valid(registry):
 		registry.detach_user(_deployed_token, self)
 	phase = Phase.IDLE
+	_pending_rope = 0
+	chain_throw = false
 	windup_progress = 0.0
 	_selected_anchor = null
 	_victim = null
@@ -564,14 +694,17 @@ func _confirm_pull(opp: Fighter) -> void:
 
 
 func _draw_rope(a: Vector3, b: Vector3) -> void:
+	# Compute slack at the physical attachment BEFORE substituting the skinned hand.
+	# An overhead animated hand is closer to the anchor, but that is not spare cable.
+	var physical_slack := maxf(0.0, rope_length - a.distance_to(b)) if phase == Phase.HANG else 0.0
 	# The skinned hand only anchors the rendered line, never the sweep or constraint.
 	if is_instance_valid(fighter.skeletal):
 		a = fighter.skeletal.hand_world("Right")
 	if _rope_visual != null:
 		_rope.visible = false
 		_rope_visual.visible = true
-		var length := recovery_remaining if phase == Phase.MISS_REWIND else (rope_length if phase == Phase.HANG else a.distance_to(b))
-		var slack := phase == Phase.MISS_REWIND or (phase == Phase.HANG and length > a.distance_to(b) + 0.02)
+		var length := recovery_remaining if phase == Phase.MISS_REWIND else a.distance_to(b) + physical_slack
+		var slack := phase == Phase.MISS_REWIND or (phase == Phase.HANG and physical_slack > 0.02)
 		_rope_visual.update_rope(a, b, length, get_physics_process_delta_time(), GameState.water, slack)
 		return
 	_rope.visible = true

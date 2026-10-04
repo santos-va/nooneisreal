@@ -1,6 +1,7 @@
 class_name RopeVisual
 extends Node3D
-## Bounded presentation-only Verlet cable. Endpoints/length come from authoritative hook/registry.
+## Presentation-only cable: a loaded span is straight; only slack uses Verlet.
+## Endpoints and available slack come from the authoritative hook/registry.
 ## Provisional art tuning; never feeds segments back to collision, inventory or fighter movement.
 const SEGMENTS: int = 16
 const ITERATIONS: int = 4
@@ -62,6 +63,16 @@ func update_rope(start: Vector3, end: Vector3, rest_length: float, delta: float,
 	_ripple_cooldown = maxf(0.0, _ripple_cooldown - dt)
 	_ticks += 1
 	var length: float = clampf(maxf(distance, rest_length), 0.02, MAX_LENGTH)
+	# A cable carrying a body cannot retain transverse Verlet waves. Reset both
+	# buffers so releasing the load cannot resurrect yesterday's solver velocity.
+	if not loose or length - distance <= 0.0001:
+		for i: int in SEGMENTS + 1:
+			points[i] = start.lerp(end, float(i) / float(SEGMENTS))
+			previous[i] = points[i]
+		_last_start = start
+		_last_end = end
+		_draw()
+		return
 	var spacing: float = length / float(SEGMENTS)
 	for i: int in range(1, SEGMENTS):
 		var point: Vector3 = points[i]

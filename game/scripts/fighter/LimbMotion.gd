@@ -1,7 +1,14 @@
 class_name LimbMotion
 extends RefCounted
 ## Original procedural drawings, not newly licensed clips or anatomical damage simulation.
-## Art amplitudes are provisional. RigAnimator supplies the existing stepped anticipation/contact/recovery.
+## PLACEHOLDER art angles only. Gameplay windows and hit volumes remain authoritative.
+## Character identity is selected here; the phase/chamber pipeline is shared by future styles.
+static var default_profile: CombatMotionProfile = CombatMotionProfile.new()
+const PROFILES: Dictionary = {
+	"skea": preload("res://data/motion/skea.tres"),
+	"choko": preload("res://data/motion/choko.tres"),
+}
+
 const HANDS: Array[String] = ["jab", "cross", "bodyhook", "uppercut", "hammer", "lowhand", "airhand"]
 const FEET: Array[String] = ["frontkick", "roundhouse", "spin", "hookspin", "lowkick", "airkick"]
 
@@ -19,7 +26,13 @@ static func apply(rig: RigAnimator, anim: String, extension: float, phase: float
 	var variant: String = pieces[3]
 	var ext: float = extension
 	# PLACEHOLDER art identity: trained compact Choko vs full hip/shoulder Skea.
-	var style: float = 0.78 if character_id == "choko" else 1.0
+	var profile: CombatMotionProfile = PROFILES.get(character_id, default_profile)
+	var compact: bool = profile.compact_guard
+	var style: float = profile.hip_amplitude
+	apply_guard(rig, character_id)
+	var guard_pose: Dictionary = rig.target_pose.duplicate()
+	var chamber: float = sin(PI * clampf(phase, 0.0, 1.0)) if phase >= 0.0 and phase < 1.0 else 0.0
+	var return_chamber: float = sin(PI * clampf(phase - 2.0, 0.0, 1.0)) if phase >= 2.0 else 0.0
 	# Keep the non-striking hand guarding. Rotation around Y is mirrored, never the knee hinge.
 	rig._pose_set("upper_arm_" + other, Vector3(0.0, 0.0, 1.05))
 	rig._pose_set("forearm_" + other, Vector3(0.0, 0.0, 1.55))
@@ -45,6 +58,12 @@ static func apply(rig: RigAnimator, anim: String, extension: float, phase: float
 			elbow = 1.5
 			twist = 0.7
 			shoulder_swing = mirror * 0.35
+			if profile.elbow_finisher:
+				# Folded descending elbow; Choko keeps the compact hammer-fist.
+				shoulder = 1.45
+				elbow = 2.45
+				twist = 0.28
+				shoulder_swing = 0.0
 		elif variant == "lowhand":
 			rig._crouch()
 			shoulder = 1.35
@@ -55,11 +74,12 @@ static func apply(rig: RigAnimator, anim: String, extension: float, phase: float
 		rig._pose_set("upper_arm_" + side, Vector3(shoulder_swing * ext, 0.0, lerpf(2.5 if variant == "hammer" else 0.9, shoulder, ext)))
 		rig._pose_set("forearm_" + side, Vector3(0.0, 0.0, clampf(lerpf(1.3, elbow, ext), 0.05, 2.5)))
 		rig._pose_set("pelvis", Vector3(0.0, mirror * twist * 0.3 * ext * style, 0.0))
-		rig._pose_set("torso", Vector3(0.0, mirror * twist * 0.7 * ext * style, (-0.25 if variant == "bodyhook" else -0.1) * ext))
+		rig._pose_set("torso", Vector3(0.0, mirror * twist * 0.7 * ext * style, (-0.25 if variant == "bodyhook" or (variant == "hammer" and profile.elbow_finisher) else -0.1) * ext))
 	else:
 		var thigh: float = 1.52
 		var knee: float = -0.15
 		var turn: float = 0.12
+		var knee_strike: bool = profile.airborne_knee and variant == "airkick"
 		if variant == "roundhouse":
 			turn = 0.7
 			thigh = 1.75
@@ -72,7 +92,9 @@ static func apply(rig: RigAnimator, anim: String, extension: float, phase: float
 			thigh = 0.65
 			rig._crouch_t(0.3)
 		elif variant == "airkick":
-			thigh = 1.8
+			thigh = 1.95 if knee_strike else 1.8
+			if knee_strike:
+				knee = -2.25
 			rig._pose_set("thigh_" + other, Vector3(0.0, 0.0, 0.5))
 			rig._pose_set("shin_" + other, Vector3(0.0, 0.0, -1.2))
 		rig._pose_set("thigh_" + side, Vector3(0.0, 0.0, lerpf(0.05, thigh, ext)))
@@ -87,3 +109,51 @@ static func apply(rig: RigAnimator, anim: String, extension: float, phase: float
 			rig.spin = mirror * turn * clampf(ext, 0.0, 1.0)
 		# Counterbalance the striking leg without dropping both hands into a T-pose.
 		rig._pose_set("upper_arm_" + side, Vector3(0.0, 0.0, lerpf(0.9, -0.35, ext)))
+
+		# Chamber before extension, rechamber before planting: a leg never retracts as a rigid rod.
+		var folded: float = maxf(chamber, return_chamber)
+		var thigh_pose: Vector3 = rig.target_pose["thigh_" + side]
+		var shin_pose: Vector3 = rig.target_pose["shin_" + side]
+		thigh_pose.z = lerpf(thigh_pose.z, 1.05, folded * 0.8)
+		shin_pose.z = lerpf(shin_pose.z, -1.85, folded)
+		if variant in ["roundhouse", "lowkick"]:
+			thigh_pose.x = -mirror * 0.55 * clampf(ext, 0.0, 1.0)
+			rig._pose_set("pelvis", Vector3(0.0, mirror * 0.3 * ext, 0.0))
+		# Supporting knee absorbs weight; planted leg does not copy the striking leg.
+		if variant != "airkick":
+			rig._pose_set("thigh_" + other, Vector3(0.0, mirror * 0.12 * ext, 0.14 + 0.13 * maxf(ext, 0.0)))
+			rig._pose_set("shin_" + other, Vector3(0.0, 0.0, -0.28 - 0.2 * maxf(ext, 0.0)))
+		rig._pose_set("thigh_" + side, thigh_pose)
+		rig._pose_set("shin_" + side, shin_pose)
+		if compact or knee_strike:
+			rig._pose_set("upper_arm_" + side, Vector3(0.0, 0.0, 1.0 + 0.15 * ext))
+			rig._pose_set("forearm_" + side, Vector3(0.0, 0.0, 1.65))
+	# Pelvis leads, head stays on the target; a small vertical load sells body weight.
+	var torso: Vector3 = rig.target_pose["torso"]
+	rig._pose_set("head", Vector3(0.0, -torso.y * 0.55, -0.08))
+	if variant not in ["lowhand", "lowkick", "airhand", "airkick"]:
+		rig.target_root_offset.y = -0.035 * chamber - profile.weight_drop * maxf(ext, 0.0)
+	if pieces[2] == "hand" and variant not in ["lowhand", "airhand"]:
+		rig._pose_set("thigh_" + other, Vector3(0.0, 0.0, 0.18 + 0.16 * maxf(ext, 0.0)))
+		rig._pose_set("shin_" + other, Vector3(0.0, 0.0, -0.3 - 0.24 * maxf(ext, 0.0)))
+	# Recovery is its own trajectory, ending exactly in the character's guard.
+	# Compact Choko closes the opening earlier; Skea completes a broader follow-through.
+	if phase >= 2.0:
+		var settle: float = smoothstep(profile.recovery_settle_start, 1.0, phase - 2.0)
+		for part: String in guard_pose:
+			rig.target_pose[part] = (rig.target_pose[part] as Vector3).lerp(guard_pose[part], settle)
+		rig.target_root_offset *= 1.0 - settle
+
+
+## Shared style entry point: new fighters can supply a guard without duplicating limb timing.
+static func apply_guard(rig: RigAnimator, character_id: String) -> void:
+	if not PROFILES.has(character_id):
+		return
+	var profile: CombatMotionProfile = PROFILES[character_id]
+	var compact: bool = profile.compact_guard
+	for side: String in ["l", "r"]:
+		var lead: bool = side == "l"
+		rig._pose_set("upper_arm_" + side, Vector3(0.0, 0.0, (0.9 if lead else 0.8) if compact else (1.2 if lead else 1.05)))
+		rig._pose_set("forearm_" + side, Vector3(0.0, 0.0, 1.65 if compact else 1.8))
+	rig._pose_set("torso", Vector3(0.0, 0.13 if compact else 0.0, 0.12 if compact else 0.02))
+	rig._pose_set("head", Vector3(0.0, -0.08 if compact else 0.0, -0.08))

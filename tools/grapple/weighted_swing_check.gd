@@ -100,6 +100,35 @@ func _run() -> void:
 		var speed: float = f.velocity.length()
 		f.grapple.drive(1.0 / 60.0, false)
 		check(f.velocity.length() <= speed + 0.001, "release cannot manufacture speed %.1f" % length)
+	# Render attachment offsets must not turn physical tension into spare cable.
+	hang(6.0)
+	var hand_rig = load("res://scripts/fighter/SkeletalRig.gd").new()
+	f.add_child(hand_rig)
+	var hand_skeleton := Skeleton3D.new()
+	hand_skeleton.add_bone("RightHand")
+	hand_rig.add_child(hand_skeleton)
+	hand_rig.hero_skeleton = hand_skeleton
+	f.skeletal = hand_rig
+	for offset: Vector3 in [Vector3(0, 2.1, 0), Vector3(0.6, 0.9, 0.3), Vector3(-0.5, 1.8, -0.4)]:
+		hand_rig.position = offset
+		f.grapple._draw_rope(f.position + Hook.HAND, anchor.position)
+		var cable = f.grapple._rope_visual
+		check(cable.points[0].is_equal_approx(hand_rig.global_position), "render line follows actual hand")
+		var straight: bool = true
+		for i: int in cable.points.size():
+			straight = straight and cable.points[i].distance_to(hand_rig.global_position.lerp(anchor.position, float(i) / (cable.points.size() - 1))) < 0.0001
+		check(straight, "animated hand offset cannot invent slack under load")
+	# Moving toward the anchor really does create slack; it must still fall.
+	f.position.y += 1.0
+	for frame: int in 60:
+		f.grapple._draw_rope(f.position + Hook.HAND, anchor.position)
+	var loose = f.grapple._rope_visual
+	var sag: float = 0.0
+	for i: int in loose.points.size():
+		sag = maxf(sag, loose.points[i].distance_to(hand_rig.global_position.lerp(anchor.position, float(i) / (loose.points.size() - 1))))
+	check(sag > 0.01, "physical slack remains deformable")
+	f.skeletal = null
+	hand_rig.free()
 	# Occupancy is shared across players, checked at contact, and leaves a recoverable token.
 	hang(6.0)
 	var second: int = registry.issue(2)

@@ -20,6 +20,7 @@ var p2: Fighter
 
 
 func _ready() -> void:
+	Music.play_battle()
 	# Rounds retain this registry; a rematch clears it without reloading the arena.
 	var match_ropes := MatchRopes.new()
 	match_ropes.name = "MatchRopes"

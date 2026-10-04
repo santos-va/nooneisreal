@@ -182,6 +182,10 @@
 
 Іконка проєкту `game/icon.svg` — намальована в сесії (SVG, CC0), поза `game/assets/`.
 
+| npc-workwear-seams | `game/assets/characters/npc/workwear_seams.svg` | оригінальний SVG, локально створено 2026-10-04; [[2026-10-04-NPC-Appearance]] | проєкт | оригінал проєкту; сторонніх матеріалів немає, CC0 не оголошено | `NpcAppearance`, процедурні меші NPC |
+| npc-knit-stripes | `game/assets/characters/npc/knit_stripes.svg` | оригінальний SVG, локально створено 2026-10-04; [[2026-10-04-NPC-Appearance]] | проєкт | оригінал проєкту; сторонніх матеріалів немає, CC0 не оголошено | `NpcAppearance`, процедурні меші NPC |
+| npc-skin-marks | `game/assets/characters/npc/skin_marks.svg` | оригінальний SVG, локально створено 2026-10-04; [[2026-10-04-NPC-Appearance]] | проєкт | оригінал проєкту; сторонніх матеріалів немає, CC0 не оголошено | `NpcAppearance`, процедурні меші NPC |
+
 ## Паки-джерела (сирці поза `game/assets/`)
 
 Паки 3D-пропів, з яких беремо моделі ([[2026-10-03-Santos-Packs-Arenas]]). Сирці живуть на гілці `textures/santos-pack`,

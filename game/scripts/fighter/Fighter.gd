@@ -15,6 +15,7 @@ signal cooldowns_changed(cooldowns: Dictionary)
 signal move_started(fighter: Fighter, move: MoveData)
 signal dash_changed(charges: int, recharge_left: float, max_charges: int)
 signal status_changed(text: String)
+signal dodge_stamina_changed(value: float, maximum: float)
 
 enum State { INTRO, IDLE, WALK, CROUCH, JUMP, DASH, ATTACK, BLOCK, HITSTUN, BLOCKSTUN, LAUNCHED, KNOCKDOWN, GETUP, GRAPPLE, KO, STUMBLE, WALL_SPLAT, SWAP }
 
@@ -109,6 +110,15 @@ var cooldowns: Dictionary = {"skill1": 0.0, "skill2": 0.0}
 var control_locked: bool = true
 var invulnerable_frames: int = 0
 var crouching: bool = false
+const DODGE_PROFILES: Dictionary = {
+	"choko": preload("res://data/motion/choko_dodge.tres"),
+	"skea": preload("res://data/motion/skea_dodge.tres"),
+}
+var dodge_stamina: float = 100.0
+var dodging: bool = false
+var _dodge_regen_wait: float = 0.0
+var _dodge_air_used: bool = false
+
 var dash_dir: int = 1
 var dash_frames_left: int = 0
 var airborne_attack: bool = false
@@ -204,6 +214,7 @@ func _ready() -> void:
 		var m: MoveData = data.skill1 if slot == "skill1" else data.skill2
 		if m != null and m.effect == "record":
 			_record_slot = slot
+	_reset_dodge()
 	dash_charges_left = data.dash_charges
 	_weak_vis = WeakMarks.new()
 	add_child(_weak_vis)
@@ -274,6 +285,7 @@ func reset_for_round(x: float, face: int) -> void:
 	if record_marker != null and is_instance_valid(record_marker):
 		record_marker.queue_free()
 	record_marker = null
+	_reset_dodge()
 	dash_charges_left = data.dash_charges
 	dash_recharge_left = 0.0
 	dash_recharge_total = data.dash_recharge
@@ -371,6 +383,9 @@ func _physics_process(delta: float) -> void:
 		hitstop_frames -= 1
 		animator.tick(delta, self, true)
 		return
+	_tick_dodge_stamina(delta)
+	if on_ground() and not dodging:
+		_dodge_air_used = false
 	if squash > 0.0:
 		squash = maxf(0.0, squash - SQUASH_DECAY)
 		_apply_squash()
@@ -557,6 +572,8 @@ func _tick_ground(delta: float, intent: Dictionary) -> void:
 		var m: MoveData = data.crouch_light if (crouching and data.crouch_light) else data.light
 		_start_move(m)
 		return
+	if _pressed("dodge") and _start_dodge(intent.axis):
+		return
 	if _pressed("dash"):
 		# A buffered jump and dash form one airborne move; denial must leave jump intact.
 		var jump_dash := InputRouter.pressed_within(player_index, "jump", InputRouter.BUFFER_FRAMES)
@@ -653,6 +670,8 @@ func _ground_physics(delta: float, vx: float, vz: float = 0.0) -> void:
 
 
 func _tick_air(delta: float, intent: Dictionary) -> void:
+	if _pressed("dodge") and _start_dodge(intent.axis):
+		return
 	if _try_grapple(false):
 		return
 	if data.dash_style == "flash" and _pressed("dash"):
@@ -691,6 +710,96 @@ func _tick_air(delta: float, intent: Dictionary) -> void:
 		_set_state(State.IDLE)
 
 
+## Separate from the charged signature dash/flash skill.
+func dodge_profile() -> DodgeProfile:
+	return DODGE_PROFILES.get(data.id, DODGE_PROFILES["choko"])
+
+
+func dodge_stamina_max() -> float:
+	return dodge_profile().stamina_max
+
+
+func dodge_local_direction() -> Vector2:
+	return Vector2(_dash_vec.dot(forward), _dash_vec.dot(forward.cross(Vector3.UP)))
+
+
+func dodge_progress() -> float:
+	return 1.0 - float(dash_frames_left) / float(maxi(1, dodge_profile().frames)) if dodging else 0.0
+
+
+func _reset_dodge() -> void:
+	dodge_stamina = dodge_stamina_max()
+	dodging = false
+	_dodge_regen_wait = 0.0
+	_dodge_air_used = false
+	dodge_stamina_changed.emit(dodge_stamina, dodge_stamina_max())
+
+
+func _tick_dodge_stamina(delta: float) -> void:
+	if control_locked or state == State.KO or dodging:
+		return
+	if _dodge_regen_wait > 0.0:
+		_dodge_regen_wait = maxf(0.0, _dodge_regen_wait - delta)
+		return
+	var previous: float = dodge_stamina
+	dodge_stamina = minf(dodge_stamina_max(), dodge_stamina + dodge_profile().stamina_regen * delta)
+	if dodge_stamina != previous:
+		dodge_stamina_changed.emit(dodge_stamina, dodge_stamina_max())
+
+
+func _start_dodge(axis: float, attack_cancel: bool = false) -> bool:
+	if control_locked or frozen_frames > 0 or hitstop_frames > 0:
+		return false
+	var allowed: bool = state in [State.IDLE, State.WALK, State.CROUCH, State.BLOCK, State.JUMP, State.SWAP, State.GRAPPLE]
+	allowed = allowed or (state == State.ATTACK and attack_cancel)
+	if not allowed:
+		return false
+	var profile: DodgeProfile = dodge_profile()
+	var grounded: bool = on_ground()
+	if (not grounded and _dodge_air_used and not (state == State.GRAPPLE and grapple.attached)) or dodge_stamina + 0.0001 < profile.stamina_cost:
+		return false
+	# All denial paths precede the resource mutation and action transition.
+	dodge_stamina = maxf(0.0, dodge_stamina - profile.stamina_cost)
+	_dodge_regen_wait = profile.regen_delay
+	_dodge_air_used = not grounded
+	dash_dir = int(signf(axis)) if absf(axis) > 0.1 else facing
+	_dash_vec = Vector3(float(dash_dir), 0.0, 0.0)
+	if _free():
+		_aim_dash()
+	if grounded:
+		velocity.y = profile.hop_velocity
+		_water_grounded = false
+	# Air evasion preserves existing jump/fall momentum, preventing repeated flight.
+	dash_frames_left = maxi(1, profile.frames)
+	invulnerable_frames = maxi(invulnerable_frames, profile.invulnerable_frames)
+	flashing = false
+	current_move = null
+	dodging = true
+	_set_state(State.DASH)
+	dodge_stamina_changed.emit(dodge_stamina, dodge_stamina_max())
+	Sfx.play("whoosh", -9)
+	return true
+
+
+func _tick_dodge(delta: float) -> void:
+	var profile: DodgeProfile = dodge_profile()
+	var progress: float = dodge_progress()
+	# Brake through the final third; no lingering horizontal drift after the hop.
+	var drive: float = 1.0 - 0.55 * smoothstep(0.55, 1.0, progress)
+	velocity.x = _dash_vec.x * profile.speed * drive
+	velocity.z = _dash_vec.z * profile.speed * drive if _free() else 0.0
+	velocity.y -= GRAVITY * delta
+	move_and_slide()
+	dash_frames_left -= 1
+	if on_ground():
+		velocity.y = 0.0
+		_dodge_air_used = false
+	if dash_frames_left <= 0:
+		velocity.x *= 0.35
+		velocity.z *= 0.35
+		_set_state(State.IDLE if on_ground() else State.JUMP)
+
+
 ## Missing charges accumulate recovery debt; it clears only after a full rest.
 func _spend_dash() -> bool:
 	if data.dash_charges > 0:
@@ -711,6 +820,7 @@ func _start_dash(axis: float, jump_dash: bool = false) -> bool:
 		return _start_flash(axis, jump_dash)
 	if not _spend_dash():
 		return false
+	dodging = false
 	if jump_dash:
 		velocity.y = data.jump_velocity
 		_water_grounded = false
@@ -733,6 +843,7 @@ func _start_flash(axis: float, jump_dash: bool = false) -> bool:
 	if not _spend_dash():
 		return false
 	dash_dir = int(signf(axis)) if absf(axis) > 0.1 else facing
+	dodging = false
 	_flash_from = global_position
 	_flash_vertical_speed = data.jump_velocity if jump_dash else velocity.y
 	_flash_travel_frames = maxi(1, data.flash_travel_frames)
@@ -770,6 +881,9 @@ func _aim_flash() -> void:
 
 
 func _tick_dash(delta: float) -> void:
+	if dodging:
+		_tick_dodge(delta)
+		return
 	if flashing:
 		_tick_flash(delta)
 		return
@@ -865,6 +979,8 @@ func _tick_sword_swap(delta: float, intent: Dictionary) -> void:
 	_discard_swap_blocked_inputs()
 	# Input interruptions precede this tick's handoff. At counter 11, a dodge keeps
 	# the old hand; once counter 12 committed, any interruption keeps the new hand.
+	if _pressed("dodge") and _start_dodge(intent.axis):
+		return
 	if _pressed("dash") and _start_dash(intent.axis):
 		return
 	for action: String in ["left_leg", "right_leg"]:
@@ -1051,6 +1167,8 @@ func _activate_effect(m: MoveData) -> void:
 
 
 func _try_cancel(m: MoveData) -> bool:
+	if m.cancel_tier < 2 and _pressed("dodge") and _start_dodge(InputRouter.axis(player_index), true):
+		return true
 	if m.cancel_tier < 3 and _pressed("ultimate") and meter >= MAX_METER and data.ultimate:
 		_start_move(data.ultimate, "ultimate")
 		return true
@@ -1240,6 +1358,7 @@ func _break_ult() -> void:
 func beat_flash(to: Vector3) -> void:
 	if not (state in [State.IDLE, State.WALK, State.CROUCH, State.BLOCK, State.DASH]) or not on_ground():
 		return
+	dodging = false
 	_flash_from = global_position
 	_flash_to = clamp_arena(Vector3(to.x, global_position.y, to.z))
 	flashing = true
@@ -1620,7 +1739,21 @@ func _try_grapple(prefer_enemy: bool) -> bool:
 
 
 func _tick_grapple(intent: Dictionary) -> void:
-	grapple.drive(get_physics_process_delta_time(), intent.grapple_held, intent.jump_held)
+	# The normal block button releases the rope contextually; no duplicate pad binding.
+	if _pressed("grapple_detach") or _pressed("block"):
+		grapple.detach()
+		_set_state(State.JUMP if not on_ground() else State.IDLE)
+		return
+	if _pressed("dodge") and _start_dodge(intent.axis):
+		return
+	if grapple.attached and _pressed("grapple_parkour"):
+		if grapple.retarget():
+			stats.grapples += 1
+	if grapple.phase == GrappleHook.Phase.ROPE_REACH and on_ground() and _pressed("jump"):
+		velocity.y = data.jump_velocity
+		_water_grounded = false
+	# Parkour is tap-latched; explicit detach/dodge releases it. Enemy grapple keeps hold semantics.
+	grapple.drive(get_physics_process_delta_time(), intent.grapple_held or grapple.action == "grapple_parkour", intent.jump_held)
 	if not grapple.busy() or grapple.recovering():
 		_set_state(State.JUMP if not on_ground() else State.IDLE)
 
@@ -1846,6 +1979,7 @@ func _update_hitbox_debug() -> void:
 
 func _set_state(s: State) -> void:
 	if state == State.DASH and s != State.DASH:
+		dodging = false
 		flashing = false
 		dash_frames_left = 0
 	if state == State.SWAP and s != State.SWAP:

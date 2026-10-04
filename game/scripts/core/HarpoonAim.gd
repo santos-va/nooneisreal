@@ -7,6 +7,7 @@ extends Node
 @export var return_delay: float = 2.0
 @export var return_speed: float = 2.0
 @export var assist_degrees: float = 10.0
+@export var pitch_limit: float = 1.25 # PLACEHOLDER: allow aiming at overhead street anchors.
 var camera: Camera3D
 var solo: bool = false
 var yaw_offset: float = 0.0
@@ -55,7 +56,7 @@ func apply_look(amount: Vector2) -> void:
 	if not solo or InputRouter.ui_suppressed() or get_tree().paused or amount.length_squared() < 0.000001:
 		return
 	yaw_offset = wrapf(yaw_offset - amount.x, -PI, PI)
-	pitch_offset = clampf(pitch_offset - amount.y, -0.55, 0.55)
+	pitch_offset = clampf(pitch_offset - amount.y, -pitch_limit, pitch_limit)
 	manual_left = return_delay
 
 func step(delta: float) -> void:
@@ -86,10 +87,13 @@ func _clear(f: Fighter, origin: Vector3, point: Vector3) -> bool:
 func capture(f: Fighter, enemy_mode: bool, remember: bool = true) -> Dictionary:
 	var origin := f.global_position + Vector3(0, 1.25, 0)
 	var manual := is_manual() and f.player_index == 1 and not f.is_cpu
+	# Solo traversal targets the current camera even after orbit input settles.
+	var camera_aim := manual or (not enemy_mode and solo and f.player_index == 1 and not f.is_cpu)
+	var grab: Dictionary = f.grapple.rope_grab_candidate() if not enemy_mode else {}
 	var ray_origin := origin
 	var direction := f.forward
 	var distance: float = f.grapple.range_m
-	if manual:
+	if camera_aim:
 		var center := camera.get_viewport().get_visible_rect().size * 0.5
 		ray_origin = camera.project_ray_origin(center)
 		direction = camera.project_ray_normal(center)
@@ -98,7 +102,7 @@ func capture(f: Fighter, enemy_mode: bool, remember: bool = true) -> Dictionary:
 		if wish.length_squared() > 0.01:
 			direction = wish.normalized()
 	var point := origin + direction * distance
-	if manual:
+	if camera_aim:
 		# Camera depth is longer than hand range; clamp the final hand segment below.
 		var ray := PhysicsRayQueryParameters3D.create(ray_origin, ray_origin + direction * 100.0, 1 | ArenaLayout.COVER_LAYER | 4)
 		ray.collide_with_areas = true
@@ -117,11 +121,17 @@ func capture(f: Fighter, enemy_mode: bool, remember: bool = true) -> Dictionary:
 			continue # Reuse the deployed rope candidate; never suggest a second shot at this point.
 		if f.grapple.charges <= 0 and not target.is_in_group("deployed_rope"):
 			continue
-		if target.is_in_group("deployed_rope") and int(target.get_meta("rope_token", 0)) != f.grapple.reusable_rope():
+		var rope_token := int(target.get_meta("rope_token", 0))
+		if rope_token != 0 and rope_token == f.grapple._deployed_token:
 			continue
 		if enemy_mode and (not target is Fighter or not target.hurtbox_enabled()):
 			continue
 		var position: Vector3 = target.global_position + (Vector3.UP if enemy_mode else Vector3.ZERO)
+		if rope_token != 0:
+			var record: Dictionary = f.grapple.registry.records.get(rope_token, {})
+			if record.is_empty():
+				continue
+			position = Geometry3D.get_closest_point_to_segment(origin, record.anchor, record.tail)
 		var offset := position - origin
 		var length := offset.length()
 		if length > distance or length < 0.1 or not _clear(f, origin, position):
@@ -129,7 +139,7 @@ func capture(f: Fighter, enemy_mode: bool, remember: bool = true) -> Dictionary:
 		if not enemy_mode and not target.is_in_group("deployed_rope") and offset.y < 1.5:
 			continue
 		var score := length
-		if manual:
+		if camera_aim:
 			var alignment := direction.dot((position - ray_origin).normalized())
 			if alignment < cos(deg_to_rad(assist_degrees)):
 				continue
@@ -139,10 +149,20 @@ func capture(f: Fighter, enemy_mode: bool, remember: bool = true) -> Dictionary:
 			var axis := Vector3(direction.x, 0, direction.z).normalized()
 			if flat.length() > 0.05 and flat.normalized().dot(axis) < cos(deg_to_rad(f.grapple.cone_deg)):
 				continue
-		candidates.append({"id": String(target.get_path()), "point": position, "score": score})
+		candidates.append({"id": String(target.get_path()), "point": position, "score": score,
+			"kind": "rope" if rope_token != 0 else ("enemy" if enemy_mode else "anchor"),
+			"rope_token": rope_token, "reachable": rope_token == 0 or rope_token == int(grab.get("token", 0))})
 	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return a.id < b.id if is_equal_approx(a.score, b.score) else a.score < b.score)
+	# A span already within hand reach has priority over firing another device.
+	if not grab.is_empty():
+		var record: Dictionary = f.grapple.registry.records[grab.token]
+		candidates.push_front({"id": String(record.marker.get_path()), "point": grab.point,
+			"score": -INF, "kind": "rope", "rope_token": grab.token, "reachable": true})
 	var id := ""
+	var kind := ""
+	var selected_token := 0
+	var reachable := false
 	var key := "%d:%s" % [f.player_index, enemy_mode]
 	if not candidates.is_empty():
 		var chosen: Dictionary = candidates[0]
@@ -151,11 +171,15 @@ func capture(f: Fighter, enemy_mode: bool, remember: bool = true) -> Dictionary:
 				chosen = candidate
 		id = chosen.id
 		point = chosen.point
+		kind = chosen.kind
+		selected_token = chosen.rope_token
+		reachable = chosen.reachable
 	if remember:
 		_previous[key] = id
 	point = origin + (point - origin).limit_length(distance)
 	return {"tick": InputRouter.frame(), "player": f.player_index, "enemy_mode": enemy_mode,
-		"origin": origin, "point": point, "direction": (point - origin).normalized(), "target_id": id, "manual": manual}
+		"origin": origin, "point": point, "direction": (point - origin).normalized(), "target_id": id, "manual": manual, "camera_aim": camera_aim,
+		"candidate_kind": kind, "rope_token": selected_token, "reachable": reachable}
 
 func _exit_tree() -> void:
 	InputRouter.clear_view_basis(1)

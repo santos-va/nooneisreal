@@ -424,7 +424,7 @@ func _check_mode_row() -> bool:
 	# The expanded help must expose every new limb and its current physical binding.
 	for action: String in ["left_hand", "right_hand", "left_leg", "right_leg"]:
 		reachable = reachable and (action.capitalize() + ": " + InputRouter.binding_label(1, action, false)) in full_controls
-	reachable = reachable and "Comma (<)" in full_controls and "Hold grapple to stay attached" in full_controls and "Release grapple and jump to detach" in full_controls and "Hold jump to reel in" in full_controls
+	reachable = reachable and "Comma (<)" in full_controls and "Parkour is latched: tap to attach" in full_controls and "Detach: Z / B, or dodge" in full_controls and "Hold jump to reel in" in full_controls
 	menu._comfort.close_panel()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(ComfortSettings.storage_path))
 	ComfortSettings.storage_path = comfort_old_path

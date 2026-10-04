@@ -1,5 +1,7 @@
 # Session handoff — start here
 
+**Current branch update — PR #172:** the working branch adds aimed/latched rope traversal, separate stamina dodges, revised controls, and a persistent 12-resident city slice with seeded appearance, factual dialogue and NPC saves. The merged-baseline descriptions below predate this branch; full campaign saves, authored story NPCs and a local LLM remain unfinished. Real Santos soundtrack files are still unavailable. See [[2026-10-04-Living-City-Session]] and [[2026-10-04-Living-City-Traversal]].
+
 Snapshot: **2026-10-04 UTC**, fetched `origin/main` **2c50938702e596b6f951ceb894d899182b583858**. English handoff requested by Santos; Ukrainian Plans, Fix and Audit pages retain detailed evidence.
 
 **PRs #164–#170 are merged.** #169 delivered the earlier context handoff; #170 delivered the consolidated combat-control, city-first and city-style implementation at **18:37:42 UTC**. At the start of cleanup, before its follow-up PR, the GitHub query returned no open PRs. PR-head `1773ac2` has successful [CI run 37224056701](https://github.com/santos-va/nooneisreal/actions/runs/37224056701). Older “local only”, “CI pending” and stacked-branch statements are dated history. Merge and CI do not establish final art, player comfort or target-device acceptance.

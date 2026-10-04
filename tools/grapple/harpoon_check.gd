@@ -210,7 +210,7 @@ func _run() -> void:
 	check(registry.records.has(deployed) and f.grapple.charges == f.grapple.max_charges - 1, "actual Fighter round reset preserves deployment and spent inventory")
 	f.position = registry.records[deployed].tail - hook.HAND
 	var manual_front := {"point": f.position + hook.HAND + Vector3.RIGHT * 8, "target_id": "", "manual": true}
-	check(f.grapple.fire(false, "grapple_parkour", manual_front) == hook.Target.ANCHOR and f.grapple.phase == hook.Phase.WINDUP, "manual front aim cannot be stolen by nearby old rope")
+	check(f.grapple.fire(false, "grapple_parkour", manual_front) == hook.Target.ANCHOR and f.grapple.phase == hook.Phase.HANG and f.grapple._deployed_token == deployed, "nearby existing rope has priority over an unbound shot")
 	f.grapple.reset()
 	f.position = registry.records[deployed].anchor + Vector3.DOWN * (registry.records[deployed].length + 0.5) - hook.HAND
 	check(f.grapple.reusable_rope() == 0, "reuse rejects reach beyond original rope length")
