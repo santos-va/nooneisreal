@@ -50,7 +50,7 @@ func _run() -> void:
 			f.crouching = false
 			ir.v_press(1, action)
 			check(f._try_limb_attack(false), "ground dispatch " + action)
-			check(f.current_move.anim.begins_with("limb_" + action), "correct requested limb " + action)
+			check(f.current_move.anim.begins_with(("sword_" if hero == "choko" and action == "right_hand" else "limb_") + action), "correct requested limb " + action)
 			check(f.chain_index == 0, "fresh normal resets combo")
 			clear_inputs(ir)
 			ir.v_press(1, "right_hand")

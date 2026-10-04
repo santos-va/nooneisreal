@@ -87,6 +87,8 @@ var cadence = Cadence.new()
 var _crouch_exit_frames: int = -1
 var _last_ground_position: Vector3 = Vector3.ZERO
 var _gait_position_valid: bool = false
+var sword: SwordPresentation
+var _sword_mirror_base: Dictionary = {}
 
 
 func setup(f: Fighter) -> void:
@@ -108,6 +110,11 @@ func setup(f: Fighter) -> void:
 	_hide_capsules()
 	if f.data.model_scene != "":
 		_setup_hero(f.data.model_scene)
+	if f.data.weapon_kind == "sword":
+		sword = SwordPresentation.new()
+		sword.name = "SwordPresentation"
+		add_child(sword)
+		sword.setup(f, self)
 
 
 ## Loads the hero GLB beside the mannequin, hides the mannequin's mesh and precomputes the retarget.
@@ -362,7 +369,10 @@ func _physics_process(delta: float) -> void:
 		clip_pos = minf(float(_state_frames) * delta / _fighter.fatigue_mult(Fighter.FATIGUE_GETUP), anim.length)
 	else:
 		clip_pos = minf(float(_state_frames) * delta, anim.length)
+	SwordMotion.restore_mirror(skeleton, _sword_mirror_base)
+	idle_presence.restore_base(skeleton)
 	player.seek(clip_pos, true)
+	_sword_mirror_base = SwordMotion.mirror_authored(skeleton, _fighter)
 	var recovering: bool = HookMotion.recovery_active(_fighter)
 	if uses_procedural_motion():
 		MotionFallback.apply(skeleton, _fighter.animator)
@@ -386,3 +396,14 @@ func _on_mannequin_updated() -> void:
 		return
 	retarget()
 	foot_contact.apply(_fighter, ragdoll)
+	if sword != null:
+		SwordMotion.apply_transfer(hero_skeleton, _fighter)
+		sword.update_pose()
+
+
+## Aligned hand rest used to calibrate a prop; leaf hand rests differ between the two Meshy arms.
+func aligned_hand_rest(side: String) -> Basis:
+	if hero_skeleton != null:
+		var bone := hero_skeleton.find_bone("RightHand" if side == "right" else "LeftHand")
+		return Basis(_align.get(bone, Quaternion.IDENTITY)) * hero_skeleton.get_bone_global_rest(bone).basis.orthonormalized()
+	return skeleton.get_bone_global_rest(skeleton.find_bone("hand_r" if side == "right" else "hand_l")).basis.orthonormalized()

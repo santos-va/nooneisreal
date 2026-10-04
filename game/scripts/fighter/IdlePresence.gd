@@ -7,10 +7,12 @@ extends RefCounted
 var phase: float = 0.0
 var _bones: Dictionary = {}
 var _skeleton: Skeleton3D
+var _base_poses: Dictionary = {}
 
 
 func apply(skeleton: Skeleton3D, fighter: Fighter, delta: float) -> void:
-	if fighter.state != Fighter.State.IDLE or fighter.frozen_frames > 0 or fighter.hitstop_frames > 0:
+	var transfer: bool = fighter.state == Fighter.State.SWAP and fighter.data.id == "choko"
+	if (fighter.state != Fighter.State.IDLE and not transfer) or fighter.frozen_frames > 0 or fighter.hitstop_frames > 0:
 		return
 	if fighter.is_inside_tree() and fighter.get_tree().paused:
 		return
@@ -21,9 +23,16 @@ func apply(skeleton: Skeleton3D, fighter: Fighter, delta: float) -> void:
 		_bones.clear()
 		for name: String in ["spine_01", "spine_02", "spine_03", "neck_01", "Head", "upperarm_l", "upperarm_r", "lowerarm_l", "lowerarm_r", "hand_l", "hand_r", "thigh_l", "calf_l", "foot_l", "thigh_r", "calf_r", "foot_r"]:
 			_bones[name] = skeleton.find_bone(name)
-	phase += maxf(delta, 0.0)
+	# Save only our owned bones before this frame's layer. Some imported clips omit constant tracks;
+	# AnimationPlayer.seek() cannot undo offsets on those bones by itself.
+	_base_poses.clear()
+	for bone: int in _bones.values():
+		if bone >= 0:
+			_base_poses[bone] = _skeleton.get_bone_pose(bone)
+	if not transfer:
+		phase += maxf(delta, 0.0)
 	# Local clock and analytic harmonics: neither global RNG nor the fighter's replay RNG is touched.
-	var t: float = phase + float(fighter.player_index) * 0.731
+	var t: float = 0.0 if transfer else phase + float(fighter.player_index) * 0.731
 	var gain: float = 1.0 - 0.65 * clampf(fighter.fatigue, 0.0, 1.0)
 	if fighter.data.id == "choko":
 		var shift: float = sin(t * 2.8)
@@ -32,13 +41,14 @@ func apply(skeleton: Skeleton3D, fighter: Fighter, delta: float) -> void:
 		_rotate("spine_01", Vector3(0.7 * breath, 1.6 * shift, 1.1 * shift) * gain)
 		_rotate("spine_03", Vector3(-0.4 * breath, -0.8 * shift, 0.7 * shift) * gain)
 		_rotate("neck_01", Vector3(0.0, -0.8 * shift, -1.5 * shift) * gain)
+		_collect_posture(fighter)
 		_guard_arm("l", fighter, shift, breath)
 		_guard_arm("r", fighter, shift, breath)
 		# A collected lift/replant: no lateral slide, alternating support, both down between taps.
 		var cycle: float = fposmod(t, 2.4)
-		if cycle < 0.55:
+		if not transfer and cycle < 0.55:
 			_lift_foot("l", pow(sin(PI * cycle / 0.55), 2.0) * 0.018 * gain)
-		elif cycle >= 1.2 and cycle < 1.75:
+		elif not transfer and cycle >= 1.2 and cycle < 1.75:
 			_lift_foot("r", pow(sin(PI * (cycle - 1.2) / 0.55), 2.0) * 0.018 * gain)
 	else:
 		# Smooth asymmetric bursts, rather than frame-random jitter or fake gameplay dodges.
@@ -50,6 +60,19 @@ func apply(skeleton: Skeleton3D, fighter: Fighter, delta: float) -> void:
 		_rotate("Head", Vector3(-2.0 * feint, 3.0 * sin(t * 4.1), -2.0 * sway) * gain)
 		_rotate("upperarm_l", Vector3(1.0 * sway, 1.5 * feint, -2.5 * sway) * gain)
 		_rotate("upperarm_r", Vector3(-1.8 * sway, -1.0 * feint, -2.0 * sway) * gain)
+
+
+func restore_base(skeleton: Skeleton3D) -> void:
+	# Called before the next seek, also on transition away from IDLE/SWAP. Frozen frames never call it.
+	if skeleton != _skeleton:
+		_base_poses.clear()
+		return
+	for bone: int in _base_poses:
+		var pose: Transform3D = _base_poses[bone]
+		skeleton.set_bone_pose_position(bone, pose.origin)
+		skeleton.set_bone_pose_rotation(bone, pose.basis.orthonormalized().get_rotation_quaternion())
+		skeleton.set_bone_pose_scale(bone, pose.basis.get_scale())
+	_base_poses.clear()
 
 
 func _rotate(name: String, degrees: Vector3) -> void:
@@ -117,16 +140,16 @@ func _guard_arm(side: String, fighter: Fighter, shift: float, breath: float) -> 
 	var forward: Vector3 = (_skeleton.global_basis.inverse() * facing).normalized()
 	var right: Vector3 = forward.cross(up).normalized()
 	var sign_side: float = -1.0 if side == "l" else 1.0
-	# Lead hand probes forward, rear hand protects the cheek; elbows stay below/outside wrists.
+	# Collected chest-level readiness, not both hands above the head; elbows stay tucked.
 	# Proportional targets work on the measured source chain; this is an idle guard, not hitbox IK.
 	var reach: float = (0.50 if side == "l" else 0.37) + sign_side * 0.035 * shift
-	var rise: float = (0.18 if side == "l" else 0.26) + 0.015 * breath
+	var rise: float = (-0.30 if side == "l" else -0.25) + 0.015 * breath
 	var target: Vector3 = a + length * (forward * reach + up * rise + right * sign_side * 0.035)
 	var axis: Vector3 = (target - a).normalized()
 	var distance: float = a.distance_to(target)
 	if distance >= length - 0.00001 or distance <= absf(upper - lower) + 0.00001:
 		return
-	var pole: Vector3 = -up + right * sign_side * 0.65
+	var pole: Vector3 = -up + right * sign_side * 0.25
 	var bend: Vector3 = (pole - axis * pole.dot(axis)).normalized()
 	var along: float = (upper * upper - lower * lower + distance * distance) / (2.0 * distance)
 	var desired_elbow: Vector3 = a + axis * along + bend * sqrt(maxf(0.0, upper * upper - along * along))
@@ -134,6 +157,28 @@ func _guard_arm(side: String, fighter: Fighter, shift: float, breath: float) -> 
 	var moved_elbow: Vector3 = _skeleton.get_bone_global_pose(elbow).origin
 	var moved_hand: Vector3 = _skeleton.get_bone_global_pose(hand).origin
 	_set_global_rotation(elbow, Quaternion((moved_hand - moved_elbow).normalized(), (target - moved_elbow).normalized()) * _global_rotation(elbow))
+	# Neutral anatomical wrist relative to the forearm, rather than the source sword-grip bend.
+	_skeleton.set_bone_pose_rotation(hand, _skeleton.get_bone_rest(hand).basis.orthonormalized().get_rotation_quaternion())
+
+
+func _collect_posture(fighter: Fighter) -> void:
+	var up: Vector3 = (_skeleton.global_basis.inverse() * Vector3.UP).normalized()
+	var facing: Vector3 = fighter.forward if GameState.free_move else Vector3(float(fighter.facing), 0.0, 0.0)
+	var forward: Vector3 = (_skeleton.global_basis.inverse() * facing).normalized()
+	var right: Vector3 = forward.cross(up).normalized()
+	# Provisional 6-degree thorax opening leaves the authored pelvis and support untouched.
+	var chest: int = _bones["spine_03"]
+	_set_global_rotation(chest, Quaternion(right, deg_to_rad(6.0)) * _global_rotation(chest))
+	var head: int = _bones["Head"]
+	var rest: Quaternion = _skeleton.get_bone_global_rest(head).basis.orthonormalized().get_rotation_quaternion()
+	# UAL faces +Z in skeleton space (SkeletalRig.MODEL_YAW). Correct pitch only, keeping its yaw.
+	var gaze: Vector3 = (_global_rotation(head) * rest.inverse()) * Vector3.BACK
+	var pitch: float = asin(clampf(gaze.dot(up), -1.0, 1.0))
+	# Choko retarget adds a measured ~15-degree downward gaze offset; +4 donor gives ~-11 hero.
+	var correction: float = clampf(deg_to_rad(4.0) - pitch, deg_to_rad(-30.0), deg_to_rad(30.0))
+	var neck: int = _bones["neck_01"]
+	_set_global_rotation(neck, Quaternion(right, correction * 0.4) * _global_rotation(neck))
+	_set_global_rotation(head, Quaternion(right, correction * 0.6) * _global_rotation(head))
 
 
 func _set_global_rotation(bone: int, rotation: Quaternion) -> void:

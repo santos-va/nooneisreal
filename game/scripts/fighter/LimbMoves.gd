@@ -4,7 +4,7 @@ extends RefCounted
 ## from existing character donors; these deterministic copies change presentation only.
 const ACTIONS: Array[String] = ["left_hand", "right_hand", "left_leg", "right_leg"]
 
-static func resolve(data: CharacterData, action: String, index: int, previous: String, crouching: bool, airborne: bool) -> MoveData:
+static func resolve(data: CharacterData, action: String, index: int, previous: String, crouching: bool, airborne: bool, active_hand: String = "") -> MoveData:
 	if action not in ACTIONS:
 		return null
 	var foot := action.ends_with("leg")
@@ -27,7 +27,11 @@ static func resolve(data: CharacterData, action: String, index: int, previous: S
 	if donor == null:
 		return null
 	var move := donor.duplicate() as MoveData
-	move.id = "limb_%s_%s" % [action, variant]
+	var family := "limb"
+	if data.id == "choko" and data.weapon_kind == "sword" and action == active_hand + "_hand":
+		family = "sword"
+		variant = "aircut" if airborne else ("lowcut" if crouching else ["cut", "thrust", "rising"][clampi(index, 0, 2)])
+	move.id = "%s_%s_%s" % [family, action, variant]
 	move.display_name = action.replace("_", " ").capitalize() + " · " + variant
 	move.anim = move.id
 	move.anim_chain = ""

@@ -16,7 +16,16 @@ signal move_started(fighter: Fighter, move: MoveData)
 signal dash_changed(charges: int, recharge_left: float, max_charges: int)
 signal status_changed(text: String)
 
-enum State { INTRO, IDLE, WALK, CROUCH, JUMP, DASH, ATTACK, BLOCK, HITSTUN, BLOCKSTUN, LAUNCHED, KNOCKDOWN, GETUP, GRAPPLE, KO, STUMBLE, WALL_SPLAT }
+enum State { INTRO, IDLE, WALK, CROUCH, JUMP, DASH, ATTACK, BLOCK, HITSTUN, BLOCKSTUN, LAUNCHED, KNOCKDOWN, GETUP, GRAPPLE, KO, STUMBLE, WALL_SPLAT, SWAP }
+
+## T5, Choko stance/sword plan: PLACEHOLDER physics frames, explicit commit point.
+const SWORD_SWAP_FRAMES := 24
+const SWORD_SWAP_CONTACT := 12
+var sword_hand: String = "right"
+var sword_swap_from: String = "right"
+var sword_swap_to: String = "right"
+var sword_swap_frame: int = 0
+var attack_sword_hand: String = "right"
 
 const GRAVITY := 24.0
 const ARENA_HALF_WIDTH := 12.5
@@ -213,6 +222,11 @@ func reset_for_round(x: float, face: int) -> void:
 	facing = face
 	forward = Vector3(float(face), 0.0, 0.0)
 	_wish = Vector3.ZERO
+	sword_hand = "right"
+	sword_swap_from = "right"
+	sword_swap_to = "right"
+	sword_swap_frame = 0
+	attack_sword_hand = "right"
 	_limb_action = ""
 	_normal_connected = false
 	GameState.duel.reset()
@@ -254,6 +268,8 @@ func reset_for_round(x: float, face: int) -> void:
 	hurt_shape.disabled = false
 	grapple.reset()
 	_set_state(State.INTRO)
+	if skeletal != null and skeletal.sword != null:
+		skeletal.sword.reset_pose_state()
 	hp_changed.emit(hp, data.max_hp)
 	meter_changed.emit(meter, MAX_METER)
 	cooldowns = {"skill1": 0.0, "skill2": 0.0}
@@ -322,6 +338,8 @@ func _physics_process(delta: float) -> void:
 	if _free() and opponent != null:
 		var a: Fighter = self if player_index == 1 else opponent
 		GameState.duel.sync(a.global_position, a.opponent.global_position, InputRouter.frame())
+	if state not in [State.IDLE, State.WALK, State.SWAP] or grapple.busy():
+		InputRouter.buffered(player_index, "weapon_swap")
 	grapple.tick_regen(delta, state == State.GRAPPLE)
 	if frozen_frames > 0:
 		frozen_frames -= 1
@@ -359,6 +377,8 @@ func _physics_process(delta: float) -> void:
 			_tick_getup(delta)
 		State.GRAPPLE:
 			_tick_grapple(intent)
+		State.SWAP:
+			_tick_sword_swap(delta, intent)
 		State.ATTACK:
 			_tick_attack(delta)
 		State.HITSTUN:
@@ -398,7 +418,7 @@ func _read_intent() -> Dictionary:
 
 
 func _pressed(action: String) -> bool:
-	if grapple.hands_busy() and action in ["left_hand", "right_hand", "light", "skill1", "skill2", "ultimate"]:
+	if grapple.hands_busy() and action in ["left_hand", "right_hand", "light", "skill1", "skill2", "ultimate", "weapon_swap"]:
 		InputRouter.buffered(player_index, action) # Consume blocked intent, never replay after extraction.
 		return false
 	if control_locked:
@@ -495,6 +515,8 @@ func _tick_ground(delta: float, intent: Dictionary) -> void:
 	if land_lag > 0:   # the body settles after a jump: no new action, it brakes
 		land_lag -= 1
 		_walk_physics(delta, 0.0)
+		return
+	if _try_sword_swap():
 		return
 	crouching = intent.crouch
 	if _try_grapple(intent.crouch):
@@ -776,12 +798,58 @@ func _tick_flash(delta: float) -> void:
 # --- attacks ------------------------------------------------------------------------------------
 ## New normal inputs coexist with legacy CPU light/heavy. The original move resources
 ## remain immutable; pose variants inherit the donor's complete combat contract.
-func _try_limb_attack(air: bool, chaining: bool = false) -> bool:
+func sword_swap_progress() -> float:
+	return float(sword_swap_frame) / float(SWORD_SWAP_FRAMES) if state == State.SWAP else 0.0
+
+
+func _discard_swap_blocked_inputs() -> void:
+	for action: String in ["weapon_swap", "left_hand", "right_hand", "light", "heavy", "skill1", "skill2", "ultimate", "grapple", "grapple_enemy", "grapple_parkour", "jump", "block"]:
+		InputRouter.buffered(player_index, action)
+
+
+func _try_sword_swap() -> bool:
+	if not _pressed("weapon_swap"):
+		return false
+	if data.id != "choko" or data.weapon_kind != "sword" or state not in [State.IDLE, State.WALK] or not on_ground() or grapple.busy():
+		return false
+	sword_swap_from = sword_hand
+	sword_swap_to = "left" if sword_hand == "right" else "right"
+	sword_swap_frame = 0
+	crouching = false
+	_set_state(State.SWAP)
+	_discard_swap_blocked_inputs()
+	return true
+
+
+func _tick_sword_swap(delta: float, intent: Dictionary) -> void:
+	_discard_swap_blocked_inputs()
+	# Input interruptions precede this tick's handoff. At counter 11, a dodge keeps
+	# the old hand; once counter 12 committed, any interruption keeps the new hand.
+	if _pressed("dash"):
+		_set_state(State.IDLE)
+		_start_dash(intent.axis)
+		return
+	for action: String in ["left_leg", "right_leg"]:
+		if InputRouter.pressed_within(player_index, action, InputRouter.BUFFER_FRAMES):
+			_set_state(State.IDLE)
+			_try_limb_attack(false, false, true)
+			return
+	sword_swap_frame += 1
+	if sword_swap_frame == SWORD_SWAP_CONTACT:
+		sword_hand = sword_swap_to
+	_walk_physics(delta, 0.0)
+	if sword_swap_frame >= SWORD_SWAP_FRAMES:
+		_set_state(State.IDLE)
+
+
+func _try_limb_attack(air: bool, chaining: bool = false, legs_only: bool = false) -> bool:
 	for action: String in LimbMoves.ACTIONS:
+		if legs_only and not action.ends_with("leg"):
+			continue
 		if not _pressed(action):
 			continue
 		var index := chain_index + 1 if chaining else 0
-		var move := LimbMoves.resolve(data, action, index, _limb_action if chaining else "", crouching, air)
+		var move := LimbMoves.resolve(data, action, index, _limb_action if chaining else "", crouching, air, sword_hand)
 		if move == null:
 			return false
 		_start_move(move)
@@ -796,7 +864,8 @@ func _start_move(m: MoveData, slot: String = "") -> void:
 		return
 	if _free() and not is_cpu and opponent != null and state != State.ATTACK:
 		_set_forward(opponent.global_position - global_position)
-	if not m.anim.begins_with("limb_"):
+	attack_sword_hand = sword_hand
+	if not m.anim.begins_with("limb_") and not m.anim.begins_with("sword_left_hand_") and not m.anim.begins_with("sword_right_hand_"):
 		_limb_action = ""
 	if veil_frames > 0:
 		veil_strike = true
@@ -1723,6 +1792,10 @@ func _update_hitbox_debug() -> void:
 
 
 func _set_state(s: State) -> void:
+	if state == State.SWAP and s != State.SWAP:
+		sword_swap_frame = 0
+		sword_swap_from = sword_hand
+		sword_swap_to = sword_hand
 	if state == State.GRAPPLE and s != State.GRAPPLE and grapple != null:
 		grapple.detach()
 	if state == State.ATTACK and s != State.ATTACK:

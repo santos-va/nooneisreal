@@ -23,7 +23,7 @@ const PARTS := {
 }
 
 static func supports(character_id: String, move: MoveData) -> bool:
-	return move != null and move.anim_clip.is_empty() and (move.id in MOVES.get(character_id, []) or LimbMotion.supports(move.anim))
+	return move != null and move.anim_clip.is_empty() and (move.id in MOVES.get(character_id, []) or LimbMotion.supports(move.anim) or SwordMotion.supports(move.anim))
 
 
 static func apply(skeleton: Skeleton3D, animator: RigAnimator, upper_body_only: bool = false) -> void:
