@@ -6,6 +6,7 @@ cd "$ROOT"
 export GODOT_BIN="${GODOT_BIN:-godot}"
 python3 - <<'PY'
 import os
+from contextlib import contextmanager, ExitStack
 from pathlib import Path
 import re
 import shutil
@@ -20,6 +21,9 @@ if binary is None:
 logs = Path(os.environ.get('PLAYABLE_LOG_DIR') or tempfile.mkdtemp(prefix='nir-playable-'))
 logs.mkdir(parents=True, exist_ok=True)
 cases = [
+    ('city-journey', 'tools/world/city_journey_check.gd', r'CITY_JOURNEY_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('quest-tracking', 'tools/npc/quest_tracking_check.gd', r'\[quest-tracking\] [1-9][0-9]* checks / 0 failures', [], 0),
+    ('quest-journal', 'tools/ui/quest_journal_check.gd', r'QUEST_JOURNAL_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('ui', 'tools/ui/layout_check.gd', r'UI_LAYOUT PASS \(0 failures; mutation=\)', [], 0),
     ('district-ui', 'tools/ui/district_ui_check.gd', r'DISTRICT_UI_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('locomotion-states', 'tools/animation/locomotion_states_check.gd', r'LOCOMOTION_STATES_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
@@ -82,13 +86,50 @@ for mutation in ('round', 'rematch', 'score'):
     cases.append(('match-lifecycle-negative-' + mutation, 'tools/match/match_lifecycle_check.gd',
                   rf'MATCH_LIFECYCLE FAIL \([1-9][0-9]* checks, [1-9][0-9]* failures; mutation={mutation}\)',
                   ['--', '--break=' + mutation], 1))
+@contextmanager
+def isolated_profile():
+    # Linux has an OS-supported data root override. macOS does not: use Godot's
+    # custom user directory in a disposable project mirror and native data root.
+    env = os.environ.copy()
+    custom = sys.platform == 'darwin' or env.get('PLAYABLE_CUSTOM_USER_DIR') == '1'
+    with ExitStack() as cleanup:
+        if sys.platform.startswith('linux'):
+            temporary = Path(cleanup.enter_context(tempfile.TemporaryDirectory(prefix='nir-playable-user-')))
+            data_root = temporary / 'data'
+            data_root.mkdir()
+            env['XDG_DATA_HOME'] = str(data_root)
+        elif sys.platform == 'darwin':
+            data_root = Path.home() / 'Library' / 'Application Support'
+        else:
+            raise RuntimeError('save isolation currently supports Linux and macOS')
+        if not custom:
+            yield Path('game'), env
+            return
+        # Reserve an unpredictable native directory; only this owned directory is removed.
+        user_dir = Path(cleanup.enter_context(tempfile.TemporaryDirectory(prefix='nir-playable-user-', dir=data_root)))
+        mirror = Path(cleanup.enter_context(tempfile.TemporaryDirectory(prefix='nir-playable-project-')))
+        source = Path('game').resolve()
+        for child in source.iterdir():
+            if child.name not in ('project.godot', 'override.cfg'):
+                (mirror / child.name).symlink_to(child, target_is_directory=child.is_dir())
+        shutil.copy2(source / 'project.godot', mirror / 'project.godot')
+        # runtime-only project override; assets, scripts and the imported cache are reused.
+        (mirror / 'override.cfg').write_text(
+            '[application]\nconfig/use_custom_user_dir=true\n'
+            f'config/custom_user_dir_name="{user_dir.name}"\n')
+        yield mirror, env
+
 failures = 0
 for name, script, sentinel, args, expected_rc in cases:
     command = [binary, '--headless', '--audio-driver', 'Dummy', '--path', 'game',
                '--fixed-fps', '60', '--quit-after', '12000', '--script', str(Path(script).resolve()), *args]
     try:
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                text=True, timeout=180)
+        # Every scenario owns its saves, including real exit/re-entry within that case.
+        # Never let fixture checkpoints leak into another scenario or the player's profile.
+        with isolated_profile() as (project_path, child_env):
+            command[command.index('--path') + 1] = str(project_path)
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    text=True, timeout=180, env=child_env)
         output, rc = result.stdout, result.returncode
     except subprocess.TimeoutExpired as exc:
         raw = exc.stdout or b''

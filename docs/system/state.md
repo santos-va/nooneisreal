@@ -1,6 +1,6 @@
 # state — поточна правда
 
-**Оновлено:** 2026-10-05, T1 — зріз [[2026-10-05-Playable-District]] пройшов локальне та незалежне native-приймання, production `0999c77`; [PR #175](https://github.com/santos-va/nooneisreal/pull/175), гілка `codex/playable-district`. Lowhand/hammer/sword blockers закриті, full playable **57/0**. Мерджить Santos; новий пакет ще не оголошений установленим в Applications. Точні докази й межі — [[2026-10-05-Playable-District-Review]] та [[2026-10-05-Playable-District-Session]]. Історичний checkpoint [[2026-10-05-Playable-District-Checkpoint]] закрито.
+**Оновлено:** 2026-10-05, T1 — [PR #176](https://github.com/santos-va/nooneisreal/pull/176): повернення до безпечного місця героя, вибір доручення й напрям до цілі; production `e6f13c8`, локально **60/0**, smoke **164/0**, **90 GDS/0**. [[2026-10-05-District-Journey-Session]] · [[2026-10-05-District-Journey-Review]]. Попередній #175 змерджено й опубліковано в macOS-каналі `d9d12ec`; installed SHA Mac невідомий. Іконка чекає потрібний PNG за вибором Santos.
 **Фаза:** прохідний 3D-квартал Cronshift і локальний бій інтегровані; напрям розвитку — спільне місто, далі бої всередині нього. Чинний художній еталон — свіжі окремі текстури/вирізки Higgsfield; старі панорами — чернетки. Фінальний арт і приймання на M3 відкриті.
 
 ## macOS застосунок та канал main — реалізація T8, 2026-10-04
@@ -81,7 +81,7 @@ headless version banner/CRLF та продовжує до офіційного S
 
 ## ▶ Хвиля — поточний маршрут
 
-[[2026-10-05-Playable-District]]: завершений перевірений зріз передано в PR #175. Наступний крок — мердж Santos, автоматична main-збірка та приймання фактично встановленої версії на Mac. Не повторювати закриті роботи з історичного checkpoint; докази й обмеження — [[2026-10-05-Playable-District-Session]].
+[[2026-10-05-District-Journey-Continuity]] реалізовано й перевірено локально; PR #176 очікує GitHub CI та merge Santos. Попередній [[2026-10-05-Playable-District]] уже в main й реально опублікований: macOS run 37243292345 пройшов build/verify-macos/publish, публічний manifest підтвердив `d9d12ec`. Mac-приймання користувача лишається окремим від опублікованого каналу.
 
 Модинг і комерційна модель — [[2026-10-05-Modding-And-Ownership]], окрема пропозиція без зміни ліцензій/DRM. PNG іконки недоступний; M3 й суб'єктивне півгодинне проходження не оголошувати перевіреними з Linux.
 

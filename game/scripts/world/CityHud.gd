@@ -30,6 +30,15 @@ var _quest_title: Label
 var _quest_hint: Label
 var _quest_totals: Label
 var _journal: Label
+var quest_buttons: Dictionary = {}
+var untrack_button: Button
+var _journal_list: VBoxContainer
+var _journal_scroll: ScrollContainer
+var _quest_guide: CityQuestGuide
+var _quest_director: Node
+var _guide_elapsed := 0.0
+var _journey: Node
+var resume_location_label: Label
 
 
 func setup(model: CityOnboarding) -> void:
@@ -94,6 +103,8 @@ func _ready() -> void:
 	hint_label.offset_top = -58
 	hint_label.offset_bottom = -14
 	_root.add_child(hint_label)
+	_quest_guide = CityQuestGuide.new()
+	_root.add_child(_quest_guide)
 	_build_quest()
 	_build_pause()
 	_refresh()
@@ -116,10 +127,14 @@ func _build_pause() -> void:
 	center.add_child(column)
 	column.add_child(_label("CRONSHIFT  /  JOURNEY PAUSED", 36))
 	column.add_child(_label(BuildInfo.label(), 18))
+	resume_location_label = _label("Continue from safe district checkpoints.", 22)
+	column.add_child(resume_location_label)
 	var help := _label(exploration_help(), 24)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(help)
 	var journal_scroll := ScrollContainer.new()
+	_journal_scroll = journal_scroll
+	journal_scroll.follow_focus = true
 	journal_scroll.custom_minimum_size.y = 130
 	journal_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(journal_scroll)
@@ -127,7 +142,20 @@ func _build_pause() -> void:
 	_journal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_journal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_journal.focus_mode = Control.FOCUS_ALL
-	journal_scroll.add_child(_journal)
+	_journal_list = VBoxContainer.new()
+	_journal_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_journal_list.add_theme_constant_override("separation", 6)
+	journal_scroll.add_child(_journal_list)
+	_journal_list.add_child(_journal)
+	_journal.gui_input.connect(func(event: InputEvent):
+		if event.is_action_pressed("ui_down") or event.is_action_pressed("ui_up"):
+			journal_scroll.scroll_vertical += 32 if event.is_action_pressed("ui_down") else -32
+			_journal.accept_event())
+	untrack_button = _button("TURN OFF QUEST GUIDE", func(): _track_quest(""))
+	untrack_button.add_theme_font_size_override("font_size", 24)
+	untrack_button.custom_minimum_size.y = 44
+	_journal_list.add_child(untrack_button)
+	untrack_button.focus_entered.connect(func(): _journal_scroll.ensure_control_visible(untrack_button))
 	resume_button = _button("RESUME", func(): set_paused(false))
 	skip_button = _button("SKIP GUIDANCE · EXPLORE FREELY", _skip)
 	restart_button = _button("RESTART WALK & GUIDANCE · KEEP PROGRESS", _restart)
@@ -135,18 +163,7 @@ func _build_pause() -> void:
 	var buttons: Array[Control] = [resume_button, skip_button, restart_button, exit_button]
 	for button: Control in buttons:
 		column.add_child(button)
-	buttons.append(_journal)
-	_journal.gui_input.connect(func(event: InputEvent):
-		if event.is_action_pressed("ui_down") or event.is_action_pressed("ui_up"):
-			journal_scroll.scroll_vertical += 32 if event.is_action_pressed("ui_down") else -32
-			_journal.accept_event())
-	_journal.focus_neighbor_left = _journal.get_path_to(resume_button)
-	_journal.focus_neighbor_right = _journal.get_path_to(resume_button)
-	for i: int in buttons.size():
-		buttons[i].focus_neighbor_top = buttons[i].get_path_to(buttons[posmod(i - 1, buttons.size())])
-		buttons[i].focus_neighbor_bottom = buttons[i].get_path_to(buttons[(i + 1) % buttons.size()])
-		buttons[i].focus_previous = buttons[i].focus_neighbor_top
-		buttons[i].focus_next = buttons[i].focus_neighbor_bottom
+	_rebuild_pause_focus()
 	pause_panel.hide()
 
 
@@ -207,13 +224,118 @@ func _refresh_progress() -> void:
 	if not summary.get("save_ok", true):
 		_quest_totals.text += " · Save unavailable"
 	_quest_card.show()
-	if _journal != null:
-		var entries := PackedStringArray()
-		for entry: Dictionary in _progress.journal():
-			if entry.get("status", "locked") == "locked":
-				continue
-			entries.append("%s · %s  (%d / %d)" % [str(entry.get("status", "")).to_upper(), entry.get("title", ""), entry.get("progress", 0), entry.get("target", 1)])
-		_journal.text = "\n".join(entries) if not entries.is_empty() else "Meet residents to discover district tasks."
+	_refresh_journal()
+	_refresh_quest_guide()
+
+
+func _refresh_journal() -> void:
+	if _journal == null or not is_instance_valid(_progress):
+		return
+	var visible_ids: Array[String] = []
+	var entries := PackedStringArray()
+	var selected: String = str(_progress.tracked_quest_id()) if _progress.has_method("tracked_quest_id") else ""
+	for entry: Dictionary in _progress.journal():
+		var state: String = str(entry.get("status", "locked"))
+		if state == "locked":
+			continue
+		var id: String = str(entry.get("id", ""))
+		var caption := "%s  (%d / %d)" % [entry.get("title", ""), entry.get("progress", 0), entry.get("target", 1)]
+		if state in ["active", "ready"] and not id.is_empty():
+			visible_ids.append(id)
+			if not quest_buttons.has(id):
+				var button := _button("", _track_quest.bind(id))
+				button.add_theme_font_size_override("font_size", 23)
+				button.custom_minimum_size.y = 44
+				button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+				button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+				_journal_list.add_child(button)
+				button.focus_entered.connect(func(): _journal_scroll.ensure_control_visible(button))
+				quest_buttons[id] = button
+			var button: Button = quest_buttons[id]
+			button.text = ("✓ TRACKING · " if id == selected else "TRACK · ") + caption
+			button.tooltip_text = str(entry.get("hint", ""))
+			button.show()
+		else:
+			entries.append("%s · %s" % [state.to_upper(), caption])
+	for id: String in quest_buttons:
+		if id not in visible_ids:
+			var button: Button = quest_buttons[id]
+			if button.has_focus():
+				resume_button.grab_focus()
+			button.hide()
+	_journal.text = "\n".join(entries) if not entries.is_empty() else "Choose an accepted task to show its destination."
+	untrack_button.text = "QUEST GUIDE OFF ✓" if selected.is_empty() else "TURN OFF QUEST GUIDE"
+	untrack_button.visible = _progress.has_method("track_quest")
+	# Accepted tasks first, then opt-out, then non-interactive available/completed entries.
+	var at := 0
+	for id: String in visible_ids:
+		_journal_list.move_child(quest_buttons[id], at)
+		at += 1
+	_journal_list.move_child(untrack_button, at)
+	_journal_list.move_child(_journal, _journal_list.get_child_count() - 1)
+	_rebuild_pause_focus()
+
+
+func _track_quest(id: String) -> void:
+	if is_instance_valid(_progress) and _progress.has_method("track_quest"):
+		_progress.track_quest(id)
+
+
+func _rebuild_pause_focus() -> void:
+	if resume_button == null:
+		return
+	var controls: Array[Control] = [resume_button]
+	for button: Button in [skip_button, restart_button, exit_button]:
+		if not button.disabled:
+			controls.append(button)
+	for child: Node in _journal_list.get_children():
+		if child is Button and child.visible:
+			controls.append(child)
+	controls.append(_journal)
+	_journal.focus_neighbor_left = _journal.get_path_to(resume_button)
+	_journal.focus_neighbor_right = _journal.get_path_to(resume_button)
+	for i: int in controls.size():
+		controls[i].focus_neighbor_top = controls[i].get_path_to(controls[posmod(i - 1, controls.size())])
+		controls[i].focus_neighbor_bottom = controls[i].get_path_to(controls[(i + 1) % controls.size()])
+		controls[i].focus_previous = controls[i].focus_neighbor_top
+		controls[i].focus_next = controls[i].focus_neighbor_bottom
+
+
+func bind_journey(model: Node) -> void:
+	if is_instance_valid(_journey) and _journey.changed.is_connected(_refresh_journey):
+		_journey.changed.disconnect(_refresh_journey)
+	_journey = model
+	_journey.changed.connect(_refresh_journey)
+	_refresh_journey()
+
+
+func _refresh_journey() -> void:
+	if resume_location_label == null or not is_instance_valid(_journey):
+		return
+	resume_location_label.text = "Continue from: %s · safe checkpoint" % _journey.title()
+	if not _journey.save_ok:
+		resume_location_label.text = "Return point not saved · " + str(_journey.title())
+	resume_location_label.add_theme_color_override("font_color", Color("f5d5a3") if not _journey.save_ok else Color("b9c9ce"))
+
+
+func bind_quest_context(director: Node) -> void:
+	_quest_director = director
+	_refresh_quest_guide()
+
+
+func _refresh_quest_guide() -> void:
+	if _quest_guide == null:
+		return
+	_quest_guide.hide()
+	if paused_ui or InputRouter.ui_suppressed() or not is_instance_valid(_player) or not is_instance_valid(_progress):
+		return
+	if not _progress is CityProgress:
+		return
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return
+	var target: Dictionary = CityQuestTargets.resolve(_progress, _quest_director, _player.global_position)
+	_quest_guide.show_target(target, _player.global_position, camera, _root.size)
 
 
 func exploration_help() -> String:
@@ -231,6 +353,8 @@ func set_paused(value: bool) -> void:
 	if paused_ui == value:
 		return
 	paused_ui = value
+	if _quest_guide != null:
+		_quest_guide.hide()
 	if onboarding != null:
 		onboarding.suspended = value
 	if value:
@@ -288,6 +412,7 @@ func _refresh() -> void:
 	objective_label.visible = not onboarding.is_complete()
 	if skip_button != null:
 		skip_button.disabled = onboarding.is_complete()
+		_rebuild_pause_focus()
 
 
 func bind_player(player: Fighter) -> void:
@@ -327,6 +452,13 @@ func _on_stamina(value: float, maximum: float) -> void:
 
 
 func _process(_delta: float) -> void:
+	_guide_elapsed += _delta
+	if paused_ui or InputRouter.ui_suppressed():
+		if _quest_guide != null:
+			_quest_guide.hide()
+	elif _guide_elapsed >= 0.1:
+		_guide_elapsed = 0.0
+		_refresh_quest_guide()
 	if _aim_cue == null:
 		return
 	_aim_cue.hide()
@@ -357,6 +489,8 @@ func _process(_delta: float) -> void:
 		_aim_cue.position.y = _status_card.get_rect().end.y + 8.0
 	if _quest_card.visible and _quest_card.get_rect().intersects(Rect2(_aim_cue.position, extent)):
 		_aim_cue.position.y = _quest_card.get_rect().end.y + 8.0
+	if _quest_guide.visible and _quest_guide.get_rect().intersects(Rect2(_aim_cue.position, extent)):
+		_aim_cue.position.y = _quest_guide.get_rect().end.y + 8.0
 	_aim_cue.show()
 
 

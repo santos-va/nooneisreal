@@ -42,7 +42,7 @@ func load_content(path: String) -> bool:
 	return configure(_parse_json(file.get_as_text()))
 
 func configure(data: Variant) -> bool:
-	if not data is Dictionary or data.keys().size() != 3 or data.get("version") != 1 or not data.get("quests") is Array or not data.get("palettes") is Array:
+	if not data is Dictionary or data.keys().size() != 3 or not NpcPopulation._integer(data.get("version"), 1, 1) or not data.get("quests") is Array or not data.get("palettes") is Array:
 		return false
 	if data.quests.size() > 24 or data.palettes.size() > 16:
 		return false
@@ -186,8 +186,37 @@ func complete_quest(id: String) -> bool:
 		return false
 	heroes[hero_id].completed.append(id)
 	heroes[hero_id].credits += int(quest(id).reward)
+	if heroes[hero_id].get("tracked_quest", null) == id:
+		heroes[hero_id].erase("tracked_quest")
 	_changed()
 	return true
+
+func track_quest(id: String) -> bool:
+	# An absent field means automatic selection; an empty string is a saved opt-out.
+	if not id.is_empty() and quest_status(id) not in ["active", "ready"]:
+		return false
+	var profile: Dictionary = heroes[hero_id]
+	if profile.has("tracked_quest") and profile.tracked_quest == id:
+		return true
+	profile.tracked_quest = id
+	_changed()
+	return true
+
+func tracked_quest_id() -> String:
+	var profile: Dictionary = heroes[hero_id]
+	if profile.has("tracked_quest"):
+		var selected: String = profile.tracked_quest
+		return selected if not selected.is_empty() and quest_status(selected) in ["active", "ready"] else ""
+	for q: Dictionary in quests:
+		if quest_status(q.id) in ["active", "ready"]:
+			return q.id
+	return ""
+
+func tracking_mode() -> String:
+	var profile: Dictionary = heroes[hero_id]
+	if not profile.has("tracked_quest"):
+		return "auto"
+	return "off" if String(profile.tracked_quest).is_empty() else "manual"
 
 func record_event(kind: String, id: String = "") -> void:
 	if kind not in EVENT_KINDS or not _event_id_valid(kind, id):
@@ -214,23 +243,27 @@ func journal() -> Array[Dictionary]:
 			count += _count(goal)
 			target += int(goal.count)
 		entries.append({"id": q.id, "title": q.title, "description": q.description, "hint": q.hint,
-			"status": quest_status(q.id), "progress": count, "target": target, "reward": int(q.reward)})
+			"status": quest_status(q.id), "progress": count, "target": target, "reward": int(q.reward), "tracked": q.id == tracked_quest_id()})
 	return entries
 
 func summary() -> Dictionary:
 	var title: String = "Знайомство з кварталом"
 	var hint: String = "Завітай до крамниць на західній вулиці: там чекають доручення."
-	for entry: Dictionary in journal():
-		if entry.status in ["ready", "active"]:
-			title = entry.title
-			hint = "Повернися до замовника по нагороду." if entry.status == "ready" else entry.hint
-			break
+	var selected: String = tracked_quest_id()
+	if not selected.is_empty():
+		var entry: Dictionary = quest(selected)
+		title = entry.title
+		hint = "Повернися до замовника по нагороду." if quest_status(selected) == "ready" else entry.hint
+	elif tracking_mode() == "off":
+		title = "Вільна прогулянка"
+		hint = "Відстеження вимкнено. Обери доручення в журналі, коли захочеш повернутися до нього."
 	if not quests.is_empty() and heroes[hero_id].completed.size() == quests.size():
 		title = "Усі доручення кварталу завершено"
 		hint = "Нагороди отримано. Можеш далі гуляти, спілкуватися із сусідами й обирати перев’язі."
 	return {"hero_id": hero_id, "completed": heroes[hero_id].completed.size(), "total": quests.size(),
 		"credits": int(heroes[hero_id].credits), "active_title": title, "active_hint": hint,
-		"palette": heroes[hero_id].palette, "save_ok": save_ok}
+		"palette": heroes[hero_id].palette, "save_ok": save_ok,
+		"tracked_quest_id": selected, "tracking_mode": tracking_mode()}
 
 func set_palette(id: String) -> bool:
 	for p: Dictionary in palettes:
@@ -258,7 +291,7 @@ func snapshot() -> Dictionary:
 	return {"version": 1, "heroes": heroes.duplicate(true)}
 
 func restore(data: Variant) -> bool:
-	if not data is Dictionary or data.get("version") != 1 or not data.get("heroes") is Dictionary or data.heroes.size() > HEROES.size():
+	if not data is Dictionary or not NpcPopulation._integer(data.get("version"), 1, 1) or not data.get("heroes") is Dictionary or data.heroes.size() > HEROES.size():
 		return false
 	for hero: Variant in data.heroes:
 		if hero not in HEROES or not data.heroes[hero] is Dictionary:
@@ -274,6 +307,16 @@ func restore(data: Variant) -> bool:
 				if not id is String or quest(id).is_empty() or id in seen or (field == "completed" and id not in p.accepted):
 					return false
 				seen.append(id)
+		if p.has("tracked_quest"):
+			if not p.tracked_quest is String:
+				return false
+			if not p.tracked_quest.is_empty():
+				var selected: Dictionary = quest(p.tracked_quest)
+				if selected.is_empty() or p.tracked_quest not in p.accepted or p.tracked_quest in p.completed:
+					return false
+				for required: String in selected.requires:
+					if required not in p.completed:
+						return false
 		if p.owned.size() > palettes.size() or p.palette not in p.owned:
 			return false
 		for id: Variant in p.owned:
