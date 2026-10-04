@@ -374,6 +374,89 @@ install_agent --enable-only
         self.assertIn(OLD, result.stdout)
         self.assertEqual(self.current(), OLD)
 
+    def test_first_install_offline_registers_and_opens_app(self):
+        shutil.rmtree(self.app)
+        shutil.copy2(SCRIPT, self.feed / 'update-macos.sh')
+        wrapper = self.feed / 'run.sh'
+        setup = MOCKS[:MOCKS.index('if [ "${TEST_NETWORK:-}"')]
+        setup += r'''
+AGENT="$TEST_ROOT/Launch Agents/com.santos.nooneisreal.update.plist"
+plutil() {
+    local destination="${@: -1}"
+    if [ "$1" = -create ]; then : > "$destination"; else printf '%s\n' "$*" >> "$destination"; fi
+}
+launchctl() { printf '%s\n' "$*" >> "$TEST_ROOT/registrations"; }
+open() { printf '%s\n' "$1" > "$TEST_ROOT/opened"; }
+fetch() { echo 'Unexpected network request' >&2; return 1; }
+install_agent
+'''
+        wrapper.write_text(setup)
+        env = dict(os.environ, TEST_SCRIPT=str(SCRIPT), TEST_ROOT=str(self.root), TEST_PY=sys.executable)
+        result = subprocess.run(['/bin/bash', str(wrapper)], env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.current(), NEW)
+        self.assertIn('bootstrap gui/', (self.root / 'registrations').read_text())
+        self.assertEqual((self.root / 'opened').read_text().strip(), str(self.app))
+        self.assertEqual((self.root / 'User Data/Updater/update-macos.sh').read_bytes(), SCRIPT.read_bytes())
+
+    def test_local_builder_uses_pinned_commit_without_touching_checkout(self):
+        repo = self.root / 'repo with spaces'
+        (repo / 'game').mkdir(parents=True)
+        (repo / 'tools/distribution').mkdir(parents=True)
+        (repo / 'game/project.godot').write_text('committed project')
+        preset = SCRIPT.parents[2] / 'game/export_presets.cfg'
+        shutil.copy2(preset, repo / 'game/export_presets.cfg')
+        # Boundary stub verifies the real builder supplies its offline installer inputs.
+        (repo / 'tools/distribution/update-macos.sh').write_text(r'''
+set -eu
+[ "$1" = --install ]
+dir=$(dirname "$0")
+[ -s "$dir/NoOneIsReal-macos.zip" ]
+cp "$dir/manifest.json" "$TEST_ROOT/built-manifest.json"
+''')
+        def git(*args):
+            return subprocess.check_output(['git', '-C', str(repo), *args], text=True).strip()
+        git('init', '-q'); git('add', '.')
+        git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'Fixture')
+        revision = git('rev-parse', 'HEAD')
+        (repo / 'game/project.godot').write_text('uncommitted user edits')
+        home = self.root / 'Mac Home'
+        template = home / 'Library/Application Support/Godot/export_templates/4.7.stable/macos.zip'
+        template.parent.mkdir(parents=True); template.write_bytes(b'fixture template')
+        fake_godot = self.root / 'godot fixture'
+        fake_godot.write_text(r'''#!/bin/bash
+if [ "$1" = --version ]; then echo 4.7.stable.fixture; exit; fi
+[ "$(cat "$3/project.godot")" = 'committed project' ] || exit 2
+grep -F "$TEST_REVISION" "$3/export_presets.cfg" >/dev/null || exit 3
+if [ "$4" = --export-release ]; then printf 'export fixture' > "$6"; fi
+'''); fake_godot.chmod(0o755)
+        helper = self.root / 'native_mock.py'
+        helper.write_text("""import json,sys,os
+args=sys.argv[1:]
+if args[0]=='stat': print(os.stat(args[-1]).st_size)
+elif args[0]=='-create': open(args[-1],'w').write('{}')
+elif args[0]=='-insert':
+ p=args[-1]; d=json.load(open(p)); d[args[1]]=int(args[3]) if args[2]=='-integer' else args[3]; json.dump(d,open(p,'w'))
+""")
+        script = self.root / 'local-installer.sh'
+        script.write_text(SCRIPT.with_name('install-local-macos.sh').read_text().replace('[ -w /Applications ]', '[ -w "$TEST_ROOT/Applications" ]'))
+        command = r'''
+uname() { echo Darwin; }; pgrep() { return 1; }
+plutil() { "$TEST_PY" "$TEST_ROOT/native_mock.py" "$@"; }
+stat() { "$TEST_PY" "$TEST_ROOT/native_mock.py" stat "$@"; }
+export -f uname pgrep plutil stat
+/bin/bash "$TEST_ROOT/local-installer.sh" "$TEST_REPO" "$TEST_REVISION"
+'''
+        env = dict(os.environ, HOME=str(home), TEST_ROOT=str(self.root), TEST_PY=sys.executable,
+                   TEST_REPO=str(repo), TEST_REVISION=revision, GODOT_BIN=str(fake_godot))
+        result = subprocess.run(['/bin/bash', '-c', command], env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        manifest = json.loads((self.root / 'built-manifest.json').read_text())
+        self.assertEqual(manifest['revision'], revision)
+        self.assertEqual(manifest['sha256'], hashlib.sha256(b'export fixture').hexdigest())
+        self.assertEqual((repo / 'game/project.godot').read_text(), 'uncommitted user edits')
+        self.assertEqual(git('status', '--porcelain'), 'M game/project.godot')
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

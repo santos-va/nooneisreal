@@ -148,6 +148,23 @@ Windows/Linux окремих release-пресетів поки не мають. 
 звірено 2026-10-04; `binary_format/architecture`, `application/icon`,
 `application/bundle_identifier`, `codesign/codesign=1` — builtin ad-hoc.
 
+## Перше встановлення з локального репозиторію на Mac
+
+`tools/distribution/install-local-macos.sh /path/to/repository <tooling-commit>`
+будує повну app з `game/` саме вказаного 40-символьного commit у тимчасовій
+директорії. Checkout і незакомічені правки залишаються недоторканими.
+Потрібні macOS, git, доступний для запису `/Applications` та інтернет, якщо
+Godot 4.7 або шаблону немає. Скрипт використовує наявний Godot 4.7; інакше
+завантажує офіційний редактор у тимчасову директорію. Відсутній macOS-шаблон
+потребує завантаження офіційного пакета близько **1,28 GB**. Обидва завантаження
+перевіряються за офіційними SHA512. Python, Xcode та sudo не потрібні.
+
+Після експорту штатний updater перевіряє архів, arm64, metadata та ad-hoc підпис,
+встановлює `/Applications/No One Is Real.app`, вмикає оновлення і відкриває гру.
+Логи збірки: `~/Library/Logs/No One Is Real/local-{import,export}.log`.
+Це локальна збірка, не notarized публічний дистрибутив; глобальні налаштування
+Gatekeeper скрипт не змінює. Малий `Enable Updates.command` сам гру не встановлює.
+
 ## Related
 
 - [[Build-and-Run]] · [[Testing]] · [[05-Platforms-Input]] · [[06-UI-UX]]

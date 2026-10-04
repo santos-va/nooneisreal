@@ -52,5 +52,15 @@
 
 Native CI тепер додатково реконструює export реальними macOS `dd/gzip/plutil`, примусово забравши локальну іконку для перевірки download-path, і перевіряє reconstructed bundle через `codesign/lipo`. Цей job прочитано, але його виконання ще не підтверджено. Release draft публікується тільки після завантаження ZIP/index/chunks, manifest додається останнім; старі published assets не перезаписуються. Фінальна збірка committed source і її hashes перевіряються окремо після завершення документації.
 
+## Перше встановлення однією командою з репозиторію
+
+**GREEN — локальний installer entrypoint, native виконання на Mac лишається непідтвердженим.** За уточненням Santos гра ще не встановлена; `Enable Updates.command` не є першим installer. Новий `install-local-macos.sh` збирає app із зазначеного повного commit SHA: `game/`, preset і updater походять з одного pinned revision. Поточний checkout не переключається й не редагується; `git archive` і `git show` читають committed source у тимчасову `/tmp`-директорію.
+
+Власноруч прочитано весь скрипт; `bash -n` і `git diff --check` — rc0. Перевірено відсутність Python/sudo/вимкнення системних захистів у користувацькому шляху. Godot4.7 та macOS template беруться локально або з офіційного Godot release зі SHA512; manifest створюється системним `plutil`. Після ad-hoc export запускається offline `update-macos.sh --install` з локальними ZIP і manifest — перша інсталяція **не залежить від опублікованого релізу гри або готового каналу main**. Updater перевіряє bundle, встановлює app, копіює себе в постійну директорію, реєструє LaunchAgent і відкриває вже встановлену app; очищення build-temp не видаляє ці файли.
+
+Незалежно запущено `python3 tools/distribution/test_distribution.py DistributionTests.test_local_builder_uses_pinned_commit_without_touching_checkout DistributionTests.test_first_install_offline_registers_and_opens_app`: **2 tests / OK**. Перший використовує справжній тимчасовий git repository/архівацію та dirty checkout зі шляхами з пробілами; другий видаляє fixture app і проходить реальний updater offline install із реєстрацією/відкриттям. Godot export, macOS API, writable Applications і LaunchAgent/open у цих тестах замінені fixtures; це не твердження про встановлення на Mac Santos.
+
+Початковий варіант читав game з HEAD, а tooling із pinned SHA; це усунено до приймання (`revision=$tooling`). Тимчасовий шлях тепер фіксований `/tmp`, щоб значення TMPDIR із `&` або `|` не пошкоджувало sed-підстановку preset. Доступ на запис у Applications перевіряється без адміністративних змін; гра має бути закрита. Відсутній template потребує великого одноразового завантаження офіційного пакета; це необхідна перша збірка, не incremental update.
+
 ## Related
 - [[2026-10-04-Mac-App-Updates]] · [[2026-10-04-Mac-App-Session]] · [[Build-and-Run]] · [[Export-Platforms]] · [[constitution]]

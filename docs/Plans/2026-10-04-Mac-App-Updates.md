@@ -46,6 +46,28 @@ Mac без dev-tools потребує системних засобів; під�
 Перевірка: actual A→B reuse/download bytes, bad chunk/hash, missed versions,
 rollback/running guards, native macOS CI, make check та make gates.
 
+## Перше встановлення з Terminal
+
+Santos виконав enable-updates і отримав `Install the game first with the full
+offline installer`: застосунок відсутній. Це підтверджений розрив першого
+встановлення, а не доказ конкретної причини старого діалогу Gatekeeper.
+Santos прямо обрав команду Terminal з кореня репозиторію.
+
+Варіанти: повторно дати updater (не встановить гру); чекати підписаний Apple
+реліз (потребує credentials); локально зібрати й встановити гру з отриманого
+Git commit. Обрано третій для особистого Mac. Погляди: новий гравець потребує
+самої гри; автор із локальними правками не має втратити checkout; Mac без
+Python потребує штатних утиліт; повільна мережа має повторно використати
+встановлений Godot; офлайн-релізний канал не повинен блокувати перше встановлення;
+довіра спирається на перевірені офіційні SHA512 та підпис готового app.
+
+T8 додає tools/distribution/install-local-macos.sh: git archive конкретного SHA,
+ізоляція build у temp, Godot4.7/template bootstrap за потреби, export,
+штатний macOS manifest та offline install + updater. Перевірки: bash -n,
+перший запуск із порожнім Applications через isolated OS mocks, невірний hash,
+відсутній release-канал, незмінність checkout, make gates. Native Mac лишається
+реальним прийманням користувача, не Linux-тестом.
+
 ## Стан передачі
 
 Код installer/update/export і незалежний аудит виконані. Реальну фінальну збірку
