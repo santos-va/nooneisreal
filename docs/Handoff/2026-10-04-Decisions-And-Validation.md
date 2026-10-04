@@ -2,6 +2,12 @@
 
 English handoff requested by Santos. This page separates the current gameplay contract from superseded proposals and records prior validation without claiming a new engine run. Read it with the delivery ledger and remaining-work pages maintained by T1. Repository inspected for this reconciliation: `origin/main` / HEAD `a401e6c`; working branch `codex/context-handoff`.
 
+## Later local contract update
+
+The new player-feedback work is governed by [[ADR-022-Combat-Control-And-Match-Resources]] and [[Plans/2026-10-04-Combat-Control]]. It is local implementation, not another merged release. In that work, held movement uses the current recorded physics view basis, Choko/Skea have5/3 dash charges with increasing recovery, Skea travels a visible directional arc, Space reels a bounded distance, occupied anchors reject duplicate deployment, and rematch clears the existing rope registry. Alternating hand/leg strings have distinct third strikes; V/R3 first draws the back-carried sword and later transfers/reforms it. A sword attack may also draw during startup. Active Skea ult normals have one authoritative forward extension of about1m, with matching purple presentation.
+
+The old gesture-latch, leg-finisher and initially-drawn-sword statements below describe the merged snapshot before this follow-up. Final follow-up evidence and art/device limitations are recorded in [[Audit/2026-10-04-Combat-Control-Review]], not inferred from historical test totals.
+
 ## Delivery status and evidence boundaries
 
 T1's current GitHub reconciliation reports PRs #164–#168 merged. In particular, #167 merged at **2026-10-04 15:34:20 UTC**, and #168 at **15:34:26 UTC**. Their older journals saying “open”, “stacked”, or “CI pending” describe the historical handoff, not current delivery status. These merge facts are supplied by T1's GitHub check; T7 did not independently repeat the API query. This documentation pass does not rerun the gameplay suite or alter gameplay. The coordinator ran the documentation gate battery, including Godot parse checks.

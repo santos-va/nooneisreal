@@ -26,6 +26,15 @@ var sword_swap_from: String = "right"
 var sword_swap_to: String = "right"
 var sword_swap_frame: int = 0
 var attack_sword_hand: String = "right"
+var sword_drawn: bool = false
+var sword_form: int = 0
+var attack_sword_form: int = 0
+var sword_swap_drawing: bool = false
+var combo_route: String = ""
+var combo_step: int:
+	get: return chain_index
+var combo_side: int:
+	get: return -1 if _limb_action.begins_with("left") else 1
 
 const GRAVITY := 24.0
 const ARENA_HALF_WIDTH := 12.5
@@ -50,7 +59,7 @@ const MAX_METER := 100.0
 const COMBO_SCALING := 0.1
 const HIT_FRICTION := 30.0
 # status tuning (PLACEHOLDER — T5 Арес, docs/GDD/08-Balance.md)
-const FLASH_TRAVEL := 4
+const FLASH_TRAVEL := 4          # authored grimoire beat travel only; player flash duration is data
 const FLASH_RECOVER := 7
 const FLASH_IFRAMES := 7
 const CRIT_MULT := 1.5
@@ -74,9 +83,7 @@ const WATER_GETUP_EXTRA := 6      # Stage-River: getting up out of the water is 
 # free movement, GameState.free_move — numbers: T5 Арес, docs/GDD/02-Combat-System.md § Вільний 3D-рух
 # (per-fighter ones live in CharacterData: block_arc_deg, circle_speed_mult, grapple_cone_deg)
 const ARENA_RADIUS := 20.0        # `arena_radius`, ДИЗАЙН, PLACEHOLDER (Арес 2026-10-03, Р4; ≠ ARENA_HALF_WIDTH since then)
-const FLASH_INPUT_LOCK := 6       # input stays in the pre-flash camera frame for the flash + 6 frames
 const MIN_LINE := 0.05            # below this the direction to the opponent is undefined: keep the last
-const FLASH_SIDE_DEG := 45.0      # Flash Step exit turned by a sideways stick (ДИЗАЙН, T5 Арес, docs/GDD/03 § Як у 3D)
 
 @export var player_index: int = 1
 @export var data: CharacterData
@@ -161,6 +168,9 @@ var _stored_kb: Vector3 = Vector3.ZERO
 var _stored_launch: bool = false
 var _flash_from: Vector3 = Vector3.ZERO
 var _flash_to: Vector3 = Vector3.ZERO
+var _flash_vertical_speed: float = 0.0
+var _flash_travel_frames: int = FLASH_TRAVEL
+var _flash_arc_height: float = 0.0
 var _mark_timer: int = 90
 var _record_slot: String = ""
 var _status_text: String = ""
@@ -215,6 +225,8 @@ func _ready() -> void:
 
 # --- round lifecycle -------------------------------------------------------------------------
 func reset_for_round(x: float, face: int) -> void:
+	SwordStormFx.cancel_owner(self)
+	GrimoireFx.cancel_owner(self)
 	_break_ult()
 	_clear_ragdoll()
 	global_position = Vector3(x, 0.0, 0.0)
@@ -227,6 +239,11 @@ func reset_for_round(x: float, face: int) -> void:
 	sword_swap_to = "right"
 	sword_swap_frame = 0
 	attack_sword_hand = "right"
+	sword_drawn = false
+	sword_form = 0
+	attack_sword_form = 0
+	sword_swap_drawing = false
+	combo_route = ""
 	_limb_action = ""
 	_normal_connected = false
 	GameState.duel.reset()
@@ -401,7 +418,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _read_intent() -> Dictionary:
-	var i := {"axis": 0.0, "crouch": false, "block": false, "grapple_held": false}
+	var i := {"axis": 0.0, "crouch": false, "block": false, "grapple_held": false, "jump_held": false}
 	_wish = Vector3.ZERO
 	if control_locked:
 		InputRouter.clear_recorded_view_basis(player_index)
@@ -414,6 +431,7 @@ func _read_intent() -> Dictionary:
 	i.crouch = InputRouter.held(player_index, "crouch")
 	i.block = InputRouter.held(player_index, "block")
 	i.grapple_held = InputRouter.held(player_index, grapple.action)
+	i.jump_held = InputRouter.held(player_index, "jump")
 	return i
 
 
@@ -458,7 +476,7 @@ func _tick_status(delta: float) -> void:
 		revealed_frames -= 1
 	if spring_frames > 0:
 		spring_frames -= 1
-	if data.dash_charges > 0 and dash_charges_left < data.dash_charges and not flashing:
+	if data.dash_charges > 0 and dash_charges_left < data.dash_charges and state != State.DASH:
 		dash_recharge_left -= delta
 		if dash_recharge_left <= 0.0:
 			dash_charges_left = data.dash_charges
@@ -540,8 +558,12 @@ func _tick_ground(delta: float, intent: Dictionary) -> void:
 		_start_move(m)
 		return
 	if _pressed("dash"):
-		_start_dash(intent.axis)
-		return
+		# A buffered jump and dash form one airborne move; denial must leave jump intact.
+		var jump_dash := InputRouter.pressed_within(player_index, "jump", InputRouter.BUFFER_FRAMES)
+		if _start_dash(intent.axis, jump_dash):
+			if jump_dash:
+				_pressed("jump")
+			return
 	if _pressed("jump"):
 		velocity.y = data.jump_velocity
 		velocity.x = intent.axis * data.walk_speed * speed_mult()
@@ -648,9 +670,9 @@ func _tick_air(delta: float, intent: Dictionary) -> void:
 			velocity.y = data.jump_velocity
 			Sfx.play("whoosh", -6)
 		elif _pressed("dash") and data.dash_style == "dash":
-			spring_frames = 0
-			_start_dash(intent.axis)
-			return
+			if _start_dash(intent.axis):
+				spring_frames = 0
+				return
 	if _free():
 		var rate := data.air_control * data.walk_speed * 3.0 * delta
 		velocity.x = move_toward(velocity.x, _wish.x * data.walk_speed * speed_mult(), rate)
@@ -669,13 +691,29 @@ func _tick_air(delta: float, intent: Dictionary) -> void:
 		_set_state(State.IDLE)
 
 
-func _start_dash(axis: float) -> bool:
-	if data.dash_style == "flash":
-		var ok := _start_flash(axis)
-		if ok:
-			add_fatigue(FATIGUE_DASH_S)
-		return ok
+## Missing charges accumulate recovery debt; it clears only after a full rest.
+func _spend_dash() -> bool:
+	if data.dash_charges > 0:
+		if dash_charges_left <= 0:
+			Sfx.play("grapple_denied", -4)
+			return false
+		dash_charges_left -= 1
+		var spent := data.dash_charges - dash_charges_left
+		dash_recharge_total = (data.dash_recharge + maxf(0.0, float(spent - 1)) * data.dash_recharge_per_spent) * fatigue_mult(FATIGUE_DASH)
+		dash_recharge_left = dash_recharge_total
+		dash_changed.emit(dash_charges_left, dash_recharge_left, data.dash_charges)
 	add_fatigue(FATIGUE_DASH_S)
+	return true
+
+
+func _start_dash(axis: float, jump_dash: bool = false) -> bool:
+	if data.dash_style == "flash":
+		return _start_flash(axis, jump_dash)
+	if not _spend_dash():
+		return false
+	if jump_dash:
+		velocity.y = data.jump_velocity
+		_water_grounded = false
 	dash_dir = int(signf(axis)) if absf(axis) > 0.1 else facing
 	if _free():
 		_aim_dash()
@@ -689,18 +727,17 @@ func _start_dash(axis: float) -> bool:
 	return true
 
 
-## Skea's flash-step: a 4-frame blink that passes through the opponent, leaves stepped ghosts and
-## torn ink shards. Charges: `dash_charges`; all return `dash_recharge` s after the last use.
-func _start_flash(axis: float) -> bool:
-	if dash_charges_left <= 0:
-		Sfx.play("grapple_denied", -4)
+## Skea follows the selected direction over a visible arc, retaining jump/fall momentum.
+## Travel and arc are PLACEHOLDER CharacterData tuning; i-frames are not extended.
+func _start_flash(axis: float, jump_dash: bool = false) -> bool:
+	if not _spend_dash():
 		return false
-	dash_charges_left -= 1
-	dash_recharge_total = data.dash_recharge * fatigue_mult(FATIGUE_DASH)
-	dash_recharge_left = dash_recharge_total
-	dash_changed.emit(dash_charges_left, dash_recharge_left, data.dash_charges)
 	dash_dir = int(signf(axis)) if absf(axis) > 0.1 else facing
 	_flash_from = global_position
+	_flash_vertical_speed = data.jump_velocity if jump_dash else velocity.y
+	_flash_travel_frames = maxi(1, data.flash_travel_frames)
+	_flash_arc_height = maxf(0.0, data.flash_arc_height)
+	_water_grounded = false
 	if _free():
 		_aim_flash()
 		_flash_to = clamp_arena(global_position + _dash_vec * data.flash_distance)
@@ -708,17 +745,13 @@ func _start_flash(axis: float) -> bool:
 		var tx := clampf(global_position.x + float(dash_dir) * data.flash_distance, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH)
 		_flash_to = Vector3(tx, global_position.y, 0.0)
 	flashing = true
-	if _free():
-		GameState.duel.hold(FLASH_TRAVEL + FLASH_INPUT_LOCK)   # «вперед» не перевертається під пальцем
-	dash_frames_left = FLASH_TRAVEL + FLASH_RECOVER
+	dash_frames_left = _flash_travel_frames + FLASH_RECOVER
 	invulnerable_frames = maxi(invulnerable_frames, FLASH_IFRAMES)
-	velocity = Vector3.ZERO
 	current_move = null
 	stats.flashes += 1
 	var root := Fx.root(self)
 	Afterimage.spawn(root, Afterimage.snapshot(animator, skeletal), data.vfx_primary, 0.4, 0.7, true)
 	Afterimage.spawn(root, Afterimage.snapshot(animator, skeletal), Color(0.05, 0.03, 0.08), 0.3, 0.55, false, 1.0, Vector3(0, 0, -0.05))
-	SmearShards.burst(root, _flash_from, _flash_to, [data.vfx_primary, data.vfx_secondary, data.accent_color, Color(0.04, 0.03, 0.06)], 16, 5)
 	Sfx.play("flash", -2)
 	_set_state(State.DASH)
 	return true
@@ -731,15 +764,9 @@ func _aim_dash() -> void:
 	dash_dir = facing if _dash_vec.dot(forward) >= -0.5 else -facing
 
 
-## Free movement Flash Step (docs/GDD/03 § Як у 3D, T5 Арес): along the line between the fighters —
-## through the opponent, or away from them when the stick points back; a sideways stick turns the
-## exit point by FLASH_SIDE_DEG to that side.
+## Neutral retains facing; every non-neutral ground direction is available, including sides.
 func _aim_flash() -> void:
-	var along := _wish.dot(forward)
-	var base := forward if along >= -0.5 else -forward
-	var side := _wish.dot(Vector3.UP.cross(forward))   # + = to the fighter's left
-	_dash_vec = base.rotated(Vector3.UP, deg_to_rad(FLASH_SIDE_DEG) * signf(side)) if absf(side) > 0.1 else base
-	dash_dir = facing if along >= -0.5 else -facing
+	_aim_dash()
 
 
 func _tick_dash(delta: float) -> void:
@@ -754,6 +781,8 @@ func _tick_dash(delta: float) -> void:
 	velocity.y -= GRAVITY * delta
 	move_and_slide()
 	if dash_frames_left < data.dash_frames / 2:
+		if _try_limb_attack(not on_ground()):
+			return
 		if _pressed("light") and data.light:
 			_start_move(data.light)
 			return
@@ -765,17 +794,30 @@ func _tick_dash(delta: float) -> void:
 
 
 func _tick_flash(delta: float) -> void:
-	var idx := (FLASH_TRAVEL + FLASH_RECOVER) - dash_frames_left
+	var idx := (_flash_travel_frames + FLASH_RECOVER) - dash_frames_left
 	dash_frames_left -= 1
-	if idx < FLASH_TRAVEL:
-		var a := float(idx + 1) / float(FLASH_TRAVEL)
-		global_position = _flash_from.lerp(_flash_to, a)
-		velocity = Vector3.ZERO
-		Afterimage.spawn(Fx.root(self), Afterimage.snapshot(animator, skeletal), data.vfx_primary, 0.32, 0.5 - 0.08 * float(idx), true)
-		if idx == FLASH_TRAVEL - 1:
+	if idx < _flash_travel_frames:
+		var a := float(idx + 1) / float(_flash_travel_frames)
+		var elapsed := float(idx + 1) / 60.0
+		var duration := float(_flash_travel_frames) / 60.0
+		var target := _flash_from.lerp(_flash_to, a)
+		target.y += _flash_vertical_speed * elapsed - 0.5 * GRAVITY * elapsed * elapsed + sin(PI * a) * _flash_arc_height
+		target.y = maxf(target.y, floor_y())
+		velocity = (target - global_position) / delta
+		move_and_slide() # Respect static cover instead of teleporting through it.
+		velocity.y = _flash_vertical_speed - GRAVITY * elapsed + cos(PI * a) * PI * _flash_arc_height / duration
+		if idx % 2 == 0:
+			Afterimage.spawn(Fx.root(self), Afterimage.snapshot(animator, skeletal), data.vfx_primary, 0.32, 0.4, true)
+			Afterimage.spawn(Fx.root(self), Afterimage.snapshot(animator, skeletal), Color(0.06, 0.03, 0.1), 0.28, 0.3, false, 1.0, Vector3.DOWN * 0.08)
+		if idx == _flash_travel_frames - 1:
+			# The authored horizontal displacement ends here; recovery must not add it again.
+			velocity.x = 0.0
+			velocity.z = 0.0
 			_update_facing()
-			animator.flinch(Vector3(float(-dash_dir), 0.0, 0.0), 70.0, facing)
 	else:
+		if _try_limb_attack(not on_ground()):
+			flashing = false
+			return
 		if _pressed("light") and data.light:
 			flashing = false
 			_start_move(data.light)
@@ -786,8 +828,7 @@ func _tick_flash(delta: float) -> void:
 			return
 		if _pressed("dash") and _start_flash(InputRouter.axis(player_index) if not control_locked else 0.0):
 			return
-		if not on_ground():
-			velocity.y -= GRAVITY * delta * 0.5
+		velocity.y -= GRAVITY * delta * (data.fall_gravity_mult if velocity.y < 0.0 else 1.0)
 		_friction(40.0 * delta)
 		move_and_slide()
 	if dash_frames_left <= 0:
@@ -795,9 +836,7 @@ func _tick_flash(delta: float) -> void:
 		_set_state(State.IDLE if on_ground() else State.JUMP)
 
 
-# --- attacks ------------------------------------------------------------------------------------
-## New normal inputs coexist with legacy CPU light/heavy. The original move resources
-## remain immutable; pose variants inherit the donor's complete combat contract.
+# --- sword state / limb strings -------------------------------------------------------------
 func sword_swap_progress() -> float:
 	return float(sword_swap_frame) / float(SWORD_SWAP_FRAMES) if state == State.SWAP else 0.0
 
@@ -813,7 +852,8 @@ func _try_sword_swap() -> bool:
 	if data.id != "choko" or data.weapon_kind != "sword" or state not in [State.IDLE, State.WALK] or not on_ground() or grapple.busy():
 		return false
 	sword_swap_from = sword_hand
-	sword_swap_to = "left" if sword_hand == "right" else "right"
+	sword_swap_drawing = not sword_drawn
+	sword_swap_to = sword_hand if sword_swap_drawing else ("left" if sword_hand == "right" else "right")
 	sword_swap_frame = 0
 	crouching = false
 	_set_state(State.SWAP)
@@ -825,9 +865,7 @@ func _tick_sword_swap(delta: float, intent: Dictionary) -> void:
 	_discard_swap_blocked_inputs()
 	# Input interruptions precede this tick's handoff. At counter 11, a dodge keeps
 	# the old hand; once counter 12 committed, any interruption keeps the new hand.
-	if _pressed("dash"):
-		_set_state(State.IDLE)
-		_start_dash(intent.axis)
+	if _pressed("dash") and _start_dash(intent.axis):
 		return
 	for action: String in ["left_leg", "right_leg"]:
 		if InputRouter.pressed_within(player_index, action, InputRouter.BUFFER_FRAMES):
@@ -837,6 +875,9 @@ func _tick_sword_swap(delta: float, intent: Dictionary) -> void:
 	sword_swap_frame += 1
 	if sword_swap_frame == SWORD_SWAP_CONTACT:
 		sword_hand = sword_swap_to
+		sword_drawn = true
+		if not sword_swap_drawing:
+			sword_form = (sword_form + 1) % 3
 	_walk_physics(delta, 0.0)
 	if sword_swap_frame >= SWORD_SWAP_FRAMES:
 		_set_state(State.IDLE)
@@ -849,12 +890,14 @@ func _try_limb_attack(air: bool, chaining: bool = false, legs_only: bool = false
 		if not _pressed(action):
 			continue
 		var index := chain_index + 1 if chaining else 0
-		var move := LimbMoves.resolve(data, action, index, _limb_action if chaining else "", crouching, air, sword_hand)
+		var route := combo_route + ">" + action if chaining else action
+		var move := LimbMoves.resolve(data, action, index, _limb_action if chaining else "", crouching, air, sword_hand, route)
 		if move == null:
 			return false
 		_start_move(move)
 		chain_index = index
 		_limb_action = action
+		combo_route = route
 		return true
 	return false
 
@@ -865,8 +908,12 @@ func _start_move(m: MoveData, slot: String = "") -> void:
 	if _free() and not is_cpu and opponent != null and state != State.ATTACK:
 		_set_forward(opponent.global_position - global_position)
 	attack_sword_hand = sword_hand
+	attack_sword_form = sword_form
+	if data.weapon_kind == "sword" and (m.anim.begins_with("sword_") or m == data.light or m == data.heavy or m == data.crouch_light or m.anim_clip.begins_with("Sword_") or m.kind == MoveData.Kind.ULTIMATE):
+		sword_drawn = true
 	if not m.anim.begins_with("limb_") and not m.anim.begins_with("sword_left_hand_") and not m.anim.begins_with("sword_right_hand_"):
 		_limb_action = ""
+		combo_route = ""
 	if veil_frames > 0:
 		veil_strike = true
 		end_veil()
@@ -929,6 +976,7 @@ func _tick_attack(delta: float) -> void:
 			grapple.extract_on_kick(_limb_action if _limb_action != "" else "right_leg")
 		Sfx.play(m.sfx_whiff, -4)
 		_strike_smear(m)
+		SkeaWave.spawn(self, m)
 		if m.effect != "":
 			_activate_effect(m)
 		if m.free_after_startup:
@@ -1016,7 +1064,7 @@ func _try_cancel(m: MoveData) -> bool:
 		if data.dash_style == "flash" and dash_charges_left > 0 and _pressed("dash"):
 			current_move = null
 			return _start_flash(InputRouter.axis(player_index))
-	if m.cancel_tier < 1 and not _limb_action.ends_with("leg") and _normal_connected and chain_index < 2 and _try_limb_attack(airborne_attack, true):
+	if m.kind == MoveData.Kind.NORMAL and _limb_action != "" and _normal_connected and chain_index < 2 and _try_limb_attack(airborne_attack, true):
 		return true
 	if m.cancel_tier < 1:
 		if _pressed("heavy") and data.heavy:
@@ -1034,12 +1082,13 @@ func _try_cancel(m: MoveData) -> bool:
 func _check_hit(m: MoveData) -> void:
 	if opponent == null:
 		return
-	_hit_box.size = m.hitbox_size
-	var off := m.hitbox_offset
+	var geometry := SkeaWave.hitbox_for(self, m)
+	_hit_box.size = geometry.size
+	var off: Vector3 = geometry.offset
 	off.x *= float(facing)
 	_hit_query.transform = Transform3D(Basis.IDENTITY, global_position + off)
 	if _free():
-		_hit_query.transform = Transform3D(_basis(), global_position + _basis() * m.hitbox_offset)
+		_hit_query.transform = Transform3D(_basis(), global_position + _basis() * (geometry.offset as Vector3))
 	var space := get_world_3d().direct_space_state
 	var results := space.intersect_shape(_hit_query, 8)
 	for r in results:
@@ -1195,6 +1244,9 @@ func beat_flash(to: Vector3) -> void:
 	_flash_to = clamp_arena(Vector3(to.x, global_position.y, to.z))
 	flashing = true
 	dash_dir = facing
+	_flash_travel_frames = FLASH_TRAVEL
+	_flash_vertical_speed = 0.0
+	_flash_arc_height = 0.0
 	dash_frames_left = FLASH_TRAVEL + FLASH_RECOVER
 	velocity = Vector3.ZERO
 	current_move = null
@@ -1568,7 +1620,7 @@ func _try_grapple(prefer_enemy: bool) -> bool:
 
 
 func _tick_grapple(intent: Dictionary) -> void:
-	grapple.drive(get_physics_process_delta_time(), intent.grapple_held)
+	grapple.drive(get_physics_process_delta_time(), intent.grapple_held, intent.jump_held)
 	if not grapple.busy() or grapple.recovering():
 		_set_state(State.JUMP if not on_ground() else State.IDLE)
 
@@ -1783,15 +1835,19 @@ func _update_hitbox_debug() -> void:
 		and current_move.damage >= 0.0 and move_frame >= current_move.startup and move_frame < current_move.startup + current_move.active
 	hitbox_debug.visible = show
 	if show:
-		var off := current_move.hitbox_offset
+		var geometry := SkeaWave.hitbox_for(self, current_move)
+		var off: Vector3 = geometry.offset
 		off.x *= float(facing)
 		hitbox_debug.global_position = global_position + off
-		hitbox_debug.scale = current_move.hitbox_size
+		hitbox_debug.scale = geometry.size
 		if _free():
-			hitbox_debug.global_transform = Transform3D(_basis() * Basis.from_scale(current_move.hitbox_size), global_position + _basis() * current_move.hitbox_offset)
+			hitbox_debug.global_transform = Transform3D(_basis() * Basis.from_scale(geometry.size), global_position + _basis() * (geometry.offset as Vector3))
 
 
 func _set_state(s: State) -> void:
+	if state == State.DASH and s != State.DASH:
+		flashing = false
+		dash_frames_left = 0
 	if state == State.SWAP and s != State.SWAP:
 		sword_swap_frame = 0
 		sword_swap_from = sword_hand
@@ -1800,6 +1856,7 @@ func _set_state(s: State) -> void:
 		grapple.detach()
 	if state == State.ATTACK and s != State.ATTACK:
 		chain_index = 0
+		combo_route = ""
 		_limb_action = ""
 		_normal_connected = false
 		veil_strike = false

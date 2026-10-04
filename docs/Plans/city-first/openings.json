@@ -1,0 +1,32 @@
+{
+  "schema": "game-room.opening-schedule.v1",
+  "roomId": "cronshift-first-district",
+  "primaryArrival": {
+    "openingId": "arrival-avenue",
+    "exception": "Outdoor district arrival on central avenue at (0,0,23); open sky, no indoor ceiling."
+  },
+  "openings": [
+    {
+      "id": "arrival-avenue",
+      "type": "outdoor-street",
+      "wall": "none",
+      "widthMeters": 20,
+      "heightMeters": null,
+      "depthMeters": 23,
+      "destination": "central court",
+      "thresholdMeters": 0,
+      "status": "functional-prototype"
+    },
+    {
+      "id": "southeast-passage",
+      "type": "covered-passage",
+      "wall": "between southeast wings",
+      "widthMeters": 4,
+      "heightMeters": 4.5,
+      "depthMeters": 4,
+      "destination": "east street and ramp approach",
+      "thresholdMeters": 0,
+      "status": "functional-prototype"
+    }
+  ]
+}

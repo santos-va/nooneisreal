@@ -197,7 +197,7 @@ func _hint_profile(vs_cpu: bool) -> String:
 			if not label.is_empty():
 				text += action.capitalize() + ": " + label + " · "
 		text += "\n"
-	return text + "Tab hitboxes · Esc pause"
+	return text + "Hold jump while tethered: lift · Weapon swap: draw / reform · Tab hitboxes · Esc pause"
 
 
 ## A single source for physical key labels and routed controller chords.
@@ -503,8 +503,8 @@ func look_axis(player: int) -> Vector2:
 	return raw.normalized() * clampf((raw.length() - LOOK_DEADZONE) / (1.0 - LOOK_DEADZONE), 0.0, 1.0)
 
 
-## Input-adapter packet, not a simulation read of a camera. Only a new movement gesture
-## consumes it. Recorded playback overrides live adapters until explicitly ended.
+## Input-adapter packet, not a simulation read of a rendered camera. Each physics tick
+## consumes the current basis. Recorded playback overrides live adapters until explicitly ended.
 func set_view_basis(player: int, ground_forward: Vector3) -> bool:
 	if player not in [1, 2] or ui_suppressed() or _recorded_view_bases.has(player):
 		return false

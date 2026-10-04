@@ -54,10 +54,17 @@ extends Resource
 @export var throw_move: MoveData
 
 @export_group("Signature movement (dash slot)")
-@export var dash_style: String = "dash"           # dash | flash (Skea: short blink through the opponent)
+@export var dash_style: String = "dash"           # dash | flash (Skea: visible directional arc)
 @export var dash_charges: int = 0                 # 0 = unlimited
-@export var dash_recharge: float = 4.5            # seconds after the last use until all charges return
+@export var dash_recharge: float = 4.5            # PLACEHOLDER base seconds; missing charges add recovery debt
 @export var flash_distance: float = 3.6
+## PLACEHOLDER feel tuning: additional recovery for each missing charge after the first.
+@export var dash_recharge_per_spent: float = 0.8
+## PLACEHOLDER: readable travel duration and a low arc; airborne momentum is preserved.
+@export var flash_travel_frames: int = 12
+@export var flash_arc_height: float = 0.45
+## Santos 2026-10-04: Skea's active grimoire extends normals approximately one metre.
+@export var ultimate_wave_reach: float = 0.0
 
 @export_group("VFX palette")
 @export var vfx_primary: Color = Color(0.2, 0.9, 0.55)

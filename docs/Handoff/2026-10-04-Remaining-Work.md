@@ -2,7 +2,11 @@
 
 Snapshot: 2026-10-04, main `a401e6c`. This page reconciles unfinished obligations; it does not mark the whole game complete or authorize new purchases. Priority reflects the user's request for comfortable play before additional spectacle. All new gameplay slices still need their bounded implementation plan, role review and acceptance evidence.
 
-## First: accept the merged game on the target machine
+## Later user priority — city first
+
+The snapshot below is historical. Santos subsequently authorized [[Plans/2026-10-04-Combat-Control]] and then [[Plans/2026-10-04-City-First]]: preserve existing arenas, build a shared 3D city, choose fight sites within it later. The local district prototype and its measured limits are tracked in [[2026-10-04-City-First-Review]]. Next city steps are route/scale review, a reusable art kit, one in-world encounter, then district expansion, story/save/NPC systems and portals. No full open world or final art is claimed; target-machine acceptance below remains outstanding.
+
+## Accept the game on the target machine
 
 **Owner: T1 coordinates Santos, T8 usability and T4 evidence.** Start from refreshed main containing #168; retain local work and do not overwrite it. Record macOS version, window resolution, Retina scaling and input device. Play FIGHT/TRAINING/VERSUS, menu and pause at native and smaller window sizes. Check that every critical button and control hint is visible and usable.
 

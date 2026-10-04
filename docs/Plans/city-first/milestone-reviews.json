@@ -1,0 +1,28 @@
+{
+  "schema": "game-room.milestone-reviews.v1",
+  "roomId": "cronshift-first-district",
+  "function": {
+    "status": "pending",
+    "approvedBy": "",
+    "approvedAt": "",
+    "evidence": [],
+    "strangestElement": "",
+    "notes": "User authorized a functional code/graybox prototype and city-first direction. Specific geometry/reference contact sheet have not received human approval. No final composition or paid jobs."
+  },
+  "form": {
+    "status": "pending",
+    "approvedBy": "",
+    "approvedAt": "",
+    "evidence": [],
+    "strangestElement": "",
+    "notes": "Santos authorized local style refinement and explicitly selected the newest separate texture/cutout set as the authority for architecture, palette and rendering. Older city/market panoramas are historical style drafts only. Final acceptance of resulting frames remains pending; no paid generation or deployment."
+  },
+  "runtime": {
+    "status": "pending",
+    "approvedBy": "",
+    "approvedAt": "",
+    "evidence": [],
+    "strangestElement": "",
+    "notes": "Technical gameplay tests do not constitute human Runtime approval for deployment."
+  }
+}

@@ -69,12 +69,8 @@ func step(delta: float) -> void:
 	if manual_left <= 0.0 and not _drag:
 		yaw_offset = lerp_angle(yaw_offset, 0.0, 1.0 - exp(-return_speed * delta))
 		pitch_offset = lerpf(pitch_offset, 0.0, 1.0 - exp(-return_speed * delta))
-	if solo and (is_manual() or absf(yaw_offset) > 0.001 or absf(pitch_offset) > 0.001):
-		var forward := -camera.global_basis.z
-		forward.y = 0.0
-		InputRouter.set_view_basis(1, forward.normalized())
-	else:
-		InputRouter.clear_view_basis(1)
+	# DuelCamera publishes its physics yaw after applying this adapter's look input.
+	# Publishing a rendered transform here would reintroduce a stale/manual-only basis.
 
 func is_manual() -> bool:
 	return solo and (manual_left > 0.0 or _drag)
@@ -117,6 +113,8 @@ func capture(f: Fighter, enemy_mode: bool, remember: bool = true) -> Dictionary:
 		var target := node as Node3D
 		if target == null or target == f:
 			continue
+		if not enemy_mode and target.is_in_group("grapple_anchor") and f.grapple.registry.occupied(target.global_position):
+			continue # Reuse the deployed rope candidate; never suggest a second shot at this point.
 		if f.grapple.charges <= 0 and not target.is_in_group("deployed_rope"):
 			continue
 		if target.is_in_group("deployed_rope") and int(target.get_meta("rope_token", 0)) != f.grapple.reusable_rope():

@@ -60,7 +60,7 @@ func _run() -> void:
 			ir.v_press(1, "right_hand")
 			f._normal_connected = true
 			var chained: bool = f._try_cancel(f.current_move)
-			check(chained == action.ends_with("hand"), "legs finish and hands can chain " + action)
+			check(chained, "confirmed hands and legs can chain " + action)
 			if chained:
 				check(f.chain_index == 1, "second normal index")
 				clear_inputs(ir)
@@ -73,7 +73,7 @@ func _run() -> void:
 				check(not f._try_cancel(f.current_move), "fourth normal rejected")
 			f._set_state(actor.State.HITSTUN)
 			check(f._limb_action == "" and f.chain_index == 0 and not f._normal_connected, "interruption clears sequence")
-		# A low leg inherits tier0 but must still finish the new limb sequence.
+		# Low legs also participate in the bounded confirmed three-hit sequence.
 		clear_inputs(ir)
 		f.state = actor.State.IDLE
 		f.crouching = true
@@ -82,7 +82,7 @@ func _run() -> void:
 		f._normal_connected = true
 		clear_inputs(ir)
 		ir.v_press(1, "left_hand")
-		check(not f._try_cancel(f.current_move), "low leg remains finisher")
+		check(f._try_cancel(f.current_move) and f.chain_index == 1, "low leg confirmed continuation")
 		clear_inputs(ir)
 		var victim = load("res://scenes/fighter/Fighter.tscn").instantiate()
 		victim.data = data

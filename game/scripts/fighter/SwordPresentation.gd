@@ -12,6 +12,20 @@ var grip_side: String = "right"
 var handoff_blend: float = 0.0
 var stow_weight: float = 0.0
 var _last_tick: int = -1
+# PLACEHOLDER art dimensions/counts. Changes affect presentation, never weapon reach.
+const DUST_COUNT: int = 40
+const DISSOLVE_SHADER = preload("res://shaders/sword_dissolve.gdshader")
+var dust: Array[MeshInstance3D] = []
+var weapon_materials: Array[ShaderMaterial] = []
+var outlines: Array[Material] = []
+var ornaments: Array[MeshInstance3D] = []
+var dissolve_weight: float = 0.0
+var presented_form: int = 0
+const ULT_MORPH_FRAMES: int = 12 # PLACEHOLDER visual only, independent of move damage timing.
+var _ultimate_requested: bool = false
+var _ultimate_gold: bool = false
+var _ultimate_morph_frame: int = ULT_MORPH_FRAMES
+var _morph_tick: int = -1
 var _left_calibration := Basis.IDENTITY
 var _left_offset := Vector3(0, 0.055, 0)
 
@@ -71,6 +85,7 @@ func setup(owner_fighter: Fighter, owner_rig: SkeletalRig) -> void:
 			rail.radial_segments = 5
 			var mesh := _piece(rail, brass, (a + b) * 0.5)
 			mesh.basis = Basis(Quaternion(Vector3.UP, (b - a).normalized()))
+			ornaments.append(mesh)
 	# Simple wrap bands remain readable at play distance without a texture dependency.
 	for i in 5:
 		var band := TorusMesh.new()
@@ -79,17 +94,21 @@ func setup(owner_fighter: Fighter, owner_rig: SkeletalRig) -> void:
 		band.rings = 8
 		band.ring_segments = 4
 		_piece(band, brass, Vector3(0, -0.13 + i * 0.045, 0))
+	_setup_dust()
+	stow_weight = 1.0 if not fighter.sword_drawn else 0.0
 	update_pose()
 
 func _material(color: Color) -> ShaderMaterial:
 	var material := ShaderMaterial.new()
-	material.shader = RigAnimator.TOON
+	material.shader = DISSOLVE_SHADER
 	material.set_shader_parameter("albedo", color)
 	material.set_shader_parameter("rim_strength", 0.18)
 	var outline := ShaderMaterial.new()
 	outline.shader = RigAnimator.OUTLINE
 	outline.set_shader_parameter("width", 0.004)
 	material.next_pass = outline
+	weapon_materials.append(material)
+	outlines.append(outline)
 	fighter.animator.materials.append(material)
 	return material
 
@@ -139,14 +158,16 @@ func update_pose() -> void:
 	grip_side = fighter.attack_sword_hand if fighter.state == Fighter.State.ATTACK else fighter.sword_hand
 	var pose := hand_grip(grip_side)
 	handoff_blend = 0.0
-	if fighter.state == Fighter.State.SWAP:
+	if fighter.state == Fighter.State.SWAP and not fighter.sword_swap_drawing:
 		handoff_blend = smoothstep(0.40, 0.60, fighter.sword_swap_progress())
 		pose = hand_grip(fighter.sword_swap_from).interpolate_with(hand_grip(fighter.sword_swap_to), handoff_blend)
 	var tick := Engine.get_physics_frames()
 	if tick != _last_tick and not fighter.get_tree().paused and fighter.frozen_frames <= 0 and fighter.hitstop_frames <= 0:
 		_last_tick = tick
-		var busy := fighter.state == Fighter.State.GRAPPLE or fighter.grapple.recovering()
+		var busy := not fighter.sword_drawn or fighter.state == Fighter.State.GRAPPLE or fighter.grapple.recovering()
 		stow_weight = move_toward(stow_weight, 1.0 if busy else 0.0, 1.0 / 12.0)
+	if fighter.state == Fighter.State.SWAP and fighter.sword_swap_drawing:
+		stow_weight = 1.0 - smoothstep(0.2, 0.85, fighter.sword_swap_progress())
 	if fighter.state == Fighter.State.ATTACK and fighter.current_move != null:
 		var move := fighter.current_move
 		if SwordMotion.supports(move.anim) or move.anim_clip.begins_with("Sword_") or move.id == "crouch_light":
@@ -162,13 +183,19 @@ func update_pose() -> void:
 		pose = pose.interpolate_with(carry, smoothstep(0.0, 1.0, stow_weight))
 	global_transform = pose
 	var ultimate := fighter.state == Fighter.State.ATTACK and fighter.current_move != null and fighter.current_move.effect == "sword_storm"
-	blade_material.set_shader_parameter("albedo", GOLD if ultimate else EMERALD)
+	_update_morph(ultimate)
+	blade_material.set_shader_parameter("albedo", GOLD if _ultimate_gold else EMERALD)
 
 func _physics_process(_delta: float) -> void:
 	update_pose()
 
 func reset_pose_state() -> void:
-	stow_weight = 0.0
+	stow_weight = 1.0 if not fighter.sword_drawn else 0.0
+	dissolve_weight = 0.0
+	_ultimate_requested = false
+	_ultimate_gold = false
+	_ultimate_morph_frame = ULT_MORPH_FRAMES
+	_morph_tick = -1
 	handoff_blend = 0.0
 	_last_tick = -1
 	update_pose()
@@ -178,3 +205,63 @@ func grip_calibration(side: String) -> Basis:
 
 func grip_offset(side: String) -> Vector3:
 	return _left_offset if side == "left" else Vector3(0, 0.055, 0)
+
+
+func _setup_dust() -> void:
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = EMERALD.lightened(0.4)
+	material.emission_enabled = true
+	material.emission = EMERALD
+	for index in DUST_COUNT:
+		var grain := MeshInstance3D.new()
+		var mesh := PrismMesh.new()
+		mesh.size = Vector3(0.018, 0.032, 0.018)
+		grain.mesh = mesh
+		grain.material_override = material
+		grain.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		grain.visible = false
+		add_child(grain)
+		dust.append(grain)
+
+
+func _update_morph(ultimate: bool) -> void:
+	if ultimate != _ultimate_requested:
+		_ultimate_requested = ultimate
+		_ultimate_morph_frame = 0
+		_morph_tick = Engine.get_physics_frames()
+	elif Engine.get_physics_frames() != _morph_tick:
+		_morph_tick = Engine.get_physics_frames()
+		_ultimate_morph_frame = mini(ULT_MORPH_FRAMES, _ultimate_morph_frame + 1)
+	var ult_progress: float = float(_ultimate_morph_frame) / float(ULT_MORPH_FRAMES)
+	if ult_progress >= 0.5:
+		_ultimate_gold = _ultimate_requested
+	var swapping: bool = fighter.state == Fighter.State.SWAP and not fighter.sword_swap_drawing
+	var progress: float = fighter.sword_swap_progress() if swapping else 0.0
+	# Full dissolution covers the gameplay contact frame, before the new form appears.
+	dissolve_weight = smoothstep(0.1, 0.42, progress) * (1.0 - smoothstep(0.58, 0.9, progress)) if swapping else 0.0
+	if _ultimate_morph_frame < ULT_MORPH_FRAMES:
+		var ult_dissolve: float = smoothstep(0.0, 0.4, ult_progress) * (1.0 - smoothstep(0.6, 1.0, ult_progress))
+		dissolve_weight = maxf(dissolve_weight, ult_dissolve)
+		if not swapping:
+			progress = ult_progress
+	presented_form = fighter.attack_sword_form if fighter.state == Fighter.State.ATTACK else fighter.sword_form
+	var shape: Vector3 = [Vector3.ONE, Vector3(0.62, 1.14, 0.75), Vector3(1.42, 0.87, 1.2)][posmod(presented_form, 3)]
+	blade.scale = shape
+	for ornament: MeshInstance3D in ornaments:
+		ornament.visible = presented_form == 0
+	for index in weapon_materials.size():
+		weapon_materials[index].set_shader_parameter("dissolve", dissolve_weight)
+		# The generic ink pass does not know the dissolve mask.
+		weapon_materials[index].next_pass = null if dissolve_weight > 0.0 else outlines[index]
+	for index in dust.size():
+		var grain: MeshInstance3D = dust[index]
+		grain.visible = dissolve_weight > 0.0
+		if not grain.visible:
+			continue
+		var seed_angle: float = float(index) * 2.399963
+		var spread: float = dissolve_weight * (0.12 + float(index % 7) * 0.022)
+		var height: float = lerpf(-0.12, 1.08, float(index) / float(DUST_COUNT - 1))
+		grain.position = Vector3(cos(seed_angle + progress * TAU) * spread, height + sin(seed_angle) * spread, sin(seed_angle + progress * TAU) * spread)
+		grain.rotation = Vector3(seed_angle, seed_angle + progress * TAU, progress * PI)
+		grain.scale = Vector3.ONE * dissolve_weight

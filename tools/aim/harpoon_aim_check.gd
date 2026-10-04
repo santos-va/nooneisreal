@@ -67,7 +67,7 @@ func _run() -> void:
 	release.axis_value = 0.0
 	Input.parse_input_event(release)
 	Input.flush_buffered_events()
-	expect(router.view_basis(1).length() > 0.9, "manual helper publishes a ground view input basis")
+	expect(router.view_basis(1).is_zero_approx(), "manual helper leaves physics view publication to duel camera")
 	helper.reset()
 	expect(router.view_basis(1).is_zero_approx(), "reset clears live view input basis")
 	var hud: Node = load("res://scripts/ui/Hud.gd").new()

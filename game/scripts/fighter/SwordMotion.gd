@@ -2,7 +2,7 @@ class_name SwordMotion
 extends RefCounted
 ## Presentation-only sword drawings and a two-hand transfer; gameplay owns its contact frame.
 ## Amplitudes are provisional art tuning, not extra attack reach or hitboxes.
-const VARIANTS: Array[String] = ["cut", "thrust", "rising", "lowcut", "aircut"]
+const VARIANTS: Array[String] = ["cut", "thrust", "rising", "cleave", "lowcut", "aircut"]
 
 static func supports(anim: String) -> bool:
 	var fields := anim.split("_")
@@ -28,6 +28,12 @@ static func apply(rig: RigAnimator, anim: String, ext: float) -> void:
 		shoulder = 2.15
 		elbow = 0.35
 		twist = 0.45
+	elif variant == "cleave":
+		# Reverse-route finisher: committed downward cut rather than the rising cut.
+		swing = -0.25 * mirror
+		shoulder = 0.8
+		elbow = 0.15
+		twist = 0.85
 	elif variant == "lowcut":
 		rig._crouch()
 		shoulder = 0.95
@@ -35,7 +41,7 @@ static func apply(rig: RigAnimator, anim: String, ext: float) -> void:
 		shoulder = 1.95
 		rig._pose_set("thigh_" + other, Vector3(0, 0, 0.55))
 		rig._pose_set("shin_" + other, Vector3(0, 0, -1.0))
-	rig._pose_set("upper_arm_" + side, Vector3(swing * ext, 0, lerpf(0.65, shoulder, ext)))
+	rig._pose_set("upper_arm_" + side, Vector3(swing * ext, 0, lerpf(2.65 if variant == "cleave" else 0.65, shoulder, ext)))
 	rig._pose_set("forearm_" + side, Vector3(0, 0, lerpf(1.25, elbow, ext)))
 	rig._pose_set("upper_arm_" + other, Vector3(0, 0, 0.75))
 	rig._pose_set("forearm_" + other, Vector3(0, 0, 1.4))
@@ -47,6 +53,9 @@ static func transfer_weight(progress: float) -> float:
 
 static func apply_transfer(rig: Skeleton3D, fighter: Fighter) -> void:
 	if fighter.state != Fighter.State.SWAP:
+		return
+	if fighter.sword_swap_drawing:
+		apply_draw(rig, fighter)
 		return
 	var weight := transfer_weight(fighter.sword_swap_progress())
 	var from_side := "Right" if fighter.sword_swap_from == "right" else "Left"
@@ -77,6 +86,23 @@ static func apply_transfer(rig: Skeleton3D, fighter: Fighter) -> void:
 		var original := rig.get_bone_global_pose(hand).basis.orthonormalized().get_rotation_quaternion()
 		_solve_arm(rig, side, target, -up + forward.cross(up) * (-0.5 if side == "Left" else 0.5))
 		_set_global(rig, hand, original.slerp(shared_rotation, weight))
+
+## Reach over the shoulder toward the same back mount before bringing the blade forward.
+## PLACEHOLDER art trajectory; SWAP contact/duration remain Fighter's explicit contract.
+static func apply_draw(rig: Skeleton3D, fighter: Fighter) -> void:
+	var side: String = "Right" if fighter.sword_swap_to == "right" else "Left"
+	var hand: int = rig.find_bone(side + "Hand")
+	var shoulder: int = rig.find_bone(side + "Arm")
+	if mini(hand, shoulder) < 0:
+		return
+	var t: float = fighter.sword_swap_progress()
+	var up: Vector3 = (rig.global_basis.inverse() * Vector3.UP).normalized()
+	var forward: Vector3 = (rig.global_basis.inverse() * fighter.forward).normalized()
+	var scale_m: float = maxf(rig.global_basis.get_scale().x, 0.0001)
+	var reach: Vector3 = rig.get_bone_global_pose(shoulder).origin + (up * 0.22 - forward * 0.18) / scale_m
+	var weight: float = sin(PI * clampf(t, 0.0, 1.0))
+	var target: Vector3 = rig.get_bone_global_pose(hand).origin.lerp(reach, weight)
+	_solve_arm(rig, side, target, -up - forward)
 
 static func _solve_arm(rig: Skeleton3D, side: String, target: Vector3, pole: Vector3) -> void:
 	var shoulder := rig.find_bone(side + "Arm")

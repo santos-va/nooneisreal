@@ -44,9 +44,11 @@ var _cool: Dictionary = {}
 var _cool_icons: Dictionary = {}
 var _skill_textures: Array[TextureRect] = []
 var _dash: Dictionary = {}
+var _dash_text: Dictionary = {}
 var _status: Dictionary = {}
 var _names: Dictionary = {}
 var _timer: Label
+var _round_label: Label
 var _announce: Label
 var _announce_left: float = 0.0
 var _aim_cues: Array[Label] = []
@@ -85,11 +87,7 @@ func bind(a: Fighter, b: Fighter, f: MatchFlow) -> void:
 	flow.timer_changed.connect(_on_timer)
 	flow.round_won.connect(_on_round_won)
 	flow.match_over.connect(_on_match_over)
-	flow.round_started.connect(func(_n: int):
-		_result.visible = false
-		var camera := get_viewport().get_camera_3d()
-		if camera != null and camera.has_meta("harpoon_aim"):
-			camera.get_meta("harpoon_aim").reset())
+	flow.round_started.connect(_on_round_started)
 
 
 func _build() -> void:
@@ -132,6 +130,8 @@ func _build() -> void:
 	_timer = _label("99", FONT_BIG - 10, HORIZONTAL_ALIGNMENT_CENTER)
 	_timer.add_theme_color_override("font_color", Color(1.0, 0.92, 0.75))
 	center.add_child(_timer)
+	_round_label = _label("FIRST TO %d" % GameState.rounds_to_win, FONT_SMALL, HORIZONTAL_ALIGNMENT_CENTER)
+	center.add_child(_round_label)
 	top.add_child(center)
 	top.add_child(_player_panel(p2, true))
 	# announcer
@@ -163,7 +163,7 @@ func _build() -> void:
 	_result.add_child(rv)
 	_result_label = _label("", FONT_BIG - 14, HORIZONTAL_ALIGNMENT_CENTER)
 	rv.add_child(_result_label)
-	var again := _button("REMATCH", func(): _result.visible = false; flow.rematch())
+	var again := _button("REMATCH", flow.rematch)
 	rv.add_child(again)
 	rv.add_child(_button("MAIN MENU", func(): Engine.time_scale = 1.0; get_tree().paused = false; GameState.to_menu()))
 	_result.visible = false
@@ -261,6 +261,10 @@ func _player_panel(f: Fighter, mirrored: bool) -> Control:
 	_dash[idx] = []
 	for i in f.data.dash_charges:
 		dash.add_child(_cell(Vector2(18, 5), dash_color(f.data), _dash[idx]))
+	var dash_text := _label("", FONT_SMALL, HORIZONTAL_ALIGNMENT_CENTER)
+	dash_text.custom_minimum_size.x = 142
+	_dash_text[idx] = dash_text
+	dash.add_child(dash_text)
 	var st := _label("", FONT_SMALL, HORIZONTAL_ALIGNMENT_RIGHT if mirrored else HORIZONTAL_ALIGNMENT_LEFT)
 	st.add_theme_color_override("font_color", f.data.vfx_primary.lightened(0.35))
 	st.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -458,7 +462,7 @@ func _overlay() -> PanelContainer:
 
 
 func _hint_text() -> String:
-	return "Esc / Menu: pause · comfort · controls"
+	return "%s: draw / switch · Hold %s: rope lift · Esc / Menu: controls" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "jump", false)]
 
 
 # --- updates --------------------------------------------------------------------------------
@@ -492,13 +496,14 @@ func _on_cooldowns(idx: int, cd: Dictionary) -> void:
 	(labels[1] as Label).text = "✓" if s2 <= 0.0 else "%.1f" % s2
 
 
-func _on_dash(idx: int, c: int, r: float, _mc: int) -> void:
+func _on_dash(idx: int, c: int, r: float, mc: int) -> void:
 	var pips: Array = _dash[idx]
 	var d: CharacterData = (p1 if idx == 1 else p2).data
 	# all spent charges return together dash_recharge s after the last use, so they fill together
 	var back := 1.0 - r / maxf((p1 if idx == 1 else p2).dash_recharge_total, 0.001) if r > 0.0 else 0.0
 	for i in pips.size():
 		_fill_cell(pips[i] as ColorRect, 1.0 if i < c else back, dash_color(d))
+	(_dash_text[idx] as Label).text = "DASH %d/%d%s" % [c, mc, " · %.1fs" % r if r > 0.0 else ""] if mc > 0 else ""
 
 
 func _on_timer(t: int) -> void:
@@ -520,11 +525,22 @@ func _on_round_won(player: int, w1: int, w2: int) -> void:
 
 
 func _on_match_over(winner: int, n1: String, n2: String) -> void:
-	_result_label.text = "%s WINS" % (n1 if winner == 1 else n2)
+	_result_label.text = "%s WINS\n%d — %d" % [n1 if winner == 1 else n2, flow.wins[1], flow.wins[2]]
+	InputRouter.acquire_ui(_result)
 	_result.visible = true
 	var first := _result.get_child(0).get_child(1) as Button
 	if first:
 		first.grab_focus()
+
+
+func _on_round_started(n: int) -> void:
+	_result.hide()
+	InputRouter.release_ui(_result)
+	_on_round_won(0, flow.wins[1], flow.wins[2])
+	_round_label.text = "ROUND %d · FIRST TO %d" % [n, GameState.rounds_to_win]
+	var camera := get_viewport().get_camera_3d()
+	if camera != null and camera.has_meta("harpoon_aim"):
+		camera.get_meta("harpoon_aim").reset()
 
 
 func toggle_pause() -> void:
@@ -562,6 +578,7 @@ func _process(delta: float) -> void:
 
 func _exit_tree() -> void:
 	InputRouter.release_ui(self)
+	InputRouter.release_ui(_result)
 
 
 func _input(event: InputEvent) -> void:

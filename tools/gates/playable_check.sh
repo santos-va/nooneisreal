@@ -43,6 +43,14 @@ cases = [
     ('rope-recovery', 'tools/animation/rope_recovery_motion_check.gd', r'ROPE_RECOVERY_MOTION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('gait', 'tools/animation/gait_check.gd', r'GAIT_CHECK_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('comfort-ui', 'tools/ui/comfort_ui_check.gd', r'COMFORT_UI PASS \(0 failures; mutation=\)', [], 0),
+    ('match-lifecycle', 'tools/match/match_lifecycle_check.gd', r'MATCH_LIFECYCLE PASS \([1-9][0-9]* checks, 0 failures; mutation=\)', [], 0),
+    ('weighted-swing', 'tools/grapple/weighted_swing_check.gd', r'WEIGHTED_SWING_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('ultimate-wave', 'tools/skills/ultimate_wave_check.gd', r'ULTIMATE_WAVE_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('combat-presentation', 'tools/animation/combat_presentation_check.gd', r'COMBAT_PRESENTATION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('combat-control', 'tools/combat/control_check.gd', r'COMBAT_CONTROL_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('city-geometry', 'tools/world/city_geometry_check.gd', r'CITY_GEOMETRY_COMPLETE checks=[1-9][0-9]* failures=0 meshes=[1-9][0-9]*', [], 0),
+    ('city-runtime', 'tools/world/city_runtime_check.gd', r'CITY_RUNTIME_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('city-onboarding', 'tools/world/city_onboarding_check.gd', r'CITY_ONBOARDING_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
 ]
 for mutation in ('portrait', 'icon', 'input'):
     cases.append(('ui-negative-' + mutation, 'tools/ui/layout_check.gd',
@@ -55,6 +63,10 @@ for mutation in ('footer', 'focus', 'bounds'):
 for mutation in ('opponent_frame', 'orbit', 'facing'):
     cases.append(('free-movement-negative-' + mutation, 'tools/input/free_movement_check.gd',
                   rf'FREE_MOVEMENT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+for mutation in ('round', 'rematch', 'score'):
+    cases.append(('match-lifecycle-negative-' + mutation, 'tools/match/match_lifecycle_check.gd',
+                  rf'MATCH_LIFECYCLE FAIL \([1-9][0-9]* checks, [1-9][0-9]* failures; mutation={mutation}\)',
                   ['--', '--break=' + mutation], 1))
 failures = 0
 for name, script, sentinel, args, expected_rc in cases:
@@ -79,7 +91,8 @@ for name, script, sentinel, args, expected_rc in cases:
     assertion_prefix = None
     for scope, prefix in (('ui-negative-', 'ERROR: UI_LAYOUT: '),
                           ('comfort-ui-negative-', 'ERROR: COMFORT_UI: '),
-                          ('free-movement-negative-', 'ERROR: FREE_MOVEMENT: ')):
+                          ('free-movement-negative-', 'ERROR: FREE_MOVEMENT: '),
+                          ('match-lifecycle-negative-', 'ERROR: MATCH_LIFECYCLE: ')):
         if name.startswith(scope):
             assertion_prefix = prefix
     unexpected = [line for line in errors

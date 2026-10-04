@@ -43,6 +43,7 @@ const BLADE_SHARDS := 5     # shards when a landed crystal bursts
 const SHARD_LIFE := 22      # frames
 
 var owner_f: Fighter
+var _born: int = -1
 var _f: int = 0
 var _facing: int = 1
 var _blades: Array = []
@@ -64,6 +65,8 @@ static func spawn(f: Fighter) -> SwordStormFx:
 
 
 func _ready() -> void:
+	_born = Engine.get_physics_frames()
+	add_to_group("sword_storm_ults")
 	_facing = owner_f.facing
 	if GameState.free_move:
 		# free movement: turn the whole effect onto the gaze; locally it is the plane's +x setup
@@ -161,6 +164,13 @@ func _physics_process(_delta: float) -> void:
 	if owner_f == null or not is_instance_valid(owner_f):
 		queue_free()
 		return
+	var victim := owner_f.opponent
+	if owner_f.state in [Fighter.State.KO, Fighter.State.INTRO] or (is_instance_valid(victim) and victim.state == Fighter.State.KO):
+		set_physics_process(false)
+		queue_free()
+		return
+	if Engine.get_physics_frames() == _born:
+		return
 	if owner_f.frozen_frames > 0 or TimeStopFx.freezes(global_position, owner_f):
 		return
 	_f += 1
@@ -202,6 +212,15 @@ func _physics_process(_delta: float) -> void:
 	_tick_shards()
 	if _f > FINAL + SHARD_LIFE + 2 and shards.is_empty():
 		queue_free()
+
+
+## Reset is synchronous: a frozen effect cannot survive into the next round.
+static func cancel_owner(f: Fighter) -> void:
+	for node in f.get_tree().get_nodes_in_group("sword_storm_ults"):
+		var storm := node as SwordStormFx
+		if storm != null and storm.owner_f == f:
+			storm.set_physics_process(false)
+			storm.queue_free()
 
 
 static func make_tick(i: int) -> MoveData:

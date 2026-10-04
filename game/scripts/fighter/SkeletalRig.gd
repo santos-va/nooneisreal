@@ -378,14 +378,14 @@ func _physics_process(delta: float) -> void:
 		MotionFallback.apply(skeleton, _fighter.animator)
 	elif ragdoll == null and recovering:
 		MotionFallback.apply(skeleton, _fighter.animator, true)
-	if ragdoll == null and not recovering:
+	if ragdoll == null and not recovering and not RigAnimator.levitating(_fighter):
 		idle_presence.apply(skeleton, _fighter, delta)
 
 
 func uses_procedural_motion() -> bool:
 	if ragdoll != null:
 		return false
-	return _fighter.state == Fighter.State.GRAPPLE or (_fighter.state == Fighter.State.ATTACK and MotionFallback.supports(_fighter.data.id, _fighter.current_move))
+	return RigAnimator.levitating(_fighter) or _fighter.state == Fighter.State.GRAPPLE or (_fighter.state == Fighter.State.ATTACK and MotionFallback.supports(_fighter.data.id, _fighter.current_move))
 
 
 func _on_mannequin_updated() -> void:

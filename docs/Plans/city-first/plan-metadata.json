@@ -1,0 +1,415 @@
+{
+	"anchors": [
+		[
+			-8.0,
+			6.5,
+			-8.0
+		],
+		[
+			8.0,
+			6.5,
+			-8.0
+		],
+		[
+			-8.0,
+			6.5,
+			8.0
+		],
+		[
+			8.0,
+			6.5,
+			8.0
+		]
+	],
+	"blocks": [
+		{
+			"center": [
+				0.0,
+				-0.5,
+				0.0
+			],
+			"id": "Ground",
+			"layer": 1,
+			"material": "paving",
+			"size": [
+				64.0,
+				1.0,
+				64.0
+			]
+		},
+		{
+			"center": [
+				-20.0,
+				2.0,
+				-20.0
+			],
+			"id": "NorthWestRoof",
+			"layer": 9,
+			"material": "slate",
+			"size": [
+				20.0,
+				4.0,
+				20.0
+			]
+		},
+		{
+			"center": [
+				20.0,
+				2.0,
+				-20.0
+			],
+			"id": "NorthEastRoof",
+			"layer": 9,
+			"material": "terracotta",
+			"size": [
+				20.0,
+				4.0,
+				20.0
+			]
+		},
+		{
+			"center": [
+				-20.0,
+				5.0,
+				21.0
+			],
+			"id": "SouthWestBlock",
+			"layer": 9,
+			"material": "terracotta",
+			"size": [
+				20.0,
+				10.0,
+				18.0
+			]
+		},
+		{
+			"center": [
+				14.0,
+				4.0,
+				21.0
+			],
+			"id": "SouthEastWestWing",
+			"layer": 9,
+			"material": "slate",
+			"size": [
+				8.0,
+				8.0,
+				18.0
+			]
+		},
+		{
+			"center": [
+				26.0,
+				6.0,
+				21.0
+			],
+			"id": "SouthEastEastWing",
+			"layer": 9,
+			"material": "plaster",
+			"size": [
+				8.0,
+				12.0,
+				18.0
+			]
+		},
+		{
+			"center": [
+				20.0,
+				5.5,
+				14.0
+			],
+			"id": "PassageLintel",
+			"layer": 9,
+			"material": "plaster",
+			"size": [
+				4.0,
+				2.0,
+				4.0
+			]
+		},
+		{
+			"center": [
+				0.0,
+				3.75,
+				-20.0
+			],
+			"id": "RoofBridge",
+			"layer": 9,
+			"material": "brass",
+			"size": [
+				20.0,
+				0.5,
+				4.0
+			]
+		},
+		{
+			"center": [
+				-24.0,
+				10.0,
+				-25.0
+			],
+			"id": "ClockTower",
+			"layer": 9,
+			"material": "plaster",
+			"size": [
+				8.0,
+				12.0,
+				8.0
+			]
+		},
+		{
+			"center": [
+				-32.5,
+				2.0,
+				0.0
+			],
+			"id": "WestBoundary",
+			"layer": 9,
+			"material": "slate",
+			"size": [
+				1.0,
+				4.0,
+				66.0
+			]
+		},
+		{
+			"center": [
+				32.5,
+				2.0,
+				0.0
+			],
+			"id": "EastBoundary",
+			"layer": 9,
+			"material": "slate",
+			"size": [
+				1.0,
+				4.0,
+				66.0
+			]
+		},
+		{
+			"center": [
+				0.0,
+				2.0,
+				-32.5
+			],
+			"id": "NorthBoundary",
+			"layer": 9,
+			"material": "slate",
+			"size": [
+				64.0,
+				4.0,
+				1.0
+			]
+		},
+		{
+			"center": [
+				0.0,
+				2.0,
+				32.5
+			],
+			"id": "SouthBoundary",
+			"layer": 9,
+			"material": "slate",
+			"size": [
+				64.0,
+				4.0,
+				1.0
+			]
+		}
+	],
+	"bounds": {
+		"position": [
+			-32.0,
+			-2.0,
+			-32.0
+		],
+		"size": [
+			64.0,
+			22.0,
+			64.0
+		]
+	},
+	"bounds_meaning": "declared traversal envelope; decorative skyline may exceed its height",
+	"collision_layers": {
+		"ground": 1,
+		"solids_and_rope_cover": 9
+	},
+	"combat_pockets": [
+		{
+			"center": [
+				0.0,
+				0.0,
+				0.0
+			],
+			"id": "central_court",
+			"radius": 7.0,
+			"title": "Central court"
+		},
+		{
+			"center": [
+				-22.0,
+				0.0,
+				0.0
+			],
+			"id": "west_court",
+			"radius": 5.0,
+			"title": "West court"
+		},
+		{
+			"center": [
+				20.0,
+				4.0,
+				-20.0
+			],
+			"id": "east_terrace",
+			"radius": 5.0,
+			"title": "East terrace"
+		}
+	],
+	"composition": [
+		"CityLayout traversal solids",
+		"CityArchitecture batched facade/roof/tower + structural colliders",
+		"CityMarket batched stalls + prop colliders"
+	],
+	"geometry_source": "res://scenes/world/CityDistrict.tscn",
+	"layout_blocks_are_complete_composition": false,
+	"mesh_count": 52,
+	"new_assets": 0,
+	"passage": {
+		"center": [
+			20.0,
+			0.0,
+			14.0
+		],
+		"depth": 4.0,
+		"height": 4.5,
+		"width": 4.0
+	},
+	"ramps": [
+		{
+			"end_z": -10.0,
+			"height": 4.0,
+			"id": "EastRamp",
+			"start_z": 8.0,
+			"width": 4.0,
+			"x": 18.0
+		},
+		{
+			"end_z": -10.0,
+			"height": 4.0,
+			"id": "WestRamp",
+			"start_z": 8.0,
+			"width": 3.0,
+			"x": -29.0
+		}
+	],
+	"rendered_geometry_bounds": {
+		"position": [
+			-33.0,
+			-1.0,
+			-33.0
+		],
+		"size": [
+			66.0,
+			24.4799995422363,
+			66.0
+		]
+	},
+	"routes": [
+		[
+			0.0,
+			0.0,
+			23.0
+		],
+		[
+			0.0,
+			0.0,
+			0.0
+		],
+		[
+			18.0,
+			0.0,
+			10.0
+		],
+		[
+			18.0,
+			0.0,
+			8.0
+		],
+		[
+			18.0,
+			4.0,
+			-10.0
+		],
+		[
+			20.0,
+			4.0,
+			-20.0
+		],
+		[
+			0.0,
+			4.0,
+			-20.0
+		],
+		[
+			-20.0,
+			4.0,
+			-20.0
+		],
+		[
+			-29.0,
+			4.0,
+			-14.0
+		],
+		[
+			-29.0,
+			4.0,
+			-10.0
+		],
+		[
+			-29.0,
+			0.0,
+			8.0
+		],
+		[
+			-29.0,
+			0.0,
+			10.0
+		],
+		[
+			-22.0,
+			0.0,
+			10.0
+		],
+		[
+			-22.0,
+			0.0,
+			6.0
+		],
+		[
+			-22.0,
+			0.0,
+			0.0
+		],
+		[
+			0.0,
+			0.0,
+			0.0
+		],
+		[
+			0.0,
+			0.0,
+			23.0
+		]
+	],
+	"spawn": [
+		0.0,
+		0.0,
+		23.0
+	],
+	"status": "functional prototype; Function/Form/Runtime acceptance pending",
+	"target_device_acceptance": false,
+	"triangle_count": 60792,
+	"units": "metres; dimensions are PLACEHOLDER design"
+}

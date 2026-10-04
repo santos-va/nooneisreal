@@ -34,7 +34,8 @@ func _run() -> void:
 		viewport.size = dimensions
 		await _settle()
 		var buttons: Array = menu.get("_buttons")
-		_check(buttons.size() == 10, "menu contains ten actions")
+		_check(buttons.size() == 11, "menu contains eleven actions")
+		_check("PROTOTYPE" in (menu.get("city_button") as Button).text, "city action clearly labels prototype")
 		for button: Button in buttons:
 			_check(_inside(button), "visible menu action: %s at %s" % [button.text, dimensions])
 		for field in ["_portrait1", "_portrait2"]:

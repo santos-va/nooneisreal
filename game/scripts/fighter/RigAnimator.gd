@@ -279,7 +279,7 @@ func _compute_target(f: Fighter, delta: float) -> void:
 	for n in parts.keys():
 		target_pose[n] = Vector3.ZERO
 	target_root_offset = Vector3.ZERO
-	spin = lerpf(spin, 0.0, 0.2)
+	spin = lerp_angle(spin, 0.0, 0.2)
 	var breathe := sin(idle_time * 2.2) * 0.03
 	match f.state:
 		Fighter.State.IDLE, Fighter.State.INTRO:
@@ -368,6 +368,35 @@ func _compute_target(f: Fighter, delta: float) -> void:
 		_:
 			_guard(breathe)
 
+	if levitating(f):
+		_levitation_pose(f)
+
+
+## Visual-only pose contract. No collider/root motion or combat state is written here.
+static func levitating(f: Fighter) -> bool:
+	if f.data.id != "skea" or f.state in [Fighter.State.KO, Fighter.State.KNOCKDOWN, Fighter.State.LAUNCHED, Fighter.State.HITSTUN]:
+		return false
+	return (f.ult_fx != null and is_instance_valid(f.ult_fx) and f.ult_fx.running()) or (f.state == Fighter.State.ATTACK and f.current_move != null and f.current_move.effect == "grimoire")
+
+
+func _levitation_pose(f: Fighter) -> void:
+	# PLACEHOLDER art angles/offset, until native playtest: crossed legs, one hand reads, one writes.
+	var clock: float = float(f.ult_fx.presentation_frame()) / 60.0 if f.ult_fx != null and is_instance_valid(f.ult_fx) else idle_time
+	var gesture: float = sin(clock * 2.6)
+	var striking: bool = f.state == Fighter.State.ATTACK and f.current_move != null and f.current_move.effect != "grimoire"
+	if not striking:
+		_pose_set("thigh_l", Vector3(-0.85, 0.5, 1.55))
+		_pose_set("thigh_r", Vector3(0.85, -0.5, 1.55))
+		_pose_set("shin_l", Vector3(1.05, -0.45, -2.35))
+		_pose_set("shin_r", Vector3(-1.05, 0.45, -2.35))
+		_pose_set("upper_arm_l", Vector3(-0.18, 0.1, 1.05))
+		_pose_set("forearm_l", Vector3(0.0, 0.0, 1.05))
+		_pose_set("upper_arm_r", Vector3(0.1, gesture * 0.2, 1.25 + gesture * 0.08))
+		_pose_set("forearm_r", Vector3(0.0, 0.0, 0.8 + gesture * 0.15))
+		_pose_set("head", Vector3(0.0, gesture * 0.08, -0.22))
+		_pose_set("torso", Vector3(0.0, 0.0, -0.05))
+	target_root_offset.y = 0.42 + sin(clock * 2.0) * 0.035
+
 
 func _guard(breathe: float) -> void:
 	_pose_set("torso", Vector3(0, 0, 0.06 + breathe))
@@ -420,7 +449,7 @@ func _attack_pose(f: Fighter) -> void:
 		SwordMotion.apply(self, anim, ext)
 		return
 	if LimbMotion.supports(anim):
-		LimbMotion.apply(self, anim, ext)
+		LimbMotion.apply(self, anim, ext, phase, f.data.id)
 		return
 	match anim:
 		"light":

@@ -1,0 +1,15 @@
+{
+  "schema": "game-room.prop-manifest.v1",
+  "roomId": "cronshift-first-district",
+  "generation": {
+    "provider": "meshy",
+    "apiModel": "meshy-5",
+    "pricingSource": "",
+    "pricingVerifiedAt": "",
+    "creditsPerTexturedTask": null,
+    "hardCreditCeiling": 0,
+    "maxChargedAttemptsPerAsset": 2,
+    "notes": "No paid work authorized or submitted. Template price intentionally cleared; verify current provider pricing before any future request."
+  },
+  "assets": []
+}
