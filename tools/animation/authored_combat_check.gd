@@ -138,7 +138,12 @@ func run() -> void:
 				if not low:
 					mount = attached
 				else:
-					check(attached.origin.distance_to(mount.origin) < 0.001 and attached.basis.is_equal_approx(mount.basis), "sheathed sword stays attached to animated torso")
+					# Hero bones use centimetre scale; compare physical world drift/angle,
+					# not near-zero components of a decomposed 100x local basis.
+					var expected: Transform3D = torso * mount
+					var actual: Transform3D = f.skeletal.sword.global_transform
+					var angle: float = expected.basis.orthonormalized().get_rotation_quaternion().angle_to(actual.basis.orthonormalized().get_rotation_quaternion())
+					check(expected.origin.distance_to(actual.origin) < 0.001 and angle < deg_to_rad(0.1), "sheathed sword stays attached within 1 mm / 0.1 degree")
 		f.free()
 	print("AUTHORED_COMBAT_COMPLETE checks=%d failures=%d" % [checks, failures])
 	quit(1 if failures else 0)

@@ -8,12 +8,15 @@ var folder: String = "/tmp/nir-authored-visuals"
 var actor: GDScript
 var limbs: GDScript
 var camera: Camera3D
+var motion_only: bool = false
 
 func _initialize() -> void:
 	call_deferred("run")
 
 func run() -> void:
 	for arg: String in OS.get_cmdline_user_args():
+		if arg == "--motion-only":
+			motion_only = true
 		if arg.begins_with("--out="):
 			folder = arg.trim_prefix("--out=")
 	DirAccess.make_dir_recursive_absolute(folder)
@@ -74,13 +77,25 @@ func run() -> void:
 	for hero: String in ["choko", "skea"]:
 		_make_fighter(hero)
 		for variant: Dictionary in variants:
+			if motion_only and variant.name not in ["lowhand", "hammer"]:
+				continue
 			f.current_move = limbs.resolve(f.data, variant.action, variant.stage, variant.get("previous", "left_hand"), variant.get("low", false), variant.get("air", false), "", variant.get("sequence", ""))
 			f.position.y = 0.5 if variant.get("air", false) else 0.0
 			f.state = actor.State.ATTACK
+			f.move_frame = 0
+			f.animator.tick(1.0 / 60.0, f, false)
+			f.skeletal._physics_process(1.0 / 60.0)
+			f.skeletal._on_mannequin_updated()
+			if motion_only:
+				var total: int = f.current_move.startup + f.current_move.active + f.current_move.recovery
+				for frame in total:
+					f.move_frame = frame
+					await capture("%s_%s_%03d" % [hero, variant.name, frame], "%s | %s | frame %d/%d" % [hero, variant.name, frame, total])
+				continue
 			for phase: String in ["windup", "contact", "recovery"]:
 				f.move_frame = {"windup": int(f.current_move.startup / 2), "contact": f.current_move.startup, "recovery": f.current_move.startup + f.current_move.active + int(f.current_move.recovery * 0.6)}[phase]
 				await capture("%s_%s_%s" % [hero, variant.name, phase], "%s | %s | %s | %s" % [hero, variant.name, phase, f.skeletal.state_clip(f)])
-		if hero == "choko":
+		if hero == "choko" and not motion_only:
 			f.position.y = 0.0
 			f.sword_drawn = true
 			for side: String in ["left", "right"]:

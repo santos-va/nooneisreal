@@ -6,7 +6,7 @@ var FighterScript: GDScript
 var Motion: GDScript
 const EXPECTED_SOURCE: Dictionary = {
 	"jab": "Punch_Jab", "cross": "Punch_Cross", "bodyhook": "Melee_Hook",
-	"uppercut": "Melee_Uppercut", "hammer": "Sword_GroundPound", "lowhand": "Punch_Jab",
+	"uppercut": "Melee_Uppercut", "hammer": "OverhandThrow", "lowhand": "Punch_Jab",
 	"airhand": "Punch_Cross", "frontkick": "Kick", "roundhouse": "Kick",
 	"spin": "Kick", "hookspin": "Kick", "lowkick": "Kick", "airkick": "Kick",
 }

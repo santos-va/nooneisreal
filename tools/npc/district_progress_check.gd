@@ -45,6 +45,7 @@ func _run() -> void:
 	check(model.set_palette("mint"), "free cosmetic equipped")
 	model.visit_landmark("market_court")
 	check(model.complete_quest("own_style") and model.summary().completed == 6, "all six reachable without timer or fake action")
+	check(model.summary().active_title == "Усі доручення кварталу завершено" and model.summary().active_hint.contains("Нагороди отримано"), "finished district shows completion instead of introductory quest prompt")
 	check(model.set_palette("amber"), "earned currency buys cloth style")
 	credits = model.summary().credits
 	model.set_palette("amber")

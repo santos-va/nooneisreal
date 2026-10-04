@@ -107,6 +107,11 @@ func _run() -> void:
 	await ticks(90)
 	for singleton: String in ["Sfx", "UltMusic", "Music"]:
 		root.get_node(singleton).queue_free()
-	await ticks(3)
+	# Dummy audio releases its playback on the real mixer thread, not fixed game ticks.
+	# Match the bounded drain used by city_runtime_check and npc_runtime_check.
+	var until: int = Time.get_ticks_msec() + 200
+	while Time.get_ticks_msec() < until:
+		await process_frame
+		OS.delay_msec(1)
 	print("[district-life] %d checks / %d failures" % [checks, failures])
 	quit(1 if failures else 0)

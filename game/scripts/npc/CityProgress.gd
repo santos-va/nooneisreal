@@ -225,6 +225,9 @@ func summary() -> Dictionary:
 			title = entry.title
 			hint = "Повернися до замовника по нагороду." if entry.status == "ready" else entry.hint
 			break
+	if not quests.is_empty() and heroes[hero_id].completed.size() == quests.size():
+		title = "Усі доручення кварталу завершено"
+		hint = "Нагороди отримано. Можеш далі гуляти, спілкуватися із сусідами й обирати перев’язі."
 	return {"hero_id": hero_id, "completed": heroes[hero_id].completed.size(), "total": quests.size(),
 		"credits": int(heroes[hero_id].credits), "active_title": title, "active_hint": hint,
 		"palette": heroes[hero_id].palette, "save_ok": save_ok}
