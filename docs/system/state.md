@@ -146,5 +146,9 @@
 - **T3:** FPS/мс на M3 і телефоні, вартість тканини — UNGROUNDED до заміру; відео з альфою в Higgsfield — UNGROUNDED; рендер Forward+ ↔ Mobile перемикається лише з перезапуском.
 - **T3:** автомапінг BoneMap (UAL і Meshy M-0/M-1) перевірено лише за сирцями, не в редакторі; пальців у Meshy-ригу немає — поза кисті окремо.
 
+## Codex / Claude — маршрут T1 (2026-10-04)
+
+Santos визначив поточний чат T1 головним кріслом для важливих рішень і планування кількох рольових сесій. План [[2026-10-04-Codex-Coworker]] — `draft`, технічна пропозиція [[ADR-021-Codex-Coworker-Adapter]]; журнал [[2026-10-04-T1-Codex-Coworker]]. Далі: окрема T2-сесія C1 inventory → C2–C3 adapter/parity, окремо C4 strict Godot/CI → T4 приймання → T1 маршрут далі. Короткі звіти з SHA/PR/доказами; інтеграція ще не готова. Пріоритети ігрових смуг і чужі виконавчі статуси не змінено.
+
 ## Related
 - [[index]] · [[constitution]] · [[2026-10-03-Production-Plan]] · [[2026-10-02-Art-Direction-and-Pipeline]] · [[Roadmap]] · [[2026-10-03-Main-Menu-Skyline]] · [[2026-10-03-Main-Menu-and-Chain]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-012-Menu-As-3D-Diorama]] · [[ADR-013-License-Check-At-Release]] · [[2026-10-03-Prototype-0.3-Free-Movement]] · [[2026-10-03-Skea-Redesign]] · [[2026-10-03-Behaviour-Cloth-VFX-Shaders]]
