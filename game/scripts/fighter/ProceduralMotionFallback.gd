@@ -2,6 +2,7 @@ class_name ProceduralMotionFallback
 extends RefCounted
 ## Bridge the existing semantic capsule drawings onto UAL, only for moves without authored clips.
 ## This does not infer new attacks from unrelated library names or change combat data.
+const LimbMotion = preload("res://scripts/fighter/LimbMotion.gd")
 const MOVES := {
 	"choko": ["crouch_light", "record", "time_stop"],
 	"skea": ["low_kick", "shadow_veil", "cursed_grimoire", "cursed_grimoire_veil"],
@@ -22,7 +23,7 @@ const PARTS := {
 }
 
 static func supports(character_id: String, move: MoveData) -> bool:
-	return move != null and move.anim_clip.is_empty() and move.id in MOVES.get(character_id, [])
+	return move != null and move.anim_clip.is_empty() and (move.id in MOVES.get(character_id, []) or LimbMotion.supports(move.anim))
 
 
 static func apply(skeleton: Skeleton3D, animator: RigAnimator) -> void:

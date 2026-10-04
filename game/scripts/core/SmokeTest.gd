@@ -420,7 +420,11 @@ func _check_mode_row() -> bool:
 		focus_hint.append(menu._foot.text)
 	menu._comfort_button.pressed.emit()
 	var full_controls: String = menu._comfort.controls_label.text
-	var reachable: bool = menu._comfort.visible and menu._comfort.controls_label.focus_mode == Control.FOCUS_ALL and "Space jump" in full_controls
+	var reachable: bool = menu._comfort.visible and menu._comfort.controls_label.focus_mode == Control.FOCUS_ALL and "Jump: Space" in full_controls
+	# The expanded help must expose every new limb and its current physical binding.
+	for action: String in ["left_hand", "right_hand", "left_leg", "right_leg"]:
+		reachable = reachable and (action.capitalize() + ": " + InputRouter.binding_label(1, action, false)) in full_controls
+	reachable = reachable and "Comma (<)" in full_controls and "Hold grapple to stay attached" in full_controls and "Release grapple to detach" in full_controls
 	menu._comfort.close_panel()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(ComfortSettings.storage_path))
 	ComfortSettings.storage_path = comfort_old_path
@@ -435,10 +439,10 @@ func _check_mode_row() -> bool:
 	GameState.set_free_move(true)
 	var off: Array = got[0]
 	var on: Array = got[1]
-	if off[0] != false or off[1] != false or off[2] or not "2.5D" in str(off[3]) or not "W/Space jump" in str(off[4]):
+	if off[0] != false or off[1] != false or off[2] or not "2.5D" in str(off[3]) or not "Jump: W / Space" in str(off[4]):
 		_fail("MODE row, first press (3D → 2.5D): free_move %s, saved %s, X on crouch %s, row '%s', hint '%s'" % off)
 		return false
-	if on[0] != true or on[1] != true or not on[2] or not "3D" in str(on[3]) or not "Space jump" in str(on[4]) or "W/Space" in str(on[4]):
+	if on[0] != true or on[1] != true or not on[2] or not "3D" in str(on[3]) or not "Jump: Space" in str(on[4]) or "Jump: W / Space" in str(on[4]):
 		_fail("MODE row, second press (2.5D → 3D): free_move %s, saved %s, X on crouch %s, row '%s', hint '%s'" % on)
 		return false
 	if not hint_ok:
@@ -1648,6 +1652,10 @@ func _physics_process(_delta: float) -> void:
 		arena = cs
 		p1 = arena.p1
 		p2 = arena.p2
+		# These scripted virtual directions encode opponent-relative AI intent.
+		# Human gesture movement is covered with actual device events by free_movement_check.
+		p1.is_cpu = true
+		p2.is_cpu = true
 		flow = arena.flow
 		_ok("arena loaded: %s vs %s, stage %s" % [p1.data.display_name, p2.data.display_name, GameState.stage().id])
 		if not GameState.skeletal_rig and (p1.skeletal != null or p1.get_node_or_null("SkeletalRig") != null):
@@ -1761,15 +1769,22 @@ func _physics_process(_delta: float) -> void:
 					_fail("rewind failed (x %.2f vs %.2f, marker %s)" % [p1.global_position.x, _x0, p1.record_marker])
 		7:
 			if p1.is_actionable():
+				_n0 = p1.grapple.charges
 				InputRouter.v_set(1, "grapple", true)
 				_next()
 		8:
 			InputRouter.v_set(1, "grapple", true)
-			if p1.state == Fighter.State.GRAPPLE:
-				_ok("grapple attached (charges left %d)" % p1.grapple.charges)
+			if p1.grapple.phase == GrappleHook.Phase.WINDUP and p1.grapple.charges != _n0:
+				_fail("grapple spent charge during windup")
+				return
+			if p1.grapple.attached:
+				if _f - _f0 < 30 or p1.grapple.charges != _n0 - 1:
+					_fail("grapple attached before 30-frame windup or spent wrong charge count")
+					return
+				_ok("grapple attached after windup and flight (charges left %d)" % p1.grapple.charges)
 				_next()
-			elif _f > _f0 + 30:
-				_fail("grapple did not attach")
+			elif _f > _f0 + 100:
+				_fail("grapple did not attach after windup and flight")
 		9:
 			InputRouter.v_set(1, "grapple", _f < _f0 + 40)
 			if _f > _f0 + 50 and p1.state != Fighter.State.GRAPPLE:
@@ -1914,6 +1929,8 @@ func _physics_process(_delta: float) -> void:
 		# ---------------- keyboard profiles (ADR-009): real key events, not virtual input -------
 		26:
 			if flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable():
+				p1.is_cpu = false
+				p2.is_cpu = false
 				_profile0 = InputRouter.profile
 				for prof in InputRouter.PROFILES:
 					var clash := _key_clash(prof)
@@ -2271,34 +2288,45 @@ func _physics_process(_delta: float) -> void:
 				p2.global_position = Vector3(2.0, p2.global_position.y, 0.0)
 				_next()
 		48:
-			# 0.3-3: zip/reel into the depth: hold up + hold grapple until the hook reaches the anchor
+			# Aim into depth, then neutral hold: attachment persists without automatic reel.
 			if _f == _f0 + 3:
 				InputRouter.v_set(1, "up", true)
 				_x0 = 0.0
-				_rmax = 99.0
+				_n0 = p1.grapple.charges
 				InputRouter.v_set(1, "grapple", true)
 			if _f > _f0 + 3:
-				if _x0 > 0.0 or p1.state == Fighter.State.GRAPPLE:
-					# measured on the release frame too (the hook lets go the frame it reaches the anchor)
+				if p1.grapple.phase == GrappleHook.Phase.WINDUP and p1.grapple.charges != _n0:
+					_fail("3D grapple spent charge before release")
+					return
+				if p1.grapple.attached and _x0 == 0.0:
+					_x0 = float(_f)
 					_d0 = p1.grapple.anchor_point.z
-					_rmax = minf(_rmax, (p1.grapple.anchor_point - (p1.global_position + GrappleHook.HAND)).length())
-				if p1.state == Fighter.State.GRAPPLE:
-					_x0 = 1.0
-					if p1.grapple._frames == 10:
-						_shot("14_free_grapple_zip")
-				elif _x0 > 0.0:
-					if _rmax > 1.4 or absf(_d0) < 1.0 or signf(p1.global_position.z) != signf(_d0):
-						_fail("grapple 3D: closest to anchor %.2f m (want < 1.4), anchor z %.2f, p1 z %.2f" % [_rmax, _d0, p1.global_position.z])
+					_rmax = p1.grapple.rope_length
+					InputRouter.v_set(1, "up", false)
+					if _f - _f0 < 33 or absf(_d0) < 1.0 or p1.grapple.charges != _n0 - 1:
+						_fail("3D grapple did not reach depth anchor after charged windup/flight")
 						return
-					_ok("grapple 3D: reeled to the anchor at z %.2f (closest %.2f m), p1 now at z %.2f" % [_d0, _rmax, p1.global_position.z])
+				if _x0 > 0.0 and _f <= int(_x0) + 30:
+					if not p1.grapple.attached or absf(p1.grapple.rope_length - _rmax) > 0.01:
+						_fail("neutral hold detached or automatically reeled rope %.3f → %.3f" % [_rmax, p1.grapple.rope_length])
+						return
+					if _f == int(_x0) + 20:
+						_shot("14_free_grapple_hold")
+				if _x0 > 0.0 and _f == int(_x0) + 31:
+					InputRouter.v_set(1, "grapple", false)
+				if _x0 > 0.0 and _f > int(_x0) + 33:
+					if p1.grapple.busy():
+						_fail("3D grapple stayed attached after releasing hold")
+						return
+					_ok("3D grapple reached anchor z %.2f; neutral held fixed %.2f m rope for 30 frames; release detached" % [_d0, _rmax])
 					_next()
-				if _f > _f0 + 200:
-					_fail("grapple 3D never attached/released (state %d, attached %s)" % [p1.state, _x0 > 0.0])
+				if _f > _f0 + 180:
+					_fail("3D grapple never attached/released (phase %d)" % p1.grapple.phase)
 		49:
 			# 0.3-3: pull the enemy along the gaze when they stand off the X line
-			if not (p1.is_actionable() and p2.is_actionable()) and _f < _f0 + 200:
-				return
 			if _n0 != 49:
+				if not (p1.is_actionable() and p2.is_actionable()) and _f < _f0 + 200:
+					return
 				_n0 = 49
 				p1.global_position = Vector3(0.0, p1.global_position.y, 0.0)
 				p2.global_position = Vector3(3.0, p2.global_position.y, 3.0)
@@ -2307,7 +2335,13 @@ func _physics_process(_delta: float) -> void:
 			if _f == _f0 + 3:
 				InputRouter.v_set(1, "crouch", true)
 				InputRouter.v_press(1, "grapple")
+			if _f == _f0 + 25:
+				if _flat(p2.global_position - Vector3(3.0, p2.global_position.y, 3.0)).length() > 0.01 or p1.grapple.phase != GrappleHook.Phase.WINDUP:
+					_fail("enemy pull happened before telegraph completed")
+					return
 			if _f == _f0 + 60:
+				InputRouter.v_set(1, "grapple", false)
+				InputRouter.v_set(1, "crouch", false)
 				var want := p1.global_position + p1.forward * 1.25
 				var miss := _flat(p2.global_position - want).length()
 				var z_moved := absf(p2.global_position.z - 3.0)

@@ -106,6 +106,7 @@ func show_panel(invoker: Control, controls: String) -> void:
 	InputRouter.acquire_ui(self)
 	_invoker = invoker
 	controls_label.text = "CONTROLS — %s / %s\n\n" % ["3D" if GameState.free_move else "2.5D", InputRouter.profile.to_upper()] + controls.replace(" · ", "\n").replace("      P2", "\n\nP2").replace("   |   ", "\n\n")
+	controls_label.text += "\n\nHARPOON\nHold grapple to stay attached.\nMove toward the anchor to reel in; move sideways to steer.\nRelease grapple to detach. A tap launches the hook without staying attached.\n"
 	controls_label.text += _gamepad_help()
 	_sync_values()
 	show()
@@ -181,24 +182,7 @@ func _scroll_help(event: InputEvent) -> void:
 
 
 func _gamepad_help() -> String:
-	var text := "\n\nGAMEPAD · Left stick moves / circles\n"
-	for action in ["jump", "crouch", "light", "heavy", "block", "skill1", "skill2", "grapple", "dash", "ultimate"]:
-		var bindings: PackedStringArray = []
-		for event: InputEvent in InputMap.action_get_events("p1_" + action):
-			if event is InputEventJoypadButton or event is InputEventJoypadMotion:
-				bindings.append(_pad_label(event))
-		text += action.capitalize() + ": " + ", ".join(bindings) + "\n"
-	return text + "\nUp / Down: scroll controls · Tab: next · Esc / B: back"
-
-
-func _pad_label(event: InputEvent) -> String:
-	if event is InputEventJoypadMotion:
-		var motion := event as InputEventJoypadMotion
-		if motion.axis == JOY_AXIS_TRIGGER_LEFT:
-			return "LT / L2"
-		if motion.axis == JOY_AXIS_TRIGGER_RIGHT:
-			return "RT / R2"
-		return "Left stick" if motion.axis in [JOY_AXIS_LEFT_X, JOY_AXIS_LEFT_Y] else "Right stick"
-	var names := {JOY_BUTTON_A: "A / Cross", JOY_BUTTON_B: "B / Circle", JOY_BUTTON_X: "X / Square", JOY_BUTTON_Y: "Y / Triangle", JOY_BUTTON_LEFT_SHOULDER: "LB / L1", JOY_BUTTON_RIGHT_SHOULDER: "RB / R1", JOY_BUTTON_DPAD_UP: "D-pad Up", JOY_BUTTON_DPAD_DOWN: "D-pad Down", JOY_BUTTON_DPAD_LEFT: "D-pad Left", JOY_BUTTON_DPAD_RIGHT: "D-pad Right", JOY_BUTTON_START: "Menu / Options", JOY_BUTTON_BACK: "View / Share", JOY_BUTTON_LEFT_STICK: "Left stick click", JOY_BUTTON_RIGHT_STICK: "Right stick click"}
-	var button_index := (event as InputEventJoypadButton).button_index
-	return str(names.get(button_index, "Button %d" % button_index))
+	var text := "\n\nGAMEPAD · Left stick moves freely\n"
+	for action in ["jump", "crouch", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "grapple", "dash", "ultimate"]:
+		text += action.capitalize() + ": " + InputRouter.binding_label(1, action, true) + "\n"
+	return text + "Y + LT: reserved · Hold Y before pressing a shoulder / trigger.\nRelease the shoulder / trigger before changing its action.\n\nUp / Down: scroll controls · Tab: next · Esc / B: back"

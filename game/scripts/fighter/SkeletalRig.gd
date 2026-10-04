@@ -16,6 +16,7 @@ extends Node3D
 ## bone first gets a rest alignment (its rest direction turned onto the mannequin's), then the mannequin's rotation
 ## from rest. Bone lengths stay the hero's; only the hips move, scaled by the hip-height ratio.
 
+const Cadence = preload("res://scripts/fighter/LocomotionCadence.gd")
 const MotionFallback = preload("res://scripts/fighter/ProceduralMotionFallback.gd")
 const FootContact = preload("res://scripts/fighter/HeroFootContact.gd")
 const StancePresence = preload("res://scripts/fighter/IdlePresence.gd")
@@ -76,10 +77,15 @@ var _map: Array = []              # [[hero bone, mannequin bone]], parents first
 var _align: Dictionary = {}       # hero bone → rest alignment Quaternion
 var _src_rest: Dictionary = {}    # mannequin bone → global rest rotation
 var _hip_scale: float = 1.0
+var _gait_scale: float = 1.0
 ## Launch 7.1: the skeleton ragdoll running on the mannequin (null = none); while set, the hero is drawn.
 var ragdoll: BoneRagdoll = null
 var idle_presence = StancePresence.new()
 var foot_contact = FootContact.new()
+var cadence = Cadence.new()
+var _crouch_exit_frames: int = -1
+var _last_ground_position: Vector3 = Vector3.ZERO
+var _gait_position_valid: bool = false
 
 
 func setup(f: Fighter) -> void:
@@ -138,6 +144,16 @@ func _setup_hero(path: String) -> void:
 	foot_contact.setup(hero_skeleton, hero_mesh)
 	var hips := hero_skeleton.find_bone("Hips")
 	_hip_scale = hero_skeleton.get_bone_global_rest(hips).origin.y / maxf(skeleton.get_bone_global_rest(skeleton.find_bone("pelvis")).origin.y, 1e-4)
+	# Cadence follows world-space leg length, not hip height: Meshy has different pelvis proportions.
+	# Retarget translation still needs the separate centimetre-space hip ratio above.
+	_gait_scale = leg_length(hero_skeleton, ["LeftUpLeg", "LeftLeg", "LeftFoot"]) / maxf(leg_length(skeleton, ["thigh_l", "calf_l", "foot_l"]), 0.0001)
+
+
+static func leg_length(rig: Skeleton3D, names: Array[String]) -> float:
+	var upper: Vector3 = rig.global_transform * rig.get_bone_global_rest(rig.find_bone(names[0])).origin
+	var knee: Vector3 = rig.global_transform * rig.get_bone_global_rest(rig.find_bone(names[1])).origin
+	var foot: Vector3 = rig.global_transform * rig.get_bone_global_rest(rig.find_bone(names[2])).origin
+	return upper.distance_to(knee) + knee.distance_to(foot)
 
 
 ## Toon + ink outline like the capsule rig, on the hero's own texture; registered with the capsule rig's materials so
@@ -176,6 +192,15 @@ func retarget() -> void:
 			var s_rest := skeleton.get_bone_global_rest(si).origin
 			var s_now := skeleton.get_bone_global_pose(si).origin
 			hero_skeleton.set_bone_pose_position(hi, hero_skeleton.get_bone_rest(hi).origin + (s_now - s_rest) * _hip_scale)
+
+
+## Presentation endpoint only; physics keeps GrappleHook.HAND and its deterministic rope constraint.
+func hand_world(side: String = "Right") -> Vector3:
+	if is_instance_valid(hero_skeleton):
+		var bone: int = hero_skeleton.find_bone(side + "Hand")
+		if bone >= 0:
+			return hero_skeleton.global_transform * hero_skeleton.get_bone_global_pose(bone).origin
+	return _fighter.global_position + Vector3(0.0, 1.25, 0.0)
 
 
 ## Angle (degrees) between a hero bone's direction and its mannequin twin's, both skeleton space — the smoke's
@@ -249,15 +274,18 @@ func state_clip(f: Fighter) -> String:
 			return c[1] if c[1] != "" and f.move_frame >= m.startup + m.active else c[0]
 		Fighter.State.WALK:
 			var forward: Vector3 = f.forward if GameState.free_move else Vector3(float(f.facing), 0.0, 0.0)
-			return walk_clip(f.velocity, forward)
+			return Cadence.choose(f.velocity, forward, _gait_scale)
 		Fighter.State.CROUCH:
+			var enter: String = clip_name("Crouch_Enter")
+			if enter != "" and float(_state_frames) / 60.0 < player.get_animation(enter).length:
+				return "Crouch_Enter"
 			return STATE_CLIPS["crouch"]
 		Fighter.State.JUMP, Fighter.State.GRAPPLE:
 			return STATE_CLIPS["jump"]
 		Fighter.State.DASH:
 			return f.data.dash_clip
 		Fighter.State.BLOCK, Fighter.State.BLOCKSTUN:
-			return STATE_CLIPS["block"]
+			return STATE_CLIPS["crouch"] if f.crouching else STATE_CLIPS["block"]
 		Fighter.State.HITSTUN, Fighter.State.STUMBLE:
 			return STATE_CLIPS["hit_" + f.animator.flinch_zone] if STATE_CLIPS.has("hit_" + f.animator.flinch_zone) else STATE_CLIPS["hit_mid"]
 		Fighter.State.LAUNCHED, Fighter.State.KNOCKDOWN, Fighter.State.WALL_SPLAT:
@@ -267,6 +295,8 @@ func state_clip(f: Fighter) -> String:
 		Fighter.State.KO:
 			return STATE_CLIPS["ko"]
 		Fighter.State.IDLE:
+			if _crouch_exit_frames >= 0:
+				return "Crouch_Exit"
 			if f.fatigue >= Fighter.FATIGUE_TIRED:
 				return STATE_CLIPS["tired"]
 	return f.data.idle_clip
@@ -280,10 +310,28 @@ func _physics_process(delta: float) -> void:
 	if get_tree().paused or _fighter.frozen_frames > 0 or _fighter.hitstop_frames > 0:
 		return   # time stop / hitstop: hold the drawing
 	if _fighter.state != _last_state:
+		_crouch_exit_frames = -1
+		if _last_state == Fighter.State.CROUCH and _fighter.state == Fighter.State.IDLE:
+			var enter_name: String = clip_name("Crouch_Enter")
+			var exit_name: String = clip_name("Crouch_Exit")
+			if enter_name != "" and exit_name != "":
+				var depth: float = clampf(float(_state_frames) * delta / player.get_animation(enter_name).length, 0.0, 1.0)
+				_crouch_exit_frames = int((1.0 - depth) * player.get_animation(exit_name).length / delta)
 		_last_state = _fighter.state
 		_state_frames = 0
 	else:
 		_state_frames += 1
+	if _crouch_exit_frames >= 0:
+		_crouch_exit_frames += 1
+		var exit_clip: String = clip_name("Crouch_Exit")
+		if exit_clip == "" or float(_crouch_exit_frames) * delta >= player.get_animation(exit_clip).length:
+			_crouch_exit_frames = -1
+	var previous_position: Vector3 = _last_ground_position
+	_last_ground_position = _fighter.global_position
+	var distance: float = Vector2(_fighter.global_position.x - previous_position.x, _fighter.global_position.z - previous_position.z).length()
+	if not _gait_position_valid:
+		distance = Vector2(_fighter.velocity.x, _fighter.velocity.z).length() * delta
+	_gait_position_valid = _fighter.state == Fighter.State.WALK
 	var want := clip_name(state_clip(_fighter))
 	if want == "":
 		want = clip_name(_fighter.data.idle_clip)
@@ -302,6 +350,10 @@ func _physics_process(delta: float) -> void:
 		else:
 			var span := window if c[1] != "" else window + m.recovery
 			clip_pos = attack_clip_time(_fighter.move_frame, m.startup, span, anim.length, c[2])
+	elif _fighter.state == Fighter.State.WALK:
+		clip_pos = cadence.advance(distance, state_clip(_fighter), anim.length, _gait_scale)
+	elif _crouch_exit_frames >= 0:
+		clip_pos = minf(float(_crouch_exit_frames) * delta, anim.length)
 	elif anim.loop_mode != Animation.LOOP_NONE:
 		clip_pos = fmod(float(_state_frames) * delta, anim.length)
 	elif _fighter.state == Fighter.State.GETUP:
@@ -317,7 +369,9 @@ func _physics_process(delta: float) -> void:
 
 
 func uses_procedural_motion() -> bool:
-	return ragdoll == null and _fighter.state == Fighter.State.ATTACK and MotionFallback.supports(_fighter.data.id, _fighter.current_move)
+	if ragdoll != null:
+		return false
+	return _fighter.state == Fighter.State.GRAPPLE or (_fighter.state == Fighter.State.ATTACK and MotionFallback.supports(_fighter.data.id, _fighter.current_move))
 
 
 func _on_mannequin_updated() -> void:

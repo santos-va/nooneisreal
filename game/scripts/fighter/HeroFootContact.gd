@@ -49,7 +49,13 @@ func permitted(fighter: Fighter, ragdoll: BoneRagdoll) -> bool:
 		return false
 	if absf(fighter.global_position.y - fighter.floor_y()) > 0.025:
 		return false
-	return fighter.state == Fighter.State.CROUCH or (fighter.state == Fighter.State.ATTACK and fighter.data.id == "choko" and fighter.current_move != null and fighter.current_move.id == "crouch_light")
+	if fighter.state == Fighter.State.CROUCH:
+		return true
+	if fighter.state == Fighter.State.GRAPPLE:
+		return fighter.grapple != null and fighter.grapple.phase == GrappleHook.Phase.WINDUP
+	if fighter.state != Fighter.State.ATTACK or fighter.current_move == null:
+		return false
+	return (fighter.data.id == "choko" and fighter.current_move.id == "crouch_light") or fighter.current_move.anim in ["limb_left_hand_lowhand", "limb_right_hand_lowhand"]
 
 func apply(fighter: Fighter, ragdoll: BoneRagdoll) -> void:
 	if _skeleton == null or not permitted(fighter, ragdoll):

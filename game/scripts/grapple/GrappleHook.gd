@@ -1,7 +1,7 @@
 class_name GrappleHook
 extends Node3D
-## Charge-based grapple hook: tap = zip to an anchor, hold = swing (kinematic distance constraint,
-## Spider-Man 2 (2004) style), tap with crouch = pull the enemy ("get over here").
+## Charge-based swept harpoon: 30-frame windup, fixed flight, confirmed contact.
+## Hold an attached anchor to hang; steer tangentially and press toward it to reel.
 ## Charges regenerate sequentially (one per cooldown) and regen pauses while tethered.
 ## Design: docs/GDD/04-Grapple-System.md
 
@@ -9,7 +9,18 @@ signal changed(charges: int, cooldown_left: float, max_charges: int)
 
 enum Target { NONE, ANCHOR, ENEMY }
 
-const ZIP_FRAMES := 12
+enum Phase { IDLE, WINDUP, FLIGHT, HANG }
+const WINDUP_FRAMES := 30
+@export var projectile_speed: float = 36.0 # PLACEHOLDER pending playtest.
+var phase: Phase = Phase.IDLE
+var windup_progress: float = 0.0
+var projectile_position := Vector3.ZERO
+var _launch_origin := Vector3.ZERO
+var _flight_direction := Vector3.ZERO
+var _flight_distance: float = 0.0
+var _selected_anchor: Node3D
+var _prefer_enemy: bool = false
+var _tip: MeshInstance3D
 const HAND := Vector3(0.0, 1.25, 0.0)
 
 var fighter: Fighter
@@ -22,7 +33,6 @@ var cooldown_total: float = 3.0
 var regen_all: bool = false
 var range_m: float = 14.0
 var reel_speed: float = 9.0
-var zip_accel: float = 70.0
 var release_boost: float = 1.15
 var max_speed: float = 26.0
 var steer_accel: float = 14.0
@@ -34,7 +44,6 @@ var rope_length: float = 0.0
 var _frames: int = 0
 var _rope: MeshInstance3D
 var _rope_mesh: ImmediateMesh
-var _flash_time: float = 0.0
 
 
 func setup(f: Fighter) -> void:
@@ -60,6 +69,16 @@ func setup(f: Fighter) -> void:
 	_rope.material_override = mat
 	_rope.visible = false
 	add_child(_rope)
+	_tip = MeshInstance3D.new()
+	var tip_mesh := CylinderMesh.new()
+	tip_mesh.top_radius = 0.0
+	tip_mesh.bottom_radius = 0.09
+	tip_mesh.height = 0.32
+	_tip.mesh = tip_mesh
+	_tip.material_override = mat
+	_tip.top_level = true
+	_tip.visible = false
+	add_child(_tip)
 	changed.emit(charges, cooldown_left, max_charges)
 
 
@@ -71,10 +90,8 @@ func reset() -> void:
 
 
 func tick_regen(delta: float, tethered: bool) -> void:
-	if _flash_time > 0.0:
-		_flash_time -= delta
-		if _flash_time <= 0.0:
-			_rope.visible = attached
+	if busy() and not tethered:
+		detach() # Interrupted windup/flight cannot launch later.
 	if charges >= max_charges:
 		cooldown_left = 0.0
 		return
@@ -88,38 +105,80 @@ func tick_regen(delta: float, tethered: bool) -> void:
 		changed.emit(charges, cooldown_left, max_charges)
 
 
+func busy() -> bool:
+	return phase != Phase.IDLE
+
+
 func fire(prefer_enemy: bool) -> int:
-	if charges <= 0:
-		Sfx.play("grapple_denied", -4)
-		changed.emit(charges, cooldown_left, max_charges)
-		return Target.NONE
-	var opp := fighter.opponent
-	var enemy_ok := false
-	if opp != null and opp.hurtbox_enabled():
-		var to_opp := opp.global_position - fighter.global_position
-		enemy_ok = to_opp.length() <= range_m and to_opp.length() > 1.2 and signf(to_opp.x) == float(fighter.facing)
-		if GameState.free_move:
-			enemy_ok = to_opp.length() <= range_m and to_opp.length() > 1.2 and _in_cone(to_opp, fighter.forward)
-	var anchor := _best_anchor()
-	var target := Target.NONE
-	if prefer_enemy and enemy_ok:
-		target = Target.ENEMY
-	elif anchor != null:
-		target = Target.ANCHOR
-	elif enemy_ok:
-		target = Target.ENEMY
-	if target == Target.NONE:
+	if charges <= 0 or busy():
 		Sfx.play("grapple_denied", -4)
 		return Target.NONE
+	_prefer_enemy = prefer_enemy
+	phase = Phase.WINDUP
+	_frames = 0
+	windup_progress = 0.0
+	# A shot without a target is still a shot; spend only at release.
+	return Target.ENEMY if prefer_enemy else Target.ANCHOR
+
+
+func _launch() -> void:
 	_spend()
-	if target == Target.ANCHOR:
-		anchor_point = anchor.global_position
-		rope_length = maxf((anchor_point - (fighter.global_position + HAND)).length(), 2.0)
-		attached = true
+	_launch_origin = fighter.global_position + HAND
+	projectile_position = _launch_origin
+	_selected_anchor = null if _prefer_enemy else _best_anchor()
+	var aim := aim_axis() if GameState.free_move else Vector3(float(fighter.facing), 0, 0)
+	if is_instance_valid(_selected_anchor):
+		aim = _selected_anchor.global_position - _launch_origin
+	_flight_direction = aim.normalized()
+	_flight_distance = 0.0
+	phase = Phase.FLIGHT
+	_tip.visible = true
+	_tip.global_position = projectile_position
+	_tip.global_basis = Basis(Quaternion(Vector3.UP, _flight_direction))
+	_rope.visible = true
+	Sfx.play("grapple_fire")
+
+
+func _flight(delta: float, held: bool) -> void:
+	var step := minf(projectile_speed * delta, range_m - _flight_distance)
+	var end := projectile_position + _flight_direction * step
+	var q := PhysicsRayQueryParameters3D.create(projectile_position, end, ArenaLayout.COVER_LAYER | 4)
+	q.collide_with_areas = true
+	q.hit_from_inside = true
+	q.exclude = [fighter.get_rid(), fighter.hurtbox.get_rid()]
+	var hit := fighter.get_world_3d().direct_space_state.intersect_ray(q)
+	var anchor_hit := false
+	var anchor_t := INF
+	if is_instance_valid(_selected_anchor):
+		# The point anchor is hit only when this fixed ray reaches its selected point.
+		var to_anchor := _selected_anchor.global_position - projectile_position
+		anchor_t = to_anchor.dot(_flight_direction)
+		anchor_hit = anchor_t >= 0.0 and anchor_t <= step and (to_anchor - _flight_direction * anchor_t).length() < 0.05
+	var hit_distance: float = projectile_position.distance_to(hit.position) if not hit.is_empty() else INF
+	if anchor_hit and anchor_t < hit_distance:
+		anchor_point = _selected_anchor.global_position
+		rope_length = (anchor_point - (fighter.global_position + HAND)).length()
 		_frames = 0
-		_rope.visible = true
-		Sfx.play("grapple_fire")
-	return target
+		attached = held
+		phase = Phase.HANG if held else Phase.IDLE
+		_tip.visible = false
+		if not held:
+			detach()
+		return
+	if not hit.is_empty():
+		var area := hit.collider as Area3D
+		if area != null:
+			var victim := area.get_parent() as Fighter
+			if victim != null and victim != fighter and victim.hurtbox_enabled():
+				_confirm_pull(victim)
+		detach()
+		return
+	projectile_position = end
+	_flight_distance += step
+	_tip.global_position = end
+	_draw_rope(fighter.global_position + HAND, end)
+	if _flight_distance >= range_m:
+		detach()
 
 
 func _spend() -> void:
@@ -137,7 +196,7 @@ func _recharge() -> float:
 
 
 ## Free movement: the cone axis — the camera-relative stick when it is deflected, else where the
-## fighter looks (lock-on, i.e. at the opponent).
+## fighter looks. Direction is captured once at launch, never homing.
 func aim_axis() -> Vector3:
 	var w := fighter.wish()
 	return Vector3(w.x, 0.0, w.z).normalized() if Vector3(w.x, 0.0, w.z).length() > 0.1 else fighter.forward
@@ -197,26 +256,42 @@ func _best_anchor() -> Node3D:
 	return best
 
 
-## Kinematic pendulum: gravity, optional reel/zip toward the anchor, steer, then a distance
+## Kinematic pendulum: gravity, explicit toward-anchor reel, tangent steering, then a distance
 ## constraint that removes only the outward radial velocity (tangential momentum is preserved).
 func drive(delta: float, held: bool) -> void:
+	if phase == Phase.WINDUP:
+		_frames += 1
+		windup_progress = float(_frames) / float(WINDUP_FRAMES)
+		fighter.velocity.x = move_toward(fighter.velocity.x, 0.0, 30.0 * delta)
+		fighter.velocity.z = move_toward(fighter.velocity.z, 0.0, 30.0 * delta)
+		fighter.velocity.y -= Fighter.GRAVITY * delta
+		fighter.move_and_slide()
+		if _frames >= WINDUP_FRAMES:
+			_launch()
+		return
+	if phase == Phase.FLIGHT:
+		fighter.velocity.y -= Fighter.GRAVITY * delta
+		fighter.move_and_slide()
+		_flight(delta, held)
+		return
 	if not attached:
 		return
 	_frames += 1
+	if not held:
+		_release(false)
+		return
 	var f := fighter
 	var hand := f.global_position + HAND
 	var to_anchor := anchor_point - hand
-	var zipping := _frames <= ZIP_FRAMES
+	var radial := to_anchor.normalized()
 	f.velocity.y -= Fighter.GRAVITY * delta * 0.9
-	if zipping or held:
-		rope_length = maxf(rope_length - reel_speed * delta, 1.0)
-		f.velocity += to_anchor.normalized() * zip_accel * delta
-	if GameState.free_move:
-		var w := f.wish()
-		f.velocity += Vector3(w.x, 0.0, w.z) * steer_accel * delta   # camera-relative stick
-	else:
-		var steer := InputRouter.axis(f.player_index) if not f.control_locked else 0.0
-		f.velocity.x += steer * steer_accel * delta
+	var wish := f.wish() if GameState.free_move else Vector3(InputRouter.axis(f.player_index), 0, 0)
+	if f.control_locked:
+		wish = Vector3.ZERO
+	var forward_input := maxf(0.0, wish.dot(Vector3(radial.x, 0, radial.z).normalized()))
+	rope_length = maxf(rope_length - reel_speed * delta * forward_input, 1.0)
+	# Only tangent acceleration; neutral hold preserves rope length.
+	f.velocity += (wish - radial * wish.dot(radial)) * steer_accel * delta
 	var next := hand + f.velocity * delta
 	var off := next - anchor_point
 	if off.length() > rope_length:
@@ -226,17 +301,12 @@ func drive(delta: float, held: bool) -> void:
 	f.velocity = (next - hand) / delta
 	if not GameState.free_move:
 		f.velocity.z = 0.0
-	if f.velocity.length() > max_speed:
-		f.velocity = f.velocity.normalized() * max_speed
+	f.velocity = f.velocity.limit_length(max_speed)
 	f.move_and_slide()
 	if not line_clear(f.global_position + HAND, anchor_point):
-		_release(false)   # A3: cover cuts the rope (04 § Правило укриття)
+		_release(false)
 		return
 	_draw_rope(f.global_position + HAND, anchor_point)
-	var reached := (anchor_point - (f.global_position + HAND)).length() < 1.4
-	var landed := f.on_ground() and f.velocity.y <= 0.0 and _frames > 8
-	if reached or landed or (not held and not zipping):
-		_release(reached)
 
 
 func _release(reached: bool) -> void:
@@ -255,35 +325,30 @@ func _release(reached: bool) -> void:
 
 
 func detach() -> void:
+	phase = Phase.IDLE
+	windup_progress = 0.0
+	_selected_anchor = null
+	if _tip:
+		_tip.visible = false
 	attached = false
 	_frames = 0
 	if _rope:
 		_rope.visible = false
 
 
-## Enemy pull: instant for the prototype (no projectile). The opponent is yanked next to us and stunned.
-func pull_enemy(opp: Fighter) -> void:
+func _confirm_pull(opp: Fighter) -> void:
 	var f := fighter
-	var to_opp := opp.global_position - f.global_position
 	if GameState.free_move:
-		# along the gaze, in the same cone (docs/GDD/04-Grapple-System.md)
-		if to_opp.length() > range_m or not _in_cone(to_opp, f.forward) or not opp.hurtbox_enabled():
-			Sfx.play("whoosh", -6)
-			return
 		opp.get_pulled_to(f.global_position + f.forward * 1.25, 22)
 	else:
-		if to_opp.length() > range_m or signf(to_opp.x) != float(f.facing) or not opp.hurtbox_enabled():
-			Sfx.play("whoosh", -6)
-			return
-		var target_x := f.global_position.x + float(f.facing) * 1.25
-		opp.get_pulled(target_x, 22)
-	_draw_rope(f.global_position + HAND, opp.global_position + Vector3(0, 1.1, 0))
-	_rope.visible = true
-	_flash_time = 0.12
+		opp.get_pulled(f.global_position.x + float(f.facing) * 1.25, 22)
 	Sfx.play("grapple_hit")
 
 
 func _draw_rope(a: Vector3, b: Vector3) -> void:
+	# The skinned hand only anchors the rendered line, never the sweep or constraint.
+	if is_instance_valid(fighter.skeletal):
+		a = fighter.skeletal.hand_world("Right")
 	_rope.global_transform = Transform3D.IDENTITY
 	_rope_mesh.clear_surfaces()
 	_rope_mesh.surface_begin(Mesh.PRIMITIVE_LINES)

@@ -96,7 +96,6 @@ var crouching: bool = false
 var dash_dir: int = 1
 var dash_frames_left: int = 0
 var airborne_attack: bool = false
-var pull_pending: bool = false
 var stats: Dictionary = {"hits": 0, "blocks": 0, "grapples": 0, "ragdolls": 0, "crits": 0, "flashes": 0}
 
 # status effects
@@ -132,6 +131,8 @@ var printer: Printer = null
 var revealed_frames: int = 0      # «Seen»: this fighter shows through Shadow Veil (information only)
 var ult_fx: GrimoireFx = null    # the running beat ultimate (armor, «SKI» flashes); null when none
 var spring_frames: int = 0        # «Spring»: one extra air jump or air dash while > 0      # this combo already had its wall splat (reset when the fighter recovers)
+var _limb_action: String = ""
+var _normal_connected: bool = false
 var _wish: Vector3 = Vector3.ZERO   # free_move: camera-relative stick in world space, this frame
 var _dash_vec: Vector3 = Vector3.RIGHT
 var _track_left: float = 0.0       # free_move: radians the current attack may still turn
@@ -212,6 +213,8 @@ func reset_for_round(x: float, face: int) -> void:
 	facing = face
 	forward = Vector3(float(face), 0.0, 0.0)
 	_wish = Vector3.ZERO
+	_limb_action = ""
+	_normal_connected = false
 	GameState.duel.reset()
 	hp = data.max_hp
 	meter = 0.0
@@ -221,7 +224,6 @@ func reset_for_round(x: float, face: int) -> void:
 	stun_frames = 0
 	invulnerable_frames = 0
 	current_move = null
-	pull_pending = false
 	control_locked = true
 	frozen_frames = 0
 	_stored_kb = Vector3.ZERO
@@ -382,10 +384,12 @@ func _read_intent() -> Dictionary:
 	var i := {"axis": 0.0, "crouch": false, "block": false, "grapple_held": false}
 	_wish = Vector3.ZERO
 	if control_locked:
+		GameState.duel.human_to_world(Vector2.ZERO, player_index)
 		return i
 	i.axis = InputRouter.axis(player_index)
 	if _free():
-		_wish = GameState.duel.to_world(InputRouter.move(player_index), player_index)
+		var move := InputRouter.move(player_index)
+		_wish = GameState.duel.to_world(move, player_index) if is_cpu else GameState.duel.human_to_world(move, player_index)
 	i.crouch = InputRouter.held(player_index, "crouch")
 	i.block = InputRouter.held(player_index, "block")
 	i.grapple_held = InputRouter.held(player_index, "grapple")
@@ -500,6 +504,8 @@ func _tick_ground(delta: float, intent: Dictionary) -> void:
 	if _pressed("skill2") and _skill_ready("skill2"):
 		_start_move(data.skill2, "skill2")
 		return
+	if _try_limb_attack(false):
+		return
 	if _pressed("heavy") and data.heavy:
 		_start_move(data.heavy)
 		return
@@ -543,10 +549,13 @@ func _tick_ground(delta: float, intent: Dictionary) -> void:
 	_walk_physics(delta, 0.0)
 
 
-## Free movement walk: along the line to the opponent at walk/back-walk speed, across it = circling
-## around the opponent at circle_speed_mult × walk speed. The sideways part keeps the distance, so a
-## pure sidestep is an arc around the opponent, not a spiral outward.
+## Humans travel straight in the gesture frame. CPU retains its tactical opponent-relative
+## walk/back-walk and circle speed, including the existing orbit radius correction.
 func _walk_free(delta: float) -> void:
+	if not is_cpu:
+		var travel := _wish * data.walk_speed * speed_mult() * water_walk_mult()
+		_walk_physics(delta, travel.x, travel.z)
+		return
 	var along := _wish.dot(forward)
 	var side := _wish - forward * along
 	var k := speed_mult() * water_walk_mult()
@@ -601,6 +610,8 @@ func _tick_air(delta: float, intent: Dictionary) -> void:
 	if data.dash_style == "flash" and _pressed("dash"):
 		if _start_flash(intent.axis):
 			return
+	if _try_limb_attack(true):
+		return
 	if (_pressed("light") or _pressed("heavy")) and data.air_light:
 		_start_move(data.air_light)
 		return
@@ -759,9 +770,30 @@ func _tick_flash(delta: float) -> void:
 
 
 # --- attacks ------------------------------------------------------------------------------------
+## New normal inputs coexist with legacy CPU light/heavy. The original move resources
+## remain immutable; pose variants inherit the donor's complete combat contract.
+func _try_limb_attack(air: bool, chaining: bool = false) -> bool:
+	for action: String in LimbMoves.ACTIONS:
+		if not _pressed(action):
+			continue
+		var index := chain_index + 1 if chaining else 0
+		var move := LimbMoves.resolve(data, action, index, _limb_action if chaining else "", crouching, air)
+		if move == null:
+			return false
+		_start_move(move)
+		chain_index = index
+		_limb_action = action
+		return true
+	return false
+
+
 func _start_move(m: MoveData, slot: String = "") -> void:
 	if m == null:
 		return
+	if _free() and not is_cpu and opponent != null and state != State.ATTACK:
+		_set_forward(opponent.global_position - global_position)
+	if not m.anim.begins_with("limb_"):
+		_limb_action = ""
 	if veil_frames > 0:
 		veil_strike = true
 		end_veil()
@@ -782,6 +814,7 @@ func _start_move(m: MoveData, slot: String = "") -> void:
 	current_slot = slot
 	move_frame = 0
 	has_hit = false
+	_normal_connected = false
 	_track_left = deg_to_rad(m.tracking_deg)
 	airborne_attack = not on_ground()
 	_set_state(State.ATTACK)
@@ -828,10 +861,7 @@ func _tick_attack(delta: float) -> void:
 			current_move = null
 			_set_state(State.IDLE if on_ground() else State.JUMP)
 			return
-		if pull_pending:
-			pull_pending = false
-			if opponent:
-				grapple.pull_enemy(opponent)
+
 	if move_frame >= m.startup and move_frame < m.startup + m.active and not has_hit and m.damage >= 0.0 and m.anim != "throw":
 		_check_hit(m)
 	if has_hit and move_frame >= m.startup + m.active:
@@ -911,6 +941,8 @@ func _try_cancel(m: MoveData) -> bool:
 		if data.dash_style == "flash" and dash_charges_left > 0 and _pressed("dash"):
 			current_move = null
 			return _start_flash(InputRouter.axis(player_index))
+	if m.cancel_tier < 1 and not _limb_action.ends_with("leg") and _normal_connected and chain_index < 2 and _try_limb_attack(airborne_attack, true):
+		return true
 	if m.cancel_tier < 1:
 		if _pressed("heavy") and data.heavy:
 			_start_move(data.heavy)
@@ -941,7 +973,9 @@ func _check_hit(m: MoveData) -> void:
 			has_hit = true
 			if not on_ground():
 				spring_frames = 0   # Spring never extends an air juggle: a hit in the air spends it
+			var hits_before: int = stats.hits
 			opponent.receive_hit(self, m)
+			_normal_connected = stats.hits > hits_before
 			return
 
 
@@ -1444,21 +1478,16 @@ func _try_grapple(prefer_enemy: bool) -> bool:
 	if not _pressed("grapple"):
 		return false
 	var target := grapple.fire(prefer_enemy)
-	if target == GrappleHook.Target.ANCHOR:
+	if target != GrappleHook.Target.NONE:
 		stats.grapples += 1
 		_set_state(State.GRAPPLE)
-		return true
-	if target == GrappleHook.Target.ENEMY and data.throw_move:
-		stats.grapples += 1
-		pull_pending = true
-		_start_move(data.throw_move)
 		return true
 	return false
 
 
 func _tick_grapple(intent: Dictionary) -> void:
 	grapple.drive(get_physics_process_delta_time(), intent.grapple_held)
-	if not grapple.attached:
+	if not grapple.busy():
 		_set_state(State.JUMP if not on_ground() else State.IDLE)
 
 
@@ -1468,10 +1497,13 @@ func _on_grapple_changed(charges: int, cooldown_left: float, max_charges: int) -
 
 # --- helpers -----------------------------------------------------------------------------------
 func _update_facing() -> void:
+	if _free() and not is_cpu and _wish.length() > 0.1 and not InputRouter.held(player_index, "block") and not InputRouter.held(player_index, "crouch"):
+		_set_forward(_wish)
+		return
 	if opponent == null:
 		return
 	if _free():
-		# lock-on: always look at the opponent (they are in one spot → keep the last direction)
+		# Guard/idle and explicit attacks prioritize the current foe.
 		_set_forward(opponent.global_position - global_position)
 		return
 	var dx := opponent.global_position.x - global_position.x
@@ -1678,8 +1710,12 @@ func _update_hitbox_debug() -> void:
 
 
 func _set_state(s: State) -> void:
+	if state == State.GRAPPLE and s != State.GRAPPLE and grapple != null:
+		grapple.detach()
 	if state == State.ATTACK and s != State.ATTACK:
 		chain_index = 0
+		_limb_action = ""
+		_normal_connected = false
 		veil_strike = false
 	state = s
 	frame_in_state = 0
