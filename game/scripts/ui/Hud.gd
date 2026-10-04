@@ -54,6 +54,8 @@ var _result: PanelContainer
 var _result_label: Label
 var _pause: PanelContainer
 var _paused: bool = false
+var _comfort: ComfortPanel
+var _comfort_button: Button
 ## Every ink ring the HUD built (the smoke reads them).
 var outlines: Array[PanelContainer] = []
 ## Ring widths in canvas units for the current window (`ring_widths`): x = ink, y = cream.
@@ -86,6 +88,7 @@ func bind(a: Fighter, b: Fighter, f: MatchFlow) -> void:
 
 
 func _build() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	ring_units = ring_widths(canvas_scale())
 	get_viewport().size_changed.connect(_on_viewport_resized)
 	_root = Control.new()
@@ -130,8 +133,9 @@ func _build() -> void:
 	_announce.visible = false
 	_root.add_child(_announce)
 	# hint
-	_hint = _label(_hint_text(), FONT_SMALL, HORIZONTAL_ALIGNMENT_CENTER)
+	_hint = _label(_hint_text(), 32, HORIZONTAL_ALIGNMENT_CENTER)
 	_hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_hint.clip_text = true
 	_hint.anchor_top = 1.0
 	_hint.offset_top = -46
 	_hint.offset_bottom = -12
@@ -156,11 +160,16 @@ func _build() -> void:
 	_pause.add_child(pv)
 	pv.add_child(_label("PAUSED", FONT_BIG - 14, HORIZONTAL_ALIGNMENT_CENTER))
 	pv.add_child(_button("RESUME", toggle_pause))
+	_comfort_button = _button("COMFORT & CONTROLS", func(): _pause.hide(); _comfort.show_panel(_comfort_button, InputRouter.hint_text(GameState.p2_is_cpu)))
+	pv.add_child(_comfort_button)
 	pv.add_child(_button("RESET POSITIONS", func(): toggle_pause(); flow.reset_positions()))
 	pv.add_child(_button("MAIN MENU", func(): get_tree().paused = false; Engine.time_scale = 1.0; GameState.to_menu()))
 	_pause.visible = false
 	_pause.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
 	_root.add_child(_pause)
+	_comfort = ComfortPanel.new()
+	_root.add_child(_comfort)
+	_comfort.closed.connect(func(): _pause.show(); _comfort_button.grab_focus())
 
 
 func _player_panel(f: Fighter, mirrored: bool) -> Control:
@@ -413,7 +422,7 @@ func _button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.custom_minimum_size = Vector2(260, 44)
-	b.add_theme_font_size_override("font_size", FONT_MID - 4)
+	b.add_theme_font_size_override("font_size", 32)
 	b.pressed.connect(cb)
 	return b
 
@@ -434,7 +443,7 @@ func _overlay() -> PanelContainer:
 
 
 func _hint_text() -> String:
-	return InputRouter.hint_text(GameState.p2_is_cpu)
+	return "Esc / Menu: pause · comfort · controls"
 
 
 # --- updates --------------------------------------------------------------------------------
@@ -506,9 +515,16 @@ func _on_match_over(winner: int, n1: String, n2: String) -> void:
 
 
 func toggle_pause() -> void:
+	if _comfort != null and _comfort.visible:
+		_comfort.close_panel()
+		return
 	if flow.phase == MatchFlow.Phase.MATCH_END:
 		return
 	_paused = not _paused
+	if _paused:
+		InputRouter.acquire_ui(self)
+	else:
+		InputRouter.release_ui(self)
 	get_tree().paused = _paused
 	_pause.visible = _paused
 	if _paused:
@@ -516,6 +532,8 @@ func toggle_pause() -> void:
 
 
 func _process(delta: float) -> void:
+	if get_tree().paused:
+		return
 	# hp trail lags behind the live bar
 	for idx in [1, 2]:
 		var live := _hp[idx] as ProgressBar
@@ -526,3 +544,14 @@ func _process(delta: float) -> void:
 		_announce.scale = _announce.scale.lerp(Vector2.ONE, minf(1.0, 12.0 * delta))
 		if _announce_left <= 0.0:
 			_announce.visible = false
+
+
+func _exit_tree() -> void:
+	InputRouter.release_ui(self)
+
+
+func _input(event: InputEvent) -> void:
+	# Arena is correctly paused; the HUD alone must receive the resume action.
+	if _paused and not _comfort.visible and not event.is_echo() and (event.is_action_pressed("ui_pause") or event.is_action_pressed("ui_cancel")):
+		get_viewport().set_input_as_handled()
+		toggle_pause()

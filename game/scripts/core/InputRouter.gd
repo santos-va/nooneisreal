@@ -16,6 +16,11 @@ const FREE_MOVE_CROUCH_KEYS := {1: KEY_X, 2: KEY_M}
 ## Gamepad left stick, vertical axis (JOY_AXIS_LEFT_Y): −1 = up, +1 = down.
 const STICK_Y := JOY_AXIS_LEFT_Y
 const SETTINGS_PATH := "user://settings.cfg"
+const UI_PAD_BUTTONS := {
+	"ui_accept": JOY_BUTTON_A, "ui_cancel": JOY_BUTTON_B,
+	"ui_left": JOY_BUTTON_DPAD_LEFT, "ui_right": JOY_BUTTON_DPAD_RIGHT,
+	"ui_up": JOY_BUTTON_DPAD_UP, "ui_down": JOY_BUTTON_DPAD_DOWN,
+}
 
 ## Keyboard profiles (docs/Decisions/ADR-009-Solo-Keyboard-Layout.md). Only keyboard events are
 ## rewritten at runtime; gamepad events from project.godot stay untouched.
@@ -38,10 +43,14 @@ var _virtual_held: Dictionary = {}  # "p2_light" -> bool   (CPU / tests)
 var _virtual_just: Dictionary = {}  # "p2_light" -> frame
 var _shared_keys: Dictionary = {}   # action -> Array[InputEventKey] captured from project.godot
 var _pad_events: Dictionary = {}    # action -> Array of gamepad events captured from project.godot
+var _ui_owners: Dictionary = {}  # instance id -> WeakRef; nested overlays own separate tokens
+var _neutral_pending: Dictionary = {}  # physical actions held across a UI boundary
+var _ui_consumed: Dictionary = {}  # stale just_pressed flags need a fresh device press
 var profile: String = PROFILE_SOLO
 
 
 func _ready() -> void:
+	ensure_ui_gamepad_bindings()
 	process_physics_priority = -100  # record input before any fighter ticks
 	for p in [1, 2]:
 		for a in ACTIONS:
@@ -62,6 +71,22 @@ func _ready() -> void:
 	if cfg.load(SETTINGS_PATH) == OK:
 		saved = str(cfg.get_value("input", "keyboard_profile", PROFILE_SOLO))
 	apply_profile(saved, false)
+
+
+## Menus accept either controller. Keep built-in keyboard events and all combat maps.
+func ensure_ui_gamepad_bindings() -> void:
+	for action: String in UI_PAD_BUTTONS:
+		if not InputMap.has_action(action):
+			InputMap.add_action(action)
+		var found := false
+		for existing in InputMap.action_get_events(action):
+			if existing is InputEventJoypadButton and existing.device == -1 and existing.button_index == UI_PAD_BUTTONS[action]:
+				found = true
+		if not found:
+			var event := InputEventJoypadButton.new()
+			event.device = -1
+			event.button_index = UI_PAD_BUTTONS[action]
+			InputMap.action_add_event(action, event)
 
 
 ## Rebuilds the keyboard half of every p1_/p2_ action for `prof` and optionally persists it.
@@ -161,9 +186,74 @@ func _hint_profile(vs_cpu: bool) -> String:
 	return "P1  A/D · W · F light · G heavy · LShift guard · Q/E · R grapple · C dash · V ult        P2  ←/→ · ↑ · K light · L heavy · RShift guard · ; ' · I grapple · . dash · , ult"
 
 
+## Idempotent owner tokens let a pause screen and its child settings panel overlap.
+## Releasing one overlay never re-enables input owned by another overlay.
+func acquire_ui(owner: Object) -> void:
+	if not is_instance_valid(owner):
+		return
+	_ui_owners[owner.get_instance_id()] = weakref(owner)
+	_clear_ui_history()
+
+
+func release_ui(owner: Object) -> void:
+	if not is_instance_valid(owner) or not _ui_owners.has(owner.get_instance_id()):
+		return
+	_ui_owners.erase(owner.get_instance_id())
+	_clear_ui_history()
+
+
+func ui_suppressed() -> bool:
+	for id in _ui_owners.keys():
+		if _ui_owners[id].get_ref() == null:
+			_ui_owners.erase(id)
+			_clear_ui_history()
+	return not _ui_owners.is_empty()
+
+
+func _clear_ui_history() -> void:
+	_pressed_at.clear()
+	_virtual_just.clear()
+	_virtual_held.clear()
+	for p in [1, 2]:
+		for a in ACTIONS:
+			var n := action_name(p, a)
+			_ui_consumed[n] = true
+			if Input.is_action_pressed(n):
+				_neutral_pending[n] = true
+			else:
+				_neutral_pending.erase(n)
+
+
+## A held movement key, stick, guard or attack must return to neutral after UI.
+## Polling also handles disconnected controllers and releases consumed by Controls.
+func _physical_allowed(n: String) -> bool:
+	if ui_suppressed():
+		return false
+	if _neutral_pending.has(n):
+		if not Input.is_action_pressed(n):
+			_neutral_pending.erase(n)
+		return false
+	return true
+
+
+## Godot exposes just_pressed separately in render/physics contexts. A released UI tap
+## may still be just_pressed on the first resumed physics tick. Only a fresh device
+## press removes this fence; the UI event can never recreate its cleared buffer.
+func _just_allowed(n: String) -> bool:
+	return _physical_allowed(n) and not _ui_consumed.has(n)
+
+
+func _strength(player: int, action: String) -> float:
+	var n := action_name(player, action)
+	return Input.get_action_strength(n) if _physical_allowed(n) else 0.0
+
+
 ## Events can arrive between physics ticks (or from Input.parse_input_event in tests); record
 ## them here as well so a tap shorter than one physics frame still lands in the buffer.
 func _input(event: InputEvent) -> void:
+	if ui_suppressed():
+		_clear_ui_history()
+		return
 	if not (event is InputEventKey or event is InputEventJoypadButton or event is InputEventJoypadMotion):
 		return
 	if event is InputEventKey and (event as InputEventKey).echo:
@@ -171,16 +261,20 @@ func _input(event: InputEvent) -> void:
 	for p in [1, 2]:
 		for a in ACTIONS:
 			var n := "p%d_%s" % [p, a]
-			if event.is_action_pressed(n):
+			if _physical_allowed(n) and event.is_action_pressed(n):
+				_ui_consumed.erase(n)
 				_pressed_at[n] = _frame
 
 
 func _physics_process(_delta: float) -> void:
 	_frame += 1
+	if ui_suppressed():
+		_clear_ui_history()
+		return
 	for p in [1, 2]:
 		for a in ACTIONS:
 			var n := "p%d_%s" % [p, a]
-			if Input.is_action_just_pressed(n):
+			if _just_allowed(n) and Input.is_action_just_pressed(n):
 				_pressed_at[n] = _frame
 
 
@@ -194,11 +288,13 @@ func action_name(player: int, action: String) -> String:
 
 func held(player: int, action: String) -> bool:
 	var n := action_name(player, action)
-	return Input.is_action_pressed(n) or bool(_virtual_held.get(n, false))
+	return not ui_suppressed() and ((_physical_allowed(n) and Input.is_action_pressed(n)) or bool(_virtual_held.get(n, false)))
 
 
 func axis(player: int) -> float:
-	var x := Input.get_action_strength(action_name(player, "right")) - Input.get_action_strength(action_name(player, "left"))
+	if ui_suppressed():
+		return 0.0
+	var x := _strength(player, "right") - _strength(player, "left")
 	if _virtual_held.get(action_name(player, "right"), false):
 		x += 1.0
 	if _virtual_held.get(action_name(player, "left"), false):
@@ -209,9 +305,11 @@ func axis(player: int) -> float:
 ## Free movement: camera-relative stick, x = screen right, y = screen up (into the picture).
 ## In the plane mode y is always 0, so callers can use move() in both modes.
 func move(player: int) -> Vector2:
+	if ui_suppressed():
+		return Vector2.ZERO
 	if not GameState.free_move:
 		return Vector2(axis(player), 0.0)
-	var y := Input.get_action_strength(action_name(player, "up")) - Input.get_action_strength(action_name(player, "down"))
+	var y := _strength(player, "up") - _strength(player, "down")
 	if _virtual_held.get(action_name(player, "up"), false):
 		y += 1.0
 	if _virtual_held.get(action_name(player, "down"), false):
@@ -222,12 +320,14 @@ func move(player: int) -> Vector2:
 
 func just_pressed(player: int, action: String) -> bool:
 	var n := action_name(player, action)
-	return Input.is_action_just_pressed(n) or int(_virtual_just.get(n, -999)) == _frame
+	return not ui_suppressed() and ((_just_allowed(n) and Input.is_action_just_pressed(n)) or int(_virtual_just.get(n, -999)) == _frame)
 
 
 ## Buffered press: true if the action was pressed within the last `window` physics frames.
 ## Consumes the entry so one press triggers exactly one move.
 func buffered(player: int, action: String, window: int = BUFFER_FRAMES) -> bool:
+	if ui_suppressed():
+		return false
 	var n := action_name(player, action)
 	var at: int = maxi(int(_pressed_at.get(n, -999)), int(_virtual_just.get(n, -999)))
 	if at >= 0 and _frame - at <= window:
@@ -239,6 +339,8 @@ func buffered(player: int, action: String, window: int = BUFFER_FRAMES) -> bool:
 
 # --- virtual input (CPU brain, smoke test) --------------------------------------------------
 func v_press(player: int, action: String) -> void:
+	if ui_suppressed():
+		return
 	var n := action_name(player, action)
 	_virtual_just[n] = _frame
 	_virtual_held[n] = true
@@ -249,6 +351,8 @@ func v_release(player: int, action: String) -> void:
 
 
 func v_set(player: int, action: String, down: bool) -> void:
+	if ui_suppressed():
+		return
 	var n := action_name(player, action)
 	var was: bool = bool(_virtual_held.get(n, false))
 	if down and not was:
@@ -263,6 +367,8 @@ func v_clear(player: int) -> void:
 
 ## Non-consuming: was the action pressed within the last `window` frames? (perfect block etc.)
 func pressed_within(player: int, action: String, window: int) -> bool:
+	if ui_suppressed():
+		return false
 	var n := action_name(player, action)
 	var at: int = maxi(int(_pressed_at.get(n, -999)), int(_virtual_just.get(n, -999)))
 	return at >= 0 and _frame - at <= window

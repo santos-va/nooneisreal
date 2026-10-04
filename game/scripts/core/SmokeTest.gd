@@ -396,6 +396,8 @@ func _start_cam_stages() -> void:
 ## The MODE row flips free_move both ways, re-binds the keyboard, updates the hint and writes
 ## [gameplay] free_move; the player's settings file is restored afterwards. false = already failed.
 func _check_mode_row() -> bool:
+	var comfort_old_path: String = ComfortSettings.storage_path
+	ComfortSettings.storage_path = "user://smoke_comfort_%d.cfg" % OS.get_process_id()
 	var path := InputRouter.SETTINGS_PATH
 	var had := FileAccess.file_exists(path)
 	var before := FileAccess.get_file_as_string(path) if had else ""
@@ -409,15 +411,21 @@ func _check_mode_row() -> bool:
 		var x_crouch := false
 		for ev in InputMap.action_get_events("p1_crouch"):
 			x_crouch = x_crouch or (ev is InputEventKey and (ev as InputEventKey).physical_keycode == KEY_X)
-		got.append([GameState.free_move, cfg.get_value("gameplay", "free_move", null), x_crouch, menu.mode_btn.text, menu._foot.text])
+		got.append([GameState.free_move, cfg.get_value("gameplay", "free_move", null), x_crouch, menu.mode_btn.text, InputRouter.hint_text(menu.hint_vs_cpu)])
 	# 06 § «підказка внизу меню» (T8): the hint follows the focus — VERSUS → two players, FIGHT/TRAINING → solo vs CPU,
 	# any other row keeps the last
 	var focus_hint: Array = []
 	for i in [1, 4, 0, 2]:   # VERSUS, a character row, FIGHT, TRAINING
 		(menu._buttons[i] as Button).grab_focus()
 		focus_hint.append(menu._foot.text)
+	menu._comfort_button.pressed.emit()
+	var full_controls: String = menu._comfort.controls_label.text
+	var reachable: bool = menu._comfort.visible and menu._comfort.controls_label.focus_mode == Control.FOCUS_ALL and "Space jump" in full_controls
+	menu._comfort.close_panel()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(ComfortSettings.storage_path))
+	ComfortSettings.storage_path = comfort_old_path
 	menu.free()
-	var hint_ok: bool = focus_hint[0] == InputRouter.hint_text(false) and focus_hint[1] == focus_hint[0] and focus_hint[2] == InputRouter.hint_text(true) and focus_hint[3] == InputRouter.hint_text(true) and focus_hint[0] != focus_hint[2]
+	var hint_ok: bool = "P1 vs P2" in focus_hint[0] and focus_hint[1] == focus_hint[0] and "P1 vs CPU" in focus_hint[2] and focus_hint[3] == focus_hint[2] and focus_hint[0] != focus_hint[2] and reachable
 	if had:
 		var f := FileAccess.open(path, FileAccess.WRITE)
 		f.store_string(before)
