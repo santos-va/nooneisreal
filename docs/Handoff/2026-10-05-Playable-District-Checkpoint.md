@@ -1,6 +1,6 @@
 # Playable district — checkpoint, не реліз
 
-2026-10-05 · T1. **Статус: draft PR; мердж заблокований незавершеним візуальним прийманням.**
+2026-10-05 · T1. **Статус: [draft PR #175](https://github.com/santos-va/nooneisreal/pull/175), implementation commit `0af967f`; мердж заблокований незавершеним візуальним прийманням.**
 
 ## Контекст і виконане
 

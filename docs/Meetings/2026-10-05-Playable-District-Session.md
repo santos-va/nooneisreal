@@ -31,6 +31,10 @@ Raw evidence: `/workspace/nooneisreal-evidence/playable-district/`; відтво
 
 Raw validation: `/workspace/nooneisreal-evidence/playable-district/validation/{checkpoint,gates-checkpoint,distribution-checkpoint,pck-content}.log`. Native quest proof **26/0**, дев'ять фізичних shop segments, нове меню та інтер'єри збережені. Root виправив помилковий шлях audio manifest у незавершеному verification probe; production-файли після зупинки агентів не змінював.
 
+## CP3 — draft PR
+
+Implementation checkpoint `0af967f` запушено в `codex/playable-district`; створено [draft PR #175](https://github.com/santos-va/nooneisreal/pull/175). PR не змерджено, новий macOS реліз не опубліковано. Відкриті візуальні blockers і потрібні докази явно перелічені в описі PR та [[2026-10-05-Playable-District-Checkpoint]]. Продовжувати з цього checkpoint; не починати аудит/реалізацію заново.
+
 ## Відкрито
 
 - Оригінальний PNG іконки недоступний. Santos у цій сесії явно обрав «Залишити іконку до отримання саме нового PNG»; доступний портрет Choko як заміну не використовуємо.
