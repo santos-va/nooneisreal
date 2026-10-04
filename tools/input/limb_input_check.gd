@@ -44,7 +44,22 @@ func _slot(device: int, slot: int, down: bool) -> void:
 
 func _run() -> void:
 	ir = root.get_node("InputRouter")
+	var expected_chords: Array[String] = ["skill1", "skill2", "grapple_parkour", "grapple_enemy"]
 	root.get_node("GameState").free_move = true
+	ir.apply_profile("solo", false)
+	for pair: Array in [[KEY_Q, "grapple_enemy"], [KEY_E, "grapple_parkour"], [KEY_I, "skill2"]]:
+		_key(pair[0], true)
+		_expect(ir.buffered(1, pair[1]), "SOLO requested binding " + pair[1])
+		for other: String in ["grapple_enemy", "grapple_parkour", "grapple", "skill2"]:
+			if other != pair[1]:
+				_expect(not ir.buffered(1, other), "SOLO no doubled action " + other)
+		_key(pair[0], false)
+	ir.apply_profile("shared", false)
+	for row: Array in [[1, KEY_T, "grapple_enemy"], [1, KEY_R, "grapple_parkour"], [2, KEY_O, "grapple_enemy"], [2, KEY_I, "grapple_parkour"]]:
+		_key(row[1], true)
+		_expect(ir.buffered(row[0], row[2]), "SHARED distinct harpoon binding")
+		_expect(not ir.buffered(row[0], "grapple"), "SHARED legacy grapple has no physical binding")
+		_key(row[1], false)
 	ir.apply_profile("solo", false)
 	for index in range(4):
 		var code: int = [KEY_J, KEY_K, KEY_M, KEY_COMMA][index]
@@ -56,6 +71,7 @@ func _run() -> void:
 		ir.apply_profile(prof, false)
 		var seen := {}
 		for p in [1, 2]:
+			_expect(InputMap.action_get_events(ir.action_name(p, "grapple")).is_empty(), "legacy grapple is virtual only")
 			for action in ir.ACTIONS:
 				for event in InputMap.action_get_events(ir.action_name(p, action)):
 					if event is InputEventKey:
@@ -72,14 +88,12 @@ func _run() -> void:
 			_button(device, JOY_BUTTON_Y, true)
 			_slot(device, slot, true)
 			_expect(not ir.buffered(device + 1, action), "modifier press does not repeat limb")
-			if not ir.PAD_CHORDS[slot].is_empty():
-				_expect(not ir.buffered(device + 1, ir.PAD_CHORDS[slot]), "modifier does not convert held limb")
+			if not expected_chords[slot].is_empty():
+				_expect(not ir.buffered(device + 1, expected_chords[slot]), "modifier does not convert held limb")
 			_slot(device, slot, false)
 			_slot(device, slot, true)
-			if slot == 2:
-				_expect(not ir.buffered(device + 1, action), "Y+LT reserved")
-			else:
-				_expect(ir.buffered(device + 1, ir.PAD_CHORDS[slot]), "chord dispatched")
+			_expect(ir.buffered(device + 1, expected_chords[slot]), "chord dispatched")
+			_expect(not ir.buffered(device + 1, action) and not ir.buffered(device + 1, "grapple"), "chord does not alias limb or legacy grapple")
 			_button(device, JOY_BUTTON_Y, false)
 			_slot(device, slot, true)
 			_expect(not ir.buffered(device + 1, action), "modifier release no phantom limb")
@@ -117,6 +131,42 @@ func _run() -> void:
 		_slot(0, slot, true)
 		_expect(ir.buffered(1, ir.LIMBS[slot]), "UI fresh source recovers")
 		_slot(0, slot, false)
+	# Both new keyboard actions and routed pad chords obey the same pause-neutral fence.
+	for pair: Array in [[KEY_Q, "grapple_enemy"], [KEY_E, "grapple_parkour"]]:
+		_key(pair[0], true)
+		ir.acquire_ui(owner)
+		ir.release_ui(owner)
+		_expect(not ir.held(1, pair[1]) and not ir.buffered(1, pair[1]), "UI fences keyboard " + pair[1])
+		_key(pair[0], false)
+		_key(pair[0], true)
+		_expect(ir.buffered(1, pair[1]), "fresh harpoon keyboard press after UI")
+		_key(pair[0], false)
+	for slot: int in [2, 3]:
+		_button(0, JOY_BUTTON_Y, true)
+		_slot(0, slot, true)
+		ir.acquire_ui(owner)
+		ir.release_ui(owner)
+		_expect(not ir.held(1, expected_chords[slot]) and not ir.buffered(1, expected_chords[slot]), "UI fences harpoon pad chord")
+		_slot(0, slot, false)
+		_button(0, JOY_BUTTON_Y, false)
+		_button(0, JOY_BUTTON_Y, true)
+		_slot(0, slot, true)
+		_expect(ir.buffered(1, expected_chords[slot]), "fresh harpoon trigger after UI")
+		_slot(0, slot, false)
+		_button(0, JOY_BUTTON_Y, false)
+	_trigger(0, JOY_AXIS_RIGHT_X, 0.19)
+	_expect(ir.look_axis(1) == Vector2.ZERO, "right stick radial deadzone")
+	_trigger(0, JOY_AXIS_RIGHT_X, 0.8)
+	_expect(ir.look_axis(1).x > 0.7 and ir.look_axis(2) == Vector2.ZERO, "look stick per-player isolation")
+	ir.acquire_ui(owner)
+	_expect(ir.look_axis(1) == Vector2.ZERO, "UI suppresses look")
+	ir.release_ui(owner)
+	_expect(ir.look_axis(1) == Vector2.ZERO, "held look stays fenced after UI")
+	_trigger(0, JOY_AXIS_RIGHT_X, 0.0)
+	ir.look_axis(1)
+	_trigger(0, JOY_AXIS_RIGHT_Y, -0.8)
+	_expect(ir.look_axis(1).y < -0.7, "neutral then fresh look recovers")
+	_trigger(0, JOY_AXIS_RIGHT_Y, 0.0)
 	ir.acquire_ui(owner)
 	_button(0, JOY_BUTTON_Y, true)
 	ir.release_ui(owner)
@@ -126,14 +176,20 @@ func _run() -> void:
 	_button(0, JOY_BUTTON_Y, false)
 	_slot(0, 0, true)
 	_expect(ir.buffered(1, "left_hand"), "modifier neutral recovers")
+	_trigger(0, JOY_AXIS_RIGHT_X, 0.8)
 	Input.joy_connection_changed.emit(0, false)
 	_expect(not ir.held(1, "left_hand"), "disconnect clears routed hold")
+	_expect(ir.look_axis(1) == Vector2.ZERO, "disconnect fences stale look axis")
+	_trigger(0, JOY_AXIS_RIGHT_X, 0.0)
+	ir.look_axis(1)
 	_slot(0, 0, false)
 	ir.v_press(2, "light")
 	_expect(ir.buffered(2, "light"), "legacy virtual CPU preserved")
 	ir.v_release(2, "light")
 	_expect(ir.binding_label(1, "skill1", true).contains("Y / Triangle + LB"), "help shows chord")
 	_expect(ir.binding_label(1, "right_leg", false).contains("Comma"), "help shows physical comma")
+	_expect(ir.binding_label(1, "grapple_enemy", true) == "Y / Triangle + RT / R2", "enemy help matches right trigger")
+	_expect(ir.binding_label(1, "grapple_parkour", true) == "Y / Triangle + LT / L2", "parkour help matches left trigger")
 	owner.free()
 	print("LIMB_INPUT_COMPLETE checks=%d failures=%d" % [checks, failures])
 	quit(0 if failures == 0 else 1)

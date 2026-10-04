@@ -100,9 +100,9 @@ var _a2_seen: Array = []
 var _cr_log: Array = []              # 3c: the effect's [frame, move id] hits of the current run
 var _cr_case: int = 0                 # 3c: which point-blank / band / far run
 var _cr_hp: float = 0.0
-## 02 § Втома (В-1, Арес, PLACEHOLDER) as literals: on at 0.3; at 1.0 get-up 27 (18), walk × 0.9, dash × 1.25, grapple 3.6 s,
+## 02 § Втома (В-1, Арес, PLACEHOLDER) as literals: on at 0.3; at 1.0 get-up 27 (18), walk × 0.9, dash × 1.25, finite harpoon inventory,
 ## recovery + 2; actions in seconds of fight time; 300 s to full for both; 297 s of fight alone → 0.99.
-const GDD_FATIGUE := {"on": 0.3, "getup": [18, 27], "walk": 0.9, "dash": 1.25, "grapple_s": 3.6, "recovery": 2,
+const GDD_FATIGUE := {"on": 0.3, "getup": [18, 27], "walk": 0.9, "dash": 1.25, "recovery": 2,
 	"dash_s": 1.5, "grapple_shot_s": 2.0, "skill_s": 1.0, "seconds": 300.0, "match_s": 297.0, "match_fatigue": 0.99}
 var _fb0: Dictionary = {}             # lane B: Flipbook.spawned at the start of a duel replay run
 var _wt: Dictionary = {}              # body weight stage: phase, frames, the fighter under test
@@ -925,12 +925,12 @@ func _check_hud() -> bool:
 			if Hud.cell_frac(pip) != 0.0:
 				_fail("HUD P%d: a round pip is filled before any round is won" % idx)
 				return false
-	# cooldowns fill from the bottom: one grapple charge a quarter into its cooldown, Skea's dash half back
+	# Finite harpoon inventory never shows a timer refill; Skea dash still fills from the bottom.
 	var d1 := p1.data
-	hud._on_grapple(1, 0, d1.grapple_cooldown * 0.25, d1.grapple_charges)
+	hud._on_grapple(1, 1, d1.grapple_cooldown * 0.25, d1.grapple_charges)
 	var g: Array = hud._charges[1]
 	var g_seen := [Hud.cell_frac(g[0]), Hud.cell_frac(g[1]), (g[0] as ColorRect).color.to_html(false)]
-	var g_ok: bool = absf(g_seen[0] - 0.75) < 0.001 and g_seen[1] == 0.0 and g_seen[2] == d1.accent_color.to_html(false)
+	var g_ok: bool = g_seen[0] == 1.0 and g_seen[1] == 0.0 and g_seen[2] == d1.accent_color.to_html(false)
 	hud._on_grapple(1, p1.grapple.charges, p1.grapple.cooldown_left, p1.grapple.max_charges)
 	var skea: Fighter = p2 if p2.data.dash_charges > 0 else p1
 	var ds: Array = hud._dash[skea.player_index]
@@ -942,9 +942,9 @@ func _check_hud() -> bool:
 		d_ok = d_seen[0] == 1.0 and absf(d_seen[1] - 0.5) < 0.001 and d_seen[2] == "b679f5"
 		hud._on_dash(skea.player_index, skea.dash_charges_left, 0.0, skea.data.dash_charges)
 	if not g_ok or not d_ok:
-		_fail("HUD: grapple [charge ¼ into cooldown, next, colour] = %s (want [0.75, 0, %s]); Skea dash [full, half back, colour] = %s (want [1, 0.5, b679f5])" % [g_seen, d1.accent_color.to_html(false), d_seen])
+		_fail("HUD: grapple [available, spent despite legacy cooldown, colour] = %s (want [1, 0, %s]); Skea dash [full, half back, colour] = %s (want [1, 0.5, b679f5])" % [g_seen, d1.accent_color.to_html(false), d_seen])
 		return false
-	_ok("HUD variant 2 (06-UI-UX § Рішення Santos): %d elements in ink 2 + cream 1 rings (5 + 3 at phone ×0.433; this window ×%.3f → %s), no plate, wells %s, cooldowns fill from the bottom, Skea dash #b679f5" % [want, here_scale, hud.ring_units, Hud.WELL.to_html(false)])
+	_ok("HUD variant 2 (06-UI-UX § Рішення Santos): %d elements in ink 2 + cream 1 rings (5 + 3 at phone ×0.433; this window ×%.3f → %s), no plate, wells %s, harpoons show finite stock, dash cooldown fills from the bottom, Skea dash #b679f5" % [want, here_scale, hud.ring_units, Hud.WELL.to_html(false)])
 	return true
 
 
@@ -998,6 +998,10 @@ func _stage_fatigue() -> void:
 		f.fatigue = 0.0
 		f.grapple._spend()
 		var after_shot := f.fatigue * GDD_FATIGUE.seconds
+		var stock_after_shot: int = f.grapple.charges
+		f.grapple.tick_regen(60.0, false)
+		if f.grapple.charges != stock_after_shot or stock_after_shot + f.grapple.registry.owned(f.player_index) != f.grapple.max_charges:
+			bad += " finite harpoon inventory regenerated or failed conservation;"
 		f.fatigue = 0.0
 		f._start_dash(1.0)
 		var after_dash := f.fatigue * GDD_FATIGUE.seconds
@@ -1022,10 +1026,10 @@ func _stage_fatigue() -> void:
 			f.speed_buff_frames = 0
 			s.dash_charges_left = s.data.dash_charges
 			s._start_flash(1.0)
-			got.append([f.getup_frames(), snappedf(f.speed_mult(), 0.0001), snappedf(s.dash_recharge_total / s.data.dash_recharge, 0.0001), snappedf(f.grapple._recharge(), 0.0001), f.move_end_frame(light) - light.total_frames()])
-		var want := [[GDD_FATIGUE.getup[0], 1.0, 1.0, 3.0, 0], [GDD_FATIGUE.getup[0], 1.0, 1.0, 3.0, 0], [GDD_FATIGUE.getup[1], GDD_FATIGUE.walk, GDD_FATIGUE.dash, GDD_FATIGUE.grapple_s, GDD_FATIGUE.recovery]]
+			got.append([f.getup_frames(), snappedf(f.speed_mult(), 0.0001), snappedf(s.dash_recharge_total / s.data.dash_recharge, 0.0001), f.move_end_frame(light) - light.total_frames()])
+		var want := [[GDD_FATIGUE.getup[0], 1.0, 1.0, 0], [GDD_FATIGUE.getup[0], 1.0, 1.0, 0], [GDD_FATIGUE.getup[1], GDD_FATIGUE.walk, GDD_FATIGUE.dash, GDD_FATIGUE.recovery]]
 		if str(got) != str(want):
-			bad += " [get-up, walk, dash, grapple s, recovery +] at 0 / 0.3 / 1.0 = %s (want %s);" % [got, want]
+			bad += " [get-up, walk, dash, recovery +] at 0 / 0.3 / 1.0 = %s (want %s);" % [got, want]
 		# rounds keep it; the tired stance from 0.5
 		f.fatigue = 0.7
 		f.reset_for_round(-3.0, 1)
@@ -1044,7 +1048,7 @@ func _stage_fatigue() -> void:
 		if bad != "":
 			_fail("fatigue (02 § Втома):" + bad)
 			return
-		_ok("fatigue (02 § Втома): 60 fight frames = 1 s, %.0f s alone → %.2f; shot %.1f / dash %.1f / skill %.1f s, ult and hits taken 0; at 1.0 get-up %d, walk ×%.1f, dash ×%.2f, grapple %.1f s, recovery +%d, none of it below 0.3; a new round keeps it (stance '%s')" % [GDD_FATIGUE.match_s, GDD_FATIGUE.match_fatigue, GDD_FATIGUE.grapple_shot_s, GDD_FATIGUE.dash_s, GDD_FATIGUE.skill_s, GDD_FATIGUE.getup[1], GDD_FATIGUE.walk, GDD_FATIGUE.dash, GDD_FATIGUE.grapple_s, GDD_FATIGUE.recovery, stance])
+		_ok("fatigue (02 § Втома): 60 fight frames = 1 s, %.0f s alone → %.2f; shot %.1f / dash %.1f / skill %.1f s, ult and hits taken 0; at 1.0 get-up %d, walk ×%.1f, dash ×%.2f, finite harpoon stock conserved without timer refill, recovery +%d, none of it below 0.3; a new round keeps it (stance '%s')" % [GDD_FATIGUE.match_s, GDD_FATIGUE.match_fatigue, GDD_FATIGUE.grapple_shot_s, GDD_FATIGUE.dash_s, GDD_FATIGUE.skill_s, GDD_FATIGUE.getup[1], GDD_FATIGUE.walk, GDD_FATIGUE.dash, GDD_FATIGUE.recovery, stance])
 		# clean slate for the jab runs
 		for x in [f, s]:
 			x.reset_for_round(-3.0 if x == f else 3.0, 1 if x == f else -1)
@@ -1657,6 +1661,11 @@ func _physics_process(_delta: float) -> void:
 		p1.is_cpu = true
 		p2.is_cpu = true
 		flow = arena.flow
+		for fighter: Fighter in [p1, p2]:
+			var capacity := 7 if fighter.data.id == "choko" else 2
+			if fighter.grapple.max_charges != capacity:
+				_fail("finite harpoon capacity %s: %d, want %d" % [fighter.data.id, fighter.grapple.max_charges, capacity])
+				return
 		_ok("arena loaded: %s vs %s, stage %s" % [p1.data.display_name, p2.data.display_name, GameState.stage().id])
 		if not GameState.skeletal_rig and (p1.skeletal != null or p1.get_node_or_null("SkeletalRig") != null):
 			_fail("capsule mode built a SkeletalRig — the smoke's capsule stages set skeletal_rig = false")

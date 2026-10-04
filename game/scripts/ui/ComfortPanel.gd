@@ -106,7 +106,8 @@ func show_panel(invoker: Control, controls: String) -> void:
 	InputRouter.acquire_ui(self)
 	_invoker = invoker
 	controls_label.text = "CONTROLS — %s / %s\n\n" % ["3D" if GameState.free_move else "2.5D", InputRouter.profile.to_upper()] + controls.replace(" · ", "\n").replace("      P2", "\n\nP2").replace("   |   ", "\n\n")
-	controls_label.text += "\n\nHARPOON\nHold grapple to stay attached.\nMove toward the anchor to reel in; move sideways to steer.\nRelease grapple to detach. A tap launches the hook without staying attached.\n"
+	controls_label.text += "\n\nHARPOON\nEnemy hook pulls on contact; parkour hook attaches to anchors.\nHold grapple to stay attached. Move toward the anchor to reel in; sideways to steer.\nRelease grapple to detach. A tap launches without staying attached.\n\nChoko carries 7 hooks; Skea carries 2. Returning a hook restores its slot; there is no timer refill.\nDeployed parkour ropes remain in the match and either fighter can reuse them.\nMisses rewind automatically. During recovery, hands are busy; use light movement and kicks.\nAfter hooking an enemy, extraction returns the hook. A kick helps extract it during the strike.\n"
+	controls_label.text += "\nAIM (solo)\nHold the right mouse button and drag, or use the right stick, to aim the view.\nThe view returns smoothly when released; the target cue is a suggestion, not a guaranteed hit.\n"
 	controls_label.text += _gamepad_help()
 	_sync_values()
 	show()
@@ -183,6 +184,6 @@ func _scroll_help(event: InputEvent) -> void:
 
 func _gamepad_help() -> String:
 	var text := "\n\nGAMEPAD · Left stick moves freely\n"
-	for action in ["jump", "crouch", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "grapple", "dash", "ultimate"]:
+	for action in ["jump", "crouch", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "grapple_enemy", "grapple_parkour", "dash", "ultimate"]:
 		text += action.capitalize() + ": " + InputRouter.binding_label(1, action, true) + "\n"
-	return text + "Y + LT: reserved · Hold Y before pressing a shoulder / trigger.\nRelease the shoulder / trigger before changing its action.\n\nUp / Down: scroll controls · Tab: next · Esc / B: back"
+	return text + "Hold Y before pressing a shoulder / trigger.\nRelease the shoulder / trigger before changing its action.\n\nUp / Down: scroll controls · Tab: next · Esc / B: back"

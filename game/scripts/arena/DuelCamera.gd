@@ -77,6 +77,7 @@ var behind: bool = false
 var _presentation_line := Vector3.RIGHT
 var _axis_held := false
 var _lookahead := Vector3.ZERO
+var aim_controller: HarpoonAim
 
 
 func setup(a: Fighter, b: Fighter) -> void:
@@ -84,6 +85,10 @@ func setup(a: Fighter, b: Fighter) -> void:
 	p2 = b
 	arm.collision_mask = 1    # static world only; fighters are layer 2
 	behind = GameState.duel.behind
+	if aim_controller == null:
+		aim_controller = HarpoonAim.new()
+		add_child(aim_controller)
+	aim_controller.setup(cam, behind)
 	_presentation_line = GameState.duel.line
 	_axis_held = false
 	_lookahead = Vector3.ZERO
@@ -137,15 +142,16 @@ func behind_spot() -> Vector3:
 func _physics_process(delta: float) -> void:
 	if p1 == null or p2 == null:
 		return
+	aim_controller.step(delta)
 	_update_presentation(delta)
 	_yaw_prev = _yaw
-	var diff := angle_difference(_yaw, _target_yaw())
+	var diff := angle_difference(_yaw, _target_yaw() + aim_controller.yaw_offset)
 	var accel := deg_to_rad(YAW_ACCEL_DEG)
 	var want := signf(diff) * minf(minf(deg_to_rad(YAW_CLAMP_DEG), sqrt(2.0 * accel * absf(diff))), absf(diff))
 	_omega += clampf(want - _omega, -accel, accel)
 	_yaw += _omega
 	rotation = Vector3(0.0, _yaw, 0.0)
-	var lag := rad_to_deg(absf(angle_difference(_yaw, _target_yaw())))
+	var lag := rad_to_deg(absf(angle_difference(_yaw, _target_yaw() + aim_controller.yaw_offset)))
 	_pull = lerpf(_pull, PULLBACK_MAX if lag > PULLBACK_LAG_DEG else 0.0, 1.0 - pow(0.0015, delta))
 	if force_pull >= 0.0:
 		_pull = force_pull
@@ -203,7 +209,7 @@ func _apply_behind(k: float) -> void:
 	var flat := Vector2(v.x, v.z).length()
 	focus += _safe_lookahead()
 	global_position = global_position.lerp(focus, k) if k < 1.0 else focus
-	arm.rotation = Vector3(-atan2(v.y, flat), 0.0, 0.0)
+	arm.rotation = Vector3(-atan2(v.y, flat) + aim_controller.pitch_offset, 0.0, 0.0)
 	arm.spring_length = pulled(v.length())
 
 
@@ -251,6 +257,8 @@ func _apply_readability(k: float) -> void:
 ## rendered yaw. A continuous orbit therefore accumulates; an instant side swap does not demand 180°.
 ## This state never feeds back into DuelFrame, Fighter.forward or camera-relative input.
 func _update_presentation(delta: float) -> void:
+	if aim_controller != null and aim_controller.is_manual():
+		return # Manual orbit owns the bearing; auto must not counter-steer.
 	if not behind:
 		_lookahead = Vector3.ZERO
 		return

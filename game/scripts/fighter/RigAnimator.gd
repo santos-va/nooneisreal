@@ -214,6 +214,7 @@ func tick(delta: float, f: Fighter, frozen: bool) -> void:
 	idle_time += delta
 	rotation.y = f.yaw() if GameState.free_move else (0.0 if f.facing == 1 else PI)
 	_compute_target(f, delta)
+	HookMotion.apply_recovery(self, f)
 	_water_sway(f)
 	if f.state == Fighter.State.ATTACK and f.current_move != null:
 		# hold each drawing, then snap to the next on a 12 fps step or on a phase boundary

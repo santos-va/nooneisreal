@@ -4,6 +4,7 @@ extends Node3D
 
 @onready var cam: Camera3D = $Camera3D
 
+var aim_controller: HarpoonAim
 var p1: Fighter
 var p2: Fighter
 @export_range(0.0, 1.0) var impact_scale: float = 1.0
@@ -11,6 +12,10 @@ var _impact: CameraImpact = CameraImpact.new()
 
 
 func setup(a: Fighter, b: Fighter) -> void:
+	if aim_controller == null:
+		aim_controller = HarpoonAim.new()
+		add_child(aim_controller)
+	aim_controller.setup(cam, false)
 	p1 = a
 	p2 = b
 	_impact.reset()

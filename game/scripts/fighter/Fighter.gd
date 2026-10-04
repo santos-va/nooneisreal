@@ -289,7 +289,7 @@ func is_actionable() -> bool:
 
 
 func speed_mult() -> float:
-	return (SPEED_MULT if speed_buff_frames > 0 else 1.0) * (1.0 - FATIGUE_WALK * fatigue_effect())
+	return (SPEED_MULT if speed_buff_frames > 0 else 1.0) * (1.0 - FATIGUE_WALK * fatigue_effect()) * (grapple.recovery_move_scale if grapple.recovering() else 1.0)
 
 
 ## 0 below FATIGUE_ON, then linear to 1 at fatigue 1.0.
@@ -322,6 +322,7 @@ func _physics_process(delta: float) -> void:
 	if _free() and opponent != null:
 		var a: Fighter = self if player_index == 1 else opponent
 		GameState.duel.sync(a.global_position, a.opponent.global_position, InputRouter.frame())
+	grapple.tick_regen(delta, state == State.GRAPPLE)
 	if frozen_frames > 0:
 		frozen_frames -= 1
 		animator.tick(delta, self, true)
@@ -331,7 +332,6 @@ func _physics_process(delta: float) -> void:
 	frame_in_state += 1
 	_tick_cooldowns(delta)
 	_tick_status(delta)
-	grapple.tick_regen(delta, state == State.GRAPPLE)
 	if hitstop_frames > 0:
 		hitstop_frames -= 1
 		animator.tick(delta, self, true)
@@ -384,19 +384,23 @@ func _read_intent() -> Dictionary:
 	var i := {"axis": 0.0, "crouch": false, "block": false, "grapple_held": false}
 	_wish = Vector3.ZERO
 	if control_locked:
+		InputRouter.clear_recorded_view_basis(player_index)
 		GameState.duel.human_to_world(Vector2.ZERO, player_index)
 		return i
 	i.axis = InputRouter.axis(player_index)
 	if _free():
 		var move := InputRouter.move(player_index)
-		_wish = GameState.duel.to_world(move, player_index) if is_cpu else GameState.duel.human_to_world(move, player_index)
+		_wish = GameState.duel.to_world(move, player_index) if is_cpu else GameState.duel.human_to_world(move, player_index, InputRouter.view_basis(player_index))
 	i.crouch = InputRouter.held(player_index, "crouch")
 	i.block = InputRouter.held(player_index, "block")
-	i.grapple_held = InputRouter.held(player_index, "grapple")
+	i.grapple_held = InputRouter.held(player_index, grapple.action)
 	return i
 
 
 func _pressed(action: String) -> bool:
+	if grapple.hands_busy() and action in ["left_hand", "right_hand", "light", "skill1", "skill2", "ultimate"]:
+		InputRouter.buffered(player_index, action) # Consume blocked intent, never replay after extraction.
+		return false
 	if control_locked:
 		return false
 	return InputRouter.buffered(player_index, action)
@@ -852,6 +856,8 @@ func _tick_attack(delta: float) -> void:
 		_set_state(State.IDLE)
 		return
 	if move_frame == m.startup:
+		if _limb_action.ends_with("leg") or m == data.heavy:
+			grapple.extract_on_kick(_limb_action if _limb_action != "" else "right_leg")
 		Sfx.play(m.sfx_whiff, -4)
 		_strike_smear(m)
 		if m.effect != "":
@@ -1475,9 +1481,16 @@ func _tick_ko() -> void:
 
 # --- grapple --------------------------------------------------------------------------------------
 func _try_grapple(prefer_enemy: bool) -> bool:
-	if not _pressed("grapple"):
+	var shot_action := "grapple"
+	if _pressed("grapple_enemy"):
+		prefer_enemy = true
+		shot_action = "grapple_enemy"
+	elif _pressed("grapple_parkour"):
+		prefer_enemy = false
+		shot_action = "grapple_parkour"
+	elif not _pressed("grapple"):
 		return false
-	var target := grapple.fire(prefer_enemy)
+	var target := grapple.fire(prefer_enemy, shot_action)
 	if target != GrappleHook.Target.NONE:
 		stats.grapples += 1
 		_set_state(State.GRAPPLE)
@@ -1487,7 +1500,7 @@ func _try_grapple(prefer_enemy: bool) -> bool:
 
 func _tick_grapple(intent: Dictionary) -> void:
 	grapple.drive(get_physics_process_delta_time(), intent.grapple_held)
-	if not grapple.busy():
+	if not grapple.busy() or grapple.recovering():
 		_set_state(State.JUMP if not on_ground() else State.IDLE)
 
 

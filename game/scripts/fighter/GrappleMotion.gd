@@ -38,3 +38,38 @@ static func apply(rig: RigAnimator, fighter: Fighter) -> void:
 	rig._pose_set("thigh_r", Vector3(0.0, 0.0, 0.45 + lean))
 	rig._pose_set("shin_l", Vector3(0.0, 0.0, -0.7 if hanging else -0.4))
 	rig._pose_set("shin_r", Vector3(0.0, 0.0, -1.0 if hanging else -0.65))
+
+static func recovery_active(fighter: Fighter) -> bool:
+	var hook: GrappleHook = fighter.grapple
+	if hook == null or hook.recovery_paused or fighter.frozen_frames > 0 or fighter.hitstop_frames > 0:
+		return false
+	if fighter.state in [Fighter.State.DASH, Fighter.State.HITSTUN, Fighter.State.BLOCKSTUN, Fighter.State.LAUNCHED, Fighter.State.KNOCKDOWN, Fighter.State.GETUP, Fighter.State.KO]:
+		return false
+	return hook.recovering() or hook.extract_flash > 0.0
+
+static func apply_recovery(rig: RigAnimator, fighter: Fighter) -> void:
+	if not recovery_active(fighter):
+		return
+	var hook: GrappleHook = fighter.grapple
+	var kick: bool = fighter.state == Fighter.State.ATTACK and fighter.current_move != null
+	var pull: float
+	if hook.extract_flash > 0.0:
+		# Simulation starts the flash on the kick's first active frame, not on an animation event.
+		pull = clampf(hook.extract_flash / 0.2, 0.0, 1.0)
+	elif hook.phase == GrappleHook.Phase.MISS_REWIND:
+		pull = 0.5 - 0.5 * cos(clampf(hook.recovery_progress, 0.0, 1.0) * TAU * 3.0)
+	else:
+		pull = smoothstep(0.1, 0.9, hook.recovery_progress)
+	var target: Vector3 = rig.global_basis.inverse() * (hook.visual_endpoint() - fighter.global_position - Vector3.UP * 1.25)
+	var aim_yaw: float = clampf(atan2(-target.z, target.x), -0.6, 0.6) if not kick else 0.0
+	var elevation: float = clampf(atan2(target.y, Vector2(target.x, target.z).length()), -0.5, 0.5) if not kick else 0.0
+	var pulling_side: String = "l" if hook.extract_side == "right_leg" else "r"
+	for side: String in ["l", "r"]:
+		var amount: float = pull if side == pulling_side else (0.3 if kick else 1.0 - pull)
+		rig._pose_set("upper_arm_" + side, Vector3(0.0, aim_yaw, lerpf(1.4, 0.45, amount) + elevation * (1.0 - amount)))
+		rig._pose_set("forearm_" + side, Vector3(0.0, 0.0, lerpf(0.12, 1.55, amount)))
+	# Keep the attacking leg, hip turn and counterbalance from its normal clip/drawing.
+	# While walking, only the upper-body layer changes; source locomotion retains both legs.
+	if not kick:
+		rig._pose_set("torso", Vector3(0.0, (pull - 0.5) * 0.25, -0.12 + pull * 0.08))
+		rig._pose_set("head", Vector3(0.0, 0.0, 0.06))

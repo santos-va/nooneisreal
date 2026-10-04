@@ -2,14 +2,14 @@ class_name GrappleHook
 extends Node3D
 ## Charge-based swept harpoon: 30-frame windup, fixed flight, confirmed contact.
 ## Hold an attached anchor to hang; steer tangentially and press toward it to reel.
-## Charges regenerate sequentially (one per cooldown) and regen pauses while tethered.
+## Finite match inventory. Only recovery refunds; deployed ropes persist across rounds.
 ## Design: docs/GDD/04-Grapple-System.md
 
 signal changed(charges: int, cooldown_left: float, max_charges: int)
 
 enum Target { NONE, ANCHOR, ENEMY }
 
-enum Phase { IDLE, WINDUP, FLIGHT, HANG }
+enum Phase { IDLE, WINDUP, FLIGHT, HANG, MISS_REWIND, ENEMY_EXTRACT }
 const WINDUP_FRAMES := 30
 @export var projectile_speed: float = 36.0 # PLACEHOLDER pending playtest.
 var phase: Phase = Phase.IDLE
@@ -21,6 +21,24 @@ var _flight_distance: float = 0.0
 var _selected_anchor: Node3D
 var _prefer_enemy: bool = false
 var _tip: MeshInstance3D
+var registry: MatchRopes
+var token: int = 0
+var action: String = "grapple"
+var aim_intent: Dictionary = {}
+var recovery_remaining: float = 0.0
+var recovery_progress: float = 0.0
+var recovery_paused: bool = false
+var extract_flash: float = 0.0
+var extract_side: String = "right_leg"
+@export var recovery_move_scale: float = 0.35 # PLACEHOLDER light manoeuvring.
+var _recovery_total: float = 0.0
+var _extract_frames: int = 0
+var _miss_velocity := Vector3.ZERO
+var _victim: Fighter
+var _deployed_token: int = 0
+var _rope_visual: Node3D
+@export var rewind_speed: float = 9.0 # PLACEHOLDER; length-based return, no regeneration.
+@export var extract_duration_frames: int = 45 # PLACEHOLDER ordinary hand extraction.
 const HAND := Vector3(0.0, 1.25, 0.0)
 
 var fighter: Fighter
@@ -79,56 +97,130 @@ func setup(f: Fighter) -> void:
 	_tip.top_level = true
 	_tip.visible = false
 	add_child(_tip)
+	var ancestor: Node = fighter.get_parent()
+	while ancestor != null and registry == null:
+		registry = ancestor.get_node_or_null("MatchRopes") as MatchRopes
+		ancestor = ancestor.get_parent()
+	if registry == null:
+		registry = MatchRopes.new()
+		registry.name = "MatchRopes"
+		fighter.get_parent().add_child(registry)
+	registry.register_hook(self, fighter.player_index, max_charges)
+	if ResourceLoader.exists("res://scripts/grapple/RopeVisual.gd"):
+		_rope_visual = load("res://scripts/grapple/RopeVisual.gd").new()
+		add_child(_rope_visual)
+	changed.emit(charges, cooldown_left, max_charges)
+
+
+func inventory_changed(available: int, capacity: int) -> void:
+	charges = available
+	max_charges = capacity
+	cooldown_left = 0.0
 	changed.emit(charges, cooldown_left, max_charges)
 
 
 func reset() -> void:
-	charges = max_charges
-	cooldown_left = 0.0
-	detach()
-	changed.emit(charges, cooldown_left, max_charges)
+	# A round returns an unfinished recoverable shot, never a deployed rope.
+	if token != 0:
+		registry.refund(token, fighter.player_index)
+	token = 0
+	_finish_idle()
+	inventory_changed(registry.available(fighter.player_index), max_charges)
+
+
+func on_match_cleared() -> void:
+	token = 0
+	_finish_idle()
+
+
+func recovering() -> bool:
+	return phase in [Phase.MISS_REWIND, Phase.ENEMY_EXTRACT]
+
+
+func hands_busy() -> bool:
+	return recovering()
 
 
 func tick_regen(delta: float, tethered: bool) -> void:
-	if busy() and not tethered:
-		detach() # Interrupted windup/flight cannot launch later.
-	if charges >= max_charges:
-		cooldown_left = 0.0
-		return
-	if tethered:
-		return
-	cooldown_left -= delta
-	if cooldown_left <= 0.0:
-		charges = max_charges if regen_all else charges + 1
-		cooldown_left = _recharge() if charges < max_charges else 0.0
-		Sfx.play("ui_move", -12)
-		changed.emit(charges, cooldown_left, max_charges)
+	# Retained call name for HUD/legacy integration: there is no timer regeneration.
+	extract_flash = maxf(0.0, extract_flash - delta)
+	if busy() and not tethered and not recovering():
+		detach()
+	if recovering():
+		recovery_paused = fighter.frozen_frames > 0 or fighter.hitstop_frames > 0 or fighter.state in [Fighter.State.DASH, Fighter.State.HITSTUN, Fighter.State.BLOCKSTUN, Fighter.State.KO, Fighter.State.LAUNCHED, Fighter.State.KNOCKDOWN, Fighter.State.GETUP, Fighter.State.STUMBLE, Fighter.State.WALL_SPLAT, Fighter.State.INTRO]
+		if not recovery_paused:
+			_tick_recovery(delta)
+		elif phase == Phase.MISS_REWIND:
+			_draw_rope(fighter.global_position + HAND, projectile_position)
+		elif is_instance_valid(_victim):
+			_draw_rope(fighter.global_position + HAND, _victim.global_position + HAND)
 
 
 func busy() -> bool:
 	return phase != Phase.IDLE
 
 
-func fire(prefer_enemy: bool) -> int:
-	if charges <= 0 or busy():
+func reusable_rope() -> int:
+	if registry == null:
+		return 0
+	var existing := registry.nearby(fighter.global_position + HAND)
+	if existing != 0:
+		var record: Dictionary = registry.records[existing]
+		var hand := fighter.global_position + HAND
+		if hand.distance_to(record.anchor) <= minf(record.length, range_m) + 0.001 and line_clear(hand, record.anchor):
+			return existing
+	return 0
+
+
+func fire(prefer_enemy: bool, shot_action: String = "grapple", recorded_aim: Dictionary = {}) -> int:
+	if busy():
+		return Target.NONE
+	action = shot_action
+	_prefer_enemy = prefer_enemy
+	aim_intent = recorded_aim.duplicate(true)
+	if aim_intent.is_empty():
+		var camera := get_viewport().get_camera_3d()
+		if camera != null and camera.has_meta("harpoon_aim"):
+			var aim: Node = camera.get_meta("harpoon_aim")
+			aim_intent = aim.capture(fighter, prefer_enemy)
+	if not prefer_enemy:
+		var existing := reusable_rope()
+		if existing != 0 and not aim_intent.is_empty():
+			var marker: Node = registry.records[existing].marker
+			if String(aim_intent.get("target_id", "")) != String(marker.get_path()):
+				existing = 0 # A recorded/manual choice has priority over proximity assistance.
+		if existing != 0:
+			var record: Dictionary = registry.records[existing]
+			_deployed_token = existing
+			registry.attach_user(existing, self)
+			anchor_point = record.anchor
+			rope_length = minf(record.length, (anchor_point - (fighter.global_position + HAND)).length())
+			attached = true
+			phase = Phase.HANG
+			return Target.ANCHOR
+	if charges <= 0:
 		Sfx.play("grapple_denied", -4)
 		return Target.NONE
-	_prefer_enemy = prefer_enemy
 	phase = Phase.WINDUP
 	_frames = 0
 	windup_progress = 0.0
-	# A shot without a target is still a shot; spend only at release.
 	return Target.ENEMY if prefer_enemy else Target.ANCHOR
 
 
 func _launch() -> void:
 	_spend()
+	if token == 0:
+		_finish_idle()
+		return
 	_launch_origin = fighter.global_position + HAND
 	projectile_position = _launch_origin
 	_selected_anchor = null if _prefer_enemy else _best_anchor()
 	var aim := aim_axis() if GameState.free_move else Vector3(float(fighter.facing), 0, 0)
 	if is_instance_valid(_selected_anchor):
 		aim = _selected_anchor.global_position - _launch_origin
+	if not aim_intent.is_empty():
+		aim = Vector3(aim_intent.point) - _launch_origin
+		_selected_anchor = get_node_or_null(NodePath(String(aim_intent.get("target_id", "")))) as Node3D if not _prefer_enemy and String(aim_intent.get("target_id", "")) != "" else null
 	_flight_direction = aim.normalized()
 	_flight_distance = 0.0
 	phase = Phase.FLIGHT
@@ -158,35 +250,48 @@ func _flight(delta: float, held: bool) -> void:
 	if anchor_hit and anchor_t < hit_distance:
 		anchor_point = _selected_anchor.global_position
 		rope_length = (anchor_point - (fighter.global_position + HAND)).length()
+		if rope_length > range_m:
+			projectile_position = anchor_point
+			_begin_rewind()
+			return
 		_frames = 0
+		registry.deploy(token, fighter.player_index, anchor_point, fighter.global_position + HAND, rope_length)
+		_deployed_token = token
+		registry.attach_user(token, self)
+		token = 0
 		attached = held
 		phase = Phase.HANG if held else Phase.IDLE
 		_tip.visible = false
 		if not held:
-			detach()
+			_finish_idle()
 		return
 	if not hit.is_empty():
 		var area := hit.collider as Area3D
 		if area != null:
 			var victim := area.get_parent() as Fighter
-			if victim != null and victim != fighter and victim.hurtbox_enabled():
+			if _prefer_enemy and victim != null and victim != fighter and victim.hurtbox_enabled():
 				_confirm_pull(victim)
-		detach()
+				_victim = victim
+				phase = Phase.ENEMY_EXTRACT
+				_extract_frames = 0
+				recovery_progress = 0.0
+				_tip.visible = false
+				return
+		projectile_position = hit.position
+		_begin_rewind()
 		return
 	projectile_position = end
 	_flight_distance += step
 	_tip.global_position = end
 	_draw_rope(fighter.global_position + HAND, end)
 	if _flight_distance >= range_m:
-		detach()
+		_begin_rewind()
 
 
 func _spend() -> void:
-	charges -= 1
-	fighter.add_fatigue(Fighter.FATIGUE_GRAPPLE_S)   # every shot, whichever of the three verbs (02 § Втома (б))
-	if cooldown_left <= 0.0:
-		cooldown_left = _recharge()
-	changed.emit(charges, cooldown_left, max_charges)
+	token = registry.issue(fighter.player_index)
+	if token != 0:
+		fighter.add_fatigue(Fighter.FATIGUE_GRAPPLE_S)
 
 
 ## One charge's recharge now: the data's cooldown × the fighter's fatigue.
@@ -325,15 +430,92 @@ func _release(reached: bool) -> void:
 
 
 func detach() -> void:
+	if recovering():
+		return # Damage/dodge pauses recovery; it cannot erase the issued token.
+	if token != 0:
+		_begin_rewind()
+		return
+	_finish_idle()
+
+
+func _finish_idle() -> void:
+	if _deployed_token != 0 and is_instance_valid(registry):
+		registry.detach_user(_deployed_token, self)
 	phase = Phase.IDLE
 	windup_progress = 0.0
 	_selected_anchor = null
+	_victim = null
+	_deployed_token = 0
+	recovery_remaining = 0.0
+	recovery_progress = 0.0
+	recovery_paused = false
 	if _tip:
 		_tip.visible = false
 	attached = false
 	_frames = 0
 	if _rope:
 		_rope.visible = false
+	if _rope_visual:
+		_rope_visual.visible = false
+
+
+func _begin_rewind() -> void:
+	phase = Phase.MISS_REWIND
+	attached = false
+	recovery_remaining = maxf(0.5, (projectile_position - (fighter.global_position + HAND)).length())
+	_recovery_total = recovery_remaining
+	recovery_progress = 0.0
+	_miss_velocity = _flight_direction * 2.0
+	_tip.visible = true
+
+
+func visual_endpoint() -> Vector3:
+	if phase == Phase.ENEMY_EXTRACT and is_instance_valid(_victim):
+		return _victim.global_position + HAND
+	return anchor_point if phase == Phase.HANG else projectile_position
+
+
+func _tick_recovery(delta: float) -> void:
+	var hand := fighter.global_position + HAND
+	if phase == Phase.MISS_REWIND:
+		_miss_velocity.y -= Fighter.GRAVITY * delta
+		if GameState.water != null and projectile_position.y < GameState.water.height(projectile_position.x, projectile_position.z):
+			_miss_velocity *= exp(-4.0 * delta)
+		projectile_position += _miss_velocity * delta
+		projectile_position.y = maxf(projectile_position.y, -2.0 if GameState.water != null else 0.05)
+		recovery_remaining = maxf(0.0, recovery_remaining - rewind_speed * delta)
+		var to_tip := projectile_position - hand
+		projectile_position = hand + to_tip.limit_length(recovery_remaining)
+		recovery_progress = 1.0 - recovery_remaining / maxf(_recovery_total, 0.001)
+		_tip.global_position = projectile_position
+		_draw_rope(hand, projectile_position)
+		if recovery_remaining <= 0.01:
+			_return_token()
+	elif phase == Phase.ENEMY_EXTRACT:
+		# Once a leg commits, its first active frame owns extraction. The ordinary
+		# timer cannot steal that event during a late kick's startup.
+		var committed_kick := fighter.state == Fighter.State.ATTACK and fighter.current_move != null and (fighter._limb_action.ends_with("leg") or fighter.current_move == fighter.data.heavy)
+		if not committed_kick:
+			_extract_frames += 1
+		recovery_progress = float(_extract_frames) / maxf(1.0, float(extract_duration_frames))
+		if is_instance_valid(_victim):
+			_draw_rope(hand, _victim.global_position + HAND)
+		if _extract_frames >= extract_duration_frames:
+			_return_token()
+
+
+func extract_on_kick(side: String = "right_leg") -> void:
+	if phase == Phase.ENEMY_EXTRACT:
+		extract_side = side
+		extract_flash = 0.2
+		_return_token()
+
+
+func _return_token() -> void:
+	if token != 0:
+		registry.refund(token, fighter.player_index)
+	token = 0
+	_finish_idle()
 
 
 func _confirm_pull(opp: Fighter) -> void:
@@ -349,6 +531,13 @@ func _draw_rope(a: Vector3, b: Vector3) -> void:
 	# The skinned hand only anchors the rendered line, never the sweep or constraint.
 	if is_instance_valid(fighter.skeletal):
 		a = fighter.skeletal.hand_world("Right")
+	if _rope_visual != null:
+		_rope.visible = false
+		_rope_visual.visible = true
+		var length := recovery_remaining if phase == Phase.MISS_REWIND else a.distance_to(b)
+		_rope_visual.update_rope(a, b, length, get_physics_process_delta_time(), GameState.water, phase == Phase.MISS_REWIND)
+		return
+	_rope.visible = true
 	_rope.global_transform = Transform3D.IDENTITY
 	_rope_mesh.clear_surfaces()
 	_rope_mesh.surface_begin(Mesh.PRIMITIVE_LINES)

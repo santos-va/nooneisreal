@@ -16,6 +16,7 @@ extends Node3D
 ## bone first gets a rest alignment (its rest direction turned onto the mannequin's), then the mannequin's rotation
 ## from rest. Bone lengths stay the hero's; only the hips move, scaled by the hip-height ratio.
 
+const HookMotion = preload("res://scripts/fighter/GrappleMotion.gd")
 const Cadence = preload("res://scripts/fighter/LocomotionCadence.gd")
 const MotionFallback = preload("res://scripts/fighter/ProceduralMotionFallback.gd")
 const FootContact = preload("res://scripts/fighter/HeroFootContact.gd")
@@ -362,9 +363,12 @@ func _physics_process(delta: float) -> void:
 	else:
 		clip_pos = minf(float(_state_frames) * delta, anim.length)
 	player.seek(clip_pos, true)
+	var recovering: bool = HookMotion.recovery_active(_fighter)
 	if uses_procedural_motion():
 		MotionFallback.apply(skeleton, _fighter.animator)
-	if ragdoll == null:
+	elif ragdoll == null and recovering:
+		MotionFallback.apply(skeleton, _fighter.animator, true)
+	if ragdoll == null and not recovering:
 		idle_presence.apply(skeleton, _fighter, delta)
 
 

@@ -70,13 +70,24 @@ func to_world(move: Vector2, player: int = 0) -> Vector3:
 ## Human movement captures the continuous simulation axis for one gesture. A crossing or
 ## circling foe cannot rotate a held direction. Neutral releases it for the next gesture.
 ## This intentionally never reads a rendered camera transform (ADR-004).
-func human_to_world(move: Vector2, player: int) -> Vector3:
+func human_to_world(move: Vector2, player: int, view_forward: Vector3 = Vector3.ZERO) -> Vector3:
 	if move.length() <= 0.1:
 		_human_axes.erase(player)
 		return Vector3.ZERO
 	if not _human_axes.has(player):
-		_human_axes[player] = right
+		var flat := Vector3(view_forward.x, 0.0, view_forward.z)
+		var manual := behind and player == 1 and view_forward.is_finite() and flat.length_squared() >= 0.000001
+		_human_axes[player] = flat.normalized() if manual else right
 	var axis: Vector3 = _human_axes[player]
 	if behind and player == 1:
 		return axis.cross(Vector3.UP) * move.x + axis * move.y
 	return axis * move.x + Vector3.UP.cross(axis) * move.y
+
+
+## Input lifecycle boundaries can happen while physics is paused. Do not require a
+## fighter tick to observe neutral before a fresh post-menu gesture can start.
+func clear_human_gestures(player: int = 0) -> void:
+	if player == 0:
+		_human_axes.clear()
+	else:
+		_human_axes.erase(player)

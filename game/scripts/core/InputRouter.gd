@@ -5,7 +5,7 @@ extends Node
 ## as a human player. Docs: docs/GDD/05-Platforms-Input.md
 
 const BUFFER_FRAMES := 6
-const ACTIONS := ["left", "right", "jump", "crouch", "light", "heavy", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "ultimate", "grapple", "dash", "up", "down"]
+const ACTIONS := ["left", "right", "jump", "crouch", "light", "heavy", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "ultimate", "grapple_enemy", "grapple_parkour", "grapple", "dash", "up", "down"]
 ## Free movement (GameState.free_move) — docs/Decisions/ADR-014-Free-Movement-Layout.md: W/↑ and S/↓ move
 ## off `jump` / `crouch` onto `up` / `down` (camera-relative movement); jump is Space (P1) and `/` (P2) only;
 ## crouch is X (P1) and M (P2, SHARED). Gamepad: left stick ↑/↓ drives up/down and leaves crouch, which is
@@ -32,13 +32,13 @@ const PROFILE_SHARED := "shared"
 const PROFILES := [PROFILE_SOLO, PROFILE_SHARED]
 const SOLO_KEYS := {
 	"p1_left": [KEY_A], "p1_right": [KEY_D], "p1_jump": [KEY_W, KEY_SPACE], "p1_crouch": [KEY_S],
-	"p1_dash": [KEY_SHIFT], "p1_grapple": [KEY_E],
+	"p1_dash": [KEY_SHIFT], "p1_grapple_enemy": [KEY_Q], "p1_grapple_parkour": [KEY_E],
 	"p1_left_hand": [KEY_J], "p1_right_hand": [KEY_K], "p1_left_leg": [KEY_M], "p1_right_leg": [KEY_COMMA], "p1_block": [KEY_L],
 	"p1_skill1": [KEY_U], "p1_skill2": [KEY_I], "p1_ultimate": [KEY_O],
 }
 
 const LIMBS := ["left_hand", "right_hand", "left_leg", "right_leg"]
-const PAD_CHORDS := ["skill1", "skill2", "", "grapple"]
+const PAD_CHORDS := ["skill1", "skill2", "grapple_parkour", "grapple_enemy"]
 const PAD_LIMB_LABELS := ["LB / L1", "RB / R1", "LT / L2", "RT / R2"]
 ## Hysteresis rejects trigger noise until a deliberate release.
 const TRIGGER_PRESS := 0.55
@@ -48,6 +48,10 @@ var _pad_routes: Dictionary = {}
 var _pad_modifier: Dictionary = {}
 var _pad_modifier_blocked: Dictionary = {}
 var _routed_just: Dictionary = {}
+var _look_neutral_pending: Dictionary = {}
+var _view_bases: Dictionary = {}
+var _recorded_view_bases: Dictionary = {}
+const LOOK_DEADZONE := 0.2
 
 var _frame: int = 0
 var _pressed_at: Dictionary = {}    # "p1_light" -> physics frame of the last just_pressed
@@ -188,7 +192,7 @@ func _hint_profile(vs_cpu: bool) -> String:
 	var text := ""
 	for p in ([1] if vs_cpu or profile == PROFILE_SOLO else [1, 2]):
 		text += "P%d\n" % p
-		for action in ["left", "right", "up", "down", "jump", "crouch", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "grapple", "dash", "ultimate"]:
+		for action in ["left", "right", "up", "down", "jump", "crouch", "left_hand", "right_hand", "left_leg", "right_leg", "block", "skill1", "skill2", "grapple_enemy", "grapple_parkour", "dash", "ultimate"]:
 			var label := binding_label(p, action, false)
 			if not label.is_empty():
 				text += action.capitalize() + ": " + label + " · "
@@ -241,6 +245,9 @@ func ui_suppressed() -> bool:
 
 
 func _clear_ui_history() -> void:
+	GameState.duel.clear_human_gestures()
+	_view_bases.clear()
+	_recorded_view_bases.clear()
 	_pressed_at.clear()
 	_virtual_just.clear()
 	_virtual_held.clear()
@@ -250,6 +257,8 @@ func _clear_ui_history() -> void:
 		if _pad_modifier[device]:
 			_pad_modifier_blocked[device] = true
 	for p in [1, 2]:
+		if _raw_look(p).length() > LOOK_DEADZONE:
+			_look_neutral_pending[p] = true
 		for a in ACTIONS:
 			var n := action_name(p, a)
 			_ui_consumed[n] = true
@@ -459,6 +468,9 @@ func _pad_connection_changed(device: int, connected: bool) -> void:
 	if connected:
 		return
 	_pad_modifier.erase(device)
+	_look_neutral_pending[device + 1] = true
+	clear_recorded_view_basis(device + 1)
+	GameState.duel.clear_human_gestures(device + 1)
 	_pad_modifier_blocked.erase(device)
 	for slot in range(4):
 		var source := "%d:%d" % [device, slot]
@@ -468,3 +480,67 @@ func _pad_connection_changed(device: int, connected: bool) -> void:
 		if not name.is_empty():
 			_pressed_at.erase(name)
 			_routed_just.erase(name)
+
+
+## Presentation look input; x right, y down. The aim helper captures its resulting world
+## ray at shot request so replay never depends on later camera smoothing.
+func _raw_look(player: int) -> Vector2:
+	if player not in [1, 2]:
+		return Vector2.ZERO
+	return Vector2(Input.get_joy_axis(player - 1, JOY_AXIS_RIGHT_X), Input.get_joy_axis(player - 1, JOY_AXIS_RIGHT_Y))
+
+
+func look_axis(player: int) -> Vector2:
+	var raw := _raw_look(player)
+	if ui_suppressed():
+		return Vector2.ZERO
+	if _look_neutral_pending.has(player):
+		if raw.length() <= LOOK_DEADZONE:
+			_look_neutral_pending.erase(player)
+		return Vector2.ZERO
+	if raw.length() <= LOOK_DEADZONE:
+		return Vector2.ZERO
+	return raw.normalized() * clampf((raw.length() - LOOK_DEADZONE) / (1.0 - LOOK_DEADZONE), 0.0, 1.0)
+
+
+## Input-adapter packet, not a simulation read of a camera. Only a new movement gesture
+## consumes it. Recorded playback overrides live adapters until explicitly ended.
+func set_view_basis(player: int, ground_forward: Vector3) -> bool:
+	if player not in [1, 2] or ui_suppressed() or _recorded_view_bases.has(player):
+		return false
+	var flat := Vector3(ground_forward.x, 0.0, ground_forward.z)
+	if not ground_forward.is_finite() or flat.length_squared() < 0.000001:
+		return false
+	_view_bases[player] = flat.normalized()
+	return true
+
+
+func clear_view_basis(player: int) -> void:
+	if not _recorded_view_bases.has(player):
+		_view_bases.erase(player)
+
+
+func view_basis(player: int) -> Vector3:
+	return Vector3.ZERO if ui_suppressed() else _view_bases.get(player, Vector3.ZERO)
+
+
+func view_basis_packet(player: int) -> Dictionary:
+	var forward := view_basis(player)
+	return {} if forward == Vector3.ZERO else {"forward": forward}
+
+
+func apply_view_basis_packet(player: int, packet: Dictionary) -> bool:
+	if player not in [1, 2] or ui_suppressed():
+		return false
+	_recorded_view_bases.erase(player)
+	_view_bases.erase(player)
+	var valid := packet.is_empty()
+	if packet.get("forward") is Vector3:
+		valid = set_view_basis(player, packet.forward)
+	_recorded_view_bases[player] = true
+	return valid
+
+
+func clear_recorded_view_basis(player: int) -> void:
+	_recorded_view_bases.erase(player)
+	_view_bases.erase(player)
