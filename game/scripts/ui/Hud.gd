@@ -49,6 +49,7 @@ var _names: Dictionary = {}
 var _timer: Label
 var _announce: Label
 var _announce_left: float = 0.0
+var _aim_cues: Array[Label] = []
 var _hint: Label
 var _result: PanelContainer
 var _result_label: Label
@@ -84,7 +85,11 @@ func bind(a: Fighter, b: Fighter, f: MatchFlow) -> void:
 	flow.timer_changed.connect(_on_timer)
 	flow.round_won.connect(_on_round_won)
 	flow.match_over.connect(_on_match_over)
-	flow.round_started.connect(func(_n: int): _result.visible = false)
+	flow.round_started.connect(func(_n: int):
+		_result.visible = false
+		var camera := get_viewport().get_camera_3d()
+		if camera != null and camera.has_meta("harpoon_aim"):
+			camera.get_meta("harpoon_aim").reset())
 
 
 func _build() -> void:
@@ -95,6 +100,16 @@ func _build() -> void:
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
+	for mode in 2:
+		var cue := Label.new()
+		cue.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cue.add_theme_font_size_override("font_size", 24)
+		cue.add_theme_color_override("font_color", Color("ffdc83") if mode == 0 else Color("89e5ec"))
+		cue.add_theme_color_override("font_outline_color", INK)
+		cue.add_theme_constant_override("outline_size", 6)
+		cue.hide()
+		_root.add_child(cue)
+		_aim_cues.append(cue)
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 28)
@@ -459,15 +474,13 @@ func _on_meter(idx: int, m: float, mx: float) -> void:
 		sb.bg_color = Color(1.0, 0.95, 0.6) if full else (p1 if idx == 1 else p2).data.accent_color
 
 
-func _on_grapple(idx: int, c: int, cd: float, mc: int) -> void:
+func _on_grapple(idx: int, c: int, _cd: float, _mc: int) -> void:
 	var pips: Array = _charges[idx]
 	var d: CharacterData = (p1 if idx == 1 else p2).data
 	for i in pips.size():
 		var frac := 0.0
 		if i < c:
 			frac = 1.0
-		elif i == c and cd > 0.0:
-			frac = 1.0 - cd / maxf((p1 if idx == 1 else p2).grapple.cooldown_total, 0.001)
 		_fill_cell(pips[i] as ColorRect, frac, d.accent_color)
 
 
@@ -534,6 +547,7 @@ func toggle_pause() -> void:
 func _process(delta: float) -> void:
 	if get_tree().paused:
 		return
+	_update_aim_cues()
 	# hp trail lags behind the live bar
 	for idx in [1, 2]:
 		var live := _hp[idx] as ProgressBar
@@ -555,3 +569,32 @@ func _input(event: InputEvent) -> void:
 	if _paused and not _comfort.visible and not event.is_echo() and (event.is_action_pressed("ui_pause") or event.is_action_pressed("ui_cancel")):
 		get_viewport().set_input_as_handled()
 		toggle_pause()
+
+
+func _update_aim_cues() -> void:
+	var camera := get_viewport().get_camera_3d()
+	for cue in _aim_cues:
+		cue.hide()
+	if camera == null or p1 == null or InputRouter.ui_suppressed() or not camera.has_meta("harpoon_aim"):
+		return
+	var helper: HarpoonAim = camera.get_meta("harpoon_aim")
+	if p1.grapple.busy() or (p1.grapple.charges <= 0 and p1.grapple.reusable_rope() == 0):
+		return
+	for mode in 2:
+		if mode == 0 and p1.grapple.charges <= 0:
+			continue
+		var intent := helper.capture(p1, mode == 0, false)
+		var point: Vector3 = intent.point
+		if camera.is_position_behind(point) or (intent.target_id.is_empty() and not intent.manual):
+			continue
+		var screen := camera.unproject_position(point)
+		if not get_viewport().get_visible_rect().has_point(screen):
+			continue
+		var cue := _aim_cues[mode]
+		cue.text = ("◇ " if not intent.target_id.is_empty() else "+ ") + aim_binding(mode, helper.last_gamepad)
+		cue.position = _root.get_global_transform_with_canvas().affine_inverse() * screen + Vector2(-16, -16 + mode * 26)
+		cue.show()
+
+
+func aim_binding(mode: int, gamepad: bool) -> String:
+	return InputRouter.binding_label(p1.player_index if p1 != null else 1, "grapple_enemy" if mode == 0 else "grapple_parkour", gamepad)

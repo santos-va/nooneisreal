@@ -4,6 +4,9 @@ extends Node3D
 ## This is the stand-in until rigged Meshy/VRoid characters land (docs/Art/Pipeline-2D-to-3D.md).
 ## It also carries the spring-based "flinch" layer that gives hits a wobbly, physical feel.
 
+const HookMotion = preload("res://scripts/fighter/GrappleMotion.gd")
+const LimbMotion = preload("res://scripts/fighter/LimbMotion.gd")
+
 const TOON := preload("res://shaders/toon.gdshader")
 const OUTLINE := preload("res://shaders/outline.gdshader")
 
@@ -211,6 +214,7 @@ func tick(delta: float, f: Fighter, frozen: bool) -> void:
 	idle_time += delta
 	rotation.y = f.yaw() if GameState.free_move else (0.0 if f.facing == 1 else PI)
 	_compute_target(f, delta)
+	HookMotion.apply_recovery(self, f)
 	_water_sway(f)
 	if f.state == Fighter.State.ATTACK and f.current_move != null:
 		# hold each drawing, then snap to the next on a 12 fps step or on a phase boundary
@@ -291,8 +295,8 @@ func _compute_target(f: Fighter, delta: float) -> void:
 			_pose_set("shin_r", Vector3(0, 0, -0.5 * maxf(0.0, s)))
 			_pose_set("torso", Vector3(0, 0, 0.08))
 		Fighter.State.CROUCH:
-			_crouch()
 			_guard(0.0)
+			_crouch()
 		Fighter.State.JUMP:
 			_pose_set("thigh_l", Vector3(0, 0, 0.7))
 			_pose_set("thigh_r", Vector3(0, 0, 0.4))
@@ -339,16 +343,7 @@ func _compute_target(f: Fighter, delta: float) -> void:
 		Fighter.State.ATTACK:
 			_attack_pose(f)
 		Fighter.State.GRAPPLE:
-			var to_anchor: Vector3 = f.grapple.anchor_point - f.global_position
-			var ang := atan2(to_anchor.y, absf(to_anchor.x)) if to_anchor.length() > 0.01 else 1.2
-			_pose_set("upper_arm_r", Vector3(0, 0, PI * 0.5 + ang))
-			_pose_set("forearm_r", Vector3(0, 0, 0.1))
-			_pose_set("upper_arm_l", Vector3(0, 0, 0.9))
-			_pose_set("thigh_l", Vector3(0, 0, 0.9))
-			_pose_set("thigh_r", Vector3(0, 0, 0.6))
-			_pose_set("shin_l", Vector3(0, 0, -1.3))
-			_pose_set("shin_r", Vector3(0, 0, -1.0))
-			_pose_set("torso", Vector3(0, 0, 0.2))
+			HookMotion.apply(self, f)
 		Fighter.State.WALL_SPLAT:
 			# flattened against the wall: back arched into it, arms thrown wide, head snapped back
 			_pose_set("torso", Vector3(0, 0, -0.45))
@@ -418,6 +413,9 @@ func _attack_pose(f: Fighter) -> void:
 	var anim := m.anim
 	if f.chain_index % 2 == 1 and m.anim_chain != "":
 		anim = m.anim_chain
+	if LimbMotion.supports(anim):
+		LimbMotion.apply(self, anim, ext)
+		return
 	match anim:
 		"light":
 			_pose_set("upper_arm_r", Vector3(0, 0, lerpf(0.95, 1.6, ext)))

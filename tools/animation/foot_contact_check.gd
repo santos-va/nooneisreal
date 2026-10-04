@@ -57,6 +57,49 @@ func _initialize() -> void:
 							check(absf(after - contact.penetration(side, gs.water)) < 0.00001, "cached geometry agrees with full mesh")
 							print("sole ", id, " ", wet, " ", attack, " ", frame, " ", side, " ", before[side], " -> ", after)
 							check(after < 0.002, id + " shoe above sampled surface " + side)
+		# Grounded throwing anticipation uses the same bounded shoe solve as a crouch.
+		var Hook: GDScript = load("res://scripts/grapple/GrappleHook.gd")
+		f.rotation = Vector3.ZERO
+		f.scale = Vector3.ONE
+		f.velocity = Vector3.ZERO
+		f.state = Actor.State.GRAPPLE
+		for wet: bool in [false, true]:
+			gs.water = load("res://scripts/core/WaveField.gd").new() if wet else null
+			if wet:
+				gs.water.use_z = true
+				gs.water.frame = 137
+			f.position = Vector3(2.0, 0.0, -0.7)
+			f.position.y = f.floor_y()
+			f.state = Actor.State.IDLE
+			for settling: int in 60:
+				f.animator.tick(1.0 / 60.0, f, false)
+				sk._physics_process(1.0 / 60.0)
+			f.state = Actor.State.GRAPPLE
+			f.grapple.anchor_point = f.position + Vector3(4.0, 6.0, 0.0)
+			f.grapple.phase = Hook.Phase.WINDUP
+			check(contact.permitted(f, null), id + " grounded windup permitted")
+			for frame: int in 31:
+				f.grapple.windup_progress = float(frame) / 30.0
+				f.animator.tick(1.0 / 60.0, f, false)
+				sk._physics_process(1.0 / 60.0)
+				sk.retarget()
+				var authority: Array = [f.transform, f.velocity, f.hp, f.state, f.grapple.phase, f.grapple.anchor_point]
+				var hips: Transform3D = sk.hero_skeleton.get_bone_global_pose(sk.hero_skeleton.find_bone("Hips"))
+				contact.apply(f, null)
+				check(authority == [f.transform, f.velocity, f.hp, f.state, f.grapple.phase, f.grapple.anchor_point], "windup authority unchanged")
+				check(hips == sk.hero_skeleton.get_bone_global_pose(sk.hero_skeleton.find_bone("Hips")), "windup pelvis unchanged")
+				if frame % 6 == 0:
+					for side: String in ["Left", "Right"]:
+						var depth: float = independent_penetration(sk, side, gs.water)
+						print("windup sole ", id, " wet=", wet, " frame=", frame, " ", side, " depth=", depth)
+						check(depth < 0.002, id + " windup shoes clear real sampled surface")
+			for phase: int in [Hook.Phase.FLIGHT, Hook.Phase.HANG]:
+				f.grapple.phase = phase
+				check(not contact.permitted(f, null), "flight and hang never foot-locked even near ground")
+			f.grapple.phase = Hook.Phase.WINDUP
+			f.position.y += 1.0
+			check(not contact.permitted(f, null), "airborne windup excluded")
+		f.grapple.phase = Hook.Phase.IDLE
 		gs.water = null
 		f.position = Vector3.ZERO
 		for state: int in [Actor.State.IDLE, Actor.State.WALK, Actor.State.JUMP, Actor.State.LAUNCHED, Actor.State.ATTACK]:

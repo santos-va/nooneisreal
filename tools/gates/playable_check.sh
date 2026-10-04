@@ -32,6 +32,14 @@ cases = [
     ('audio', 'tools/audio/sfx_check.gd', r'sfx-check: OK \([1-9][0-9]* checks, 0 failures\)', [], 0),
     ('comfort-settings', 'tools/settings/comfort_check.gd', r'COMFORT_CHECK_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('comfort-input', 'tools/input/comfort_input_check.gd', r'COMFORT_INPUT_CHECK checks=[1-9][0-9]* failures=0', [], 0),
+    ('free-movement', 'tools/input/free_movement_check.gd', r'FREE_MOVEMENT_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
+    ('limb-input', 'tools/input/limb_input_check.gd', r'LIMB_INPUT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('limb-combat', 'tools/input/limb_combat_check.gd', r'LIMB_COMBAT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('harpoon', 'tools/grapple/harpoon_check.gd', r'HARPOON_CHECK checks=[1-9][0-9]* failures=0', [], 0),
+    ('harpoon-aim', 'tools/aim/harpoon_aim_check.gd', r'HARPOON_AIM_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('rope-visual', 'tools/grapple/rope_visual_check.gd', r'ROPE_VISUAL_CHECK_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('rope-recovery', 'tools/animation/rope_recovery_motion_check.gd', r'ROPE_RECOVERY_MOTION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('gait', 'tools/animation/gait_check.gd', r'GAIT_CHECK_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('comfort-ui', 'tools/ui/comfort_ui_check.gd', r'COMFORT_UI PASS \(0 failures; mutation=\)', [], 0),
 ]
 for mutation in ('portrait', 'icon', 'input'):
@@ -41,6 +49,10 @@ for mutation in ('portrait', 'icon', 'input'):
 for mutation in ('footer', 'focus', 'bounds'):
     cases.append(('comfort-ui-negative-' + mutation, 'tools/ui/comfort_ui_check.gd',
                   rf'COMFORT_UI FAIL \([1-9][0-9]* failures; mutation={mutation}\)',
+                  ['--', '--break=' + mutation], 1))
+for mutation in ('opponent_frame', 'orbit', 'facing'):
+    cases.append(('free-movement-negative-' + mutation, 'tools/input/free_movement_check.gd',
+                  rf'FREE_MOVEMENT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
 failures = 0
 for name, script, sentinel, args, expected_rc in cases:
@@ -57,14 +69,19 @@ for name, script, sentinel, args, expected_rc in cases:
         rc = 124
     path = logs / (name + '.log')
     path.write_text(output)
-    # Only the UI negative controls may print their deliberate assertion errors.
+    # Only named negative controls may print their scoped deliberate assertion errors.
     # Shader, resource, compiler and other runtime errors cannot hide behind a success sentinel.
     complete = re.search('^' + sentinel + '$', output, re.MULTILINE) is not None
     errors = [line.strip() for line in output.splitlines()
               if re.match(r'^\s*(?:SCRIPT ERROR|ERROR):', line)]
-    assertion_prefix = 'ERROR: COMFORT_UI: ' if name.startswith('comfort-ui-negative-') else 'ERROR: UI_LAYOUT: '
+    assertion_prefix = None
+    for scope, prefix in (('ui-negative-', 'ERROR: UI_LAYOUT: '),
+                          ('comfort-ui-negative-', 'ERROR: COMFORT_UI: '),
+                          ('free-movement-negative-', 'ERROR: FREE_MOVEMENT: ')):
+        if name.startswith(scope):
+            assertion_prefix = prefix
     unexpected = [line for line in errors
-                  if expected_rc == 0 or not line.startswith(assertion_prefix)]
+                  if expected_rc == 0 or assertion_prefix is None or not line.startswith(assertion_prefix)]
     ok = rc == expected_rc and complete and not unexpected and 'SCRIPT ERROR' not in output
     print(f'PLAYABLE {name}: {"PASS" if ok else "FAIL"} rc={rc} log={path}', flush=True)
     if not ok:

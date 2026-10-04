@@ -2,6 +2,7 @@ class_name ProceduralMotionFallback
 extends RefCounted
 ## Bridge the existing semantic capsule drawings onto UAL, only for moves without authored clips.
 ## This does not infer new attacks from unrelated library names or change combat data.
+const LimbMotion = preload("res://scripts/fighter/LimbMotion.gd")
 const MOVES := {
 	"choko": ["crouch_light", "record", "time_stop"],
 	"skea": ["low_kick", "shadow_veil", "cursed_grimoire", "cursed_grimoire_veil"],
@@ -22,19 +23,22 @@ const PARTS := {
 }
 
 static func supports(character_id: String, move: MoveData) -> bool:
-	return move != null and move.anim_clip.is_empty() and move.id in MOVES.get(character_id, [])
+	return move != null and move.anim_clip.is_empty() and (move.id in MOVES.get(character_id, []) or LimbMotion.supports(move.anim))
 
 
-static func apply(skeleton: Skeleton3D, animator: RigAnimator) -> void:
+static func apply(skeleton: Skeleton3D, animator: RigAnimator, upper_body_only: bool = false) -> void:
 	# Capsule pivots already contain the authored stepped phase, root offset, spin and reaction.
 	# Convert full rotations, rather than only aiming a bone, to preserve the pivot's twist.
-	skeleton.reset_bone_poses()
+	if not upper_body_only:
+		skeleton.reset_bone_poses()
 	var conversion: Quaternion = (skeleton.global_basis.orthonormalized().inverse() * animator.global_basis.orthonormalized()).get_rotation_quaternion()
 	for i in skeleton.get_bone_count():
 		var name: String = skeleton.get_bone_name(i)
 		if not PARTS.has(name):
 			continue
 		var part: String = PARTS[name][0]
+		if upper_body_only and part in ["pelvis", "thigh_l", "thigh_r", "shin_l", "shin_r"]:
+			continue
 		var child: int = skeleton.find_bone(PARTS[name][1])
 		var rest: Transform3D = skeleton.get_bone_global_rest(i)
 		var direction: Vector3 = (skeleton.get_bone_global_rest(child).origin - rest.origin).normalized()
@@ -46,6 +50,8 @@ static func apply(skeleton: Skeleton3D, animator: RigAnimator) -> void:
 		var parent: int = skeleton.get_bone_parent(i)
 		var parent_rotation := Quaternion.IDENTITY if parent < 0 else skeleton.get_bone_global_pose(parent).basis.orthonormalized().get_rotation_quaternion()
 		skeleton.set_bone_pose_rotation(i, (parent_rotation.inverse() * desired).normalized())
+	if upper_body_only:
+		return
 	# Only the authored vertical offset; no horizontal root motion or gameplay writes.
 	var pelvis: int = skeleton.find_bone("pelvis")
 	var pos: Vector3 = skeleton.get_bone_rest(pelvis).origin

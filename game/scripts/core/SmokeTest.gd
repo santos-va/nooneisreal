@@ -100,9 +100,9 @@ var _a2_seen: Array = []
 var _cr_log: Array = []              # 3c: the effect's [frame, move id] hits of the current run
 var _cr_case: int = 0                 # 3c: which point-blank / band / far run
 var _cr_hp: float = 0.0
-## 02 § Втома (В-1, Арес, PLACEHOLDER) as literals: on at 0.3; at 1.0 get-up 27 (18), walk × 0.9, dash × 1.25, grapple 3.6 s,
+## 02 § Втома (В-1, Арес, PLACEHOLDER) as literals: on at 0.3; at 1.0 get-up 27 (18), walk × 0.9, dash × 1.25, finite harpoon inventory,
 ## recovery + 2; actions in seconds of fight time; 300 s to full for both; 297 s of fight alone → 0.99.
-const GDD_FATIGUE := {"on": 0.3, "getup": [18, 27], "walk": 0.9, "dash": 1.25, "grapple_s": 3.6, "recovery": 2,
+const GDD_FATIGUE := {"on": 0.3, "getup": [18, 27], "walk": 0.9, "dash": 1.25, "recovery": 2,
 	"dash_s": 1.5, "grapple_shot_s": 2.0, "skill_s": 1.0, "seconds": 300.0, "match_s": 297.0, "match_fatigue": 0.99}
 var _fb0: Dictionary = {}             # lane B: Flipbook.spawned at the start of a duel replay run
 var _wt: Dictionary = {}              # body weight stage: phase, frames, the fighter under test
@@ -420,7 +420,11 @@ func _check_mode_row() -> bool:
 		focus_hint.append(menu._foot.text)
 	menu._comfort_button.pressed.emit()
 	var full_controls: String = menu._comfort.controls_label.text
-	var reachable: bool = menu._comfort.visible and menu._comfort.controls_label.focus_mode == Control.FOCUS_ALL and "Space jump" in full_controls
+	var reachable: bool = menu._comfort.visible and menu._comfort.controls_label.focus_mode == Control.FOCUS_ALL and "Jump: Space" in full_controls
+	# The expanded help must expose every new limb and its current physical binding.
+	for action: String in ["left_hand", "right_hand", "left_leg", "right_leg"]:
+		reachable = reachable and (action.capitalize() + ": " + InputRouter.binding_label(1, action, false)) in full_controls
+	reachable = reachable and "Comma (<)" in full_controls and "Hold grapple to stay attached" in full_controls and "Release grapple to detach" in full_controls
 	menu._comfort.close_panel()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(ComfortSettings.storage_path))
 	ComfortSettings.storage_path = comfort_old_path
@@ -435,10 +439,10 @@ func _check_mode_row() -> bool:
 	GameState.set_free_move(true)
 	var off: Array = got[0]
 	var on: Array = got[1]
-	if off[0] != false or off[1] != false or off[2] or not "2.5D" in str(off[3]) or not "W/Space jump" in str(off[4]):
+	if off[0] != false or off[1] != false or off[2] or not "2.5D" in str(off[3]) or not "Jump: W / Space" in str(off[4]):
 		_fail("MODE row, first press (3D → 2.5D): free_move %s, saved %s, X on crouch %s, row '%s', hint '%s'" % off)
 		return false
-	if on[0] != true or on[1] != true or not on[2] or not "3D" in str(on[3]) or not "Space jump" in str(on[4]) or "W/Space" in str(on[4]):
+	if on[0] != true or on[1] != true or not on[2] or not "3D" in str(on[3]) or not "Jump: Space" in str(on[4]) or "Jump: W / Space" in str(on[4]):
 		_fail("MODE row, second press (2.5D → 3D): free_move %s, saved %s, X on crouch %s, row '%s', hint '%s'" % on)
 		return false
 	if not hint_ok:
@@ -921,12 +925,12 @@ func _check_hud() -> bool:
 			if Hud.cell_frac(pip) != 0.0:
 				_fail("HUD P%d: a round pip is filled before any round is won" % idx)
 				return false
-	# cooldowns fill from the bottom: one grapple charge a quarter into its cooldown, Skea's dash half back
+	# Finite harpoon inventory never shows a timer refill; Skea dash still fills from the bottom.
 	var d1 := p1.data
-	hud._on_grapple(1, 0, d1.grapple_cooldown * 0.25, d1.grapple_charges)
+	hud._on_grapple(1, 1, d1.grapple_cooldown * 0.25, d1.grapple_charges)
 	var g: Array = hud._charges[1]
 	var g_seen := [Hud.cell_frac(g[0]), Hud.cell_frac(g[1]), (g[0] as ColorRect).color.to_html(false)]
-	var g_ok: bool = absf(g_seen[0] - 0.75) < 0.001 and g_seen[1] == 0.0 and g_seen[2] == d1.accent_color.to_html(false)
+	var g_ok: bool = g_seen[0] == 1.0 and g_seen[1] == 0.0 and g_seen[2] == d1.accent_color.to_html(false)
 	hud._on_grapple(1, p1.grapple.charges, p1.grapple.cooldown_left, p1.grapple.max_charges)
 	var skea: Fighter = p2 if p2.data.dash_charges > 0 else p1
 	var ds: Array = hud._dash[skea.player_index]
@@ -938,9 +942,9 @@ func _check_hud() -> bool:
 		d_ok = d_seen[0] == 1.0 and absf(d_seen[1] - 0.5) < 0.001 and d_seen[2] == "b679f5"
 		hud._on_dash(skea.player_index, skea.dash_charges_left, 0.0, skea.data.dash_charges)
 	if not g_ok or not d_ok:
-		_fail("HUD: grapple [charge ¼ into cooldown, next, colour] = %s (want [0.75, 0, %s]); Skea dash [full, half back, colour] = %s (want [1, 0.5, b679f5])" % [g_seen, d1.accent_color.to_html(false), d_seen])
+		_fail("HUD: grapple [available, spent despite legacy cooldown, colour] = %s (want [1, 0, %s]); Skea dash [full, half back, colour] = %s (want [1, 0.5, b679f5])" % [g_seen, d1.accent_color.to_html(false), d_seen])
 		return false
-	_ok("HUD variant 2 (06-UI-UX § Рішення Santos): %d elements in ink 2 + cream 1 rings (5 + 3 at phone ×0.433; this window ×%.3f → %s), no plate, wells %s, cooldowns fill from the bottom, Skea dash #b679f5" % [want, here_scale, hud.ring_units, Hud.WELL.to_html(false)])
+	_ok("HUD variant 2 (06-UI-UX § Рішення Santos): %d elements in ink 2 + cream 1 rings (5 + 3 at phone ×0.433; this window ×%.3f → %s), no plate, wells %s, harpoons show finite stock, dash cooldown fills from the bottom, Skea dash #b679f5" % [want, here_scale, hud.ring_units, Hud.WELL.to_html(false)])
 	return true
 
 
@@ -994,6 +998,10 @@ func _stage_fatigue() -> void:
 		f.fatigue = 0.0
 		f.grapple._spend()
 		var after_shot := f.fatigue * GDD_FATIGUE.seconds
+		var stock_after_shot: int = f.grapple.charges
+		f.grapple.tick_regen(60.0, false)
+		if f.grapple.charges != stock_after_shot or stock_after_shot + f.grapple.registry.owned(f.player_index) != f.grapple.max_charges:
+			bad += " finite harpoon inventory regenerated or failed conservation;"
 		f.fatigue = 0.0
 		f._start_dash(1.0)
 		var after_dash := f.fatigue * GDD_FATIGUE.seconds
@@ -1018,10 +1026,10 @@ func _stage_fatigue() -> void:
 			f.speed_buff_frames = 0
 			s.dash_charges_left = s.data.dash_charges
 			s._start_flash(1.0)
-			got.append([f.getup_frames(), snappedf(f.speed_mult(), 0.0001), snappedf(s.dash_recharge_total / s.data.dash_recharge, 0.0001), snappedf(f.grapple._recharge(), 0.0001), f.move_end_frame(light) - light.total_frames()])
-		var want := [[GDD_FATIGUE.getup[0], 1.0, 1.0, 3.0, 0], [GDD_FATIGUE.getup[0], 1.0, 1.0, 3.0, 0], [GDD_FATIGUE.getup[1], GDD_FATIGUE.walk, GDD_FATIGUE.dash, GDD_FATIGUE.grapple_s, GDD_FATIGUE.recovery]]
+			got.append([f.getup_frames(), snappedf(f.speed_mult(), 0.0001), snappedf(s.dash_recharge_total / s.data.dash_recharge, 0.0001), f.move_end_frame(light) - light.total_frames()])
+		var want := [[GDD_FATIGUE.getup[0], 1.0, 1.0, 0], [GDD_FATIGUE.getup[0], 1.0, 1.0, 0], [GDD_FATIGUE.getup[1], GDD_FATIGUE.walk, GDD_FATIGUE.dash, GDD_FATIGUE.recovery]]
 		if str(got) != str(want):
-			bad += " [get-up, walk, dash, grapple s, recovery +] at 0 / 0.3 / 1.0 = %s (want %s);" % [got, want]
+			bad += " [get-up, walk, dash, recovery +] at 0 / 0.3 / 1.0 = %s (want %s);" % [got, want]
 		# rounds keep it; the tired stance from 0.5
 		f.fatigue = 0.7
 		f.reset_for_round(-3.0, 1)
@@ -1040,7 +1048,7 @@ func _stage_fatigue() -> void:
 		if bad != "":
 			_fail("fatigue (02 § Втома):" + bad)
 			return
-		_ok("fatigue (02 § Втома): 60 fight frames = 1 s, %.0f s alone → %.2f; shot %.1f / dash %.1f / skill %.1f s, ult and hits taken 0; at 1.0 get-up %d, walk ×%.1f, dash ×%.2f, grapple %.1f s, recovery +%d, none of it below 0.3; a new round keeps it (stance '%s')" % [GDD_FATIGUE.match_s, GDD_FATIGUE.match_fatigue, GDD_FATIGUE.grapple_shot_s, GDD_FATIGUE.dash_s, GDD_FATIGUE.skill_s, GDD_FATIGUE.getup[1], GDD_FATIGUE.walk, GDD_FATIGUE.dash, GDD_FATIGUE.grapple_s, GDD_FATIGUE.recovery, stance])
+		_ok("fatigue (02 § Втома): 60 fight frames = 1 s, %.0f s alone → %.2f; shot %.1f / dash %.1f / skill %.1f s, ult and hits taken 0; at 1.0 get-up %d, walk ×%.1f, dash ×%.2f, finite harpoon stock conserved without timer refill, recovery +%d, none of it below 0.3; a new round keeps it (stance '%s')" % [GDD_FATIGUE.match_s, GDD_FATIGUE.match_fatigue, GDD_FATIGUE.grapple_shot_s, GDD_FATIGUE.dash_s, GDD_FATIGUE.skill_s, GDD_FATIGUE.getup[1], GDD_FATIGUE.walk, GDD_FATIGUE.dash, GDD_FATIGUE.recovery, stance])
 		# clean slate for the jab runs
 		for x in [f, s]:
 			x.reset_for_round(-3.0 if x == f else 3.0, 1 if x == f else -1)
@@ -1648,7 +1656,16 @@ func _physics_process(_delta: float) -> void:
 		arena = cs
 		p1 = arena.p1
 		p2 = arena.p2
+		# These scripted virtual directions encode opponent-relative AI intent.
+		# Human gesture movement is covered with actual device events by free_movement_check.
+		p1.is_cpu = true
+		p2.is_cpu = true
 		flow = arena.flow
+		for fighter: Fighter in [p1, p2]:
+			var capacity := 7 if fighter.data.id == "choko" else 2
+			if fighter.grapple.max_charges != capacity:
+				_fail("finite harpoon capacity %s: %d, want %d" % [fighter.data.id, fighter.grapple.max_charges, capacity])
+				return
 		_ok("arena loaded: %s vs %s, stage %s" % [p1.data.display_name, p2.data.display_name, GameState.stage().id])
 		if not GameState.skeletal_rig and (p1.skeletal != null or p1.get_node_or_null("SkeletalRig") != null):
 			_fail("capsule mode built a SkeletalRig — the smoke's capsule stages set skeletal_rig = false")
@@ -1761,15 +1778,22 @@ func _physics_process(_delta: float) -> void:
 					_fail("rewind failed (x %.2f vs %.2f, marker %s)" % [p1.global_position.x, _x0, p1.record_marker])
 		7:
 			if p1.is_actionable():
+				_n0 = p1.grapple.charges
 				InputRouter.v_set(1, "grapple", true)
 				_next()
 		8:
 			InputRouter.v_set(1, "grapple", true)
-			if p1.state == Fighter.State.GRAPPLE:
-				_ok("grapple attached (charges left %d)" % p1.grapple.charges)
+			if p1.grapple.phase == GrappleHook.Phase.WINDUP and p1.grapple.charges != _n0:
+				_fail("grapple spent charge during windup")
+				return
+			if p1.grapple.attached:
+				if _f - _f0 < 30 or p1.grapple.charges != _n0 - 1:
+					_fail("grapple attached before 30-frame windup or spent wrong charge count")
+					return
+				_ok("grapple attached after windup and flight (charges left %d)" % p1.grapple.charges)
 				_next()
-			elif _f > _f0 + 30:
-				_fail("grapple did not attach")
+			elif _f > _f0 + 100:
+				_fail("grapple did not attach after windup and flight")
 		9:
 			InputRouter.v_set(1, "grapple", _f < _f0 + 40)
 			if _f > _f0 + 50 and p1.state != Fighter.State.GRAPPLE:
@@ -1914,6 +1938,8 @@ func _physics_process(_delta: float) -> void:
 		# ---------------- keyboard profiles (ADR-009): real key events, not virtual input -------
 		26:
 			if flow.phase == MatchFlow.Phase.FIGHT and p1.is_actionable() and p2.is_actionable():
+				p1.is_cpu = false
+				p2.is_cpu = false
 				_profile0 = InputRouter.profile
 				for prof in InputRouter.PROFILES:
 					var clash := _key_clash(prof)
@@ -2271,34 +2297,45 @@ func _physics_process(_delta: float) -> void:
 				p2.global_position = Vector3(2.0, p2.global_position.y, 0.0)
 				_next()
 		48:
-			# 0.3-3: zip/reel into the depth: hold up + hold grapple until the hook reaches the anchor
+			# Aim into depth, then neutral hold: attachment persists without automatic reel.
 			if _f == _f0 + 3:
 				InputRouter.v_set(1, "up", true)
 				_x0 = 0.0
-				_rmax = 99.0
+				_n0 = p1.grapple.charges
 				InputRouter.v_set(1, "grapple", true)
 			if _f > _f0 + 3:
-				if _x0 > 0.0 or p1.state == Fighter.State.GRAPPLE:
-					# measured on the release frame too (the hook lets go the frame it reaches the anchor)
+				if p1.grapple.phase == GrappleHook.Phase.WINDUP and p1.grapple.charges != _n0:
+					_fail("3D grapple spent charge before release")
+					return
+				if p1.grapple.attached and _x0 == 0.0:
+					_x0 = float(_f)
 					_d0 = p1.grapple.anchor_point.z
-					_rmax = minf(_rmax, (p1.grapple.anchor_point - (p1.global_position + GrappleHook.HAND)).length())
-				if p1.state == Fighter.State.GRAPPLE:
-					_x0 = 1.0
-					if p1.grapple._frames == 10:
-						_shot("14_free_grapple_zip")
-				elif _x0 > 0.0:
-					if _rmax > 1.4 or absf(_d0) < 1.0 or signf(p1.global_position.z) != signf(_d0):
-						_fail("grapple 3D: closest to anchor %.2f m (want < 1.4), anchor z %.2f, p1 z %.2f" % [_rmax, _d0, p1.global_position.z])
+					_rmax = p1.grapple.rope_length
+					InputRouter.v_set(1, "up", false)
+					if _f - _f0 < 33 or absf(_d0) < 1.0 or p1.grapple.charges != _n0 - 1:
+						_fail("3D grapple did not reach depth anchor after charged windup/flight")
 						return
-					_ok("grapple 3D: reeled to the anchor at z %.2f (closest %.2f m), p1 now at z %.2f" % [_d0, _rmax, p1.global_position.z])
+				if _x0 > 0.0 and _f <= int(_x0) + 30:
+					if not p1.grapple.attached or absf(p1.grapple.rope_length - _rmax) > 0.01:
+						_fail("neutral hold detached or automatically reeled rope %.3f → %.3f" % [_rmax, p1.grapple.rope_length])
+						return
+					if _f == int(_x0) + 20:
+						_shot("14_free_grapple_hold")
+				if _x0 > 0.0 and _f == int(_x0) + 31:
+					InputRouter.v_set(1, "grapple", false)
+				if _x0 > 0.0 and _f > int(_x0) + 33:
+					if p1.grapple.busy():
+						_fail("3D grapple stayed attached after releasing hold")
+						return
+					_ok("3D grapple reached anchor z %.2f; neutral held fixed %.2f m rope for 30 frames; release detached" % [_d0, _rmax])
 					_next()
-				if _f > _f0 + 200:
-					_fail("grapple 3D never attached/released (state %d, attached %s)" % [p1.state, _x0 > 0.0])
+				if _f > _f0 + 180:
+					_fail("3D grapple never attached/released (phase %d)" % p1.grapple.phase)
 		49:
 			# 0.3-3: pull the enemy along the gaze when they stand off the X line
-			if not (p1.is_actionable() and p2.is_actionable()) and _f < _f0 + 200:
-				return
 			if _n0 != 49:
+				if not (p1.is_actionable() and p2.is_actionable()) and _f < _f0 + 200:
+					return
 				_n0 = 49
 				p1.global_position = Vector3(0.0, p1.global_position.y, 0.0)
 				p2.global_position = Vector3(3.0, p2.global_position.y, 3.0)
@@ -2307,7 +2344,13 @@ func _physics_process(_delta: float) -> void:
 			if _f == _f0 + 3:
 				InputRouter.v_set(1, "crouch", true)
 				InputRouter.v_press(1, "grapple")
+			if _f == _f0 + 25:
+				if _flat(p2.global_position - Vector3(3.0, p2.global_position.y, 3.0)).length() > 0.01 or p1.grapple.phase != GrappleHook.Phase.WINDUP:
+					_fail("enemy pull happened before telegraph completed")
+					return
 			if _f == _f0 + 60:
+				InputRouter.v_set(1, "grapple", false)
+				InputRouter.v_set(1, "crouch", false)
 				var want := p1.global_position + p1.forward * 1.25
 				var miss := _flat(p2.global_position - want).length()
 				var z_moved := absf(p2.global_position.z - 3.0)
