@@ -16,6 +16,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run gates (wikilinks, asset registry, role parity)
         run: bash tools/gates/run_gates.sh
+  distribution:
+    name: macOS updater safety
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Updater regression tests
+        run: python3 tools/distribution/test_distribution.py
   godot:
     name: godot smoke + playable regressions
     runs-on: ubuntu-latest

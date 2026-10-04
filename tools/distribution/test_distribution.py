@@ -2,7 +2,9 @@
 """Adversarial updater tests on Linux/macOS; OS services mocked, filesystem real.
 These tests do not claim Gatekeeper, codesign or LaunchAgent acceptance on a Mac.
 """
+import gzip
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -49,7 +51,13 @@ mv() {
     command mv "$@"
     if [ "${TEST_INTERRUPT:-}" = yes ] && [ "$2" = "$APP" ]; then kill -TERM $$; fi
 }
-update "$TEST_ROOT/feed"
+fetch() {
+    local name="${1##*/}" source="$TEST_ROOT/feed/${1##*/}"
+    if [[ "$name" = chunk-*.gz ]]; then source="$TEST_ROOT/feed/chunks/$name"; fi
+    printf '%s\n' "$name" >> "$TEST_ROOT/downloads"
+    cp "$source" "$2"
+}
+if [ "${TEST_NETWORK:-}" = yes ]; then update; else update "$TEST_ROOT/feed"; fi
 '''
 
 
@@ -208,6 +216,163 @@ class DistributionTests(unittest.TestCase):
         os.utime(lock, (time.time() - 600, time.time() - 600))
         self.assertEqual(self.run_update().returncode, 0)
         self.assertEqual(self.current(), NEW)
+
+
+    def incremental_feed(self):
+        spec = importlib.util.spec_from_file_location('mac_package', SCRIPT.with_name('package-macos.py'))
+        package = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(package)
+        self.old_binary = b'A' * package.CHUNK_BYTES + b'B' * package.CHUNK_BYTES + b'old signature'
+        self.new_binary = self.old_binary[:-13] + b'new signature'
+        self.old_pck = b'C' * package.CHUNK_BYTES + b'old scene'
+        self.new_pck = self.old_pck[:-9] + b'new scene'
+        (self.app / 'Contents/MacOS/No One Is Real').write_bytes(self.old_binary)
+        resources = self.app / 'Contents/Resources'
+        resources.mkdir()
+        (resources / 'No One Is Real.pck').write_bytes(self.old_pck)
+        (resources / 'removed.txt').write_text('removed in target')
+        entries = {
+            'Contents/Info.plist': (plistlib.dumps(metadata(NEW)), 0o644),
+            'Contents/MacOS/No One Is Real': (self.new_binary, 0o755),
+            'Contents/Resources/No One Is Real.pck': (self.new_pck, 0o644),
+        }
+        archive = self.feed / 'NoOneIsReal-macos.zip'
+        with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
+            for path, (data, mode) in entries.items():
+                item = zipfile.ZipInfo(APP_NAME + '/' + path)
+                item.create_system = 3
+                item.external_attr = (stat.S_IFREG | mode) << 16
+                item.compress_type = zipfile.ZIP_DEFLATED
+                z.writestr(item, data)
+        self.manifest['sha256'] = hashlib.sha256(archive.read_bytes()).hexdigest()
+        self.manifest['size'] = archive.stat().st_size
+        self.manifest.update(package.write_chunks(archive, self.feed))
+        self.write_manifest()
+
+    def rewrite_index(self, text):
+        index = text.encode()
+        (self.feed / 'chunk-index.tsv').write_bytes(index)
+        self.manifest['index_sha256'] = hashlib.sha256(index).hexdigest()
+        self.manifest['index_size'] = len(index)
+        self.write_manifest()
+
+    def test_incremental_reuses_engine_and_content_blocks_exactly(self):
+        self.incremental_feed()
+        result = self.run_update(TEST_NETWORK='yes')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.app / 'Contents/MacOS/No One Is Real').read_bytes(), self.new_binary)
+        self.assertEqual((self.app / 'Contents/Resources/No One Is Real.pck').read_bytes(), self.new_pck)
+        self.assertFalse((self.app / 'Contents/Resources/removed.txt').exists())
+        fetched = (self.root / 'downloads').read_text().splitlines()
+        self.assertNotIn('NoOneIsReal-macos.zip', fetched)
+        chunks = [name for name in fetched if name.startswith('chunk-') and name.endswith('.gz')]
+        self.assertEqual(len(chunks), 3)  # Metadata and two small changed tails.
+        fetched_bytes = sum((self.feed / 'chunks' / name).stat().st_size for name in chunks)
+        self.assertLess(fetched_bytes, self.manifest['size'] // 2)
+        self.assertIn(f'downloaded {fetched_bytes} bytes', result.stdout)
+        self.assertIn('reused 3 chunks', result.stdout)
+        # Already-current check does not fetch even the index again.
+        (self.root / 'downloads').unlink()
+        self.assertEqual(self.run_update(TEST_NETWORK='yes').returncode, 0)
+        self.assertEqual((self.root / 'downloads').read_text().splitlines(), ['manifest.json'])
+
+    def test_incremental_offline_uses_complete_archive_without_network(self):
+        self.incremental_feed()
+        result = self.run_update()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse((self.root / 'downloads').exists())
+        self.assertEqual(self.current(), NEW)
+
+    def test_incremental_index_rejects_unsafe_and_casefold_paths(self):
+        self.incremental_feed()
+        original = (self.feed / 'chunk-index.tsv').read_text()
+        rows = original.splitlines()
+        f_index = next(i for i, row in enumerate(rows) if row.startswith('F\tContents/Info.plist\t'))
+        metadata_rows = rows[f_index:f_index + 2]
+        bad_indexes = [
+            original.replace('Contents/Info.plist', 'Contents/../Info.plist'),
+            original.replace('\t644\t', '\t4755\t', 1),
+            original.replace('\t644\t', '\t0644\t', 1),
+            original.replace('\t755\t', '\t755\t0', 1),
+            original + '\n'.join(metadata_rows) + '\n',
+            original + '\n'.join(row.replace('Contents/Info.plist', 'Contents/info.plist') for row in metadata_rows) + '\n',
+            original + '\n'.join(row.replace('Contents/Info.plist', 'Contents/INFO.PLIST/child') for row in metadata_rows) + '\n',
+            original + 'EXTRA\n',
+            '\n'.join(rows[:-1]) + '\n',
+        ]
+        for bad in bad_indexes:
+            with self.subTest(index=bad[:90]):
+                self.rewrite_index(bad)
+                result = self.run_update(TEST_NETWORK='yes')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(self.current(), OLD)
+                downloads = (self.root / 'downloads').read_text().splitlines()
+                self.assertFalse(any(name.endswith('.gz') for name in downloads))
+
+    def test_incremental_corrupt_missing_and_short_chunks_preserve_app(self):
+        self.incremental_feed()
+        index = (self.feed / 'chunk-index.tsv').read_text()
+        # Info.plist is the first changed payload and cannot be reused from OLD.
+        row = next(line.split('\t') for line in index.splitlines() if line.startswith('C\t'))
+        chunk = self.feed / 'chunks' / ('chunk-' + row[2] + '.gz')
+        original = chunk.read_bytes()
+        chunk.write_bytes(original[:-1])
+        self.assertNotEqual(self.run_update(TEST_NETWORK='yes').returncode, 0)
+        self.assertEqual(self.current(), OLD)
+        chunk.unlink()
+        self.assertNotEqual(self.run_update(TEST_NETWORK='yes').returncode, 0)
+        self.assertEqual(self.current(), OLD)
+        # Correct compressed hash but wrong decompressed body must also fail.
+        changed = gzip.compress(b'short', mtime=0)
+        chunk.write_bytes(changed)
+        bad_row = row[:]
+        bad_row[3] = str(len(changed))
+        bad_row[4] = hashlib.sha256(changed).hexdigest()
+        self.rewrite_index(index.replace('\t'.join(row), '\t'.join(bad_row), 1))
+        self.assertNotEqual(self.run_update(TEST_NETWORK='yes').returncode, 0)
+        self.assertEqual(self.current(), OLD)
+
+    def test_incremental_missing_index_preserves_app(self):
+        self.incremental_feed()
+        (self.feed / 'chunk-index.tsv').unlink()
+        self.assertNotEqual(self.run_update(TEST_NETWORK='yes').returncode, 0)
+        self.assertEqual(self.current(), OLD)
+
+    def test_incremental_last_row_without_newline_is_processed(self):
+        self.incremental_feed()
+        self.rewrite_index((self.feed / 'chunk-index.tsv').read_text().rstrip('\n'))
+        result = self.run_update(TEST_NETWORK='yes')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.app / 'Contents/Resources/No One Is Real.pck').read_bytes(), self.new_pck)
+
+
+    def test_enable_updates_registers_existing_app_without_network(self):
+        bootstrap = self.root / 'bootstrap with spaces'
+        bootstrap.mkdir()
+        shutil.copy2(SCRIPT, bootstrap / 'update-macos.sh')
+        wrapper = bootstrap / 'run.sh'
+        setup = MOCKS[:MOCKS.index('if [ "${TEST_NETWORK:-}"')]
+        setup += r'''
+AGENT="$TEST_ROOT/Launch Agents/com.santos.nooneisreal.update.plist"
+plutil() {
+    local destination="${@: -1}"
+    if [ "$1" = -create ]; then : > "$destination"; else printf '%s\n' "$*" >> "$destination"; fi
+}
+launchctl() { printf '%s\n' "$*" >> "$TEST_ROOT/registrations"; }
+open() { echo 'Unexpected app launch' >&2; return 1; }
+install_agent --enable-only
+'''
+        wrapper.write_text(setup)
+        env = dict(os.environ, TEST_SCRIPT=str(SCRIPT), TEST_ROOT=str(self.root), TEST_PY=sys.executable)
+        result = subprocess.run(['/bin/bash', str(wrapper)], env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse((self.root / 'downloads').exists())
+        installed = self.root / 'User Data/Updater/update-macos.sh'
+        self.assertEqual(installed.read_bytes(), SCRIPT.read_bytes())
+        self.assertEqual(stat.S_IMODE(installed.stat().st_mode), 0o700)
+        self.assertIn('bootstrap gui/', (self.root / 'registrations').read_text())
+        self.assertIn(OLD, result.stdout)
+        self.assertEqual(self.current(), OLD)
 
 
 if __name__ == '__main__':

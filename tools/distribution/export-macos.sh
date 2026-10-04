@@ -40,3 +40,9 @@ cp "$repo_root/tools/distribution/Install.command" "$repo_root/tools/distributio
 cp "$output/manifest.json" "$output/NoOneIsReal-macos.zip" "$output/No One Is Real Installer/"
 (cd "$output" && zip -qr NoOneIsReal-Installer.zip 'No One Is Real Installer')
 printf 'Exported revision %s to %s\n' "$revision" "$output"
+
+# Small bootstrap upgrades the updater without bundling/redownloading the game.
+mkdir -p "$output/No One Is Real Updater"
+cp "$repo_root/tools/distribution/update-macos.sh" "$output/No One Is Real Updater/"
+cp "$repo_root/tools/distribution/Enable Updates.command" "$output/No One Is Real Updater/"
+(cd "$output" && zip -qr NoOneIsReal-Updater.zip 'No One Is Real Updater')

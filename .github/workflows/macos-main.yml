@@ -50,6 +50,9 @@ jobs:
           path: |
             ${{ runner.temp }}/macos/NoOneIsReal-macos.zip
             ${{ runner.temp }}/macos/NoOneIsReal-Installer.zip
+            ${{ runner.temp }}/macos/NoOneIsReal-Updater.zip
+            ${{ runner.temp }}/macos/chunk-index.tsv
+            ${{ runner.temp }}/macos/chunks/
             ${{ runner.temp }}/macos/manifest.json
             ${{ runner.temp }}/macos/import.log
             ${{ runner.temp }}/macos/export.log
@@ -73,6 +76,20 @@ jobs:
           validate_archive release/NoOneIsReal-macos.zip "$RUNNER_TEMP/members.txt"
           ditto -x -k release/NoOneIsReal-macos.zip "$RUNNER_TEMP/verify-app"
           check_bundle "$RUNNER_TEMP/verify-app/No One Is Real.app" "$GITHUB_SHA"
+          # Exercise actual macOS dd/gzip/plutil on a mixed reused/downloaded reconstruction.
+          APP="$RUNNER_TEMP/verify-app/No One Is Real.app"
+          STAGE=$(mktemp -d "$RUNNER_TEMP/incremental.XXXXXX")
+          rm "$APP/Contents/Resources/icon.icns"
+          release_dir="$PWD/release"
+          fetch() {
+            local name="${1##*/}"
+            if [[ "$name" = chunk-*.gz ]]; then cp "$release_dir/chunks/$name" "$2";
+            else cp "$release_dir/$name" "$2"; fi
+          }
+          assemble_incremental release/manifest.json "$GITHUB_SHA"
+          check_bundle "$STAGE/extracted/$APP_NAME" "$GITHUB_SHA"
+          # Restore original verified bundle for the exported smoke below.
+          ditto -x -k release/NoOneIsReal-macos.zip "$RUNNER_TEMP/verify-app"
           "$ci_python" - <<'PYTHON'
           import os, pathlib, subprocess
           output=pathlib.Path(os.environ['RUNNER_TEMP'])/'exported-smoke.log'
@@ -123,7 +140,12 @@ jobs:
           fi
           if [ "$(jq -r .isDraft existing.json)" = true ]; then
             # A failed draft upload can be retried. Published builds are immutable.
-            gh release upload "$tag" NoOneIsReal-macos.zip NoOneIsReal-Installer.zip manifest.json --clobber
+            gh release upload "$tag" NoOneIsReal-macos.zip NoOneIsReal-Installer.zip NoOneIsReal-Updater.zip chunk-index.tsv --clobber
+            for payload in chunks/chunk-*.gz; do
+              gh release upload "$tag" "$payload" --clobber
+            done
+            # Manifest is uploaded last; only then is the complete draft published.
+            gh release upload "$tag" manifest.json --clobber
             gh release edit "$tag" --draft=false
           else
             # Reruns reuse the original signed archive's manifest, never a new ZIP hash.
@@ -138,5 +160,5 @@ jobs:
           fi
           gh release upload macos-main manifest.json --clobber
           # Installer download remains a convenience; update resolution uses immutable tag + manifest.
-          gh release upload macos-main NoOneIsReal-Installer.zip --clobber
+          gh release upload macos-main NoOneIsReal-Installer.zip NoOneIsReal-Updater.zip --clobber
           gh release edit macos-main --notes-file notes.txt

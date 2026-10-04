@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Validate the exported ZIP and write the update manifest; build hosts only."""
+import gzip
 import hashlib
 import json
 import pathlib
@@ -46,8 +47,43 @@ def validate(path: pathlib.Path, revision: str) -> dict:
     return {"schema": 1, "revision": revision, "sha256": digest.hexdigest(), "size": path.stat().st_size, "godot": "4.7-stable", "signing": "ad-hoc; not notarized"}
 
 
+CHUNK_BYTES = 4 * 1024 * 1024
+
+
+def write_chunks(path: pathlib.Path, directory: pathlib.Path) -> dict:
+    """Exact signed bundle bytes, split at fixed offsets including Mach-O signatures."""
+    chunk_dir = directory / "chunks"
+    chunk_dir.mkdir(exist_ok=True)
+    rows = [f"NIR_CHUNKS_1\t{CHUNK_BYTES}"]
+    prefix = "No One Is Real.app/"
+    with zipfile.ZipFile(path) as archive:
+        for entry in sorted(archive.infolist(), key=lambda item: item.filename):
+            if entry.is_dir():
+                continue
+            relative = entry.filename.removeprefix(prefix)
+            if not re.fullmatch(r"Contents/[A-Za-z0-9 ._+/\-]+", relative):
+                raise ValueError(f"Unsupported incremental path {relative!r}")
+            mode = (entry.external_attr >> 16) & 0o777
+            if mode not in (0o644, 0o755):
+                raise ValueError(f"Unsupported incremental permissions {mode:o}")
+            data = archive.read(entry)
+            count = (len(data) + CHUNK_BYTES - 1) // CHUNK_BYTES
+            rows.append(f"F\t{relative}\t{mode:o}\t{len(data)}\t{hashlib.sha256(data).hexdigest()}\t{count}")
+            for offset in range(0, len(data), CHUNK_BYTES):
+                raw = data[offset:offset + CHUNK_BYTES]
+                digest = hashlib.sha256(raw).hexdigest()
+                compressed = gzip.compress(raw, compresslevel=6, mtime=0)
+                name = f"chunk-{digest}.gz"
+                (chunk_dir / name).write_bytes(compressed)
+                rows.append(f"C\t{len(raw)}\t{digest}\t{len(compressed)}\t{hashlib.sha256(compressed).hexdigest()}")
+    index = ("\n".join(rows) + "\n").encode()
+    (directory / "chunk-index.tsv").write_bytes(index)
+    return {"incremental_schema": 1, "index_sha256": hashlib.sha256(index).hexdigest(), "index_size": len(index)}
+
+
 if __name__ == "__main__":
     directory, revision = pathlib.Path(sys.argv[1]), sys.argv[2]
     manifest = validate(directory / "NoOneIsReal-macos.zip", revision)
+    manifest.update(write_chunks(directory / "NoOneIsReal-macos.zip", directory))
     (directory / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(json.dumps(manifest))

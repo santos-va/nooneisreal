@@ -38,5 +38,19 @@
 
 Немає доказу встановлення в Applications користувача, запуску LaunchAgent, Gatekeeper-проходження, Apple notarization або перевірки фінальної іконки. Build ad-hoc signed, не Apple-notarized; системні захисти скрипт не вимикає. Безуспішний native CI зупинить автоматичну публікацію. Фінальні bytes/SHA перевіряються після фінального export; root запускає гейти після завершення документації.
 
+## Довантаження змінених блоків — незалежний повторний огляд
+
+**GREEN — інкрементальний алгоритм і локальні докази; YELLOW native-приймання зберігається.** Запит Santos доповнив повний ZIP блоками до 4 MiB на фіксованих позиціях кожного файла. Schema1/повний ZIP лишилися сумісними зі старим updater; новий updater бере цільовий index/chunks прямо з `macos-<цільовий SHA>`, без ланцюжка попередніх версій. Локальні байти повторно використовуються лише після перевірки розміру та SHA256. Новий app збирається повністю в окремому stage, кожний файл перевіряється, потім bundle проходить штатний `check_bundle` перед наявною транзакцією заміни.
+
+**Власноруч виконано:** `python3 tools/distribution/test_distribution.py` — **21 tests / OK**; `bash -n` для updater/export/Enable Updates та `git diff --check` — rc0. Батарея включає legacy/offline ZIP без мережі, малий bootstrap на вже встановленій грі, відсутній index, пошкоджені/відсутні/короткі chunks, завершальний TSV-запис без newline, running/rollback guards.
+
+Окремий `/tmp/nir-chunk-review/assemble_review.py` виконав **7/7** незалежних сценаріїв на production reader із реальними `dd`, `gzip`, SHA та файлами; mock застосовано лише до мережі/macOS field/stat. Успішний A→B reuse завантажив 60 bytes у двох змінених блоках і повторно використав два; пошкоджена локальна копія спричинила додаткове завантаження. Невалідний gzip із правильним compressed SHA, завеликий raw payload, відсутній chunk, неправильний raw SHA та неправильний file SHA відхилено. В усіх випадках installed tree не змінювався до заміни; успішний fresh stage точно відповідав цільовому набору файлів, старий видалений файл не переносився.
+
+**Закритий finding — case-insensitive APFS.** Незалежний TSV-тест спочатку приймав `Contents/Info.plist` разом із `Contents/info.plist` або `Contents/INFO.PLIST/child`. Після виправлення дублікати та зіткнення file/directory перевіряються через ASCII `tolower`, а обов’язкові файли — за точними canonical names. Повтор `/tmp/nir-chunk-review/index_review.py`: коректний TSV прийнято; traversal, порожні/зайві поля, mode4755, завеликий size, обірвані chunks, дублікати та обидві casefold-колізії відхилено. Числа canonical decimal, режими лише644/755, кількості/загальний розмір обмежені; rawgzip має file-size limit і точну перевірку довжини/хешу. Bash обробляє останній запис без newline, узгоджено з AWK validator.
+
+**Реальні два export:** прочитано `/workspace/scratch/mac-delta-proof/verification.log` і незалежно перераховано SHA256 кожного reconstructed файла проти `/workspace/scratch/mac-app-final/NoOneIsReal-macos.zip`: **7 файлів, точна рівність**. Для цієї конкретної пари build A→B: 9 завантажених блоків, payload22906587 bytes + index14962 = **22921549 bytes** проти ZIP265941840 — **91.38% менше**. Це вимір конкретної пари, не гарантія відсотка для майбутніх змін; зсув даних усередині PCK може змінити багато блоків.
+
+Native CI тепер додатково реконструює export реальними macOS `dd/gzip/plutil`, примусово забравши локальну іконку для перевірки download-path, і перевіряє reconstructed bundle через `codesign/lipo`. Цей job прочитано, але його виконання ще не підтверджено. Release draft публікується тільки після завантаження ZIP/index/chunks, manifest додається останнім; старі published assets не перезаписуються. Фінальна збірка committed source і її hashes перевіряються окремо після завершення документації.
+
 ## Related
 - [[2026-10-04-Mac-App-Updates]] · [[2026-10-04-Mac-App-Session]] · [[Build-and-Run]] · [[Export-Platforms]] · [[constitution]]

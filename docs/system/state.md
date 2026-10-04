@@ -1,6 +1,6 @@
 # state — поточна правда
 
-**Оновлено:** 2026-10-04, T1 — PR #172 змерджено, поточна база `e27b746` перевірена через fetch. Новий маршрут: застосунок для MacBook Air M3 в Applications, Higgsfield-іконка Choko та оновлення після main; [[2026-10-04-Mac-App-Updates]]. Інсталяцію на фізичному Mac ще не виконано.
+**Оновлено:** 2026-10-04, T1 — PR #172 змерджено, поточна база `e27b746` перевірена через fetch. PR #173: застосунок для MacBook Air M3 в Applications; уточнення Santos — довантаження лише змінених блоків після main; [[2026-10-04-Mac-App-Updates]]. Інсталяцію на фізичному Mac ще не виконано.
 **Фаза:** прохідний 3D-квартал Cronshift і локальний бій інтегровані; напрям розвитку — спільне місто, далі бої всередині нього. Чинний художній еталон — свіжі окремі текстури/вирізки Higgsfield; старі панорами — чернетки. Фінальний арт і приймання на M3 відкриті.
 
 ## macOS застосунок та канал main — реалізація T8, 2026-10-04
@@ -8,6 +8,12 @@
 Додано universal macOS export preset, build-скрипт із `NIRBuildRevision` до ad-hoc підпису, перевірку metadata/arm64+x86_64/PCK, офлайн Installer.command і per-user updater. Updater перевіряє hash/розмір/bundle/signature, відкидає небезпечні ZIP до extraction, відкладає заміну відкритої гри, відновлює backup після перерваного rename й не чіпає Godot saves. Workflow main має окремі build/read та publish/write jobs, перевірку реального bundle й exported smoke на macOS перед публікацією immutable SHA release та manifest каналу. [[Export-Platforms]] · [[Build-and-Run]].
 
 На Linux реально виконаний Godot 4.7-stable export; перевірений проміжний пакет у `/workspace/scratch/mac-app-build` містить universal Mach-O/PCK і SHA бази `e27b746`. Це ще не фінальна committed збірка. Updater adversarial tests **14/0**; використані OS mocks не є macOS-прийманням. Реальна M3-інсталяція, launchctl/login, Gatekeeper, слухове приймання й FPS не перевірені. Workflow ще не запускався у GitHub; після commit потрібна фінальна збірка з його SHA. Художня іконка не завантажена, діє явний fallback `game/icon.svg`, без твердження про інтеграцію нового арту.
+
+## Довантаження після merge — реалізація T8, 2026-10-04
+
+За уточненням Santos updater довантажує лише змінені 4 MiB-блоки точного підписаного bundle, включно з executable/signature і PCK; schema1 full ZIP лишається сумісним зі старим updater та offline installer. Малий NoOneIsReal-Updater.zip реєструє новий updater поверх наявного перевіреного app без мережі й повторного завантаження гри. Manifest/index/chunk/file hashes, строгі шляхи й casefold-перевірки, codesign/arm64, fresh stage, running guard та rollback збережені.
+
+Локальна батарея **21/0**; незалежний фактичний proof `e27b746 → 1793559`: **22 921 549 B** з index проти **265 941 840 B** full ZIP, **91,38%** менше; 87 локальних блоків/9 завантажених, усі 7 кінцевих файлів і права byte-exact. Це конкретний замір, не гарантований розмір майбутніх дельт. PR CI включає updater tests, майбутній native macOS publish gate — змішану реконструкцію й справжній codesign. Реальна M3/LaunchAgent-інсталяція та запуск нового workflow ще не перевірені. [[Export-Platforms]] · [[Build-and-Run]].
 
 ## База й джерела правди
 

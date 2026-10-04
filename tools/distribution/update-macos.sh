@@ -71,6 +71,95 @@ check_bundle() {
     codesign --verify --deep --strict "$bundle" || return 1
     lipo -archs "$bundle/Contents/MacOS/No One Is Real" | grep -w arm64 > /dev/null || return 1
 }
+# Optional schema-1 extension. Fixed chunks also avoid redownloading an entire
+# engine executable when its embedded ad-hoc signature changes with Info.plist.
+validate_index() {
+    LC_ALL=C awk -F '\t' '
+    function integer(s, limit) { return s ~ /^(0|[1-9][0-9]*)$/ && length(s) <= 10 && s+0 <= limit }
+    function hash(s) { return length(s)==64 && s !~ /[^0-9a-f]/ }
+    function reject() { bad=1; exit 1 }
+    NR==1 { if ($0 != "NIR_CHUNKS_1\t4194304") reject(); next }
+    $1=="F" {
+        if (NF!=6 || left!=0 || ++files>2048) reject()
+        path=$2
+        if (path !~ /^Contents\/[A-Za-z0-9 ._+\/-]+$/ || path ~ /(^|\/)\.\.?($|\/)/ || path ~ /\/\/|\/$/ || seen[tolower(path)] || dirs[tolower(path)]) reject()
+        n=split(path,parts,"/"); parent=parts[1]
+        for (i=2;i<n;i++) { parent=parent "/" parts[i]; if (seen[tolower(parent)]) reject(); dirs[tolower(parent)]=1 }
+        seen[tolower(path)]=1; exact[path]=1
+        if (($3!="644" && $3!="755") || !integer($4,2000000000) || !hash($5) || !integer($6,1024)) reject()
+        if ($6 != int(($4+4194303)/4194304)) reject()
+        size=$4+0; offset=0; left=$6+0; total+=size
+        if (total>4000000000) reject()
+        next
+    }
+    $1=="C" {
+        if (NF!=5 || left<=0 || ++chunks>1024) reject()
+        expected=size-offset; if (expected>4194304) expected=4194304
+        if (!integer($2,4194304) || $2!=expected || !hash($3) || !integer($4,4259840) || $4<1 || !hash($5)) reject()
+        offset+=$2; left--; next
+    }
+    { reject() }
+    END { if (bad || NR<2 || left!=0 || !exact["Contents/Info.plist"] || !exact["Contents/MacOS/No One Is Real"] || !exact["Contents/Resources/No One Is Real.pck"]) exit 1 }
+    ' "$1"
+}
+sha256() { shasum -a 256 "$1" | awk '{print $1}'; }
+verify_file() {
+    [ -f "$1" ] && [ ! -L "$1" ] && [ "$(stat -f '%z' "$1")" = "$2" ] && [ "$(sha256 "$1")" = "$3" ]
+}
+assemble_incremental() {
+    local manifest="$1" revision="$2" index="$STAGE/chunk-index.tsv" digest length
+    digest=$(field "$manifest" index_sha256)
+    length=$(field "$manifest" index_size)
+    [[ "$digest" =~ ^[0-9a-f]{64}$ ]] || fail 'Invalid incremental index hash.'
+    [[ "$length" =~ ^[0-9]{1,7}$ ]] && [ "$length" -gt 0 ] && [ "$length" -le 1048576 ] || fail 'Invalid incremental index size.'
+    local base="https://github.com/$REPOSITORY/releases/download/macos-$revision"
+    fetch "$base/chunk-index.tsv" "$index" 1048576
+    verify_file "$index" "$length" "$digest" || fail 'Incremental index integrity failed.'
+    validate_index "$index" || fail 'Unsafe incremental index; current app preserved.'
+    mkdir -p "$STAGE/extracted/$APP_NAME" "$STAGE/chunks"
+    local kind a b c d e target="" path="" file_size="" file_hash="" mode="" part=0
+    local raw reused=0 downloaded=0 payload_bytes=0 completed=0
+    while IFS=$'\t' read -r kind a b c d e || [ -n "$kind" ]; do
+        case "$kind" in
+            NIR_CHUNKS_1) ;;
+            F)
+                if [ -n "$target" ]; then
+                    verify_file "$target" "$file_size" "$file_hash" || fail 'Reconstructed file hash mismatch.'
+                    chmod "$mode" "$target"
+                    completed=$((completed + 1))
+                fi
+                path="$a"; mode="$b"; file_size="$c"; file_hash="$d"; part=0
+                target="$STAGE/extracted/$APP_NAME/$path"
+                mkdir -p "$(dirname -- "$target")"
+                : > "$target" ;;
+            C)
+                raw="$STAGE/chunks/$b.raw"
+                if ! verify_file "$raw" "$a" "$b"; then
+                    # A same-offset candidate is only reused after exact length + SHA verification.
+                    if [ -f "$APP/$path" ] && [ ! -L "$APP/$path" ]; then
+                        dd if="$APP/$path" of="$raw" bs=4194304 skip="$part" count=1 2>/dev/null || rm -f "$raw"
+                    fi
+                    if verify_file "$raw" "$a" "$b"; then
+                        reused=$((reused + 1))
+                    else
+                        fetch "$base/chunk-$b.gz" "$STAGE/chunk.gz" 4259840
+                        verify_file "$STAGE/chunk.gz" "$c" "$d" || fail 'Compressed chunk integrity failed.'
+                        (ulimit -f 8193; gzip -dc "$STAGE/chunk.gz" > "$raw") || fail 'Invalid or oversized compressed chunk.'
+                        verify_file "$raw" "$a" "$b" || fail 'Decompressed chunk integrity failed.'
+                        downloaded=$((downloaded + 1)); payload_bytes=$((payload_bytes + c))
+                    fi
+                else
+                    reused=$((reused + 1))
+                fi
+                cat "$raw" >> "$target"
+                part=$((part + 1)) ;;
+        esac
+    done < "$index"
+    [ -n "$target" ] && verify_file "$target" "$file_size" "$file_hash" || fail 'Final reconstructed file hash mismatch.'
+    chmod "$mode" "$target"
+    log "Incremental update: downloaded $payload_bytes bytes in $downloaded changed chunks; reused $reused chunks locally (4 MiB boundaries)."
+}
+
 update() {
     [ "$(uname -s)" = Darwin ] || fail 'This installer requires macOS.'
     [ ! -L "$STATE_DIR" ] || fail 'Updater directory must not be a symlink.'
@@ -124,18 +213,24 @@ update() {
     [ "$expected_size" -gt 0 ] && [ "$expected_size" -le 2000000000 ] || fail 'Archive exceeds supported size.'
     current=$(bundle_field "$APP" NIRBuildRevision 2>/dev/null || true)
     if [ "$current" = "$revision" ]; then log "Already current: $revision"; return 0; fi
-    archive="$STAGE/app.zip"
-    if [ -n "$offline_dir" ]; then
-        cp -- "$offline_dir/NoOneIsReal-macos.zip" "$archive"
+    local incremental
+    incremental=$(field "$manifest" incremental_schema 2>/dev/null || true)
+    if [ "$incremental" = 1 ] && [ -d "$APP" ] && [ -z "$offline_dir" ]; then
+        assemble_incremental "$manifest" "$revision"
     else
-        fetch "https://github.com/$REPOSITORY/releases/download/macos-$revision/NoOneIsReal-macos.zip" "$archive"
+        archive="$STAGE/app.zip"
+        if [ -n "$offline_dir" ]; then
+            cp -- "$offline_dir/NoOneIsReal-macos.zip" "$archive"
+        else
+            fetch "https://github.com/$REPOSITORY/releases/download/macos-$revision/NoOneIsReal-macos.zip" "$archive"
+        fi
+        actual_size=$(stat -f '%z' "$archive")
+        [ "$actual_size" = "$expected_size" ] || fail 'Archive size mismatch; current app preserved.'
+        [ "$(shasum -a 256 "$archive" | awk '{print $1}')" = "$checksum" ] || fail 'Checksum mismatch; current app preserved.'
+        validate_archive "$archive" "$STAGE/members.txt" || fail 'Unsafe or invalid ZIP; current app preserved.'
+        mkdir "$STAGE/extracted"
+        ditto -x -k "$archive" "$STAGE/extracted"
     fi
-    actual_size=$(stat -f '%z' "$archive")
-    [ "$actual_size" = "$expected_size" ] || fail 'Archive size mismatch; current app preserved.'
-    [ "$(shasum -a 256 "$archive" | awk '{print $1}')" = "$checksum" ] || fail 'Checksum mismatch; current app preserved.'
-    validate_archive "$archive" "$STAGE/members.txt" || fail 'Unsafe or invalid ZIP; current app preserved.'
-    mkdir "$STAGE/extracted"
-    ditto -x -k "$archive" "$STAGE/extracted"
     local incoming="$STAGE/extracted/$APP_NAME" backup="$BACKUP"
     check_bundle "$incoming" "$revision" || fail 'Bundle identity, signature, architecture or build marker is invalid.'
     if running; then log 'Game started during download; replacement deferred.'; return 0; fi
@@ -157,7 +252,17 @@ update() {
 install_agent() {
     local script_dir installer_copy
     script_dir=$(cd -- "$(dirname -- "$0")" && pwd)
-    if [ -f "$script_dir/manifest.json" ] && [ -f "$script_dir/NoOneIsReal-macos.zip" ]; then
+    if [ "${1:-}" = --enable-only ]; then
+        [ "$(uname -s)" = Darwin ] || fail 'This installer requires macOS.'
+        [ -d "$APP" ] && [ ! -L "$APP" ] || fail 'Install the game first with the full offline installer.'
+        local installed_revision
+        installed_revision=$(bundle_field "$APP" NIRBuildRevision)
+        [[ "$installed_revision" =~ ^[0-9a-f]{40}$ ]] || fail 'Installed build revision is invalid.'
+        check_bundle "$APP" "$installed_revision" || fail 'Installed app is not a verified compatible build.'
+        [ ! -L "$STATE_DIR" ] || fail 'Updater directory must not be a symlink.'
+        mkdir -p "$STATE_DIR"
+        chmod 700 "$STATE_DIR"
+    elif [ -f "$script_dir/manifest.json" ] && [ -f "$script_dir/NoOneIsReal-macos.zip" ]; then
         update "$script_dir"
     else
         update
@@ -171,7 +276,7 @@ install_agent() {
         mv -- "$installer_copy.tmp" "$installer_copy"
     fi
     chmod 700 "$installer_copy"
-    mkdir -p "$HOME/Library/LaunchAgents"
+    mkdir -p "$(dirname -- "$AGENT")"
     # plutil builds XML safely even when HOME contains spaces or XML characters.
     rm -f -- "$AGENT.tmp"
     plutil -create xml1 "$AGENT.tmp"
@@ -190,11 +295,12 @@ install_agent() {
     log 'Automatic main updates enabled at login and every 15 minutes, while the game is closed.'
     log "Installed revision: $(bundle_field "$APP" NIRBuildRevision)"
     log "Updater logs: $STATE_DIR/update.log and update-error.log"
-    open "$APP"
+    if [ "${1:-}" != --enable-only ]; then open "$APP"; fi
 }
 main() {
     case "${1:-}" in
         --install) install_agent ;;
+        --enable-updates) install_agent --enable-only ;;
         --validate-archive) validate_archive "$2" "$3" ;;
         '') update ;;
         *) fail 'Usage: update-macos.sh [--install]' ;;
