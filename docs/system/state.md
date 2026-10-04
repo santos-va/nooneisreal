@@ -1,7 +1,28 @@
 # state — поточна правда
 
-**Оновлено:** 2026-10-04, T1 — [PR #172](https://github.com/santos-va/nooneisreal/pull/172), `f17cba3`: rope traversal, dodge/stamina, керування й NPC-зріз. Інтегруємо cleanup #171 (`32d7d32`) без повернення старих підказок. Після інтеграції main повторно перевірено smoke164, playable50/0, gates80/0; T4 підтвердив збереження нових механік і суворих гейтів. Межі й журнал — [[2026-10-04-Living-City-Session]].
+**Оновлено:** 2026-10-04, T1 — PR #172 змерджено, поточна база `e27b746` перевірена через fetch. PR #173: застосунок для MacBook Air M3 в Applications; уточнення Santos — довантаження лише змінених блоків після main; [[2026-10-04-Mac-App-Updates]]. Santos підтвердив відсутність app; поточний маршрут — перше встановлення через Terminal з pinned Git SHA, потім автооновлення. Native Mac-приймання відкрите.
 **Фаза:** прохідний 3D-квартал Cronshift і локальний бій інтегровані; напрям розвитку — спільне місто, далі бої всередині нього. Чинний художній еталон — свіжі окремі текстури/вирізки Higgsfield; старі панорами — чернетки. Фінальний арт і приймання на M3 відкриті.
+
+## macOS застосунок та канал main — реалізація T8, 2026-10-04
+
+Додано universal macOS export preset, build-скрипт із `NIRBuildRevision` до ad-hoc підпису, перевірку metadata/arm64+x86_64/PCK, офлайн Installer.command і per-user updater. Updater перевіряє hash/розмір/bundle/signature, відкидає небезпечні ZIP до extraction, відкладає заміну відкритої гри, відновлює backup після перерваного rename й не чіпає Godot saves. Workflow main має окремі build/read та publish/write jobs, перевірку реального bundle й exported smoke на macOS перед публікацією immutable SHA release та manifest каналу. [[Export-Platforms]] · [[Build-and-Run]].
+
+На Linux реально виконаний Godot 4.7-stable export; перевірений проміжний пакет у `/workspace/scratch/mac-app-build` містить universal Mach-O/PCK і SHA бази `e27b746`. Це ще не фінальна committed збірка. Updater adversarial tests **14/0**; використані OS mocks не є macOS-прийманням. Реальна M3-інсталяція, launchctl/login, Gatekeeper, слухове приймання й FPS не перевірені. Workflow ще не запускався у GitHub; після commit потрібна фінальна збірка з його SHA. Художня іконка не завантажена, діє явний fallback `game/icon.svg`, без твердження про інтеграцію нового арту.
+
+## Довантаження після merge — реалізація T8, 2026-10-04
+
+За уточненням Santos updater довантажує лише змінені 4 MiB-блоки точного підписаного bundle, включно з executable/signature і PCK; schema1 full ZIP лишається сумісним зі старим updater та offline installer. Малий NoOneIsReal-Updater.zip реєструє новий updater поверх наявного перевіреного app без мережі й повторного завантаження гри. Manifest/index/chunk/file hashes, строгі шляхи й casefold-перевірки, codesign/arm64, fresh stage, running guard та rollback збережені.
+
+Локальна батарея **21/0**; незалежний фактичний proof `e27b746 → 1793559`: **22 921 549 B** з index проти **265 941 840 B** full ZIP, **91,38%** менше; 87 локальних блоків/9 завантажених, усі 7 кінцевих файлів і права byte-exact. Це конкретний замір, не гарантований розмір майбутніх дельт. PR CI включає updater tests, майбутній native macOS publish gate — змішану реконструкцію й справжній codesign. Реальна M3/LaunchAgent-інсталяція та запуск нового workflow ще не перевірені. [[Export-Platforms]] · [[Build-and-Run]].
+
+## Відновлення локального Mac installer — T8, 2026-10-05
+
+Після повідомлення Santos про відмову Godot-version helper перевіряє кожен
+кандидат, пропускає старий/недоступний `GODOT_BIN`, підтримує command-name,
+headless version banner/CRLF та продовжує до офіційного SHA512-verified download.
+Середовище й checkout не змінюються; помилка downloaded binary показує шлях і
+фактичний вивід. Регресії включають fallback/checksum і різні pinned SHA/HEAD.
+Фактичний повторний запуск на M3 ще очікується; [[2026-10-05-Mac-Installer-Recovery]].
 
 ## База й джерела правди
 
@@ -10,7 +31,7 @@
 - Для нової роботи спочатку `git fetch`, робоче дерево й актуальний GitHub: цей файл — датований знімок. Поточні кнопки визначає `game/scripts/core/InputRouter.gd`; запуск — [[Build-and-Run]].
 - Короткий англомовний маршрут: [[Handoff/2026-10-04-Start-Here]], [[Handoff/2026-10-04-Delivery-Ledger]], [[Handoff/2026-10-04-Decisions-And-Validation]], [[Handoff/2026-10-04-Remaining-Work]].
 
-## Поточний пакет PR #172
+## Інтегрований пакет PR #172
 
 Пряме доручення Santos — [[Plans/2026-10-04-Living-City-Traversal]]. Попередній фікс `f1c147d` запушено до запуску шести смуг; інтегрований пакет `f17cba3` — після технічного T4 огляду [[2026-10-04-Living-City-Review]]. У PR: камерний приціл/мотузники й повернення до залишених мотузок, окреме ухилення зі stamina поряд із signature dash, компактні підказки/зручніші bindings, 12 постійних NPC з memory/save і seed-зовнішністю. Це фундамент району, не завершена симуляція життя чи сюжетна кампанія. Справжні три біти Santos Soundtracks недоступні; Music та importer готові, manifest порожній. LLM backend не підключено. Mac/4.7 і художнє приймання відкриті.
 
@@ -39,7 +60,7 @@
 
 ## ▶ Хвиля — поточний маршрут
 
-Поточний маршрут — завершити інтеграційне приймання PR #172 після cleanup #171, передати Santos керування/кадри та отримати доступ до трьох власних бітів. Старі списки «T2·A/B/C зараз» не є чинними призначеннями.
+Поточний маршрут — [[2026-10-04-Mac-App-Updates]]: автономний застосунок Mac, іконка й оновлення після мерджу. Santos підтвердив Applications на MacBook Air M3. PR #172 уже в main; живе приймання керування/кадрів і доступ до трьох власних бітів залишаються відкритими.
 
 Наступний продуктовий крок: живий огляд кварталу, мотузок/доджів і контролера; подальший сюжет спирається на фактичні свідчення NPC, конкретний канон не змінено. Бої всередині міста, ширший світ і повноцінний локальний LLM лишаються наступними етапами. Наявні арени зберігаються.
 
@@ -54,6 +75,23 @@
 ## Історія
 
 Повний попередній state винесено до [[Handoff/2026-10-04-State-History]]. Датовані журнали й аудити зберігають свої історичні результати; виконані PR та старі числові виміри не повторюються тут як поточні призначення чи баланс провайдера.
+
+## Нативна metadata після експорту — T8, 2026-10-05
+
+Santos успішно пройшов import/export, але отримав GNU `stat` помилку для `%z`.
+Helper тепер викликає `/usr/bin/stat`, `/usr/bin/plutil` і `/usr/bin/ditto`
+явно, не змінюючи PATH для пошуку Godot/git. Розмір і SHA256 обчислюються
+окремо з перевіркою статусу та формату до створення manifest. Невдала metadata
+зупиняє встановлення; завершений пакет після подальшої помилки installer
+зберігається в надрукованій `/tmp/nir-completed-package.*` директорії для retry.
+Офіційні editor/template downloads кешуються в `~/Library/Caches/No One Is Real/Installer/4.7-stable`; повторне використання щоразу звіряє SHA512 з офіційним списком, пошкоджений кеш завантажується заново. Це зменшує повторні завантаження пакета 1,28 GB.
+Updater вже задає системний PATH, тому його BSD stat не затінюється Homebrew.
+
+PR CI distribution тепер має Ubuntu/macOS matrix; на macOS metadata-regression
+використовує справжні `/usr/bin/stat` та `plutil`, а PATH містить шкідливу для
+цього виклику підміну `stat`. Linux використовує ізольований native shim та
+справжній GNU stat на початку PATH. Перевірено відмову native stat до install.
+Результат нового native CI ще очікується; усі помилки на M3 не оголошені усуненими.
 
 ## Related
 
