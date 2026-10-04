@@ -41,6 +41,7 @@ func clear_inputs() -> void:
 func fresh() -> void:
 	clear_inputs()
 	f.reset_for_round(-3.0, 1)
+	f.sword_drawn = true # Legacy transfer cases begin with the sword drawn.
 	f.set_control(true)
 	f.set_physics_process(false)
 	f.position = Vector3.ZERO
@@ -80,6 +81,20 @@ func _run() -> void:
 	enemy.set_physics_process(false)
 	f.opponent = enemy
 	enemy.opponent = f
+	fresh()
+	f.sword_drawn = false
+	begin()
+	ticks(11)
+	check(not f.sword_drawn and f.sword_hand == "right", "draw remains sheathed before contact")
+	ticks(1)
+	check(f.sword_drawn and f.sword_swap_drawing and f.sword_hand == "right" and f.sword_form == 0, "first V draws same hand and form at contact")
+	ticks(12)
+	check(f.state == actor.State.IDLE and f.sword_drawn, "draw completes")
+	begin()
+	ticks(12)
+	check(f.sword_hand == "left" and f.sword_form == 1 and not f.sword_swap_drawing, "next V reforms in opposite hand")
+	f.reset_for_round(-3, 1)
+	check(not f.sword_drawn and f.sword_form == 0, "round reset sheath and form")
 	fresh()
 	var capacity: int = f.grapple.charges
 	begin()

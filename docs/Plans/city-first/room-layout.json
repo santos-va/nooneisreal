@@ -1,0 +1,238 @@
+{
+  "schema": "game-room.layout.v1",
+  "roomId": "cronshift-first-district",
+  "units": "meters",
+  "surfaces": [
+    {
+      "id": "Ground",
+      "centerMeters": [
+        0.0,
+        -0.5,
+        0.0
+      ],
+      "sizeMeters": [
+        64.0,
+        1.0,
+        64.0
+      ],
+      "material": "paving",
+      "collisionLayer": 1
+    },
+    {
+      "id": "NorthWestRoof",
+      "centerMeters": [
+        -20.0,
+        2.0,
+        -20.0
+      ],
+      "sizeMeters": [
+        20.0,
+        4.0,
+        20.0
+      ],
+      "material": "slate",
+      "collisionLayer": 9
+    },
+    {
+      "id": "NorthEastRoof",
+      "centerMeters": [
+        20.0,
+        2.0,
+        -20.0
+      ],
+      "sizeMeters": [
+        20.0,
+        4.0,
+        20.0
+      ],
+      "material": "terracotta",
+      "collisionLayer": 9
+    },
+    {
+      "id": "SouthWestBlock",
+      "centerMeters": [
+        -20.0,
+        5.0,
+        21.0
+      ],
+      "sizeMeters": [
+        20.0,
+        10.0,
+        18.0
+      ],
+      "material": "terracotta",
+      "collisionLayer": 9
+    },
+    {
+      "id": "SouthEastWestWing",
+      "centerMeters": [
+        14.0,
+        4.0,
+        21.0
+      ],
+      "sizeMeters": [
+        8.0,
+        8.0,
+        18.0
+      ],
+      "material": "slate",
+      "collisionLayer": 9
+    },
+    {
+      "id": "SouthEastEastWing",
+      "centerMeters": [
+        26.0,
+        6.0,
+        21.0
+      ],
+      "sizeMeters": [
+        8.0,
+        12.0,
+        18.0
+      ],
+      "material": "plaster",
+      "collisionLayer": 9
+    },
+    {
+      "id": "PassageLintel",
+      "centerMeters": [
+        20.0,
+        5.5,
+        14.0
+      ],
+      "sizeMeters": [
+        4.0,
+        2.0,
+        4.0
+      ],
+      "material": "plaster",
+      "collisionLayer": 9
+    },
+    {
+      "id": "RoofBridge",
+      "centerMeters": [
+        0.0,
+        3.75,
+        -20.0
+      ],
+      "sizeMeters": [
+        20.0,
+        0.5,
+        4.0
+      ],
+      "material": "brass",
+      "collisionLayer": 9
+    },
+    {
+      "id": "ClockTower",
+      "centerMeters": [
+        -24.0,
+        10.0,
+        -25.0
+      ],
+      "sizeMeters": [
+        8.0,
+        12.0,
+        8.0
+      ],
+      "material": "plaster",
+      "collisionLayer": 9
+    },
+    {
+      "id": "WestBoundary",
+      "centerMeters": [
+        -32.5,
+        2.0,
+        0.0
+      ],
+      "sizeMeters": [
+        1.0,
+        4.0,
+        66.0
+      ],
+      "material": "slate",
+      "collisionLayer": 9
+    },
+    {
+      "id": "EastBoundary",
+      "centerMeters": [
+        32.5,
+        2.0,
+        0.0
+      ],
+      "sizeMeters": [
+        1.0,
+        4.0,
+        66.0
+      ],
+      "material": "slate",
+      "collisionLayer": 9
+    },
+    {
+      "id": "NorthBoundary",
+      "centerMeters": [
+        0.0,
+        2.0,
+        -32.5
+      ],
+      "sizeMeters": [
+        64.0,
+        4.0,
+        1.0
+      ],
+      "material": "slate",
+      "collisionLayer": 9
+    },
+    {
+      "id": "SouthBoundary",
+      "centerMeters": [
+        0.0,
+        2.0,
+        32.5
+      ],
+      "sizeMeters": [
+        64.0,
+        4.0,
+        1.0
+      ],
+      "material": "slate",
+      "collisionLayer": 9
+    }
+  ],
+  "instances": [],
+  "productionCamera": {
+    "location": [
+      0,
+      2.886216,
+      28.828028
+    ],
+    "target": [
+      0,
+      1.46,
+      23
+    ],
+    "verticalFovDegrees": 65,
+    "notes": "Unobstructed nominal spawn pose computed from 6 m arm, pitch -0.24 rad; runtime spring arm adjusts for collision."
+  },
+  "status": "Measured function prototype, not final asset composition",
+  "geometrySource": "res://scenes/world/CityDistrict.tscn",
+  "layoutMetadata": "plan-metadata.json",
+  "ramps": [
+    {
+      "end_z": -10.0,
+      "height": 4.0,
+      "id": "EastRamp",
+      "start_z": 8.0,
+      "width": 4.0,
+      "x": 18.0
+    },
+    {
+      "end_z": -10.0,
+      "height": 4.0,
+      "id": "WestRamp",
+      "start_z": 8.0,
+      "width": 3.0,
+      "x": -29.0
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "schema": "game-room.room-final-report.v1",
+  "roomId": "cronshift-first-district",
+  "gates": {
+    "function": false,
+    "form": false,
+    "runtime": false
+  },
+  "formChecks": {
+    "floorPlanParity": false,
+    "primaryArrival": false,
+    "symmetry": false,
+    "shell": false,
+    "manifold": false,
+    "booleans": false,
+    "collisions": false,
+    "support": false,
+    "attachmentOrientation": false,
+    "ceilingAttachmentOrientation": false,
+    "seatingOrientation": false,
+    "focalDistribution": false,
+    "heroClearance": false,
+    "colonnades": false,
+    "screenClearance": false,
+    "scale": false,
+    "camera": false,
+    "ceilingCoverage": false,
+    "environmentCoverage": false,
+    "provenance": false
+  },
+  "reviewRenders": {
+    "corners": [
+      "corner_sw.png",
+      "corner_se.png",
+      "corner_nw.png",
+      "corner_ne.png"
+    ],
+    "ceiling": [
+      "center_up.png (open sky and bridge underside)"
+    ],
+    "environment": {
+      "entry": "production_player_camera.png",
+      "upper": "production_upper_route.png",
+      "pause": "production_pause.png",
+      "market": "market_close.png",
+      "facade": "facade_close.png",
+      "roof": "roof_clocktower.png",
+      "fabricUnderside": "canopy_underneath.png"
+    },
+    "notes": "Regenerate from tools/world/city_capture.gd; external session captures are not durable repository assets."
+  },
+  "runtimeChecks": {
+    "vlow": false,
+    "textureTiers": false,
+    "lightmap": false,
+    "lightingManifest": false,
+    "performance": false,
+    "browserCapture": "",
+    "errors": []
+  },
+  "postmortem": {
+    "observations": [
+      "Current district including Architecture and Market contains 52 meshes / 60792 triangles before heroes and FX; initial graybox was 221 meshes / 2652 triangles.",
+      "Native Godot 4.7 OpenGL llvmpipe capture produced 18 images without render errors; current geometry uses batched architectural and market detail.",
+      "Newest selected separate bazaar strips govern architecture, palette and rendering. Older city/market panoramas are historical style drafts.",
+      "Solid blocks, ramps, bridge, passage, structural roof and balcony details, market props and street anchors use actual world collision.",
+      "All human art and deployment approvals remain pending."
+    ],
+    "corrections": [
+      "Route approach waypoints now avoid ramp side faces.",
+      "City ground snapping only applies to grounded locomotion.",
+      "Angled rope reeling pulls toward anchor; steeper rope reeling lifts without walking.",
+      "Ramp winding and flat normals corrected after native inspection revealed invisible top faces.",
+      "Monochrome actual-geometry plan uses unshaded height categories to avoid clipped whites.",
+      "Flattened indexed primitives before batching with authored cloth and roof triangles; geometry checks assert authored/rendered triangle parity.",
+      "Replaced overlapping mansard slabs with closed trapezoid roofs and matching convex collision.",
+      "Changed upper windows to rectangular shapes and added shutters, muted the palette, paved traversal decks and aligned dome finial after reference review."
+    ],
+    "remainingRisks": [
+      "Function layout/reference approval pending",
+      "Local modular style pass is implemented; hand-drawn linework refinement, final dressing and full-city expansion remain open",
+      "Target Mac M3 frame-time and interaction acceptance pending"
+    ]
+  },
+  "proposedLessons": [],
+  "technicalPrototypeChecks": {
+    "geometry": {
+      "checks": 1133,
+      "failures": 0,
+      "scope": "route support/capsule clearance/cover, flat top normals, authored/rendered batch triangle parity"
+    },
+    "runtime": {
+      "checks": 60,
+      "failures": 0,
+      "scope": "both heroes traversal, collision, rope reeling, recovery and context restore"
+    },
+    "onboarding": {
+      "checks": 52,
+      "failures": 0,
+      "scope": "progression, input fences, viewport fit, actual menu routing"
+    },
+    "native": {
+      "images": 18,
+      "failures": 0,
+      "renderer": "Godot 4.7 OpenGL Compatibility / llvmpipe Linux",
+      "warning": "VSync unsupported by dummy display"
+    },
+    "note": "Scoped prototype evidence. General final asset/export gate checklists above remain incomplete.",
+    "regression": {
+      "scenarios": 43,
+      "failures": 0,
+      "smokeChecks": 164,
+      "smokeFrames": 19847,
+      "gdScriptsParsed": 70,
+      "gdParseFailures": 0,
+      "source": "city-style/playable-final.log, regression-final/, gates-final.log"
+    },
+    "materials": {
+      "checks": 23,
+      "failures": 0,
+      "scope": "native world-scale patterns, ambient isolation, far-field alias attenuation and palette clipping; not artistic acceptance"
+    }
+  }
+}

@@ -14,6 +14,7 @@ const RADIUS := 3.6
 const TAIL := 20                  # pages fade after the end event (normal ult: gone on effect frame 92, as before)
 const STROKE_HEIGHT := 1.2        # contour y = 0 sits this high above the anchor (letters in the air)
 const FLASH_GAP := 1.6            # «SKI» flash lands this far in front of the opponent, on the stroke's x
+const BOOK_HEIGHT := 1.75        # PLACEHOLDER presentation: raised hands of the crossed-leg levitation pose.
 
 var owner_f: Fighter
 var move: MoveData
@@ -51,8 +52,23 @@ func running() -> bool:
 	return not _ended
 
 
+func presentation_frame() -> int:
+	return _f
+
+
+static func cancel_owner(f: Fighter) -> void:
+	for node in f.get_tree().get_nodes_in_group("grimoire_ults"):
+		var book := node as GrimoireFx
+		if book != null and book.owner_f == f:
+			book.end_ult()
+			book.set_physics_process(false)
+			book.queue_free()
+	SkeaWave.cancel_owner(f)
+
+
 func _ready() -> void:
 	_born = Engine.get_physics_frames()
+	add_to_group("grimoire_ults")
 	# imprints before the last keep the victim on the ground (knockback y 0): the stun is a stun, not a
 	# juggle — with beats 10 frames apart a lift made the next imprint an air hit → ragdoll, and the
 	# third never landed (3b smoke). Question to T5 Арес: confirm.
@@ -72,11 +88,11 @@ func _ready() -> void:
 	_page_mat = Fx.mat(Color(c, 0.7), true)
 	_book = Node3D.new()
 	add_child(_book)
-	_book.position = Vector3(owner_f.facing * 0.55, 1.35, 0.25)
+	_book.position = Vector3(owner_f.facing * 0.55, BOOK_HEIGHT, 0.25)
 	if GameState.free_move:
 		# free movement: the effect's local +x is the gaze, so the book floats in front, not to the screen side
 		rotation.y = owner_f.yaw()
-		_book.position = Vector3(0.55, 1.35, 0.25)
+		_book.position = Vector3(0.55, BOOK_HEIGHT, 0.25)
 	var cover := StandardMaterial3D.new()
 	cover.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	cover.albedo_color = Color(0.22, 0.1, 0.3)
@@ -166,6 +182,10 @@ func _physics_process(_delta: float) -> void:
 		return
 	_f += 1
 	global_position = owner_f.global_position
+	if GameState.free_move:
+		rotation.y = owner_f.yaw()
+	# Follow the presentation-only levitation; the book remains just in front of the hands.
+	_book.position.y = BOOK_HEIGHT + 0.035 * sin(float(_f) / 30.0)
 	if v != null:
 		# weak points stay exposed for the ult's own clock: a time stop pauses it, the timer must not run out
 		v.armor_break_frames = maxi(v.armor_break_frames, move.active - _f + 50)

@@ -3,6 +3,7 @@ extends Node
 ## Round / match state: intro → fight → round end → next round or match end. Best of 3 by default.
 
 signal phase_changed(phase: int)
+signal match_started
 signal round_started(round_no: int)
 signal announce(text: String, seconds: float)
 signal timer_changed(seconds_left: int)
@@ -26,12 +27,24 @@ func setup(a: Fighter, b: Fighter) -> void:
 	p2 = b
 	p1.knocked_out.connect(_on_ko)
 	p2.knocked_out.connect(_on_ko)
+	_begin_match()
+
+
+func _begin_match() -> void:
+	p1.fatigue = 0.0
+	p2.fatigue = 0.0
+	wins = {1: 0, 2: 0}
+	round_no = 0
+	GameState.last_result = {}
+	# Clear match-owned objects before fighters reset; rounds never emit this signal.
+	match_started.emit()
 	_start_round()
 
 
 func _start_round() -> void:
 	round_no += 1
 	time_left = float(GameState.round_seconds)
+	_last_timer = int(time_left)
 	phase = Phase.INTRO
 	_phase_frames = 0
 	p1.reset_for_round(-3.0, 1)
@@ -122,15 +135,11 @@ func _match_end() -> void:
 	_phase_frames = 0
 	var w := 1 if wins[1] > wins[2] else 2
 	var winner_name: String = p1.data.display_name if w == 1 else p2.data.display_name
-	GameState.last_result = {"winner": w, "rounds": round_no, "p1": p1.data.display_name, "p2": p2.data.display_name}
+	GameState.last_result = {"winner": w, "rounds": round_no, "p1": p1.data.display_name, "p2": p2.data.display_name, "wins_p1": wins[1], "wins_p2": wins[2]}
 	announce.emit("%s WINS" % winner_name, 4.0)
 	match_over.emit(w, p1.data.display_name, p2.data.display_name)
 	phase_changed.emit(int(phase))
 
 
 func rematch() -> void:
-	p1.fatigue = 0.0   # fatigue lasts the match, not longer
-	p2.fatigue = 0.0
-	wins = {1: 0, 2: 0}
-	round_no = 0
-	_start_round()
+	_begin_match()

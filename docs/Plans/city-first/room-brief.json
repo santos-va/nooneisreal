@@ -1,0 +1,81 @@
+{
+  "schema": "game-room.room-brief.v1",
+  "roomId": "cronshift-first-district",
+  "family": "custom",
+  "purpose": "Function prototype of a walkable city district; fights will be located within the world later.",
+  "runtimeSurface": "Godot 4.7 native; separate CityWorld exploration scene",
+  "boundsMeters": [
+    64,
+    22,
+    64
+  ],
+  "hero": {
+    "id": "selected-p1-choko-or-skea",
+    "role": "player traversal envelope",
+    "reservedBoundsMeters": [
+      0.7,
+      1.8,
+      0.7
+    ]
+  },
+  "symmetry": {
+    "mode": "none",
+    "order": 1,
+    "appliesTo": [
+      "street layout",
+      "route connectivity"
+    ],
+    "exceptions": [
+      "Deliberate northern roof loop, eastern ramp, western return route."
+    ]
+  },
+  "circulation": {
+    "description": "Arrival to plaza; ground loop and connected upper roof loop; future combat pockets are metadata, not active fights. Main ramp and side passage are 4 m wide; secondary west return ramp is 3 m.",
+    "minimumClearanceMeters": 3
+  },
+  "productionCamera": {
+    "viewport": [
+      1280,
+      960
+    ],
+    "location": [
+      0,
+      2.886216,
+      28.828028
+    ],
+    "target": [
+      0,
+      1.46,
+      23
+    ],
+    "verticalFovDegrees": 65,
+    "notes": "Unobstructed nominal spawn pose computed from 6 m arm, pitch -0.24 rad; runtime spring arm adjusts for collision."
+  },
+  "performanceBudget": {
+    "maxSceneTriangles": 250000,
+    "maxVLowBytes": 16777216,
+    "maxHighTextureBytes": 67108864,
+    "classification": "PLACEHOLDER design targets; not M3 measurements"
+  },
+  "creditBudget": {
+    "maximumCredits": 0,
+    "approvalRequired": true
+  },
+  "environment": {
+    "type": "procedural-sky",
+    "identity": "cronshift-first-district-sky",
+    "source": "project-native prototype lighting",
+    "assignmentKey": "cronshift-first-district"
+  },
+  "artifacts": {
+    "floorPlan": "regenerate: captures/overhead_monochrome.png",
+    "reflectedCeilingPlan": "not applicable: outdoor sky",
+    "planMetadata": "plan-metadata.json",
+    "wallElevations": [
+      "regenerate: captures/elevation_south.png",
+      "regenerate: captures/elevation_east.png"
+    ],
+    "visualTarget": "",
+    "openingContactSheet": ""
+  }
+}

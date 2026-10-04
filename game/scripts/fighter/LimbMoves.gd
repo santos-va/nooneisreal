@@ -4,7 +4,7 @@ extends RefCounted
 ## from existing character donors; these deterministic copies change presentation only.
 const ACTIONS: Array[String] = ["left_hand", "right_hand", "left_leg", "right_leg"]
 
-static func resolve(data: CharacterData, action: String, index: int, previous: String, crouching: bool, airborne: bool, active_hand: String = "") -> MoveData:
+static func resolve(data: CharacterData, action: String, index: int, previous: String, crouching: bool, airborne: bool, active_hand: String = "", sequence: String = "") -> MoveData:
 	if action not in ACTIONS:
 		return null
 	var foot := action.ends_with("leg")
@@ -24,6 +24,12 @@ static func resolve(data: CharacterData, action: String, index: int, previous: S
 		variant = "bodyhook" if action == previous else "cross"
 	else:
 		variant = "uppercut"
+	# Directional finishers are authored trajectories, not only a mirrored same pose.
+	if not crouching and not airborne and index == 2:
+		if sequence == "right_hand>left_hand>right_hand":
+			variant = "hammer"
+		elif sequence == "right_leg>left_leg>right_leg":
+			variant = "hookspin"
 	if donor == null:
 		return null
 	var move := donor.duplicate() as MoveData
@@ -31,6 +37,8 @@ static func resolve(data: CharacterData, action: String, index: int, previous: S
 	if data.id == "choko" and data.weapon_kind == "sword" and action == active_hand + "_hand":
 		family = "sword"
 		variant = "aircut" if airborne else ("lowcut" if crouching else ["cut", "thrust", "rising"][clampi(index, 0, 2)])
+		if not crouching and not airborne and sequence == "right_hand>left_hand>right_hand":
+			variant = "cleave"
 	move.id = "%s_%s_%s" % [family, action, variant]
 	move.display_name = action.replace("_", " ").capitalize() + " · " + variant
 	move.anim = move.id

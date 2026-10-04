@@ -67,17 +67,19 @@ func to_world(move: Vector2, player: int = 0) -> Vector3:
 	return right * move.x + depth() * move.y
 
 
-## Human movement captures the continuous simulation axis for one gesture. A crossing or
-## circling foe cannot rotate a held direction. Neutral releases it for the next gesture.
-## This intentionally never reads a rendered camera transform (ADR-004).
+## Human movement follows the current recorded view packet on every physics tick.
+## A held key must remain screen-relative while the automatic/manual camera turns.
+## Without an adapter packet, retain the last continuous simulation frame per gesture.
 func human_to_world(move: Vector2, player: int, view_forward: Vector3 = Vector3.ZERO) -> Vector3:
 	if move.length() <= 0.1:
 		_human_axes.erase(player)
 		return Vector3.ZERO
+	var flat := Vector3(view_forward.x, 0.0, view_forward.z)
+	if view_forward.is_finite() and flat.length_squared() >= 0.000001:
+		var view := flat.normalized()
+		return view.cross(Vector3.UP) * move.x + view * move.y
 	if not _human_axes.has(player):
-		var flat := Vector3(view_forward.x, 0.0, view_forward.z)
-		var manual := behind and player == 1 and view_forward.is_finite() and flat.length_squared() >= 0.000001
-		_human_axes[player] = flat.normalized() if manual else right
+		_human_axes[player] = right
 	var axis: Vector3 = _human_axes[player]
 	if behind and player == 1:
 		return axis.cross(Vector3.UP) * move.x + axis * move.y

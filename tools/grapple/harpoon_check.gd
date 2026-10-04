@@ -135,6 +135,7 @@ func _run() -> void:
 	f.position = Vector3(1, 2, 0)
 	f.velocity = Vector3.ZERO
 	f.grapple.rope_length = (f.grapple.anchor_point - (f.position + hook.HAND)).length()
+	f.grapple._hang_start_length = f.grapple.rope_length
 	length_before = f.grapple.rope_length
 	for n: int in 20:
 		f.grapple.drive(1.0 / 60.0, true)
@@ -148,7 +149,9 @@ func _run() -> void:
 	var toward: Vector3 = f.grapple.anchor_point - (f.position + hook.HAND)
 	f._wish = Vector3(toward.x, 0, toward.z).normalized()
 	f.grapple.drive(1.0 / 60.0, true)
-	check(f.grapple.rope_length < length_before, "explicit toward-anchor input reels")
+	check(is_equal_approx(f.grapple.rope_length, length_before), "toward-anchor movement does not silently reel")
+	f.grapple.drive(1.0 / 60.0, true, true)
+	check(f.grapple.rope_length < length_before, "Space explicitly reels")
 	f.grapple.drive(1.0 / 60.0, false)
 	check(not f.grapple.busy(), "button release detaches")
 	fixture()

@@ -16,6 +16,7 @@ var hint_vs_cpu: bool = true
 var mode_btn: Button   # MODE 2.5D / 3D (docs/GDD/06-UI-UX.md § Кнопка «РЕЖИМ 2.5D / 3D»); the smoke presses it
 var _comfort: ComfortPanel
 var _comfort_button: Button
+var city_button: Button
 var _foot: Label
 var _card1: TextureRect
 var _card2: TextureRect
@@ -49,7 +50,7 @@ func _ready() -> void:
 	center.set_anchors_preset(Control.PRESET_CENTER)
 	center.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	center.grow_vertical = Control.GROW_DIRECTION_BOTH
-	center.add_theme_constant_override("separation", 10)
+	center.add_theme_constant_override("separation", 8)
 	add_child(center)
 	var title := Label.new()
 	title.text = "NO ONE IS REAL"
@@ -66,11 +67,14 @@ func _ready() -> void:
 	sub.add_theme_color_override("font_color", Color(0.9, 0.8, 0.65))
 	center.add_child(sub)
 	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 30)
+	spacer.custom_minimum_size = Vector2(0, 14)
 	center.add_child(spacer)
 	var fight := _add(center, "FIGHT  ·  P1 vs CPU", func(): GameState.p2_is_cpu = true; GameState.training_mode = false; _go())
 	var versus := _add(center, "VERSUS  ·  P1 vs P2", func(): GameState.p2_is_cpu = false; GameState.training_mode = false; _go())
 	var training := _add(center, "TRAINING", func(): GameState.p2_is_cpu = true; GameState.training_mode = true; _go())
+	city_button = _add(center, "EXPLORE CITY · PROTOTYPE", func(): Sfx.play("ui_confirm", -6); GameState.start_city())
+	city_button.focus_entered.connect(func(): _foot.text = "Selected P1 · 3D city exploration · Prototype · Esc pause / help")
+	city_button.focus_exited.connect(func(): _foot.text = compact_hint_text())
 	fight.focus_entered.connect(_set_hint.bind(true))
 	training.focus_entered.connect(_set_hint.bind(true))
 	versus.focus_entered.connect(_set_hint.bind(false))

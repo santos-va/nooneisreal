@@ -1,7 +1,7 @@
 class_name GrappleHook
 extends Node3D
 ## Charge-based swept harpoon: 30-frame windup, fixed flight, confirmed contact.
-## Hold an attached anchor to hang; steer tangentially and press toward it to reel.
+## Hold an attached anchor to hang; Space reels a bounded distance, movement pumps the pendulum.
 ## Finite match inventory. Only recovery refunds; deployed ropes persist across rounds.
 ## Design: docs/GDD/04-Grapple-System.md
 
@@ -50,10 +50,15 @@ var cooldown_left: float = 0.0
 var cooldown_total: float = 3.0
 var regen_all: bool = false
 var range_m: float = 14.0
-var reel_speed: float = 9.0
-var release_boost: float = 1.15
-var max_speed: float = 26.0
-var steer_accel: float = 14.0
+# PLACEHOLDER feel tuning, approved in 2026-10-04-Combat-Control; playtest on the target device.
+@export var reel_speed: float = 2.0
+@export var reel_distance: float = 1.2
+@export var minimum_rope: float = 2.0
+@export var max_speed: float = 11.0
+@export var steer_accel: float = 5.0
+@export var swing_drag: float = 0.65
+@export var swing_speed_ratio: float = 0.85
+var _hang_start_length: float = 0.0
 var cone_deg: float = 30.0      # free movement only (docs/GDD/04-Grapple-System.md § Конус вибору в 3D)
 
 var attached: bool = false
@@ -195,9 +200,13 @@ func fire(prefer_enemy: bool, shot_action: String = "grapple", recorded_aim: Dic
 			registry.attach_user(existing, self)
 			anchor_point = record.anchor
 			rope_length = minf(record.length, (anchor_point - (fighter.global_position + HAND)).length())
+			_hang_start_length = rope_length
 			attached = true
 			phase = Phase.HANG
 			return Target.ANCHOR
+	if _recorded_anchor_occupied():
+		Sfx.play("grapple_denied", -4)
+		return Target.NONE
 	if charges <= 0:
 		Sfx.play("grapple_denied", -4)
 		return Target.NONE
@@ -207,7 +216,19 @@ func fire(prefer_enemy: bool, shot_action: String = "grapple", recorded_aim: Dic
 	return Target.ENEMY if prefer_enemy else Target.ANCHOR
 
 
+func _recorded_anchor_occupied() -> bool:
+	if _prefer_enemy or aim_intent.is_empty():
+		return false
+	var id := String(aim_intent.get("target_id", ""))
+	var selected := get_node_or_null(NodePath(id)) as Node3D if not id.is_empty() else null
+	return selected != null and registry.occupied(selected.global_position)
+
+
 func _launch() -> void:
+	if _recorded_anchor_occupied():
+		Sfx.play("grapple_denied", -4)
+		_finish_idle()
+		return
 	_spend()
 	if token == 0:
 		_finish_idle()
@@ -255,7 +276,13 @@ func _flight(delta: float, held: bool) -> void:
 			_begin_rewind()
 			return
 		_frames = 0
-		registry.deploy(token, fighter.player_index, anchor_point, fighter.global_position + HAND, rope_length)
+		# Two projectiles may select the same free point before either arrives.
+		# The registry owns this atomic check; a rejected shot remains recoverable.
+		if not registry.deploy(token, fighter.player_index, anchor_point, fighter.global_position + HAND, rope_length):
+			projectile_position = anchor_point
+			_begin_rewind()
+			return
+		_hang_start_length = rope_length
 		_deployed_token = token
 		registry.attach_user(token, self)
 		token = 0
@@ -337,7 +364,7 @@ func _best_anchor() -> Node3D:
 	var axis := aim_axis() if GameState.free_move else Vector3.ZERO
 	for n in get_tree().get_nodes_in_group("grapple_anchor"):
 		var a := n as Node3D
-		if a == null:
+		if a == null or (registry != null and registry.occupied(a.global_position)):
 			continue
 		var to := a.global_position - origin
 		var d := to.length()
@@ -361,9 +388,11 @@ func _best_anchor() -> Node3D:
 	return best
 
 
-## Kinematic pendulum: gravity, explicit toward-anchor reel, tangent steering, then a distance
-## constraint that removes only the outward radial velocity (tangential momentum is preserved).
-func drive(delta: float, held: bool) -> void:
+## Inextensible pendulum: motor work comes only from bounded Space reeling.
+## Constraint displacement moves the body but is removed from stored radial momentum.
+func drive(delta: float, held: bool, reel_held: bool = false) -> void:
+	if delta <= 0.0:
+		return
 	if phase == Phase.WINDUP:
 		_frames += 1
 		windup_progress = float(_frames) / float(WINDUP_FRAMES)
@@ -377,37 +406,45 @@ func drive(delta: float, held: bool) -> void:
 	if phase == Phase.FLIGHT:
 		fighter.velocity.y -= Fighter.GRAVITY * delta
 		fighter.move_and_slide()
-		_flight(delta, held)
+		_flight(delta, held or reel_held)
 		return
 	if not attached:
 		return
 	_frames += 1
-	if not held:
+	if not held and not reel_held:
 		_release(false)
 		return
 	var f := fighter
 	var hand := f.global_position + HAND
-	var to_anchor := anchor_point - hand
-	var radial := to_anchor.normalized()
-	f.velocity.y -= Fighter.GRAVITY * delta * 0.9
+	var radial := (anchor_point - hand).normalized()
 	var wish := f.wish() if GameState.free_move else Vector3(InputRouter.axis(f.player_index), 0, 0)
 	if f.control_locked:
 		wish = Vector3.ZERO
-	var forward_input := maxf(0.0, wish.dot(Vector3(radial.x, 0, radial.z).normalized()))
-	rope_length = maxf(rope_length - reel_speed * delta * forward_input, 1.0)
-	# Only tangent acceleration; neutral hold preserves rope length.
-	f.velocity += (wish - radial * wish.dot(radial)) * steer_accel * delta
-	var next := hand + f.velocity * delta
-	var off := next - anchor_point
-	if off.length() > rope_length:
-		var n := off.normalized()
-		next = anchor_point + n * rope_length
-		f.velocity -= maxf(0.0, f.velocity.dot(n)) * n
-	f.velocity = (next - hand) / delta
+		reel_held = false
+	if reel_held:
+		var shortest := minf(_hang_start_length, maxf(minimum_rope, _hang_start_length - reel_distance))
+		rope_length = minf(rope_length, maxf(rope_length - reel_speed * delta, shortest))
+	f.velocity.y -= Fighter.GRAVITY * delta
+	# Pump below the anchor only; full gravity and drag oppose perpetual powered loops.
+	if radial.y > 0.35:
+		f.velocity += (wish - radial * wish.dot(radial)) * steer_accel * delta
+	f.velocity *= exp(-swing_drag * delta)
+	var speed_limit := minf(max_speed, sqrt(Fighter.GRAVITY * maxf(rope_length, 0.01)) * swing_speed_ratio)
+	f.velocity = f.velocity.limit_length(speed_limit)
 	if not GameState.free_move:
 		f.velocity.z = 0.0
-	f.velocity = f.velocity.limit_length(max_speed)
+	var next := hand + f.velocity * delta
+	var off := next - anchor_point
+	var taut := off.length() >= rope_length
+	if taut:
+		next = anchor_point + off.normalized() * rope_length
+	f.velocity = (next - hand) / delta
 	f.move_and_slide()
+	if taut:
+		# A reel correction is not an inward launch on the next frame. Retain tangent
+		# momentum after collision response instead of overwriting the constraint result.
+		var normal := (f.global_position + HAND - anchor_point).normalized()
+		f.velocity = f.velocity.slide(normal).limit_length(speed_limit)
 	if not line_clear(f.global_position + HAND, anchor_point):
 		_release(false)
 		return
@@ -416,7 +453,6 @@ func drive(delta: float, held: bool) -> void:
 
 func _release(reached: bool) -> void:
 	var f := fighter
-	f.velocity *= release_boost
 	if reached:
 		f.velocity.y = maxf(f.velocity.y, 3.5)
 		if GameState.free_move:
@@ -534,8 +570,9 @@ func _draw_rope(a: Vector3, b: Vector3) -> void:
 	if _rope_visual != null:
 		_rope.visible = false
 		_rope_visual.visible = true
-		var length := recovery_remaining if phase == Phase.MISS_REWIND else a.distance_to(b)
-		_rope_visual.update_rope(a, b, length, get_physics_process_delta_time(), GameState.water, phase == Phase.MISS_REWIND)
+		var length := recovery_remaining if phase == Phase.MISS_REWIND else (rope_length if phase == Phase.HANG else a.distance_to(b))
+		var slack := phase == Phase.MISS_REWIND or (phase == Phase.HANG and length > a.distance_to(b) + 0.02)
+		_rope_visual.update_rope(a, b, length, get_physics_process_delta_time(), GameState.water, slack)
 		return
 	_rope.visible = true
 	_rope.global_transform = Transform3D.IDENTITY

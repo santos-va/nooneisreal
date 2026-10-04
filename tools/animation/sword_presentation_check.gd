@@ -32,7 +32,9 @@ func run() -> void:
 			check(f.skeletal.sword == null, "Skea never inherits sword")
 			f.free()
 			continue
+		f.sword_drawn = true
 		var weapon: Node3D = f.skeletal.sword
+		weapon.stow_weight = 0.0
 		check(weapon != null and weapon.visible, "one sword presentation created")
 		weapon.set_physics_process(false)
 		check(weapon.blade.mesh.get_aabb().size.y > 0.8 and weapon.blade.mesh.get_aabb().size.y < 1.2, "blade modeled in world metres")
@@ -113,9 +115,15 @@ func run() -> void:
 			check(f.animator.part_snapshot() != armed, "cut differs from same-side fist drawing")
 		f.current_move = f.data.ultimate
 		pose(f)
+		for frame in weapon.ULT_MORPH_FRAMES + 1:
+			await physics_frame
+			pose(f)
 		check(weapon.blade_material.get_shader_parameter("albedo") == weapon.GOLD, "ultimate uses gold variant")
 		f.state = actor.State.IDLE
 		pose(f)
+		for frame in weapon.ULT_MORPH_FRAMES + 1:
+			await physics_frame
+			pose(f)
 		check(weapon.blade_material.get_shader_parameter("albedo") == weapon.EMERALD, "ultimate restores emerald variant")
 		# Mirrored authored attacks must not accumulate changes on importer-removed constant tracks.
 		for move in [f.data.light, f.data.heavy, f.data.air_light, f.data.ultimate]:
@@ -180,8 +188,8 @@ func run() -> void:
 		weapon.stow_weight = 0.8
 		f.sword_hand = "left"
 		f.reset_for_round(0, 1)
-		check(weapon.stow_weight == 0.0 and weapon.handoff_blend == 0.0, "round reset clears visual transition immediately")
-		check(weapon.global_transform.is_equal_approx(weapon.hand_grip("right")), "round reset returns canonical actual grip")
+		check(weapon.stow_weight == 1.0 and weapon.handoff_blend == 0.0 and weapon.dissolve_weight == 0.0, "round reset clears transition into stored blade")
+		check(not weapon.global_position.is_equal_approx(weapon.hand_grip("right").origin) and not f.sword_drawn, "round reset restores canonical back mount")
 		f.free()
 	print("SWORD_PRESENTATION_COMPLETE checks=%d failures=%d" % [checks, failures])
 	quit(1 if failures else 0)

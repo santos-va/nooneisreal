@@ -46,8 +46,17 @@ func refund(token: int, player: int) -> bool:
 	_notify(player)
 	return true
 
+## World positions also reject duplicate markers describing the same physical attachment.
+func occupied(anchor: Vector3) -> bool:
+	for record: Dictionary in records.values():
+		if record.deployed and Vector3(record.anchor).distance_squared_to(anchor) < 0.01:
+			return true
+	return false
+
 func deploy(token: int, player: int, anchor: Vector3, _tail: Vector3, length: float) -> bool:
 	if not records.has(token) or records[token].owner != player or records[token].deployed:
+		return false
+	if occupied(anchor):
 		return false
 	var marker := Node3D.new()
 	marker.name = "Rope%d" % token

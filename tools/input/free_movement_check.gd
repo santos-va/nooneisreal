@@ -1,5 +1,5 @@
 extends SceneTree
-## Real keyboard events through production Fighter; no camera transform enters gameplay.
+## Real keyboard events through production Fighter and recorded physics-view input.
 var checks: int = 0
 var failures: int = 0
 var mutation: String = ""
@@ -127,7 +127,7 @@ func _run() -> void:
 	check(a.wish().dot(Vector3.RIGHT) > 0.99, "shared D uses screen-side simulation frame")
 	key(KEY_D, false)
 	a._read_intent()
-	# Manual-view packets are input data, captured only at a new human gesture.
+	# View packets are input data sampled every physics tick, including held movement.
 	gs.duel.behind = true
 	gs.duel.reset()
 	check(ir.set_view_basis(1, Vector3.FORWARD), "adapter accepts 90-degree view basis")
@@ -136,7 +136,7 @@ func _run() -> void:
 	check(a.wish().distance_to(Vector3.FORWARD) < 0.00001, "new W follows 90-degree view")
 	ir.set_view_basis(1, Vector3.LEFT)
 	a._read_intent()
-	check(a.wish().distance_to(Vector3.FORWARD) < 0.00001, "held W ignores later manual camera turn")
+	check(a.wish().distance_to(Vector3.LEFT) < 0.00001, "held W follows current manual camera turn")
 	key(KEY_W, false)
 	a._read_intent()
 	key(KEY_W, true)
@@ -213,7 +213,7 @@ func _run() -> void:
 	gs.duel.behind = false
 	key(KEY_D, true)
 	a._read_intent()
-	check(a.wish() == Vector3.RIGHT, "shared frame ignores solo view packet")
+	check(a.wish() == Vector3.FORWARD, "shared D follows recorded screen-right")
 	key(KEY_D, false)
 	a._read_intent()
 	gs.duel.behind = true

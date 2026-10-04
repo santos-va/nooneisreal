@@ -90,11 +90,14 @@ static func hit_spark(near: Node, at: Vector3, attacker: Fighter, damage: float,
 
 func _on_move_started(f: Fighter, m: MoveData) -> void:
 	var at := f.global_position + f.forward * 0.8 + Vector3.UP * CHEST
-	if f.data.id == "choko" and SLASH.has(m.id):
-		Flipbook.play(f, SLASH[m.id], at, 2.4 if m.id == "heavy" else 1.8,
+	var sword_limb := m.kind == MoveData.Kind.NORMAL and m.anim.begins_with("sword_")
+	if f.data.id == "choko" and (SLASH.has(m.id) or sword_limb):
+		var sheet: String = SLASH.get(m.id, "slash_air_choko" if m.anim.ends_with("aircut") else "slash_choko")
+		Flipbook.play(f, sheet, at, 2.4 if m.id == "heavy" else 1.8,
 			{"count": 8, "delay": float(m.startup) / 60.0, "additive": true, "flip": f.forward.x < 0.0})
-	elif f.data.id == "skea" and SLASH_SKEA.has(m.id):
-		Flipbook.play(f, "slash_skea", at, 2.2 if m.id == "roundhouse" else 1.6,
+	elif f.data.id == "skea" and (SLASH_SKEA.has(m.id) or (m.kind == MoveData.Kind.NORMAL and m.anim.begins_with("limb_"))):
+		at.y = f.global_position.y + m.hitbox_offset.y
+		Flipbook.play(f, "slash_skea", at, 2.2 if m.id == "roundhouse" or m.anim.contains("leg") else 1.6,
 			{"count": 8, "delay": float(m.startup) / 60.0, "additive": true, "flip": f.forward.x < 0.0})
 
 

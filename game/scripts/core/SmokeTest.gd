@@ -1853,7 +1853,7 @@ func _physics_process(_delta: float) -> void:
 		14:
 			if _f == _f0 + 2 or _f == _f0 + 4:
 				_shot("05_skea_flash_step_%d" % (_f - _f0))
-			if _f == _f0 + 5:
+			if _f == _f0 + p2.data.flash_travel_frames + 1:
 				var ghosts := get_tree().get_nodes_in_group("afterimage").size()
 				var side := signf(p2.global_position.x - p1.global_position.x)
 				if side != _x0 and p2.dash_charges_left == 2 and ghosts > _n0:
@@ -2520,7 +2520,7 @@ func _physics_process(_delta: float) -> void:
 				_n0 = 0
 				_next()
 		55:
-			# FLASH STEP goes through the opponent along the line; a sideways stick turns the exit by 45°
+			# FLASH STEP uses the selected ground direction over its visible travel interval.
 			if _n0 == 0 or _n0 == 2:
 				if not (p1.is_actionable() and p2.is_actionable()) or p2.dash_charges_left <= 0:
 					if _f > _f0 + 900:
@@ -2530,11 +2530,12 @@ func _physics_process(_delta: float) -> void:
 				_v0 = p2.global_position
 				if _n0 == 2:
 					InputRouter.v_set(2, "up", true)
+					_bone0 = GameState.duel.to_world(Vector2(0, 1), 2).normalized()
 				InputRouter.v_press(2, "dash")
 				_n0 += 1
 				_f0 = _f
 				return
-			if (_n0 == 1 or _n0 == 3) and _f == _f0 + 8:
+			if (_n0 == 1 or _n0 == 3) and _f == _f0 + p2.data.flash_travel_frames + 1:
 				InputRouter.v_clear(2)
 				var line := _flat(p1.global_position - _v0).normalized()
 				var went := _flat(p2.global_position - _v0)
@@ -2547,10 +2548,11 @@ func _physics_process(_delta: float) -> void:
 					_ok("FLASH STEP 3D: from 135° straight through P2's line (%.1f° off), %.2f m travelled" % [ang, went.length()])
 					_n0 = 2
 				else:
-					if absf(ang - Fighter.FLASH_SIDE_DEG) > 1.0:
-						_fail("flash 3D: sideways stick turned the exit %.1f° (want %.0f°)" % [ang, Fighter.FLASH_SIDE_DEG])
+					var error := rad_to_deg(went.normalized().angle_to(_bone0))
+					if error > 1.0:
+						_fail("flash 3D: sideways movement %.1f° off selected direction" % error)
 						return
-					_ok("FLASH STEP 3D: sideways stick turned the exit %.1f° off the line (rule %.0f°)" % [ang, Fighter.FLASH_SIDE_DEG])
+					_ok("FLASH STEP 3D: selected sideways direction (%.1f° error), visible travel" % error)
 					_n0 = 0
 					_next()
 		56:

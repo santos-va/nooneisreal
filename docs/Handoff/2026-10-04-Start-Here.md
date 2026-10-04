@@ -4,6 +4,20 @@ Snapshot: **2026-10-04 UTC**, reconciled against GitHub and fetched `origin/main
 
 **PRs #164, #165, #166, #167 and #168 are merged into main.** The open-PR query returned an empty list at this snapshot. Earlier statements that #167/#168 were only on branches or waiting for CI are superseded. Merged implementation does not mean final art, target-device performance or player comfort has been accepted.
 
+## Active local follow-up — combat feedback
+
+A later user report authorized [[Plans/2026-10-04-Combat-Control]] and [[ADR-022-Combat-Control-And-Match-Resources]]. The working checkout was fast-forwarded to locally available `origin/main` `65435de` before implementation. Five bounded T2 agents and an independent T4 are addressing continuous screen-relative movement, weighted Space reeling, duplicate-anchor prevention, 5/3 dash budgets and visible arcs, routed three-hit combinations, sword draw/dust morphs, ultimate presentation/range and rematch cleanup.
+
+These follow-up changes are local work, **not a new merged delivery**. Current evidence and remaining limits belong to [[Audit/2026-10-04-Combat-Control-Review]] and [[Meetings/2026-10-04-T1-Combat-Control]]. The historical tables below and in the companion pages retain their dated scope; ADR022 supersedes the held-world-direction latch and updates the combat contracts listed there.
+
+## Active local follow-up — city first
+
+Santos subsequently prioritized a shared open-world city before dressing individual arenas. [[Plans/2026-10-04-City-First]] and [[ADR-023-City-First-Exploration]] define the first bounded district: real 3D streets, ramps, roofs and bridge, a separate exploration camera, selected P1 hero and optional action-based guidance. Three T2 agents own geometry, runtime and onboarding; T7 records world/story proposals and T4 reviews independently. Existing arena geometry is preserved. This remains local prototype work, not a merged full open world. See [[2026-10-04-City-First-Review]] for measured evidence and limits; narrative, in-world fights, portals, final assets and M3 acceptance remain future work.
+
+## Active local follow-up — current city style
+
+Santos clarified that the **latest selected separate textures/strips govern architectural forms, palette and rendering together**; older city/market panoramas are historical style drafts. The earlier team interpretation of old architecture plus new rendering is superseded. [[Plans/2026-10-04-City-Style-Match]] and [[Art/2026-10-04-City-Style-Match]] apply this priority to a local modular art pass on the playable district: buildings, roofs, market props and procedural materials. Focused checks and native captures have been reviewed; the final local suite passed 43 scenarios with zero failures, alongside 164 smoke checks and green gates. Evidence and limits belong to [[Meetings/2026-10-04-T1-City-Style-Match]] and [[Audit/2026-10-04-City-Style-Review]]. This is local implementation, not a new merge, completed open world, final human art acceptance or M3 performance acceptance. No new paid generation is claimed. Historical snapshots below retain their original scope.
+
 ## Read in this order
 
 1. [[state]], [[constitution]], root `AGENTS.md`, then your assigned `roles/tN-*.md`. Default coordinator is T1; do not edit another client's adapter.

@@ -20,10 +20,11 @@ var p2: Fighter
 
 
 func _ready() -> void:
-	# Arena lifetime is a match; rounds retain this registry and its finite tokens.
+	# Rounds retain this registry; a rematch clears it without reloading the arena.
 	var match_ropes := MatchRopes.new()
 	match_ropes.name = "MatchRopes"
 	add_child(match_ropes)
+	flow.match_started.connect(match_ropes.clear_match)
 	var st := GameState.stage()
 	backdrop.apply(st)
 	sun.rotation_degrees = Vector3(-42.0, 35.0, 0.0)

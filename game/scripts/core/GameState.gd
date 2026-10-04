@@ -178,5 +178,10 @@ func start_match() -> void:
 	get_tree().change_scene_to_file("res://scenes/arena/Arena.tscn")
 
 
+## Exploration owns temporary context and restores it when leaving. Arena choices stay intact.
+func start_city() -> void:
+	get_tree().change_scene_to_file("res://scenes/world/CityWorld.tscn")
+
+
 func to_menu() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/MainMenu.tscn")

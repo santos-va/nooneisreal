@@ -99,6 +99,7 @@ func setup(a: Fighter, b: Fighter) -> void:
 	rotation = Vector3(0.0, _yaw, 0.0)
 	_apply(1.0)
 	cam.make_current()
+	_publish_view_basis()
 
 
 ## Yaw of this rig whose +Z (the arm's direction, back toward the camera) points at the camera spot:
@@ -155,6 +156,16 @@ func _physics_process(delta: float) -> void:
 	_pull = lerpf(_pull, PULLBACK_MAX if lag > PULLBACK_LAG_DEG else 0.0, 1.0 - pow(0.0015, delta))
 	if force_pull >= 0.0:
 		_pull = force_pull
+	_publish_view_basis()
+
+
+## Recordable input adapter: physics yaw, never interpolated Camera3D/render state.
+## Shared players receive the same screen basis; CPU keeps its tactical projection.
+func _publish_view_basis() -> void:
+	var view := Vector3(-sin(_yaw), 0.0, -cos(_yaw))
+	for fighter: Fighter in [p1, p2]:
+		if fighter != null and not fighter.is_cpu:
+			InputRouter.set_view_basis(fighter.player_index, view)
 
 
 ## Yaw turn this physics tick (degrees) — the smoke's |Δω| check.
