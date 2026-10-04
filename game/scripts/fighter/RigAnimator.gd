@@ -283,6 +283,22 @@ func _pose_set(n: String, e: Vector3) -> void:
 	target_pose[n] = e
 
 
+## Diagnostic capsule gait follows actual travel; the hero uses authored UAL below.
+func _ground_stride(f: Fighter, delta: float, breathe: float) -> void:
+	var speed: float = Vector2(f.velocity.x, f.velocity.z).length()
+	var walking: bool = speed < 2.7 or f.grapple.recovering()
+	var along: float = f.velocity.dot(f.forward) if GameState.free_move else f.velocity.x * f.facing
+	walk_phase += speed * delta * TAU / (1.2 if walking else 2.8) * signf(along if along != 0.0 else 1.0)
+	_guard(breathe)
+	var amount: float = smoothstep(0.0, 0.45, speed)
+	var stride: float = sin(walk_phase) * amount
+	_pose_set("thigh_l", Vector3(0, 0, (0.4 if walking else 0.65) * stride))
+	_pose_set("thigh_r", Vector3(0, 0, -(0.4 if walking else 0.65) * stride))
+	_pose_set("shin_l", Vector3(0, 0, -(0.4 if walking else 0.9) * maxf(0.0, -stride)))
+	_pose_set("shin_r", Vector3(0, 0, -(0.4 if walking else 0.9) * maxf(0.0, stride)))
+	_pose_set("torso", Vector3(0, 0, (0.035 if walking else 0.1) * amount))
+
+
 func _compute_target(f: Fighter, delta: float) -> void:
 	for n in parts.keys():
 		target_pose[n] = Vector3.ZERO
@@ -291,17 +307,12 @@ func _compute_target(f: Fighter, delta: float) -> void:
 	var breathe := sin(idle_time * 2.2) * 0.03
 	match f.state:
 		Fighter.State.IDLE, Fighter.State.INTRO:
-			_guard(breathe)
+			if f.state == Fighter.State.IDLE and Vector2(f.velocity.x, f.velocity.z).length() > 0.08:
+				_ground_stride(f, delta, breathe)
+			else:
+				_guard(breathe)
 		Fighter.State.WALK:
-			var along := f.velocity.dot(f.forward) if GameState.free_move else f.velocity.x * f.facing
-			walk_phase += delta * 9.0 * signf(along if along != 0.0 else 1.0)
-			_guard(breathe)
-			var s := sin(walk_phase)
-			_pose_set("thigh_l", Vector3(0, 0, 0.55 * s))
-			_pose_set("thigh_r", Vector3(0, 0, -0.55 * s))
-			_pose_set("shin_l", Vector3(0, 0, -0.5 * maxf(0.0, -s)))
-			_pose_set("shin_r", Vector3(0, 0, -0.5 * maxf(0.0, s)))
-			_pose_set("torso", Vector3(0, 0, 0.08))
+			_ground_stride(f, delta, breathe)
 		Fighter.State.CROUCH:
 			_guard(0.0)
 			_crouch()

@@ -12,6 +12,8 @@ var ropes: MatchRopes
 var onboarding: CityOnboarding
 var hud: CityHud
 var npc_director: CityNpcDirector
+var progress: CityProgress
+var cosmetics: CityCosmetics
 var _prior_free_move: bool
 var _prior_profile: String
 var _prior_water: WaveField
@@ -66,12 +68,21 @@ func _ready() -> void:
 	hud.setup(onboarding)
 	add_child(hud)
 	hud.bind_player(player)
+	progress = CityProgress.new()
+	progress.name = "DistrictProgress"
+	add_child(progress)
+	progress.setup(GameState.p1_character)
+	hud.bind_progress(progress)
+	cosmetics = CityCosmetics.new()
+	cosmetics.name = "CityClothStyle"
+	add_child(cosmetics)
+	cosmetics.setup(player, progress)
 	hud.restart_requested.connect(restart_exploration)
 	hud.exit_requested.connect(return_to_menu)
 	npc_director = CityNpcDirector.new()
 	npc_director.name = "Residents"
 	add_child(npc_director)
-	npc_director.setup(player)
+	npc_director.setup(player, progress)
 	_reset_observation()
 
 func _physics_process(_delta: float) -> void:
@@ -89,6 +100,15 @@ func _physics_process(_delta: float) -> void:
 		onboarding.record_event("jump")
 	if player.grapple.attached and not _last_attached:
 		onboarding.record_event("rope")
+	if progress != null:
+		for place: Dictionary in CityPlaces.landmarks():
+			if player.global_position.distance_to(place.position) <= float(place.radius):
+				progress.visit_landmark(place.id)
+		if player.grapple.attached:
+			var points: Array[Vector3] = CityLayout.anchors()
+			for index: int in points.size():
+				if player.grapple.anchor_point.distance_to(points[index]) < 0.6:
+					progress.record_event("rope", "anchor_%d" % index)
 	_reset_observation()
 
 func _reset_observation() -> void:

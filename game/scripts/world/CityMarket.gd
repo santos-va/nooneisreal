@@ -19,6 +19,10 @@ func _ready() -> void:
 			_stall(pose, "cloth_red" if (index == 0) == (side < 0) else "cloth_teal")
 	for z: float in [15.2, 28.0]:
 		_wire(Vector3(-10, 6.2, z), Vector3(10, 6.2, z), 0.65)
+	_flush_batches()
+
+
+func _flush_batches() -> void:
 	var rendered_triangles: Dictionary = {}
 	for key: String in _builders:
 		var builder: SurfaceTool = _builders[key]

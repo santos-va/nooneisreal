@@ -106,8 +106,10 @@ func _initialize() -> void:
 		# Direction changes inside WALK must select another clip without resetting phase.
 		f.state = FighterScript.State.WALK
 		f.velocity = f.forward
+		f.position += f.velocity / 60.0
 		sk._physics_process(1.0 / 60.0)
 		f.velocity = -f.forward
+		f.position += f.velocity / 60.0
 		sk._physics_process(1.0 / 60.0)
 		check(sk.clip == sk.clip_name("Walk_Bwd_Loop") and sk.clip_pos > 0.0, "walk reversal phase")
 		f.free()

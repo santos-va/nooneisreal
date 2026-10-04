@@ -12,6 +12,13 @@ func leg_poses(skeleton: Skeleton3D) -> Array:
 	for name: String in ["pelvis", "thigh_l", "calf_l", "foot_l", "ball_l", "thigh_r", "calf_r", "foot_r", "ball_r"]:
 		result.append(skeleton.get_bone_pose(skeleton.find_bone(name)))
 	return result
+func same_poses(a: Array, b: Array) -> bool:
+	if a.size() != b.size():
+		return false
+	for bone in a.size():
+		if not (a[bone] as Transform3D).is_equal_approx(b[bone]):
+			return false
+	return true
 func authority(f) -> Array:
 	return [f.transform, f.velocity, f.hp, f.meter, f.state, f.grapple.phase,
 		f.grapple.token, f.grapple.recovery_remaining, f.grapple.recovery_progress]
@@ -73,7 +80,7 @@ func _initialize() -> void:
 			f.animator.tick(1.0 / 60.0, f, false)
 			sk._physics_process(1.0 / 60.0)
 			check(before == authority(f), "kick overlay never refunds inventory")
-			check(leg_poses(sk.skeleton) == baseline, action + " normal kicking leg/hips preserved")
+			check(same_poses(leg_poses(sk.skeleton), baseline), action + " normal kicking leg/hips preserved")
 			var pull_side: String = "r" if action == "left_leg" else "l"
 			var guide_side: String = "l" if pull_side == "r" else "r"
 			check(f.animator.target_pose["forearm_" + pull_side].z > f.animator.target_pose["forearm_" + guide_side].z + 0.5, action + " opposite hand pulls")

@@ -1,5 +1,5 @@
 extends Control
-## Main menu (prototype, code-built). Keyboard/gamepad navigation via focus; left/right cycles options.
+## District-first menu. Keyboard/gamepad navigation via focus; left/right cycles options.
 ## Visual direction for the real menu: docs/GDD/06-UI-UX.md.
 
 var _buttons: Array[Button] = []
@@ -30,113 +30,184 @@ const PORTRAITS := {"choko": "res://assets/ui/portraits/portrait_choko.png", "sk
 func _ready() -> void:
 	Music.play_menu()
 	InputRouter.acquire_ui(self)
-	var bg := ColorRect.new()
-	bg.color = Color(0.07, 0.06, 0.09)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var bg := TextureRect.new()
+	bg.texture = load("res://assets/menu/menu_skyline_plate_v1.png")
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
-	# slanted accent band (Kronshift terracotta)
-	var band := ColorRect.new()
-	band.color = Color(0.78, 0.4, 0.24, 0.9)
-	band.size = Vector2(2600, 170)
-	band.position = Vector2(-300, 190)
-	band.rotation = -0.09
-	add_child(band)
-	var band2 := ColorRect.new()
-	band2.color = Color(0.12, 0.3, 0.36, 0.9)
-	band2.size = Vector2(2600, 40)
-	band2.position = Vector2(-300, 380)
-	band2.rotation = -0.09
-	add_child(band2)
-	var center := VBoxContainer.new()
-	center.set_anchors_preset(Control.PRESET_CENTER)
-	center.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	center.grow_vertical = Control.GROW_DIRECTION_BOTH
-	center.add_theme_constant_override("separation", 8)
-	add_child(center)
-	var title := Label.new()
-	title.text = "NO ONE IS REAL"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 72)
-	title.add_theme_color_override("font_color", Color(0.98, 0.93, 0.85))
-	title.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.08))
-	title.add_theme_constant_override("outline_size", 10)
-	center.add_child(title)
-	var sub := Label.new()
-	sub.text = "CRONSHIFT · ARENA & CITY PROTOTYPE"
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.add_theme_font_size_override("font_size", 20)
-	sub.add_theme_color_override("font_color", Color(0.9, 0.8, 0.65))
-	center.add_child(sub)
-	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 14)
-	center.add_child(spacer)
-	var fight := _add(center, "FIGHT  ·  P1 vs CPU", func(): GameState.p2_is_cpu = true; GameState.training_mode = false; _go())
-	var versus := _add(center, "VERSUS  ·  P1 vs P2", func(): GameState.p2_is_cpu = false; GameState.training_mode = false; _go())
-	var training := _add(center, "TRAINING", func(): GameState.p2_is_cpu = true; GameState.training_mode = true; _go())
-	city_button = _add(center, "EXPLORE CITY · PROTOTYPE", func(): Sfx.play("ui_confirm", -6); GameState.start_city())
-	city_button.focus_entered.connect(func(): _foot.text = "Selected P1 · 3D city exploration · Prototype · Esc pause / help")
-	city_button.focus_exited.connect(func(): _foot.text = compact_hint_text())
-	fight.focus_entered.connect(_set_hint.bind(true))
-	training.focus_entered.connect(_set_hint.bind(true))
-	versus.focus_entered.connect(_set_hint.bind(false))
+	var shade := ColorRect.new()
+	shade.color = Color(0.025, 0.035, 0.055, 0.76)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(shade)
+	var frame := MarginContainer.new()
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.add_theme_constant_override("margin_left", 64)
+	frame.add_theme_constant_override("margin_right", 64)
+	frame.add_theme_constant_override("margin_top", 32)
+	frame.add_theme_constant_override("margin_bottom", 100)
+	add_child(frame)
+	var page := VBoxContainer.new()
+	page.add_theme_constant_override("separation", 16)
+	frame.add_child(page)
+	var heading := HBoxContainer.new()
+	page.add_child(heading)
+	var title := _text("NO ONE IS REAL", 54)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_child(title)
+	_comfort_button = Button.new()
+	_comfort_button.text = "COMFORT & CONTROLS"
+	_comfort_button.add_theme_font_size_override("font_size", 24)
+	_style_button(_comfort_button)
+	heading.add_child(_comfort_button)
+	page.add_child(_text("CRONSHIFT  /  THE FIRST DISTRICT", 22, Color("e5a875")))
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 28)
+	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	page.add_child(columns)
+	var journey := _panel_column(columns)
+	journey.add_child(_text("YOUR JOURNEY", 20, Color("7bc9c6")))
+	journey.add_child(_text("A city worth getting lost in.", 32))
+	var description := _text("Meet the residents. Find your way over the rooftops.\nTake on the district at your own pace.", 22)
+	journey.add_child(description)
+	var artwork := TextureRect.new()
+	artwork.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	artwork.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	artwork.custom_minimum_size = Vector2(0, 170)
+	artwork.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	artwork.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	journey.add_child(artwork)
+	_card1 = artwork
 	var p1_row := HBoxContainer.new()
-	p1_row.add_theme_constant_override("separation", 10)
-	p1_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	center.add_child(p1_row)
+	p1_row.add_theme_constant_override("separation", 12)
+	journey.add_child(p1_row)
 	_portrait1 = _portrait_rect()
 	p1_row.add_child(_portrait1)
 	_p1_btn = _add(p1_row, "", func(): GameState.cycle_character(1, 1); _refresh())
+	_p1_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	journey.add_child(_text("Choko + Skea  ·  2 playable heroes", 20, Color("aebfca")))
+	city_button = _add(journey, "ENTER DISTRICT", _enter_city)
+	city_button.custom_minimum_size.y = 58
+	city_button.focus_entered.connect(_update_footer)
+	city_button.focus_exited.connect(func(): _foot.text = compact_hint_text())
+	city_button.add_theme_color_override("font_color", Color("ffe9c7"))
+	_style_button(city_button, true)
+	journey.add_child(_text("Your district progress is saved for each hero.", 20, Color("aebfca")))
+	var arena := _panel_column(columns)
+	arena.add_child(_text("THE ARENA", 20, Color("e5a875")))
+	var modes := HBoxContainer.new()
+	modes.add_theme_constant_override("separation", 8)
+	arena.add_child(modes)
+	var fight := _add(modes, "FIGHT", func(): GameState.p2_is_cpu = true; GameState.training_mode = false; _go())
+	var versus := _add(modes, "VERSUS", func(): GameState.p2_is_cpu = false; GameState.training_mode = false; _go())
+	var training := _add(modes, "TRAINING", func(): GameState.p2_is_cpu = true; GameState.training_mode = true; _go())
+	fight.name = "FightButton"
+	versus.name = "VersusButton"
+	training.name = "TrainingButton"
+	for button: Button in [fight, versus, training]:
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fight.focus_entered.connect(_set_hint.bind(true))
+	training.focus_entered.connect(_set_hint.bind(true))
+	versus.focus_entered.connect(_set_hint.bind(false))
 	var p2_row := HBoxContainer.new()
-	p2_row.add_theme_constant_override("separation", 10)
-	p2_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	center.add_child(p2_row)
-	_p2_btn = _add(p2_row, "", func(): GameState.cycle_character(2, 1); _refresh())
+	p2_row.add_theme_constant_override("separation", 12)
+	arena.add_child(p2_row)
 	_portrait2 = _portrait_rect()
 	p2_row.add_child(_portrait2)
-	stage_btn = _add(center, "", func(): step_stage(1))
-	time_btn = _add(center, "", func(): toggle_time())
-	_keys_btn = _add(center, "", func(): InputRouter.cycle_profile(); _refresh())
-	mode_btn = _add(center, "", toggle_mode)
-	_add(center, "QUIT", func(): get_tree().quit())
-	for b in [_p1_btn, _p2_btn, stage_btn, time_btn, _keys_btn, mode_btn]:
-		b.gui_input.connect(_cycle_input.bind(b))
-	_card1 = _card_rect(Vector2(24, 470))
-	_card2 = _card_rect(Vector2(-504, 470))
-	_card2.anchor_left = 1.0
-	_card2.anchor_right = 1.0
-	var foot := Label.new()
-	_foot = foot
-	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	foot.add_theme_font_size_override("font_size", 32)
-	foot.clip_text = true
-	foot.add_theme_color_override("font_color", Color(0.75, 0.72, 0.7))
-	foot.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	foot.anchor_top = 1.0
-	foot.offset_top = -58
-	foot.offset_bottom = -12
-	add_child(foot)
-	_comfort_button = Button.new()
-	_comfort_button.text = "COMFORT & CONTROLS"
-	_comfort_button.add_theme_font_size_override("font_size", 32)
-	_comfort_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_comfort_button.position = Vector2(-450, 18)
-	_comfort_button.size = Vector2(430, 48)
-	add_child(_comfort_button)
+	_p2_btn = _add(p2_row, "", func(): GameState.cycle_character(2, 1); _refresh())
+	_p2_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stage_btn = _add(arena, "", func(): step_stage(1))
+	time_btn = _add(arena, "", func(): toggle_time())
+	_keys_btn = _add(arena, "", func(): InputRouter.cycle_profile(); _refresh())
+	mode_btn = _add(arena, "", toggle_mode)
+	var spring := Control.new()
+	spring.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	arena.add_child(spring)
+	_add(arena, "QUIT GAME", func(): get_tree().quit())
+	for button: Button in [_p1_btn, _p2_btn, stage_btn, time_btn, _keys_btn, mode_btn]:
+		button.gui_input.connect(_cycle_input.bind(button))
+	_foot = _text("", 32, Color("d0d9da"))
+	_foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_foot.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	_foot.offset_top = -84
+	_foot.offset_bottom = -42
+	add_child(_foot)
+	var build := _text(BuildInfo.label(), 18, Color("99b0bc"))
+	build.name = "BuildLabel"
+	build.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	build.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	build.offset_top = -32
+	build.offset_bottom = -8
+	add_child(build)
 	_comfort = ComfortPanel.new()
 	add_child(_comfort)
 	_comfort_button.pressed.connect(func(): _comfort.show_panel(_comfort_button, InputRouter.hint_text(hint_vs_cpu)))
-	_buttons[-1].focus_neighbor_bottom = _buttons[-1].get_path_to(_comfort_button)
-	_comfort_button.focus_neighbor_top = _comfort_button.get_path_to(_buttons[-1])
-	_comfort_button.focus_neighbor_bottom = _comfort_button.get_path_to(_buttons[0])
-	_buttons[0].focus_neighbor_top = _buttons[0].get_path_to(_comfort_button)
+	var focus_order: Array[Button] = [city_button, _p1_btn, fight, versus, training, _p2_btn, stage_btn, time_btn, _keys_btn, mode_btn, _buttons[-1], _comfort_button]
+	for i: int in focus_order.size():
+		var button := focus_order[i]
+		button.focus_neighbor_top = button.get_path_to(focus_order[posmod(i - 1, focus_order.size())])
+		button.focus_neighbor_bottom = button.get_path_to(focus_order[(i + 1) % focus_order.size()])
+		button.focus_previous = button.focus_neighbor_top
+		button.focus_next = button.focus_neighbor_bottom
 	_refresh()
-	_buttons[0].grab_focus()
+	city_button.grab_focus()
+
+
+func _enter_city() -> void:
+	Sfx.play("ui_confirm", -6)
+	GameState.start_city()
+
+
+func _text(value: String, font_size: int, color: Color = Color("f5eadb")) -> Label:
+	var label := Label.new()
+	label.text = value
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", color)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return label
+
+
+func _panel_column(parent: Control) -> VBoxContainer:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.045, 0.07, 0.09, 0.91)
+	style.border_color = Color("40565e")
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(8)
+	style.content_margin_left = 24
+	style.content_margin_right = 24
+	style.content_margin_top = 20
+	style.content_margin_bottom = 20
+	panel.add_theme_stylebox_override("panel", style)
+	parent.add_child(panel)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	panel.add_child(column)
+	return column
+
+
+func _style_button(button: Button, primary: bool = false) -> void:
+	for state: String in ["normal", "hover", "pressed", "focus"]:
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color("285456") if primary else Color("152931")
+		if state == "hover" or state == "pressed":
+			style.bg_color = style.bg_color.lightened(0.15)
+		style.border_color = Color("e5b178") if state == "focus" else Color("527478")
+		style.set_border_width_all(3 if state == "focus" else 1)
+		style.set_corner_radius_all(5)
+		style.content_margin_left = 14
+		style.content_margin_right = 14
+		button.add_theme_stylebox_override(state, style)
 
 
 func _add(parent: Control, text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(460, 48)
+	b.custom_minimum_size = Vector2(0, 46)
+	_style_button(b)
 	b.add_theme_font_size_override("font_size", 22)
 	b.pressed.connect(cb)
 	parent.add_child(b)
@@ -177,18 +248,20 @@ func _cycle_input(event: InputEvent, b: Button) -> void:
 func _refresh() -> void:
 	var c1 := GameState.load_character(GameState.p1_character)
 	var c2 := GameState.load_character(GameState.p2_character)
-	_p1_btn.text = "P1:  ◂ %s ▸" % (c1.display_name if c1 else GameState.p1_character)
-	_p2_btn.text = "P2:  ◂ %s ▸" % (c2.display_name if c2 else GameState.p2_character)
+	city_button.text = "CONTINUE DISTRICT" if CityProgress.has_saved_hero(GameState.p1_character) else "ENTER DISTRICT"
+	_p1_btn.text = "HERO:  ◂ %s ▸" % (c1.display_name if c1 else GameState.p1_character)
+	_p2_btn.text = "OPPONENT:  ◂ %s ▸" % (c2.display_name if c2 else GameState.p2_character)
 	stage_btn.text = "STAGE:  ◂ %s ▸" % GameState.stage().get("label", GameState.stage().name)
 	time_btn.text = "TIME:  ◂ %s ▸" % ("NIGHT" if GameState.night else "DAY")
 	var solo := InputRouter.profile == InputRouter.PROFILE_SOLO
-	_keys_btn.text = "KEYBOARD:  ◂ %s ▸" % ("SOLO (P2 on gamepad)" if solo else "SHARED (two on one keyboard)")
+	_keys_btn.text = "KEYBOARD:  ◂ %s ▸" % ("SOLO" if solo else "SHARED")
 	mode_btn.text = "MODE:  ◂ %s ▸" % ("3D (free move)" if GameState.free_move else "2.5D (plane)")
 	if _foot:
-		_foot.text = compact_hint_text()
+		_update_footer()
 	if _card1:
-		_card1.texture = _card_tex(c1)
-		_card2.texture = _card_tex(c2)
+		_set_portrait(_card1, c1)
+		if _card2 != null:
+			_card2.texture = _card_tex(c2)
 	_set_portrait(_portrait1, c1)
 	_set_portrait(_portrait2, c2)
 
@@ -196,7 +269,12 @@ func _refresh() -> void:
 func _set_hint(vs_cpu: bool) -> void:
 	hint_vs_cpu = vs_cpu
 	if _foot:
-		_foot.text = compact_hint_text()
+		_update_footer()
+
+
+func _update_footer() -> void:
+	if _foot != null:
+		_foot.text = "District journey · Auto-save · Comfort & controls ↗" if city_button.has_focus() else compact_hint_text()
 
 
 ## STAGE row: the next rotation arena, remembered in settings.cfg [gameplay] stage (id, not index).

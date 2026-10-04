@@ -16,12 +16,24 @@ mkdir "$stage/game"
 # Do not mutate the shared working project's preset/import cache while building.
 (cd "$repo_root/game" && tar --exclude=.godot --exclude=export -cf - .) | (cd "$stage/game" && tar -xf -)
 python3 - "$stage/game/export_presets.cfg" "$revision" <<'PY'
-import pathlib, sys
+import pathlib, re, sys
 preset=pathlib.Path(sys.argv[1]); text=preset.read_text()
 revision=sys.argv[2]
+version=re.search(r'^config/version="([0-9]+\.[0-9]+\.[0-9]+)"$', (preset.parent/'project.godot').read_text(), re.M)
+if version:
+    text=text.replace('application/short_version=""', 'application/short_version="'+version[1]+'"')
+    text=text.replace('application/version=""', 'application/version="'+version[1]+'"')
 text=text.replace('application/additional_plist_content=""', f'application/additional_plist_content="<key>NIRBuildRevision</key><string>{revision}</string>"')
 if (preset.parent/'assets/ui/app_icon.png').is_file():
     text=text.replace('application/icon="res://icon.svg"', 'application/icon="res://assets/ui/app_icon.png"')
+def include_runtime_data(match):
+    filters=[item.strip() for item in match[1].split(',') if item.strip()]
+    for required in ('data/audio/*.cfg', 'data/city/*.json', 'build_info.cfg'):
+        if required not in filters:
+            filters.append(required)
+    return 'include_filter="'+','.join(filters)+'"'
+text=re.sub(r'^include_filter="([^"\n]*)"$', include_runtime_data, text, flags=re.M)
+(preset.parent/'build_info.cfg').write_text('[build]\nrevision="'+revision+'"\n')
 preset.write_text(text)
 PY
 "$godot_bin" --headless --path "$stage/game" --editor --import --quit > "$output/import.log" 2>&1
@@ -44,5 +56,5 @@ printf 'Exported revision %s to %s\n' "$revision" "$output"
 # Small bootstrap upgrades the updater without bundling/redownloading the game.
 mkdir -p "$output/No One Is Real Updater"
 cp "$repo_root/tools/distribution/update-macos.sh" "$output/No One Is Real Updater/"
-cp "$repo_root/tools/distribution/Enable Updates.command" "$output/No One Is Real Updater/"
+cp "$repo_root/tools/distribution/Enable Updates.command" "$repo_root/tools/distribution/Check Updates.command" "$output/No One Is Real Updater/"
 (cd "$output" && zip -qr NoOneIsReal-Updater.zip 'No One Is Real Updater')

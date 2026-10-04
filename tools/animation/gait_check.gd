@@ -4,6 +4,12 @@ var failures: int = 0
 var checks: int = 0
 var FighterScript: GDScript
 var Motion: GDScript
+const EXPECTED_SOURCE: Dictionary = {
+	"jab": "Punch_Jab", "cross": "Punch_Cross", "bodyhook": "Melee_Hook",
+	"uppercut": "Melee_Uppercut", "hammer": "OverhandThrow", "lowhand": "Punch_Jab",
+	"airhand": "Punch_Cross", "frontkick": "Kick", "roundhouse": "Kick",
+	"spin": "Kick", "hookspin": "Kick", "lowkick": "Kick", "airkick": "Kick",
+}
 
 func check(ok: bool, label: String) -> void:
 	checks += 1
@@ -120,7 +126,10 @@ func _initialize() -> void:
 				f.animator.tick(1.0 / 60.0, f, false)
 				sk._physics_process(1.0 / 60.0)
 				sk.retarget()
-				check(sk.uses_procedural_motion(), m.anim + " explicit fallback")
+				var source_name: String = "Melee_Knee" if id == "skea" and variant == "airkick" else EXPECTED_SOURCE[variant]
+				var imported: String = sk.clip_name(source_name)
+				check(not imported.is_empty() and sk.clip == imported, m.anim + " actual imported authored source")
+				check(not sk.uses_procedural_motion(), m.anim + " authored motion replaces fallback")
 				check(before == [f.position, f.velocity, f.hp, f.meter, m.damage, m.hitbox_offset], m.anim + " no gameplay mutation")
 				var side: String = "Left" if action.begins_with("left") else "Right"
 				var endpoint: int = sk.hero_skeleton.find_bone(side + ("Hand" if action.ends_with("hand") else "Foot"))

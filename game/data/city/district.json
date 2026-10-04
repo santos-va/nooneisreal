@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "palettes": [
+    {"id":"original","title":"Без перев’язі","color":"ffffff","price":0},
+    {"id":"mint","title":"М'ятна перев’язь","color":"b3ffe6","price":0},
+    {"id":"amber","title":"Бурштинова перев’язь","color":"ffd19e","price":3},
+    {"id":"plum","title":"Сливова перев’язь","color":"dbb8ff","price":4}
+  ],
+  "quests": [
+    {"id":"introductions","giver":"grocer","title":"Сусіди за прилавком","description":"Познайомся з трьома працівниками кварталу. У кожного є власна робота й невеликі прохання.","hint":"Зайди до крамниці, кравця та майстерні на західній вулиці.","requires":[],"goals":[{"kind":"meet","id":"resident_00","count":1},{"kind":"meet","id":"resident_01","count":1},{"kind":"meet","id":"resident_02","count":1}],"reward":3},
+    {"id":"parcel","giver":"grocer","title":"Котушки для кравця","description":"У крамниці лежить пакунок ниток. Візьми його й особисто передай кравцеві, тоді повернися до крамниці.","hint":"У розмові з кравцем обери «Передати пакунок ниток».","requires":["introductions"],"goals":[{"kind":"deliver","id":"thread_parcel","count":1}],"reward":3},
+    {"id":"roof_walk","giver":"workshop","title":"Огляд верхнього маршруту","description":"Майстер просить оглянути міст між дахами та майданчик біля годинникової вежі. До дахів ведуть східна й західна рампи.","hint":"Дістанься мосту над північною вулицею та майданчика біля вежі.","requires":[],"goals":[{"kind":"visit","id":"roof_bridge","count":1},{"kind":"visit","id":"clock_tower","count":1}],"reward":4},
+    {"id":"rope_route","giver":"workshop","title":"Дві надійні опори","description":"Перевір міські зачепи: прикріпи мотузку до двох різних опор. Повторення одного зачепа не зараховується.","hint":"Зачепи дві різні опори; доступний кандидат має видиму підказку.","requires":["roof_walk"],"goals":[{"kind":"rope","id":"*","count":2}],"reward":4},
+    {"id":"neighbours","giver":"tailor","title":"Знайомі обличчя","description":"Поговори з чотирма різними мешканцями поза крамницями. Запитай, чим вони займаються й куди радять піти.","hint":"Знайди чотирьох перехожих на центральній вулиці.","requires":[],"goals":[{"kind":"resident","id":"*","count":4}],"reward":4},
+    {"id":"own_style","giver":"tailor","title":"Свій колір у місті","description":"Приміряй м'ятну перев’язь у кравця та вийди на ринковий майданчик. Повернися й розкажи про вибір.","hint":"Обери м'ятну перев’язь у кравця, потім відвідай ринок.","requires":["neighbours"],"goals":[{"kind":"palette","id":"mint","count":1},{"kind":"visit","id":"market_court","count":1}],"reward":3}
+  ]
+}

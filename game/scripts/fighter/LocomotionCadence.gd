@@ -14,10 +14,13 @@ static func sector(velocity: Vector3, forward: Vector3) -> int:
 
 static func choose(velocity: Vector3, forward: Vector3, leg_scale: float) -> String:
 	var index: int = sector(velocity, forward)
-	# Artistic transition at twice the source walking speed, not a new sprint action.
-	return JOG[index] if Vector2(velocity.x, velocity.z).length() > WALK_SPEED[index] * leg_scale * 2.0 else WALK[index]
+	# PLACEHOLDER visual boundary: do not stretch the high-speed Jog into a slow walk.
+	# Stateful runtime hysteresis and recovery forcing live in AuthoredLocomotion.
+	return JOG[index] if Vector2(velocity.x, velocity.z).length() > 2.7 * leg_scale else WALK[index]
 
 static func source_speed(name: String) -> float:
+	if name in ["Sprint_Loop", "Sprint_Enter", "Sprint_Exit"]:
+		return 8.905 # Source stance measurement from measure_gait.py, UAL1 Sprint_Loop.
 	var index: int = WALK.find(name)
 	if index >= 0:
 		return WALK_SPEED[index]

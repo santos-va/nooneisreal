@@ -13,9 +13,13 @@ var waypoint: int = 0
 var pause_left: float = 0.0
 var speech_left: float = 0.0
 var speech: Label3D
+var work_kind: String = ""
 
 static func home_for(index: int) -> Vector3:
-	return Vector3(-5.4 + (index % 4) * 3.6, 0.0, -10.0 + (index / 4) * 15.0)
+	var homes: Array[Vector3] = [Vector3(-25.15, 0, 18.8), Vector3(-18.55, 0, 18.8), Vector3(-11.95, 0, 18.8),
+		Vector3(-5.5, 0, -5), Vector3(3.8, 0, -11), Vector3(5.6, 0, 4), Vector3(-4, 0, 13),
+		Vector3(2, 0, 22), Vector3(-20, 0, 2), Vector3(-15, 0, -3), Vector3(25, 0, 4), Vector3(-1.7, 0, -4)]
+	return homes[clampi(index, 0, homes.size() - 1)]
 
 func setup(index: int, person: Dictionary) -> void:
 	resident_index = index
@@ -25,6 +29,7 @@ func setup(index: int, person: Dictionary) -> void:
 		home + Vector3(0.5, 0, 4), home + Vector3(-0.5, 0, 4)]
 	waypoint = index % route.size()
 	visual = NpcAppearance.build(person)
+	visual.scale *= 0.92
 	add_child(visual)
 	speech = Label3D.new()
 	speech.position.y = 2.25
@@ -35,6 +40,14 @@ func setup(index: int, person: Dictionary) -> void:
 	speech.modulate = Color("fff1d8")
 	speech.visible = false
 	add_child(speech)
+
+func setup_worker(kind: String, point: Vector3) -> void:
+	work_kind = kind
+	home = point
+	position = point
+	route = [point]
+	waypoint = 0
+	walking = false
 
 func say(text: String, listener: Vector3, duration: float) -> void:
 	speech.text = text
@@ -59,7 +72,7 @@ func _physics_process(delta: float) -> void:
 	speech_left = maxf(0.0, speech_left - delta)
 	speech.visible = speech_left > 0.0
 	var speed: float = 0.0
-	if walking:
+	if walking and work_kind.is_empty():
 		if pause_left > 0.0:
 			pause_left = maxf(0.0, pause_left - delta)
 		else:
@@ -74,3 +87,5 @@ func _physics_process(delta: float) -> void:
 				pause_left = stop_seconds + (resident_index % 3) * 0.4
 	if visual != null and visual.has_method("set_motion"):
 		visual.call("set_motion", speed, clock)
+		if not work_kind.is_empty() and visual.has_method("set_work"):
+			visual.call("set_work", work_kind, clock)

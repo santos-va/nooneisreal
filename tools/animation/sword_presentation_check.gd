@@ -104,7 +104,9 @@ func run() -> void:
 			f.move_frame = f.current_move.startup
 			pose(f)
 			var armed: Array = f.animator.part_snapshot()
-			check(f.skeletal.uses_procedural_motion(), "armed normal has explicit skeletal motion")
+			check(not f.skeletal.uses_procedural_motion(), "armed normal uses authored source")
+			var source: Dictionary = load("res://scripts/fighter/AuthoredCombatMotion.gd").resolve(f.current_move, f.data.id)
+			check(not source.is_empty() and f.skeletal.clip == f.skeletal.clip_name(source.clip), "armed normal plays its declared UAL clip")
 			check(weapon.global_transform.is_equal_approx(weapon.hand_grip(side)), "attack keeps snapshot grip")
 			weapon.stow_weight = 0.9
 			weapon.update_pose()

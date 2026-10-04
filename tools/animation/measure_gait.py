@@ -35,7 +35,7 @@ def measure(path):
 
     for animation in document["animations"]:
         name = animation["name"]
-        if not name.startswith(("Walk_", "Jog_")) or not name.endswith("_Loop"):
+        if not name.startswith(("Walk_", "Jog_", "Sprint_")) or not name.endswith("_Loop"):
             continue
         if any(excluded in name for excluded in ["Lean", "Carry", "Formal"]):
             continue
