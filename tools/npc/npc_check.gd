@@ -29,6 +29,12 @@ func _run() -> void:
 	check(model.people.any(func(p: Dictionary) -> bool: return p.opportunity), "rare positive transition occurs")
 	var text: String = model.meet(0)
 	check(text.contains("№1") and model.people[0].trust == 1, "conversation uses persistent meeting fact")
+	var trust_before: int = model.people[0].trust
+	var exchange: Array[String] = model.greet(0, 1)
+	check(exchange.size() == 2 and exchange[0].contains(model.people[1].name), "neighbours address actual identity")
+	check(model.people[0].memory.back().kind == "neighbour" and model.people[1].memory.back().kind == "neighbour", "both neighbours remember encounter")
+	check(model.people[0].trust == trust_before, "ambient greeting cannot invent player trust")
+	check(model.greet(0, 0).is_empty() and model.greet(-1, 0).is_empty() and model.greet(0, 12).is_empty(), "invalid social pairs rejected")
 	var path: String = "user://npc_test_save.json"
 	check(model.save_to(path), "atomic save")
 	check(other.load_from(path), "load save")

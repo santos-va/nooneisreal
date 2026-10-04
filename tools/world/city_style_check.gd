@@ -103,6 +103,24 @@ func _run() -> void:
 		var brightest := maxf(center.r, maxf(center.g, center.b))
 		peak = maxf(peak, brightest)
 		check(brightest < 0.94, "%s retains painted colour rather than clipping white" % key)
+	# Compare identical colour/scale settings so surface identity is not merely palette variation.
+	var identity_material: ShaderMaterial = palette.paving.duplicate()
+	plane.material_override = identity_material
+	var stone_identity := await shot()
+	identity_material.set_shader_parameter("surface_kind", 3)
+	var slate_identity := await shot()
+	check(difference(stone_identity, slate_identity) > 0.002, "slate overlap reads differently from stone with identical palette")
+	camera.size = 0.9
+	identity_material.set_shader_parameter("surface_kind", 5)
+	var plaster_identity := await shot()
+	identity_material.set_shader_parameter("surface_kind", 6)
+	var cloth_identity := await shot()
+	check(difference(plaster_identity, cloth_identity) > 0.001, "near cloth weave reads differently from plaster with identical palette")
+	camera.size = 60.0
+	var cloth_far := await shot()
+	identity_material.set_shader_parameter("surface_kind", 5)
+	var plaster_far := await shot()
+	check(difference(cloth_far, plaster_far) < 0.001, "cloth weave fades at distance instead of aliasing")
 	print("CITY_STYLE_METRICS near_edges=%f far_edges=%f palette_peak=%f" % [near_edges, far_edges, peak])
 	stage.queue_free()
 	await process_frame

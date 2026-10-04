@@ -249,6 +249,8 @@ func retarget(recorded_aim: Dictionary = {}) -> bool:
 	action = "grapple_parkour"
 	_prefer_enemy = false
 	aim_intent = packet
+	# Validation and launch must agree even if an old snapshot carries a stale point.
+	aim_intent.point = selected.global_position
 	chain_throw = true
 	_launch()
 	return phase == Phase.FLIGHT
@@ -374,7 +376,7 @@ func _launch() -> void:
 func _flight(delta: float, held: bool) -> void:
 	var step := minf(projectile_speed * delta, range_m - _flight_distance)
 	var end := projectile_position + _flight_direction * step
-	var q := PhysicsRayQueryParameters3D.create(projectile_position, end, ArenaLayout.COVER_LAYER | 4)
+	var q := PhysicsRayQueryParameters3D.create(projectile_position, end, ArenaLayout.COVER_LAYER | 1 | 4)
 	q.collide_with_areas = true
 	q.hit_from_inside = true
 	q.exclude = [fighter.get_rid(), fighter.hurtbox.get_rid()]
@@ -463,12 +465,14 @@ func _in_cone(to: Vector3, axis: Vector3) -> bool:
 
 
 ## The anchor fire() would pick right now (null = none); public for the smoke test.
-## Sprint A3: true when no cover (ArenaLayout.COVER_LAYER) lies on the segment `from` → `to`. Cover only — the floor and
-## the fighters never cut a rope.
+## World geometry blocks selection, transfer, catches and loaded ropes alike.
+## Fighter bodies/hurtboxes are excluded; solid city roofs and floors are not.
 func line_clear(from: Vector3, to: Vector3) -> bool:
 	if not is_inside_tree():
 		return true
-	var q := PhysicsRayQueryParameters3D.create(from, to, ArenaLayout.COVER_LAYER)
+	var q := PhysicsRayQueryParameters3D.create(from, to, ArenaLayout.COVER_LAYER | 1)
+	q.hit_from_inside = true
+	q.exclude = [fighter.get_rid(), fighter.hurtbox.get_rid()]
 	return fighter.get_world_3d().direct_space_state.intersect_ray(q).is_empty()
 
 

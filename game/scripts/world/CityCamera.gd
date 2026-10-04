@@ -85,7 +85,7 @@ func _physics_process(delta: float) -> void:
 	var turn := Vector2(angle_difference(previous, _yaw), _pitch - previous_pitch).length()
 	if turn > 0.00001:
 		looked.emit(turn)
-	var packet := aim.capture(player, false, false)
+	var packet := aim.capture(player, false)
 	_cue.visible = not String(packet.target_id).is_empty() and not InputRouter.ui_suppressed()
 	if _cue.visible:
 		_cue.global_position = packet.point

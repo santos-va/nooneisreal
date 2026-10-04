@@ -89,6 +89,12 @@ var _last_ground_position: Vector3 = Vector3.ZERO
 var _gait_position_valid: bool = false
 var sword: SwordPresentation
 var _sword_mirror_base: Dictionary = {}
+## PLACEHOLDER art duration: return to stance after a swing, never blend into a contact/reaction.
+@export_range(0.0, 0.2) var attack_return_seconds: float = 0.10
+var _attack_return_source: Array[Transform3D] = []
+var _attack_return_base: Array[Transform3D] = []
+var _attack_return_elapsed: float = 0.0
+var _had_procedural_motion: bool = false
 
 
 func setup(f: Fighter) -> void:
@@ -317,6 +323,12 @@ func _physics_process(delta: float) -> void:
 	rotation.y = _fighter.animator.rotation.y
 	if get_tree().paused or _fighter.frozen_frames > 0 or _fighter.hitstop_frames > 0:
 		return   # time stop / hitstop: hold the drawing
+	var return_allowed: bool = _fighter.state in [Fighter.State.IDLE, Fighter.State.WALK, Fighter.State.CROUCH] and ragdoll == null and not RigAnimator.levitating(_fighter) and not HookMotion.recovery_active(_fighter)
+	if _last_state == Fighter.State.ATTACK and return_allowed and attack_return_seconds > 0.0:
+		_attack_return_source = _bone_poses()
+		_attack_return_elapsed = 0.0
+	elif not return_allowed:
+		_attack_return_source.clear()
 	if _fighter.state != _last_state:
 		_crouch_exit_frames = -1
 		if _last_state == Fighter.State.CROUCH and _fighter.state == Fighter.State.IDLE:
@@ -369,17 +381,56 @@ func _physics_process(delta: float) -> void:
 		clip_pos = minf(float(_state_frames) * delta / _fighter.fatigue_mult(Fighter.FATIGUE_GETUP), anim.length)
 	else:
 		clip_pos = minf(float(_state_frames) * delta, anim.length)
+	# Undo our previous overlay before seeking: constant tracks may be absent in a clip.
+	_restore_attack_return_base()
 	SwordMotion.restore_mirror(skeleton, _sword_mirror_base)
 	idle_presence.restore_base(skeleton)
+	var procedural: bool = uses_procedural_motion()
+	if _had_procedural_motion and not procedural and ragdoll == null:
+		skeleton.reset_bone_poses()
+	_had_procedural_motion = procedural
 	player.seek(clip_pos, true)
 	_sword_mirror_base = SwordMotion.mirror_authored(skeleton, _fighter)
 	var recovering: bool = HookMotion.recovery_active(_fighter)
-	if uses_procedural_motion():
+	if procedural:
 		MotionFallback.apply(skeleton, _fighter.animator)
 	elif ragdoll == null and recovering:
 		MotionFallback.apply(skeleton, _fighter.animator, true)
 	if ragdoll == null and not recovering and not RigAnimator.levitating(_fighter):
 		idle_presence.apply(skeleton, _fighter, delta)
+	_apply_attack_return(delta)
+
+
+func _bone_poses() -> Array[Transform3D]:
+	var poses: Array[Transform3D] = []
+	for bone in skeleton.get_bone_count():
+		poses.append(skeleton.get_bone_pose(bone))
+	return poses
+
+
+func _set_bone_pose(bone: int, pose: Transform3D) -> void:
+	skeleton.set_bone_pose_position(bone, pose.origin)
+	skeleton.set_bone_pose_rotation(bone, pose.basis.orthonormalized().get_rotation_quaternion())
+	skeleton.set_bone_pose_scale(bone, pose.basis.get_scale())
+
+
+func _restore_attack_return_base() -> void:
+	for bone in _attack_return_base.size():
+		_set_bone_pose(bone, _attack_return_base[bone])
+	_attack_return_base.clear()
+
+
+func _apply_attack_return(delta: float) -> void:
+	if _attack_return_source.is_empty():
+		return
+	_attack_return_elapsed += maxf(delta, 0.0)
+	if _attack_return_elapsed >= attack_return_seconds:
+		_attack_return_source.clear()
+		return
+	_attack_return_base = _bone_poses()
+	var weight: float = smoothstep(0.0, attack_return_seconds, _attack_return_elapsed)
+	for bone in _attack_return_source.size():
+		_set_bone_pose(bone, _attack_return_source[bone].interpolate_with(_attack_return_base[bone], weight))
 
 
 func uses_procedural_motion() -> bool:

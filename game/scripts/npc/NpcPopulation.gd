@@ -58,6 +58,15 @@ func meet(index: int) -> String:
 	remember(index, "meeting", "Ми зустрілися в районі. Це наша зустріч №%d." % int(p.meetings), "player")
 	return dialogue(index)
 
+func greet(index: int, other: int) -> Array[String]:
+	if index == other or index < 0 or other < 0 or index >= people.size() or other >= people.size():
+		return []
+	var first: Dictionary = people[index]
+	var second: Dictionary = people[other]
+	remember(index, "neighbour", "Перекинувся словами з " + str(second.name) + ": зараз " + str(second.goal) + ".")
+	remember(other, "neighbour", "Перекинувся словами з " + str(first.name) + ": зараз " + str(first.goal) + ".")
+	return ["Привіт, " + str(second.name) + "!", "Привіт! Зараз " + str(second.goal) + "."]
+
 func dialogue(index: int) -> String:
 	var p: Dictionary = people[index]
 	var lines: Array[String] = [str(p.name) + " · " + str(p.role), "Зараз: " + str(p.goal) + "."]
@@ -100,7 +109,7 @@ func restore(data: Variant) -> bool:
 				return false
 			if fact.get("source") not in ["district", "player"]:
 				return false
-			if fact.get("kind") not in ["arrival", "routine", "meeting", "opportunity"] or not fact.get("text") is String or fact.text.length() > 256:
+			if fact.get("kind") not in ["arrival", "routine", "meeting", "opportunity", "neighbour"] or not fact.get("text") is String or fact.text.length() > 256:
 				return false
 	world_seed = int(data.world_seed)
 	tick = int(data.tick)
