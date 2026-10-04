@@ -35,6 +35,22 @@ Raw validation: `/workspace/nooneisreal-evidence/playable-district/validation/{c
 
 Implementation checkpoint `0af967f` запушено в `codex/playable-district`; створено [draft PR #175](https://github.com/santos-va/nooneisreal/pull/175). PR не змерджено, новий macOS реліз не опубліковано. Відкриті візуальні blockers і потрібні докази явно перелічені в описі PR та [[2026-10-05-Playable-District-Checkpoint]]. Продовжувати з цього checkpoint; не починати аудит/реалізацію заново.
 
+## CP4 — продовження за дорученням Santos
+
+Santos: «Давай далі, скажеш як дійдеш до фіналу». Продовжено з `1259eda`, без нового старту або втрати попередніх доказів. `origin/main` досі `f24d973`; [CI checkpoint 37240763008](https://github.com/santos-va/nooneisreal/actions/runs/37240763008) повернув success. Combat закриває actual endpoint/timing, T4 завершує negative save/content і native review, locomotion — fixed-clock приймання, NPC — документацію й bounded content validation. Фінальний загальний прогін потрібен після цих змін.
+
+Незалежний T4 завершив решту чотирьох доручень через production events/UI: **20/0**, усі шість завершені, 21 жетон. Усередині roof-сценарію герой фізично пройшов східну рампу, міст і вежу; між окремими сценаріями fixture переносить героя, тож це не безперервне ручне проходження. Окремий negative save/content **23/0** включає щільний граф 24 завдань і циклічний варіант після переходу до обмежених топологічних проходів. T4 незалежно звірив усі 240 locomotion CSV ticks і 24 native samples. Журнали: `after/remaining-quest-hooks-final.log`, `after/save-content-negative-final.log` у тому самому evidence root.
+
+## CP5 — фінальне приймання зрізу
+
+Combat/контент зафіксовано `6d05914`; фінальний production `0999c77` додає зрозуміле повідомлення після всіх шести доручень. Lowhand враховує коротші руки героїв зі збереженням довжин кінцівок та опори, hammer має виміряний contact-сегмент, меч повторює torso. Незалежний T4 переглянув **70 native кадрів** повних lowhand/hammer послідовностей і закрив усі три blockers — [[2026-10-05-Playable-District-Review]].
+
+Фінальний `validation/accepted.log`: `make check-playable`, **87 GDS/0 parse errors**, smoke **164 checks/19847 frames**, **57 scenarios/0 failures**. Усередині: authored **10173/0**, gait **722/0**, district progress **41/0**, решта quest hooks **20/0**, negative content/save **23/0**. `validation/distribution-accepted.log`: **25 tests OK**. Перший фінальний прогін знайшов три відмови: застарілу назву hammer-source в тесті, надто чутливе порівняння local basis меча та завершення audio mixer після виходу тесту. Виправлення перевірено T4: фізичний guard меча 1 мм/0.1°, чинний authored source та bounded 200 ms teardown без послаблення log guard.
+
+Власні сторінки [[2026-10-05-Authored-Combat]], [[2026-10-05-District-Life]], [[2026-10-05-Locomotion-States]], [[2026-10-05-Playable-District-Art]] і [[2026-10-05-District-Delivery]] містять кадри, факти й межі. Код не змерджено в main та не видано за встановлений застосунок. Остаточний художній комфорт, фізичний геймпад, M3/FPS і 30-хвилинний сеанс Santos залишаються окремим користувацьким прийманням.
+
+Фактичний PCK зі `git archive 0999c77` змонтовано в порожньому проєкті та запущено через `--main-pack`: усередині є **v0.4.0**, повний SHA `0999c77254858a23d76c1b806653b73a1e2881ab`, усі шість доручень, точний JSON і audio manifest. Докази: `validation/pck-0999c77/`. Це перевірка запакованого вмісту, без публікації релізу чи зміни Applications.
+
 ## Відкрито
 
 - Оригінальний PNG іконки недоступний. Santos у цій сесії явно обрав «Залишити іконку до отримання саме нового PNG»; доступний портрет Choko як заміну не використовуємо.

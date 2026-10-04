@@ -1,6 +1,10 @@
 # Playable district — checkpoint, не реліз
 
-2026-10-05 · T1. **Статус: [draft PR #175](https://github.com/santos-va/nooneisreal/pull/175), implementation commit `0af967f`; мердж заблокований незавершеним візуальним прийманням.**
+2026-10-05 · T1. **Історичний checkpoint `0af967f` продовжено й закрито в [PR #175](https://github.com/santos-va/nooneisreal/pull/175), production `0999c77`.**
+
+## Закриття checkpoint
+
+Lowhand/hammer contact та кріплення меча виправлені; T4 прийняв 70 native кадрів повних послідовностей. Locomotion, усі шість доручень, save/content negative review та документація завершені. Фінальний `make check-playable`: **57/0**, smoke **164/19847**, authored contacts **10173/0**, district progress **41/0**; distribution **25 OK**. Незалежний вердикт — [[2026-10-05-Playable-District-Review]], підсумок — [[2026-10-05-Playable-District-Session]]. Нижче збережено історичний стан паузи; його перелік робіт більше не є поточним дорученням.
 
 ## Контекст і виконане
 
@@ -22,7 +26,7 @@ Santos просить довести квартал до відчутно кра
 
 Усі шляхи вище відносні до `/workspace/nooneisreal-evidence/playable-district/`. Невеликі native screenshots збережені в репозиторії; raw motion sequences/MP4 — поза git. Linux software render не є Mac/M3-прийманням.
 
-## Що обов'язково завершити наступним
+## Історичні завдання на продовження — закриті
 
 1. **Combat visual blockers:** T4 на `authored-combat-v2/{choko,skea}-contacts.png` знайшов lowhand із кистю біля власного коліна та hammer із руками біля обличчя на першому active frame; виразний рух униз припадає на recovery. Звірити actual hand endpoint/forward з contact в `AuthoredCombatMotion.gd`, виправити mapping/композицію, додати змістовні assertions і повторити native sequence. Зелені тести джерела кліпу не закривають цей дефект.
 2. **Sheathed sword:** останній `SwordPresentation.gd` torso-mount change потребує нового native crouch/hammer огляду; попередні 72 кадри показують старе кріплення. Не вважати його прийнятим за старими кадрами.

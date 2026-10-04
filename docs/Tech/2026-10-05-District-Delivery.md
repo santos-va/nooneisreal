@@ -22,6 +22,41 @@ HUD отримує `CityProgress` через `bind_progress(model)`, підпи�
 
 Робочий проєкт не отримує згенерованого маркера; пакет не плутає SHA вихідного коду з поточним станом Git після експорту.
 
+## Контент у справжньому PCK
+
+`FileAccess` читає завдання з `res://data/city/district.json`, тому перевірка лише редакторського checkout не доводить наявності завдань у збірці. Базовий macOS preset тепер явно включає `data/city/*.json` поряд із `data/audio/*.cfg`. Обидва staging-експортери доповнюють список потрібними масками та `build_info.cfg`, зберігаючи вже наявні довільні include-маски; старої заміни лише точного рядка audio більше немає.
+
+Godot 4.7 справді експортував `/tmp/nir-district-ui/district-export.pck` через `--export-pack macOS`; для цього окрема macOS export template не потрібна. `tools/distribution/pck_content_check.gd` змонтував цей pack у **порожньому** verifier-проєкті та прочитав саме запаковані файли. Результат: **`PCK_CONTENT_COMPLETE quests=6 marker=verified audio=present`**; журнал — `/workspace/nooneisreal-evidence/playable-district/validation/pck-content.log`. JSON звірено за SHA-256 із вихідним знімком, доступні всі шість завдань, `build_info.cfg` і чинний `data/audio/soundtracks.cfg`.
+
+Це перевірка складу pack на проміжному знімку: маркер ревізії в ній навмисно тестовий (`e` × 40), не SHA фінального PR. Перевірка готового committed-знімка з його справжнім SHA виконується після замороження коду. Pack-перевірка не означає native запуск macOS bundle чи публікацію релізу. Повторний distribution regression після include-фікса: **25 tests / OK**, з перевіркою збереження додаткової `custom/*.json` маски.
+
+### Перевірений committed-знімок 6d05914
+
+Після замороження вихідного коду створено **`git archive 6d059148e64d9647b4415c4030c3de643b4ed3a4`** в окремій `/tmp/nir-final-pck-6d05914/source/`. Stamping виконано кодом експортера саме з цього коміту; кеш імпорту та XDG-каталоги ізольовані від інтеграційних тестів координатора. Headless import і реальний `--export-pack macOS` завершилися без `ERROR`/`SCRIPT ERROR`.
+
+- Порожній verifier: **`PCK_CONTENT_COMPLETE quests=6 marker=verified audio=present`** — JSON, його SHA-256, шість завдань, marker та audio manifest прочитані з pack, без доступних checkout-файлів під `res://`.
+- Другий запуск із `--main-pack`: **`PCK_BUILD version=0.4.0 revision=6d059148e64d9647b4415c4030c3de643b4ed3a4`** — справжні налаштування версії й SHA самого експортованого проєкту.
+- Pack: **208607940 байтів**, SHA-256 `634cf0595445592c386ee83c6d3e1f0ccc65c178780259b171ab4b8a5be56b0e`.
+- Запакований `district.json`: SHA-256 `7425712a66a223457a9e65a4ea7c611c75db7a76610a5343bc2788b43974c537`.
+- Сирі журнали й `evidence.json`: `/workspace/nooneisreal-evidence/playable-district/validation/pck-6d05914/`.
+
+Цей доказ прив'язаний до **6d05914**. Якщо production-код зміниться після інтеграційного огляду, новий SHA потребує окремого експорту й probe. Це не публікація, не повний signed macOS bundle і не приймання встановленої гри Santos.
+
+### Фінальний production-знімок 0999c77
+
+Після виправлення підсумкового повідомлення для всіх шести завершених завдань повторено весь export/probe для **`git archive 0999c77254858a23d76c1b806653b73a1e2881ab`** в `/tmp/nir-final-pck-0999c77/source/`. За перевіреним Git diff єдина зміна в `game/` від 6d05914 — `CityProgress.gd`. Дерева `game/assets` обох комітів мають однаковий SHA `f3dce62dd2138c18618fd463ba55ffe736f1c11b`, тому скопійовано попередній ізольований asset cache, потім знову виконано headless import. Спільний кеш інтеграційної сесії не використовувався.
+
+**Фінальні докази:**
+
+- Import і `--export-pack macOS` завершилися без `ERROR`/`SCRIPT ERROR`.
+- Порожній verifier: **`PCK_CONTENT_COMPLETE quests=6 marker=verified audio=present`**.
+- Запуск із `--main-pack`: **`PCK_BUILD version=0.4.0 revision=0999c77254858a23d76c1b806653b73a1e2881ab`**.
+- Pack: **208608180 байтів**, SHA-256 `00397486eba83d48a1d2b0635c9467f0cbfc5ecc30e9d0a25cc76c648eafd3bb`.
+- SHA-256 запакованого `district.json` збігається з вихідним: `7425712a66a223457a9e65a4ea7c611c75db7a76610a5343bc2788b43974c537`.
+- Журнали `import.log`, `export.log`, `content.log`, `build.log` та `evidence.json`: `/workspace/nooneisreal-evidence/playable-district/validation/pck-0999c77/`.
+
+Для фінального production-коду чинним є цей доказ **0999c77**; попередній 6d05914 залишено як історію перевірки. Pack локальний, реліз не публікувався, застосунок Santos не змінювався.
+
 ## Чому може бути «немає оновлень»
 
 2026-10-05 під час цієї сесії прочитано live GitHub API `commits/main`, release `macos-main` і сам [manifest.json](https://github.com/santos-va/nooneisreal/releases/download/macos-main/manifest.json). На момент перевірки:
