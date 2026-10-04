@@ -58,6 +58,8 @@ finish() {
 run "ВІК wikilinks у docs/ і roles/"   "$PY" tools/gates/wikilink_check.py
 run "РЕЄ реєстр текстур і ассетів"    "$PY" tools/gates/texture_registry_check.py
 run "ПАР парність ролей"              "$PY" tools/gates/role_parity_check.py
+run "ЯКІ якорі шапки state.md"       "$PY" tools/gates/state_anchor_check.py
+run "ПЛА розділ R8 у планах"         "$PY" tools/gates/plan_sections_check.py
 run "GDS godot --check-only на .gd"   bash  tools/gates/gd_check_all.sh
 # BATTERY_DISPATCH_END
 
