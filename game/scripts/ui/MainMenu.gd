@@ -222,6 +222,7 @@ func _card_tex(c: CharacterData) -> Texture2D:
 
 func _portrait_rect() -> TextureRect:
 	var t := TextureRect.new()
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	t.custom_minimum_size = Vector2(44, 44)
 	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE

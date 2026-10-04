@@ -34,6 +34,13 @@ var _prev: Dictionary = {}   # fighter → see _snap()
 var _seen: Dictionary = {}   # fighter → the seen_mark Flipbook over its head
 var _skid_at: Dictionary = {}   # fighter → _frame of its last skid_dust
 var _frame: int = 0
+var _step_distance: Dictionary = {}
+var _step_side: Dictionary = {}
+
+## Visual thresholds only (m/s), sampled before collision clears vertical velocity.
+const WATER_MEDIUM_SPEED := 4.0 # PLACEHOLDER
+const WATER_HEAVY_SPEED := 8.0 # PLACEHOLDER
+const WATER_STRIDE := 0.8 # PLACEHOLDER metres travelled per contact
 
 
 func setup(a: Fighter, b: Fighter) -> void:
@@ -109,13 +116,22 @@ func _physics_process(_dt: float) -> void:
 func _events(f: Fighter, p: Array, now: Array) -> void:
 	var pos := f.global_position
 	var floor_y := f.floor_y()
+	_water_steps(f, p, now)
 	# a dash: Choko's Chrono Step enters DASH; Skea's Flash Step spends a charge — a push-off puff under the trail either way
 	if now[0] == Fighter.State.DASH and p[0] != Fighter.State.DASH and f.data.dash_style != "flash":
 		Flipbook.play(f, "trail_chrono", pos + Vector3.UP * 0.9, 2.6, {"count": 12, "additive": true, "flip": f.forward.x < 0.0})
-		Flipbook.play(f, "smoke_puff", Vector3(pos.x, floor_y + 0.3, pos.z), 1.6)
+		if GameState.water != null:
+			if now[1]:
+				_water_contact(f, pos, WaterBurst3D.Kind.DASH, "dash")
+		else:
+			Flipbook.play(f, "smoke_puff", Vector3(pos.x, floor_y + 0.3, pos.z), 1.6)
 	if f.data.dash_style == "flash" and now[6] < p[6]:
 		Flipbook.play(f, "trail_flash", pos + Vector3.UP * 0.9, 2.6, {"count": 12, "flip": f.forward.x < 0.0})
-		Flipbook.play(f, "smoke_puff", Vector3(pos.x, floor_y + 0.3, pos.z), 1.6)
+		if GameState.water != null:
+			if now[1]:
+				_water_contact(f, pos, WaterBurst3D.Kind.DASH, "dash")
+		else:
+			Flipbook.play(f, "smoke_puff", Vector3(pos.x, floor_y + 0.3, pos.z), 1.6)
 	# a grapple shot (any of the three verbs spends a charge)
 	if now[5] < p[5]:
 		Flipbook.play(f, "grapple_launch", pos + GrappleHook.HAND + f.forward * 0.4, 1.2, {"count": 9, "flip": f.forward.x < 0.0})
@@ -127,16 +143,23 @@ func _events(f: Fighter, p: Array, now: Array) -> void:
 	if wall_slide_speed(now[10], now[11], now[1]) >= SKID_SPEED and _frame - int(_skid_at.get(f, -SKID_EVERY)) >= SKID_EVERY:
 		_skid_at[f] = _frame
 		var v: Vector3 = now[11]
-		Flipbook.play(f, "skid_dust", Vector3(pos.x, floor_y + 0.8, pos.z), 1.6, {"flip": v.x < 0.0})
+		if GameState.water != null:
+			_water_contact(f, pos, WaterBurst3D.Kind.DASH, "skid")
+		else:
+			Flipbook.play(f, "skid_dust", Vector3(pos.x, floor_y + 0.8, pos.z), 1.6, {"flip": v.x < 0.0})
 	# a ragdoll settles (LAUNCHED → GETUP, or KNOCKDOWN without a ragdoll; the body stays on the floor while the ragdoll
 	# flies, so on_ground() never flips) → dust + a crack decal
 	if p[0] == Fighter.State.LAUNCHED and now[0] in [Fighter.State.GETUP, Fighter.State.KNOCKDOWN]:
-		Flipbook.play(f, "dust_land", Vector3(pos.x, floor_y + 0.9, pos.z), 2.6)
-		Flipbook.play(f, "ground_crack", Vector3(pos.x, floor_y + 0.03, pos.z), 2.4, {"mode": Flipbook.Mode.FLOOR})
+		if GameState.water != null:
+			_water_contact(f, pos, WaterBurst3D.Kind.HEAVY, "land")
+		else:
+			Flipbook.play(f, "dust_land", Vector3(pos.x, floor_y + 0.9, pos.z), 2.6)
+			Flipbook.play(f, "ground_crack", Vector3(pos.x, floor_y + 0.03, pos.z), 2.4, {"mode": Flipbook.Mode.FLOOR})
 	# landing from a jump → dust (a splash on the river)
 	elif now[1] and not p[1] and p[0] != Fighter.State.LAUNCHED:
 		if GameState.water != null:
-			Flipbook.play(f, "water_splash", Vector3(pos.x, floor_y + 0.7, pos.z), 1.8)
+			var incoming: Vector3 = p[11]
+			_water_contact(f, pos, water_landing_kind(incoming.y), "land")
 		else:
 			Flipbook.play(f, "dust_land", Vector3(pos.x, floor_y + 0.6, pos.z), 1.8)
 	# SHADOW VEIL rises
@@ -168,3 +191,43 @@ func _events(f: Fighter, p: Array, now: Array) -> void:
 	if now[4] > 0 and p[4] == 0 and f.opponent != null:
 		var o := f.opponent.global_position
 		Flipbook.play(f, "choko_timestop", Vector3(o.x, f.opponent.floor_y() + 0.04, o.z), 7.0, {"mode": Flipbook.Mode.FLOOR, "additive": true})
+
+
+## Classify visual landings only; never alter jump/fall/combat data.
+static func water_landing_kind(incoming_y: float) -> int:
+	var speed := maxf(0.0, -incoming_y)
+	if speed >= WATER_HEAVY_SPEED:
+		return WaterBurst3D.Kind.HEAVY
+	return WaterBurst3D.Kind.MEDIUM if speed >= WATER_MEDIUM_SPEED else WaterBurst3D.Kind.LIGHT
+
+
+func _water_contact(f: Fighter, at: Vector3, kind: int, sound_event: String) -> void:
+	if not Fx.enabled or f.frozen_frames > 0 or f.hitstop_frames > 0:
+		return
+	var slot := fighters.find(f)
+	WaterBurst3D.play(f, at, f.velocity, kind, _frame * 31 + slot * 997 + kind * 13)
+	Sfx.play_surface_water(sound_event, slot)
+	if kind >= WaterBurst3D.Kind.MEDIUM:
+		var heavy := kind == WaterBurst3D.Kind.HEAVY
+		var surface := GameState.water.height(at.x, at.z)
+		Flipbook.play(f, "water_splash", Vector3(at.x, surface + 0.65, at.z), 2.3 if heavy else 1.8, {"count": 8})
+
+
+func _water_steps(f: Fighter, p: Array, now: Array) -> void:
+	if GameState.water == null or not Fx.enabled or f.frozen_frames > 0 or f.hitstop_frames > 0 or not now[1] or not p[1] or now[0] != Fighter.State.WALK:
+		_step_distance[f] = 0.0
+		return
+	var delta: Vector3 = now[10] - p[10]
+	delta.y = 0.0
+	# Teleports/rewinds cannot leave a chain of step splashes.
+	if delta.length() > WATER_STRIDE:
+		_step_distance[f] = 0.0
+		return
+	var distance := float(_step_distance.get(f, 0.0)) + delta.length()
+	if distance >= WATER_STRIDE:
+		distance = fmod(distance, WATER_STRIDE)
+		var side := -float(_step_side.get(f, -1.0))
+		_step_side[f] = side
+		var at := f.global_position + Vector3(-f.forward.z, 0.0, f.forward.x) * side * 0.16
+		_water_contact(f, at, WaterBurst3D.Kind.STEP, "step")
+	_step_distance[f] = distance

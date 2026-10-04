@@ -203,9 +203,9 @@ func _strike(k: int) -> void:
 		_stroke(k)
 	var side := -1.0 if k % 2 == 0 else 1.0
 	var at := (v.global_position if v != null else owner_f.global_position) + Vector3(side * 1.1, 0, -0.1)
-	Afterimage.spawn(Fx.root(owner_f), owner_f.animator.part_snapshot(), Color(0.18, 0.04, 0.26), 0.45, 0.85, false, 1.3,
+	Afterimage.spawn(Fx.root(owner_f), Afterimage.snapshot(owner_f.animator, owner_f.skeletal), Color(0.18, 0.04, 0.26), 0.45, 0.85, false, 1.3,
 		at - owner_f.global_position + Vector3(0, 0, -0.2))
-	Afterimage.spawn(Fx.root(owner_f), owner_f.animator.part_snapshot(), owner_f.data.vfx_primary, 0.3, 0.45, true, 1.36,
+	Afterimage.spawn(Fx.root(owner_f), Afterimage.snapshot(owner_f.animator, owner_f.skeletal), owner_f.data.vfx_primary, 0.3, 0.45, true, 1.36,
 		at - owner_f.global_position + Vector3(0, 0, -0.25))
 	if v == null or not v.hurtbox_enabled():
 		return

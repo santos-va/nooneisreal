@@ -42,6 +42,7 @@ var _pips: Dictionary = {}
 var _charges: Dictionary = {}
 var _cool: Dictionary = {}
 var _cool_icons: Dictionary = {}
+var _skill_textures: Array[TextureRect] = []
 var _dash: Dictionary = {}
 var _status: Dictionary = {}
 var _names: Dictionary = {}
@@ -213,7 +214,7 @@ func _player_panel(f: Fighter, mirrored: bool) -> Control:
 		charges.add_child(_cell(Vector2(10, 10), f.data.accent_color, _charges[idx]))
 	var icons: Array = SKILL_ICONS.get(f.data.id, [])
 	var cool := HBoxContainer.new()
-	cool.add_theme_constant_override("separation", 10)
+	cool.add_theme_constant_override("separation", 4)
 	var s1 := _skill_slot(icons[0] if icons.size() > 0 else "")
 	var s2 := _skill_slot(icons[1] if icons.size() > 1 else "")
 	cool.add_child(s1.box)
@@ -239,6 +240,7 @@ func _player_panel(f: Fighter, mirrored: bool) -> Control:
 	var st := _label("", FONT_SMALL, HORIZONTAL_ALIGNMENT_RIGHT if mirrored else HORIZONTAL_ALIGNMENT_LEFT)
 	st.add_theme_color_override("font_color", f.data.vfx_primary.lightened(0.35))
 	st.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	st.clip_text = true
 	_status[idx] = st
 	if mirrored:
 		row2.add_child(st)
@@ -257,12 +259,16 @@ func _skill_slot(icon_path: String) -> Dictionary:
 	if icon_path != "" and ResourceLoader.exists(icon_path):
 		var icon := TextureRect.new()
 		icon.texture = load(icon_path) as Texture2D
-		icon.custom_minimum_size = Vector2(18, 18)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.custom_minimum_size = Vector2.ONE * skill_icon_size(canvas_scale())
+		_skill_textures.append(icon)
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		box.add_child(icon)
+		box.add_child(_outlined(icon))
 	var lbl := _label("✓", FONT_SMALL, HORIZONTAL_ALIGNMENT_LEFT)
 	lbl.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 0.85))
+	# Reserve countdown width so ticking cooldowns never shift adjacent resources.
+	lbl.custom_minimum_size.x = 40
 	box.add_child(lbl)
 	return {"box": box, "label": lbl}
 
@@ -318,8 +324,14 @@ static func ring_widths(s: float) -> Vector2i:
 	return Vector2i(maxi(RING_INK, ceili(RING_MIN_PX.x / s - 0.001)), maxi(RING_CREAM, ceili(RING_MIN_PX.y / s - 0.001)))
 
 
+static func skill_icon_size(s: float) -> float:
+	return maxf(28.0, ceilf(22.0 / maxf(s, RING_MIN_SCALE)))
+
+
 func _on_viewport_resized() -> void:
 	set_ring_units(ring_widths(canvas_scale()))
+	for icon in _skill_textures:
+		icon.custom_minimum_size = Vector2.ONE * skill_icon_size(canvas_scale())
 
 
 ## Re-width every ring already built (window resized, or the smoke checking a phone-sized scale).

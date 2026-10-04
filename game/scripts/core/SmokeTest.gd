@@ -853,13 +853,38 @@ func _check_flipbook_step3(dir: FxDirector) -> bool:
 ## (not a darkened colour); Skea's dash is `#B679F5`.
 func _check_hud() -> bool:
 	var hud: Hud = arena.hud
-	var want := 0
+	var want := 4   # Two outlined skill icons per fighter, in addition to the resource bars and cells.
 	for f: Fighter in [p1, p2]:
 		want += 2 + GameState.rounds_to_win + f.data.grapple_charges + f.data.dash_charges
 	if hud.outlines.size() != want:
-		_fail("HUD: %d outlined elements, want %d (HP + meter + round pips + grapple charges + dash, both players)" % [hud.outlines.size(), want])
+		_fail("HUD: %d outlined elements, want %d (HP + meter + round pips + grapple charges + dash + four skill icons, both players)" % [hud.outlines.size(), want])
 		return false
 	var here_scale := hud.canvas_scale()
+	var expected_icons := [
+		"res://assets/ui/icons/icon_choko_record.png", "res://assets/ui/icons/icon_choko_timestop.png",
+		"res://assets/ui/icons/icon_skea_kunai.png", "res://assets/ui/icons/icon_skea_veil.png",
+	]
+	if hud._skill_textures.size() != expected_icons.size():
+		_fail("HUD: want two skill textures per fighter, got %d" % hud._skill_textures.size())
+		return false
+	for icon: TextureRect in hud._skill_textures:
+		var path: String = icon.texture.resource_path if icon.texture != null else ""
+		var cream := icon.get_parent() as PanelContainer
+		var ink := cream.get_parent() as PanelContainer if cream != null else null
+		if not expected_icons.has(path) or icon.expand_mode != TextureRect.EXPAND_IGNORE_SIZE \
+				or icon.custom_minimum_size != Vector2.ONE * Hud.skill_icon_size(here_scale) \
+				or cream == null or ink == null or not hud.outlines.has(ink) \
+				or cream.get_child_count() != 1 or ink.get_child_count() != 1:
+			_fail("HUD: skill texture %s needs a unique canonical icon, bounded source-independent slot and registered double ring" % path)
+			return false
+		expected_icons.erase(path)
+	# Independent GDD examples: resize must keep the symbol at least 22 physical pixels wide.
+	var icon_sizes := {1.2: 28.0, 1.0: 28.0, 0.8: 28.0, 0.4333: 51.0, 0.25: 88.0}
+	for sc: float in icon_sizes:
+		if Hud.skill_icon_size(sc) != icon_sizes[sc] or Hud.skill_icon_size(sc) * sc < 22.0:
+			_fail("HUD: skill icon at scale %.4f needs %.0f units and at least 22 pixels" % [sc, icon_sizes[sc]])
+			return false
+	# This checks both ink/cream colours and border widths, including the four registered icon rings.
 	if hud.ring_units != Hud.ring_widths(here_scale) or not _check_hud_rings(hud, hud.ring_units, "this window ×%.3f" % here_scale):
 		if hud.ring_units != Hud.ring_widths(here_scale):
 			_fail("HUD: rings %s at window scale %.3f, want %s" % [hud.ring_units, here_scale, Hud.ring_widths(here_scale)])
@@ -1213,6 +1238,18 @@ func _finish() -> void:
 	GameState.skeletal_rig = false
 	print("[smoke] ALL OK (%d checks) in %d frames" % [_oks.size(), _f])
 	print("[smoke] budget used %d / %d frames (%.0f %%)" % [_f, FRAME_BUDGET, 100.0 * float(_f) / float(FRAME_BUDGET)])
+	# Leave the physics callback before draining audio. Freeze producers so the last arena
+	# cannot start another voice while stopped playback retires on AudioServer's mixer thread.
+	await get_tree().process_frame
+	get_tree().paused = true
+	for player: AudioStreamPlayer in get_tree().root.find_children("*", "AudioStreamPlayer", true, false):
+		player.stop()
+		player.stream = null
+	# --fixed-fps runs simulation timers faster than wall time; the mixer still needs real time.
+	var drain_until_ms: int = Time.get_ticks_msec() + 200
+	while Time.get_ticks_msec() < drain_until_ms:
+		await get_tree().process_frame
+		OS.delay_msec(1)
 	get_tree().quit(0)
 
 

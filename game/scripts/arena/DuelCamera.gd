@@ -1,8 +1,8 @@
 class_name DuelCamera
 extends Node3D
 ## Free-movement duel camera (Prototype 0.3, GameState.free_move; FightCamera stays for the plane).
-## Launch 6 (docs/Decisions/ADR-015-Solo-Camera-Behind-Fighter.md): solo vs CPU it stands behind P1 over the
-## right shoulder; in VERSUS it stands side-on to the line between the fighters and turns with it, so up
+## ADR-020: solo starts behind P1, then preserves its world side through fighter crossings. Continuous
+## circling still turns smoothly; hero facing never forces the lens to chase their back. In VERSUS it stands side-on, so up
 ## close it reads like the 0.2 side camera. The screen-right direction is GameState.duel.right (simulation side, never
 ## flips 180° when the fighters swap); this node only follows it — presentation, not gameplay.
 ## The SpringArm3D keeps the camera out of walls. Framing numbers are FightCamera's.
@@ -22,7 +22,7 @@ const MAX_SIDE_OFF_DEG := 25.0
 ## `camera_yaw_accel` — the yaw's turn rate changes by at most this per physics tick (both modes).
 const YAW_ACCEL_DEG := 0.25
 ## ADR-018 «the fight with air», numbers K-1 (GDD 02 § Кадр із запасом — replace ADR-015's closer ones; PLACEHOLDER).
-## Mode `behind` (solo vs CPU): on the line P2 → P1, behind P1.
+## Mode `behind` (solo vs CPU): initially on the line P2 → P1; ADR-020 retains that presentation side.
 const BEHIND_DIST := 5.0          # m behind P1 while sep ≤ BEHIND_DIST_SEP …
 const BEHIND_DIST_SEP := 4.0
 const BEHIND_DIST_PER_M := 0.35   # … then +0.35 m per metre of sep …
@@ -42,20 +42,41 @@ const SIDE_DIST_MAX := 24.0
 const PULLBACK_CAP_M := 12.47
 ## Vertical field of view of both arena cameras (Arena.tscn), 91.5° horizontal in 16:9; the ceiling (ADR-018 п. 1).
 const FOV_DEG := 60.0
+## GDD 02, "Far-opponent readability" (T5, 2026-10-04): presentation-only PLACEHOLDER tuning.
+## Preserve the ADR-018 near fight and the shared side camera; trade unused air for a larger far hero.
+const FAR_FOV_MIN := 38.0
+const FAR_BLEND_START := 6.0
+const FAR_BLEND_END := 12.0
+const FAR_TARGET_SHARE := 0.125
+const FAR_NEAR_SAFE_SHARE := 0.28
+const FAR_HORIZONTAL_MARGIN := 0.15
+## Fighter.tscn capsule radius; framing uses the existing smoke's 1.8 m nominal body height.
+const FRAMING_RADIUS := 0.35
+const FRAMING_HEIGHT := 1.8
+## ADR-020 / GDD 02: presentation axis survives a crossing; tiny separations have no stable bearing.
+const AXIS_HOLD_ENTER := 0.5
+const AXIS_HOLD_EXIT := 0.75
+const LEAD_SECONDS := 0.15
+const LEAD_MAX := 0.75
+const LEAD_SMOOTH_SECONDS := 0.20
 
 @onready var arm: SpringArm3D = $SpringArm3D
 @onready var cam: Camera3D = $SpringArm3D/Camera3D
 
 var p1: Fighter
 var p2: Fighter
-var _shake: float = 0.0
+@export_range(0.0, 1.0) var impact_scale: float = 1.0
+var _impact := CameraImpact.new()
 var _yaw: float = 0.0
 var _yaw_prev: float = 0.0   # yaw at the previous physics tick — the render frame interpolates between the two
 var _omega: float = 0.0      # yaw turn this tick (rad/tick), |Δ| ≤ YAW_ACCEL_DEG per tick
 var _pull: float = 0.0   # current arm pull-back fraction, 0 … PULLBACK_MAX
 var force_pull: float = -1.0   # smoke only: ≥ 0 pins the pull-back fraction
-## ADR-015 mode, fixed for the match: true = behind P1 (FIGHT, TRAINING), false = side-on (VERSUS).
+## Match mode: true = solo continuity camera (initially behind P1), false = shared side-on (VERSUS).
 var behind: bool = false
+var _presentation_line := Vector3.RIGHT
+var _axis_held := false
+var _lookahead := Vector3.ZERO
 
 
 func setup(a: Fighter, b: Fighter) -> void:
@@ -63,6 +84,10 @@ func setup(a: Fighter, b: Fighter) -> void:
 	p2 = b
 	arm.collision_mask = 1    # static world only; fighters are layer 2
 	behind = GameState.duel.behind
+	_presentation_line = GameState.duel.line
+	_axis_held = false
+	_lookahead = Vector3.ZERO
+	_impact.reset()
 	_yaw = _target_yaw()
 	_yaw_prev = _yaw
 	_omega = 0.0
@@ -87,7 +112,7 @@ func _sep() -> float:
 	return Vector2(d.x, d.z).length()
 
 
-## Behind mode: the point the view aims at (60 % P1 → P2, 1.2 m up).
+## Solo mode: the base focus (50 % P1 → P2, 1.2 m up), before bounded velocity lookahead.
 func behind_focus() -> Vector3:
 	var f := p1.global_position.lerp(p2.global_position, BEHIND_FOCUS)
 	return Vector3(f.x, BEHIND_FOCUS_Y, f.z)
@@ -98,8 +123,11 @@ func behind_spot() -> Vector3:
 	var sep := _sep()
 	var dist := minf(BEHIND_DIST + maxf(sep - BEHIND_DIST_SEP, 0.0) * BEHIND_DIST_PER_M, BEHIND_DIST_MAX)
 	var h := lerpf(BEHIND_HEIGHT_NEAR, BEHIND_HEIGHT_FAR, clampf((sep - 1.0) / 3.0, 0.0, 1.0))
-	var line: Vector3 = GameState.duel.line
-	var p := p1.global_position - line * dist + line.cross(Vector3.UP) * BEHIND_SHOULDER
+	# Midpoint/radius is identical to the original behind-P1 framing before a crossing. After it,
+	# retain the chosen world side: translating from the new P1 would reverse the camera at long range.
+	var line := _presentation_line
+	var midpoint := (p1.global_position + p2.global_position) * 0.5
+	var p := midpoint - line * (dist + sep * 0.5) + line.cross(Vector3.UP) * BEHIND_SHOULDER
 	return Vector3(p.x, h, p.z)
 
 
@@ -109,6 +137,7 @@ func behind_spot() -> Vector3:
 func _physics_process(delta: float) -> void:
 	if p1 == null or p2 == null:
 		return
+	_update_presentation(delta)
 	_yaw_prev = _yaw
 	var diff := angle_difference(_yaw, _target_yaw())
 	var accel := deg_to_rad(YAW_ACCEL_DEG)
@@ -143,13 +172,10 @@ func _process(delta: float) -> void:
 	# render frames between physics ticks: interpolate the yaw (ADR-015 п. 3), never step it at 60 Hz
 	rotation = Vector3(0.0, lerp_angle(_yaw_prev, _yaw, Engine.get_physics_interpolation_fraction()), 0.0)
 	_apply(1.0 - pow(0.0015, delta))
-	if _shake > 0.001:
-		cam.h_offset = randf_range(-_shake, _shake)
-		cam.v_offset = randf_range(-_shake, _shake) * 0.7
-		_shake = lerpf(_shake, 0.0, minf(1.0, 11.0 * delta))
-	else:
-		cam.h_offset = 0.0
-		cam.v_offset = 0.0
+	_apply_readability(1.0 - pow(0.0015, delta))
+	var offset: Vector2 = _impact.step(delta, impact_scale)
+	cam.h_offset = offset.x
+	cam.v_offset = offset.y
 
 
 ## k = smoothing toward the target this frame (1 = snap).
@@ -175,9 +201,115 @@ func _apply_behind(k: float) -> void:
 	var focus := behind_focus()
 	var v := behind_spot() - focus
 	var flat := Vector2(v.x, v.z).length()
+	focus += _safe_lookahead()
 	global_position = global_position.lerp(focus, k) if k < 1.0 else focus
 	arm.rotation = Vector3(-atan2(v.y, flat), 0.0, 0.0)
 	arm.spring_length = pulled(v.length())
+
+
+## Zoom only the lens, never the rig/input basis or a fighter's physical scale. The farther body
+## has a soft target; preserving the near body and edge margins wins when perspective prevents it.
+## At most 16 projected corners per render frame; no mesh skinning or per-vertex runtime work.
+func _apply_readability(k: float) -> void:
+	var wanted := FOV_DEG
+	if behind and _sep() > FAR_BLEND_START:
+		var aspect := cam.get_viewport().get_visible_rect().size.aspect()
+		var tangent := tan(deg_to_rad(FOV_DEG * 0.5))
+		var inverse := cam.global_transform.affine_inverse()
+		var safe_zoom := tangent / tan(deg_to_rad(FAR_FOV_MIN * 0.5))
+		var shares: Array[float] = []
+		for fighter: Fighter in [p1, p2]:
+			var foot: Vector3 = inverse * fighter.global_position
+			var head: Vector3 = inverse * (fighter.global_position + Vector3.UP * FRAMING_HEIGHT)
+			if foot.z >= -cam.near or head.z >= -cam.near:
+				safe_zoom = 1.0
+				break
+			shares.append(absf(head.y / -head.z - foot.y / -foot.z) / (2.0 * tangent))
+			for x: float in [-FRAMING_RADIUS, FRAMING_RADIUS]:
+				for z: float in [-FRAMING_RADIUS, FRAMING_RADIUS]:
+					for y: float in [0.0, FRAMING_HEIGHT]:
+						var point: Vector3 = inverse * (fighter.global_position + Vector3(x, y, z))
+						if point.z >= -cam.near:
+							safe_zoom = 1.0
+							continue
+						var nx := absf(point.x / (-point.z * tangent * aspect))
+						var ny := absf(point.y / (-point.z * tangent))
+						safe_zoom = minf(safe_zoom, (1.0 - 2.0 * FAR_HORIZONTAL_MARGIN) / maxf(nx, 0.0001))
+						safe_zoom = minf(safe_zoom, 1.0 / maxf(ny, 0.0001))
+		if shares.size() == 2:
+			safe_zoom = minf(safe_zoom, FAR_NEAR_SAFE_SHARE / maxf(maxf(shares[0], shares[1]), 0.0001))
+			var desired_zoom := FAR_TARGET_SHARE / maxf(minf(shares[0], shares[1]), 0.0001)
+			var zoom := maxf(1.0, minf(desired_zoom, safe_zoom))
+			var fitted := rad_to_deg(2.0 * atan(tangent / zoom))
+			wanted = lerpf(FOV_DEG, fitted, smoothstep(FAR_BLEND_START, FAR_BLEND_END, _sep()))
+	# Returning to near range may not keep a stale narrow lens: ADR-018 near framing has priority.
+	# Widen immediately if the current lens would violate the newly computed safety limit; narrowing eases.
+	cam.fov = maxf(wanted, lerpf(cam.fov, wanted, k))
+
+
+## Accept the nearest equivalent pair axis against the PREVIOUS accepted axis, not the lagging
+## rendered yaw. A continuous orbit therefore accumulates; an instant side swap does not demand 180°.
+## This state never feeds back into DuelFrame, Fighter.forward or camera-relative input.
+func _update_presentation(delta: float) -> void:
+	if not behind:
+		_lookahead = Vector3.ZERO
+		return
+	var separation := _sep()
+	if separation < AXIS_HOLD_ENTER:
+		_axis_held = true
+	elif separation >= AXIS_HOLD_EXIT:
+		_axis_held = false
+	if not _axis_held:
+		var line := p2.global_position - p1.global_position
+		line.y = 0.0
+		line = line.normalized()
+		if line.dot(_presentation_line) < 0.0:
+			line = -line
+		_presentation_line = line
+	var velocity := (p1.velocity + p2.velocity) * 0.5
+	velocity.y = 0.0
+	var wanted := (velocity * LEAD_SECONDS).limit_length(LEAD_MAX)
+	_lookahead = _lookahead.lerp(wanted, 1.0 - exp(-delta / LEAD_SMOOTH_SECONDS))
+
+
+## Lead may spend only unused framing space. Bound it with a small fixed search, retaining the
+## baseline if the nominal bodies cannot fit. The view still eases via the existing focus smoothing.
+func _safe_lookahead() -> Vector3:
+	if _lookahead.length_squared() < 0.000001:
+		return Vector3.ZERO
+	var aspect := cam.get_viewport().get_visible_rect().size.aspect()
+	var tangent := tan(deg_to_rad(FOV_DEG * 0.5))
+	var focus := behind_focus()
+	var v := behind_spot() - focus
+	var rig := Transform3D(Basis(Vector3.UP, rotation.y), focus)
+	var pitched := Basis(Vector3.RIGHT, -atan2(v.y, Vector2(v.x, v.z).length()))
+	var base := rig * Transform3D(pitched, Vector3.ZERO) * Transform3D(Basis.IDENTITY, Vector3(0, 0, pulled(v.length())))
+	var lead := _lookahead
+	for attempt in 7:
+		var transform := base
+		transform.origin += lead
+		var inverse := transform.affine_inverse()
+		var fits := true
+		for fighter: Fighter in [p1, p2]:
+			var foot: Vector3 = inverse * fighter.global_position
+			var head: Vector3 = inverse * (fighter.global_position + Vector3.UP * FRAMING_HEIGHT)
+			if foot.z >= -cam.near or head.z >= -cam.near:
+				fits = false
+			else:
+				var share := absf(head.y / -head.z - foot.y / -foot.z) / (2.0 * tangent)
+				var minimum := 0.125 if _sep() > 4.0 else 0.15
+				if share > 0.30 or (_sep() <= 6.0 and share < minimum):
+					fits = false
+			for x: float in [-FRAMING_RADIUS, FRAMING_RADIUS]:
+				for z: float in [-FRAMING_RADIUS, FRAMING_RADIUS]:
+					for y: float in [0.0, FRAMING_HEIGHT]:
+						var point: Vector3 = inverse * (fighter.global_position + Vector3(x, y, z))
+						if point.z >= -cam.near or absf(point.x) > -point.z * tangent * aspect * (1.0 - 2.0 * FAR_HORIZONTAL_MARGIN) or absf(point.y) > -point.z * tangent:
+							fits = false
+		if fits:
+			return lead
+		lead *= 0.5
+	return Vector3.ZERO
 
 
 ## Horizontal view direction of the camera (for the smoke turn-rate check).
@@ -187,4 +319,4 @@ func view_yaw() -> float:
 
 
 func shake(amount: float) -> void:
-	_shake = maxf(_shake, amount)
+	_impact.trigger(amount)

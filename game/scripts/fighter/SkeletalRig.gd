@@ -1,19 +1,24 @@
 class_name SkeletalRig
 extends Node3D
 ## C1 mannequin (launch 4, docs/Plans/2026-10-03-Picks-to-Game-and-Animation.md § C1): the Quaternius UAL1 mannequin
-## with the UAL1 + UAL2 Source clips (CC0, one 65-bone skeleton, so both libraries share one AnimationPlayer — no
-## retarget until launch 5). On only with GameState.skeletal_rig (`-- --skeletal-rig`).
+## with UAL1 + UAL2 Source clips (120 + 134, CC0, one 65-bone skeleton).
+## Enabled by default through GameState.skeletal_rig; `-- --capsules` selects the diagnostic capsule view.
 ##
 ## The capsule RigAnimator keeps running underneath, with its meshes hidden: ragdoll, afterimages and the smoke still
 ## read its part_snapshot()/pose. This node is presentation only — it never moves the fighter or a hitbox.
 ## The player is driven by hand from _physics_process (it runs after Fighter's, parent first), so a clip's pose
-## is a pure function of the fighter's frame counters: deterministic, and the contact pose lands on a known frame.
+## follows the fighter's frame counters: authored contacts land on a known frame. The seven semantic
+## procedural fallbacks consume the capsule animator's existing stepped drawing and seeded reaction.
 ##
 ## Launch 5: with CharacterData.model_scene set, the hero GLB (Meshy auto-rig, 24 bones) is drawn instead. The
 ## mannequin keeps playing, hidden — it is the pose source (the smoke reads it) — and every physics frame its pose is
 ## copied onto the hero bone by bone (HERO_BONES). The Meshy rest is an A-pose, the UAL rest a T-pose, so each hero
 ## bone first gets a rest alignment (its rest direction turned onto the mannequin's), then the mannequin's rotation
 ## from rest. Bone lengths stay the hero's; only the hips move, scaled by the hip-height ratio.
+
+const MotionFallback = preload("res://scripts/fighter/ProceduralMotionFallback.gd")
+const FootContact = preload("res://scripts/fighter/HeroFootContact.gd")
+const StancePresence = preload("res://scripts/fighter/IdlePresence.gd")
 
 const MANNEQUIN := "res://assets/animations/ual/UAL1.glb"
 const EXTRA_LIBRARY := "res://assets/animations/ual/UAL2.glb"
@@ -73,6 +78,8 @@ var _src_rest: Dictionary = {}    # mannequin bone → global rest rotation
 var _hip_scale: float = 1.0
 ## Launch 7.1: the skeleton ragdoll running on the mannequin (null = none); while set, the hero is drawn.
 var ragdoll: BoneRagdoll = null
+var idle_presence = StancePresence.new()
+var foot_contact = FootContact.new()
 
 
 func setup(f: Fighter) -> void:
@@ -128,6 +135,7 @@ func _setup_hero(path: String) -> void:
 		else:
 			var hp := hero_skeleton.get_bone_parent(hi)
 			_align[hi] = _align.get(hp, Quaternion.IDENTITY)
+	foot_contact.setup(hero_skeleton, hero_mesh)
 	var hips := hero_skeleton.find_bone("Hips")
 	_hip_scale = hero_skeleton.get_bone_global_rest(hips).origin.y / maxf(skeleton.get_bone_global_rest(skeleton.find_bone("pelvis")).origin.y, 1e-4)
 
@@ -220,7 +228,17 @@ static func attack_clips(m: MoveData, chain_index: int) -> Array:
 	return [m.anim_clip, m.anim_clip_rec, m.contact_time]
 
 
-## GLB clip this fighter state plays (attacks: the move's anim_clip; "" = hold the stance).
+## Eight source locomotion clips, relative to the fighter's facing, not the camera.
+## Sector centres are 45 degrees apart, so diagonals keep their diagonal footwork.
+static func walk_clip(velocity: Vector3, forward: Vector3) -> String:
+	var right: Vector3 = forward.cross(Vector3.UP)
+	var sector: int = posmod(roundi(atan2(velocity.dot(right), velocity.dot(forward)) / (PI / 4.0)), 8)
+	return ["Walk_Loop", "Walk_Fwd_R_Loop", "Walk_R_Loop", "Walk_Bwd_R_Loop",
+		"Walk_Bwd_Loop", "Walk_Bwd_L_Loop", "Walk_L_Loop", "Walk_Fwd_L_Loop"][sector]
+
+
+## GLB clip this fighter state plays. Empty attack clips use the explicit procedural bridge when supported;
+## otherwise the stance remains the safe fallback. The bridge runs after seeking the base clip.
 func state_clip(f: Fighter) -> String:
 	match f.state:
 		Fighter.State.ATTACK:
@@ -230,8 +248,8 @@ func state_clip(f: Fighter) -> String:
 			var m := f.current_move
 			return c[1] if c[1] != "" and f.move_frame >= m.startup + m.active else c[0]
 		Fighter.State.WALK:
-			var along := f.velocity.dot(f.forward) if GameState.free_move else f.velocity.x * float(f.facing)
-			return STATE_CLIPS["walk_back"] if along < -0.1 else STATE_CLIPS["walk"]
+			var forward: Vector3 = f.forward if GameState.free_move else Vector3(float(f.facing), 0.0, 0.0)
+			return walk_clip(f.velocity, forward)
 		Fighter.State.CROUCH:
 			return STATE_CLIPS["crouch"]
 		Fighter.State.JUMP, Fighter.State.GRAPPLE:
@@ -259,7 +277,7 @@ func _physics_process(delta: float) -> void:
 		return
 	visible = _fighter.animator.visible or ragdoll != null
 	rotation.y = _fighter.animator.rotation.y
-	if _fighter.frozen_frames > 0 or _fighter.hitstop_frames > 0:
+	if get_tree().paused or _fighter.frozen_frames > 0 or _fighter.hitstop_frames > 0:
 		return   # time stop / hitstop: hold the drawing
 	if _fighter.state != _last_state:
 		_last_state = _fighter.state
@@ -292,8 +310,21 @@ func _physics_process(delta: float) -> void:
 	else:
 		clip_pos = minf(float(_state_frames) * delta, anim.length)
 	player.seek(clip_pos, true)
+	if uses_procedural_motion():
+		MotionFallback.apply(skeleton, _fighter.animator)
+	if ragdoll == null:
+		idle_presence.apply(skeleton, _fighter, delta)
+
+
+func uses_procedural_motion() -> bool:
+	return ragdoll == null and _fighter.state == Fighter.State.ATTACK and MotionFallback.supports(_fighter.data.id, _fighter.current_move)
 
 
 func _on_mannequin_updated() -> void:
-	if hero_skeleton != null:
-		retarget()
+	# A queued skeleton update can arrive while the arena is being removed/replaced.
+	if not is_inside_tree() or not is_instance_valid(_fighter) or not is_instance_valid(hero_skeleton):
+		return
+	if get_tree().paused or _fighter.frozen_frames > 0 or _fighter.hitstop_frames > 0:
+		return
+	retarget()
+	foot_contact.apply(_fighter, ragdoll)
