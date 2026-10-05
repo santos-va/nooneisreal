@@ -3,9 +3,15 @@
 Хаб. Кожна сторінка має `## Related`; кожен `[[wikilink]]` резолвиться (гейт `make gates`).
 Поточна правда — [[state]]. Закон — [[constitution]]. Журнал зустрічей — `docs/Meetings/`.
 
-## English handoff — 2026-10-04
+## Поточний маршрут і історичний handoff
 
-[[Handoff/2026-10-04-Start-Here|Start here]] · [[Handoff/2026-10-04-Delivery-Ledger|Merged delivery ledger]] · [[Handoff/2026-10-04-Remaining-Work|Remaining work]] · [[Handoff/2026-10-04-Decisions-And-Validation|Decisions and validation]] · [[Meetings/2026-10-04-Current-State-Cleanup|Current reconciliation]]. Snapshot: merged main `2c50938` (#170). Historical evidence and unfinished acceptance are separate from current delivery.
+**Доставка після звірки 2026-10-05:** PR #181 з «Нижньою позначкою» змерджений у main (`611c85d`); документальне cleanup перенесене на `codex/repository-reconciliation` і доставляється окремим [PR #182](https://github.com/santos-va/nooneisreal/pull/182). CI остаточного документального head ще очікується. Датовані попередні статуси збережені в журналі.
+
+[[state]] · [[2026-10-05-Repository-Reconciliation-Session]] — поточний стан і звірка репозиторію; [[Plans/2026-10-05-Repository-Reconciliation]] та [[Audit/2026-10-05-Repository-Reconciliation]] — план і перевірені підстави cleanup. [[Handoff/2026-10-05-State-Before-Reconciliation]] — незмінний архів state перед скороченням.
+
+**English handoff — historical snapshot, 2026-10-04.**
+
+[[Handoff/2026-10-04-Start-Here|Start here]] · [[Handoff/2026-10-04-Delivery-Ledger|Merged delivery ledger]] · [[Handoff/2026-10-04-Remaining-Work|Remaining work]] · [[Handoff/2026-10-04-Decisions-And-Validation|Decisions and validation]] · [[Meetings/2026-10-04-Current-State-Cleanup|Reconciliation at the snapshot date]]. Snapshot: merged main `2c50938` (#170). Historical evidence and unfinished acceptance are separate from current delivery.
 
 ## Що це
 
@@ -19,7 +25,7 @@ Santos і товариша (лідер команди [[Choko]] — контро
 |---|---|
 | Бачення | [[01-Vision]] · [[Roadmap]] · [[Glossary]] |
 | Бій | [[02-Combat-System]] · [[03-Skills-Framework]] · [[04-Grapple-System]] · [[08-Balance]] |
-| **Поточний старт** | [[state]] · [[Handoff/2026-10-04-Start-Here]] — актуальний зріз і межі приймання |
+| **Поточний старт** | [[state]] · [[2026-10-05-Repository-Reconciliation-Session]] — актуальний зріз і межі приймання; [[Handoff/2026-10-04-Start-Here]] — історичний англомовний маршрут |
 | **Змерджений пакет #170** | [[Plans/2026-10-04-Combat-Control]] · [[Plans/2026-10-04-City-First]] · [[Plans/2026-10-04-City-Style-Match]] — керування, прохідний квартал і його стиль |
 | **Історичний план виробництва** | [[2026-10-03-Production-Plan]] — початкові етапи; не поточне призначення |
 | **Історичний спринт арен** | [[2026-10-03-Sprint-Arenas-VFX]] — тверда арена, три карти день/ніч, VFX, меню (смуги A–I) |
