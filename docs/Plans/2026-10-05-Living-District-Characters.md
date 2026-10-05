@@ -1,29 +1,57 @@
 # Живий квартал: контакт, мешканці й мотузка
 
-2026-10-05 · T1 · **Статус: approved**. Пряме доручення Santos: приймає гру на M3, просить помітніше різноманіття NPC/анімацій/деталей, дистанцію pre-grab близько0,70м, близькі розмови, localLLM, дослідження GitHub/Reddit і поступ до гри з друзями. База merged #177 `f4defd5`; журнал [[2026-10-05-Living-District-Session]]. Прийняття M3 — повідомлення користувача, не вимір FPS або невідомого installedSHA.
+2026-10-05 · T1 · **Статус: approved**. Пряме доручення Santos: приймає гру на M3, просить помітніше різноманіття NPC, анімацій і деталей, дистанцію pre-grab близько 0,70 м, близькі розмови, локальну мовну модель, дослідження GitHub/Reddit та поступ до гри з друзями. База — merged #177 `f4defd5`; журнал [[2026-10-05-Living-District-Session]]. Прийняття M3 — повідомлення користувача, не вимір FPS чи підтвердження встановленого SHA.
 
 ## Аудит і погляди
 
-В актуальному source й незалежному runtime: ROPE_REACH можна готувати до дальності14м, attach поріг2м із next-frame prediction; x2,1 при velocity−12 уже приймається. HUD міряє feet→point, gameplay hand→segment; потрібна одна міра. Talk має center-radius4,2м; worker за прилавком робить просту заміну на0,7м непридатною. NpcPopulation уже зберігає hero-specificmemory, але topic replies майже однакові; невірні Variant типи identity при restore спричиняють SCRIPT ERROR. Appearance — одна humanoid схема з колірними варіаціями; work overlay перетирає жест. Мотузка використовує procedural bridge навіть для ніг у pregrab, а UALжести вже локальні й зареєстровані.
+Перевірено код і незалежний runtime: ROPE_REACH готується до дальності 14 м, attach має поріг 2 м із прогнозом наступного кадру; на 2,1 м при velocity −12 захват уже приймається. HUD міряє від ніг, gameplay — від руки. Talk має радіус 4,2 м від центру; прилавок робить просту заміну на 0,7 м непридатною. NpcPopulation уже зберігає пам’ять окремо для героїв, але відповіді на теми майже однакові. Невірні Variant-типи identity при restore спричиняють SCRIPT ERROR. Зовнішність — одна людська схема з колірними варіаціями; робочий рух перетирає жест. Підготовка мотузки використовує процедурний рух ніг, хоча UAL-джерела вже локальні й зареєстровані.
 
-Варіанти: (1) лише збільшити кількість процедурних кутів/рядків; (2) перебудувати на зовнішні simulation/LLM agents без стабільних контрактів; (3) спільні контактні правила, cachedNPCсилуети й жести, authored source+обмежена IK, фактичний контекст із optionalлокальним генератором лише тексту. Обрано третій: видимий контент і сумісність без нового physics authority та великих binary dependencies.
+Варіанти: (1) додати процедурні кути й рядки; (2) перебудувати поведінку на зовнішні simulation/LLM agents; (3) запровадити спільні контактні правила, кешовані силуети та жести, готові анімаційні джерела з обмеженою IK, фактичний контекст і необов’язковий генератор лише тексту. Обрано третій: видимий результат і сумісність без нового джерела фізичних рішень та великих бінарних залежностей.
 
-Погляди: активному гравцю потрібне чесне ближнє захоплення; крамар має лишитися доступним з клієнтського боку; новий мешканець упізнається силуетом/голосом; повернення іншим героєм не змішує пам'ять; offline/M3 користувач не чекає модель; користувач безspeech не терпитьспам; модифікованийsave/modeltext не видаєнагород; читач зовнішньогоresearch бачитьactualURLs/licences, а не вигадані Redditпоради.
+Погляди: активному гравцю потрібен чесний близький захват; крамар має лишитися доступним з клієнтського боку; мешканець упізнається силуетом і голосом; інший герой не успадковує чужу дружбу; offline/M3 користувач не чекає модель; користувач без голосів не терпить звуковий спам; змінений save/model text не видає нагород; читач дослідження бачить перевірені джерела й ліцензії.
 
 ## Роботи й мірила
 
-1. **T2 rope/contact:** GrappleHook/MatchRopes/HarpoonAim і вузькі HUDпідписи. PREPARE/confirm лише при currenthand→authoritativesegment≤0,70м; безfutureprediction. Farline має лише approachcue, noattach/nospend/no accidentalnewshot. GripLOS плюс чинний support-anchorLOS; segment для зайнятої мотузки читає livehand, не visualVerlet. Дальність нового пострілу до ANCHOR не змінюється. Тести .699/.700/.701, velocity, blockers, movingusers, stale tokens, cancel/rearm, finiteinventory.
-2. **T2 NPC/dialogue:** CityNpcDirector/Actor/Population/Dialogue/newcontext. Близька surfacegap≤0,70м, verticalguard+LOS, один can_talk дляprompt/open; workerposition/точка обслуговування має пройти фізичну капсулу з фронту прилавка. Не робити незрозумілий remote4м виняток. Різні короткі репліки для12NPC заjob/personality/hero/trust/quests/previousvisit, без випадкового повтору сусідніх реплік; memory окремо, quest/credits тільки engine. Під час розмови зупиняється співрозмовник, решта мешканців продовжують життя. Stricttypedrestore/negativebytespreservation.
-3. **T2 optional localtext:** async fixedloopback Ollama, boundedrequest/result, 1inflight, timeout/cooldown/cache, stale-session discard; immediate contextual fallback. Модель генерує лише атмосферний текст, не commands, rewards або trustedfacts. Не завантажувати ваги автоматично й не відправляти дані в cloud. Opt-in producttoggle з чесним unavailable станом; точний model/setup поза основним UI. Research перевіряєsmallmultilingualmodel/license/API, actualproof лише за доступних ваг; mock не видавати за realLLM. Мережевий deny фіксується, не обходиться.
-4. **T6 NPC/world/audio:** три оригінальні visualphenotypes — foxlike/mothlike/stonefolk, одяг і малі аксесуари, seedidentity/save незмінні. Sharedmesh/materialcache, явнийbudget≤48parts/≤8ktriangles/NPC перевіряється. Жести greet/listen/talk/agree/goodbye зreturn і workpriority. Власне коротке невербальне chatter, runtimecachedзвук із3тембрами, spatial/cooldown/max2voices/mute черезчинніaudioналаштування; жодної платної генерації/voiceclone. Лише boundedдекор біляробочихмісцьякщочитається; playablepaths не засмічувати. Native lineup/actualconversation/work/crowd і triangle/material/audio peak/voicebudget.
-5. **T2 hookmotion:** GrappleMotion/SkeletalRig/helpers; authoredgait+upperreach/catch, reel/regrip тільки підactualreel, throw/transfer/detachfollowthrough знаявнихUAL. Коригуватиhandtargets заactualheroанатомією, sourcewallfeetнепереносити наrope. Ніякихзмін rope solver/gameplay trajectory. Nativeобидвагероїnear/far/high/low, miss/attach/transfer/detach/freeze; traces іtokens/length/RNG invariants.
-6. **T3 reuse:** actualGitHub/Godot4.7 API/licensecomparison дляIK/spring/physics/LLM; Redditпрочитаніthreads або чеснаnetworkвідмова. Не додаватиdependencyлише зарадиназви: наявніUAL, GodotJolt/HTTP/audio/cache таanalyticIKповторно використовуються. Длямасивноїnewdependencyспершуперевіритиsize/benefit/licenses.
-7. **T4 acceptance:** незалежні contact/save/LLMtimeoutnegativechecks, nativeповніанімації/новіNPC, всі62baseline + новіcases +nativeCIrenderer. `make check-playable`, `make gates`, exactSHAexportmetadata, PR дляSantosбезselfmerge. Пакетверсії0.5.0 післяприймання; метрикилімітівне FPSM3.
+### Контакт із мотузкою — T2
+
+Файли: `GrappleHook.gd`, `MatchRopes.gd`, `HarpoonAim.gd`, вузькі підписи HUD. PREPARE та confirm дозволені лише при відстані від поточної руки до авторитетного сегмента ≤0,70 м, без прогнозу майбутнього руху. Далека лінія дає лише підказку підійти, без прикріплення, витрати запасу або випадкового нового пострілу. Перевіряються пряма видимість точки хвату й чинна видимість опори. Зайнятий сегмент читає живу руку користувача, а не декоративну Verlet-лінію. Дальність нового пострілу в ANCHOR не змінюється.
+
+Ризики: захват через стіну, старі кінці рухомої мотузки, повторна витрата пристрою. Приймання: .699/.700/.701 м, швидкість, перешкоди, рухомі користувачі, застарілі tokens, cancel/rearm і скінченний запас; `make check-playable` та `make gates`.
+
+### NPC й діалоги — T2
+
+Файли: `CityNpcDirector.gd`, `CityNpcActor.gd`, `NpcPopulation.gd`, `NpcDialogue.gd`, новий контекст реплік. Промпт і відкриття використовують один `can_talk`: відстань між поверхнями ≤0,70 м, вертикальна межа й видимість. Працівник має бути фізично доступним із клієнтського боку прилавка; прихований виняток на 4 м не приймається. Різні короткі відповіді для 12 NPC залежать від професії, особистості, героя, довіри, завдань і попереднього відвідування; сусідні репліки не повторюються. Пам’ять показується окремо. Під час діалогу зупиняється лише співрозмовник. Restore перевіряє типи до порівняння й атомарно відкидає пошкоджені дані.
+
+Необов’язковий локальний текст: async Ollama на фіксованому loopback, обмежені запит і результат, один активний запит, timeout/cooldown/cache, відкидання відповіді після зміни розмови. Контекстна запасна репліка з’являється одразу. Модель створює лише атмосферний текст; commands, rewards і довірені факти визначає рушій. Жодного автоматичного завантаження ваг чи cloud-запиту. Перемикач явно увімкнений користувачем; недоступність пояснена. Модель і налаштування документуються. Mock не є доказом реального inference; мережеві відмови не обходяться.
+
+Ризики: недоступний крамар, змішування героїв, завислий запит, пізня відповідь іншому NPC, неправдива нагорода. Приймання: фізичний прохід до всіх трьох працівників, malformed-save/raw-log перевірки, ізоляція героїв, повторні розмови, timeout/відмова/stale callback; `make check-playable` та `make gates`.
+
+### Зовнішність і звуки — T6
+
+Файли: `NpcAppearance.gd` та допоміжні presentation/audio класи. Три оригінальні фенотипи — лисоподібний, метеликоподібний та кам’яний; одяг і малі аксесуари. Чинні seed identity і save не змінюються. Спільні mesh/material кеші; бюджет ≤48 частин і ≤8000 трикутників на NPC перевіряється. Жести вітання, слухання, розмови, згоди й прощання повертаються до руху та коректно співіснують із роботою.
+
+Власне коротке невербальне звучання: три тембри, кеш під час виконання, просторова чутність, cooldown, максимум два голоси та чинне вимкнення звуку. Без платної генерації або клонування голосу. Декор біля робочих місць допускається лише без захаращення шляхів.
+
+Ризики: невпізнаваний старий NPC, надлишок draw calls, кліпінг жестів, звуковий спам. Приймання: native lineup, справжня розмова/робота/натовп; вимір трикутників, ресурсів і voice budget; `make check-playable` та `make gates`. Нові файли в `game/assets` обов’язково реєструються з ліцензією.
+
+### Рух героя з мотузкою — T2
+
+Файли: `GrappleMotion.gd`, `SkeletalRig.gd`, допоміжні анімаційні класи. Готова хода разом із жестом діставання й хвату; підтягування та перехоплення лише під час фактичного змотування; кидок, перенесення й завершення відпускання з наявних UAL. Ціль кисті враховує анатомію конкретного героя. Рух ніг при лазінні стіною не переноситься на висіння. Solver і траєкторія gameplay не змінюються.
+
+Ризики: вивернуті лікті, ковзання ніг, статичне висіння під час змотування, візуальна зміна gameplay. Приймання: повні native-послідовності обох героїв, близькі/далекі й високі/низькі опори, промах/хват/перенесення/відпускання/freeze; незмінність trajectory, tokens, length і RNG; `make check-playable` та `make gates`.
+
+### Джерела й незалежне приймання — T3/T4
+
+Дослідження: [[2026-10-05-Local-NPC-Models-And-Physics-Reuse]]. Порівняти GitHub/Godot 4.7 API, ліцензії й обмеження IK, spring, physics та LLM. Reddit — прочитані треди або чесно записана відмова мережі. Не додавати залежність лише заради назви: повторно використовувати UAL, Jolt, HTTP, audio, кеш і наявну аналітичну IK. Велика залежність потребує виміру розміру та користі.
+
+T4 незалежно перевіряє контакт, збереження, відмови LLM, native-анімації та NPC. Зберегти всі 62 базові сценарії й додати змістовні нові; native CI перевірка renderer залишається обов’язковою. Після `make check-playable` і `make gates` — точний committed SHA, export metadata, пакет версії 0.5.0 та PR для Santos без самостійного merge. Локальні ліміти не називати FPS M3.
 
 ## Власність і залежності
 
-Rope owns interactionphysics/HarpoonAim/HUDcue; motion owns fightervisuals; NPC owns Director/Actor/Population/Dialogue/LLM; art owns Appearance/helpers/audio. Дляactorpresentation bridge art дає API, NPC інтегрує. Workerfit changes CityPlaces узгоджуються зart/review; збережені checkpoint не пересуваються довільно. Rootcoordinatesplans/docs/commits, researchфакти/modelproof, T4onlyaudit. Agentsuse/workspaceisolates; sharedGodotодин. Ліцензії, іконка, paidgeneration/mainpush/publishне входять. Онлайнfriends — окрема наступна мережева архітектура; уточненнятипузапитане, не оголошуватиonlineреалізованим.
+Rope володіє interaction/aim/HUD; motion — візуальним рухом героя; NPC — Director/Actor/Population/Dialogue/LLM; art — Appearance/helpers/audio. Art дає API жестів, NPC інтегрує. Зміну точки працівника узгоджують NPC, art і review; збережені checkpoints не пересуваються довільно. Root координує план, документи й commits; research перевіряє джерела; T4 веде лише аудит. Агенти використовують ізоляти у `/workspace`; одночасно дозволено лише один Godot на shared checkout.
+
+Ліцензії проєкту, іконка, платна генерація, push у main та публікація не входять у цю хвилю. Гра з друзями потребує наступної мережевої архітектури; уточнення типу взаємодії поставлене, online не оголошується реалізованим.
 
 ## Related
 
-- [[2026-10-05-Living-District-Session]] · [[2026-10-05-District-Motion-Checkpoint]] · [[2026-10-05-District-Life]] · [[2026-10-05-Modding-And-Ownership]] · [[ADR-004-Physics-Is-Presentation]] · [[state]]
+- [[2026-10-05-Living-District-Session]] · [[2026-10-05-District-Motion-Checkpoint]] · [[2026-10-05-District-Life]] · [[2026-10-05-Modding-And-Ownership]] · [[2026-10-05-Local-NPC-Models-And-Physics-Reuse]] · [[ADR-004-Physics-Is-Presentation]] · [[state]]
