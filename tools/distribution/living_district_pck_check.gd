@@ -321,14 +321,20 @@ func check_hero_equipment(fighter: Node3D, hero: String) -> void:
 
 func check_camera_isolation(fighter: Node3D, camera: Camera3D, stage: Node3D) -> void:
 	var shared: ShaderMaterial
-	for part: MeshInstance3D in meshes(stage):
-		if part.material_override is ShaderMaterial and part.material_override.shader.resource_path == "res://shaders/gear_surface.gdshader" and not fighter.is_ancestor_of(part):
-			shared = part.material_override
+	# Select an actual NPC owner, never another hero's gear by traversal order.
+	for resident: Node in stage.get_children():
+		if resident.get_script() != load("res://scripts/npc/NpcAppearance.gd"):
+			continue
+		for part: MeshInstance3D in meshes(resident):
+			if part.material_override is ShaderMaterial and part.material_override.shader.resource_path == "res://shaders/gear_surface.gdshader":
+				shared = part.material_override
+				break
+		if shared != null:
 			break
 	check(shared != null, "Packed NPC garment supplies shared-material isolation fixture")
 	if shared == null or fighter.skeletal.gear == null:
 		return
-	var original_visibility: Variant = shared.get_shader_parameter("camera_visibility")
+	var original_visibility: float = effective_camera_visibility(shared)
 	var late := MeshInstance3D.new()
 	late.mesh = BoxMesh.new()
 	late.material_override = shared
@@ -338,8 +344,14 @@ func check_camera_isolation(fighter: Node3D, camera: Camera3D, stage: Node3D) ->
 	var camera_pose: Transform3D = camera.global_transform
 	camera.global_position = fighter.global_position + Vector3.UP * 1.2
 	proximity.update(camera, 0.5)
-	check(late.material_override != shared and float(late.material_override.get_shader_parameter("camera_visibility")) < 0.01 and shared.get_shader_parameter("camera_visibility") == original_visibility, "Packed camera fades late hero gear without fading shared NPC material")
+	check(late.material_override != shared and float(late.material_override.get_shader_parameter("camera_visibility")) < 0.01 and effective_camera_visibility(shared) == original_visibility, "Packed camera fades late hero gear without fading shared NPC material")
 	proximity.reset()
-	check(late.material_override == shared and shared.get_shader_parameter("camera_visibility") == original_visibility, "Packed camera reset restores exact shared material pointer")
+	check(late.material_override == shared and effective_camera_visibility(shared) == original_visibility, "Packed camera reset restores exact shared material pointer")
 	camera.global_transform = camera_pose
 	late.free()
+
+func effective_camera_visibility(material: ShaderMaterial) -> float:
+	# Before native lazy shader compilation the default getter can return null;
+	# after uniform enumeration it returns 1. Both mean fully visible in this shader.
+	var value: Variant = material.get_shader_parameter("camera_visibility")
+	return 1.0 if value == null else float(value)
