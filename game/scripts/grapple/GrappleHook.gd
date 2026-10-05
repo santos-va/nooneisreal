@@ -14,6 +14,7 @@ var _pending_rope: int = 0
 var chain_throw: bool = false
 const WINDUP_FRAMES := 30
 @export var projectile_speed: float = 36.0 # PLACEHOLDER pending playtest.
+@export var contact_distance: float = 0.70 # User-authorized current hand-to-span reach.
 var phase: Phase = Phase.IDLE
 var windup_progress: float = 0.0
 var projectile_position := Vector3.ZERO
@@ -167,13 +168,11 @@ func busy() -> bool:
 	return phase != Phase.IDLE
 
 
-## Current/predicted hand path can catch a nearby deployed span before spending.
-## The existing 2 m pickup radius is unchanged; prediction is one physics step.
+## Current hand contact only. Future velocity cannot extend the authorized reach.
 func rope_grab_candidate(preferred_token: int = 0) -> Dictionary:
 	if registry == null:
 		return {}
 	var hand := fighter.global_position + HAND
-	var predicted := hand + fighter.velocity * get_physics_process_delta_time()
 	var best: Dictionary = {}
 	var best_distance := INF
 	for key: int in registry.records:
@@ -182,17 +181,28 @@ func rope_grab_candidate(preferred_token: int = 0) -> Dictionary:
 			continue
 		if hand.distance_to(record.anchor) > minf(record.length, range_m) + 0.001 or not line_clear(hand, record.anchor):
 			continue
-		var nearest := Geometry3D.get_closest_point_to_segment(hand, record.anchor, record.tail)
-		var swept := Geometry3D.get_closest_points_between_segments(hand, predicted, record.anchor, record.tail)
-		var distance := minf(hand.distance_to(nearest), swept[0].distance_to(swept[1]))
-		if distance <= 2.0 and (distance < best_distance or (is_equal_approx(distance, best_distance) and key < int(best.get("token", key)))):
+		var grip := registry.closest_grip(key, hand)
+		var nearest: Vector3 = grip.point
+		var distance: float = grip.distance
+		if not line_clear(hand, nearest):
+			continue
+		if distance <= contact_distance + 0.000001 and (distance < best_distance or (is_equal_approx(distance, best_distance) and key < int(best.get("token", key)))):
 			best_distance = distance
-			best = {"token": key, "point": nearest, "reachable": true}
+			best = {"token": key, "point": nearest, "distance": distance, "reachable": true}
 	return best
 
 
 func reusable_rope() -> int:
 	return int(rope_grab_candidate().get("token", 0))
+
+
+## Read-only animation snapshot; distant approach cues are never a hand target.
+func presentation_grip() -> Dictionary:
+	if attached and phase == Phase.HANG:
+		return {"point": fighter.global_position + HAND, "reachable": true, "token": _deployed_token}
+	if phase == Phase.ROPE_REACH:
+		return rope_grab_candidate(_pending_rope)
+	return {}
 
 
 func _attach_existing(existing: int) -> void:
@@ -274,6 +284,9 @@ func fire(prefer_enemy: bool, shot_action: String = "grapple", recorded_aim: Dic
 			return Target.ANCHOR
 	if not prefer_enemy and _prepare_rope_catch():
 		return Target.ANCHOR
+	# A distant/stale rope cue never falls through to issuing a new device.
+	if not prefer_enemy and _rope_intent():
+		return Target.NONE
 	if _recorded_anchor_occupied():
 		Sfx.play("grapple_denied", -4)
 		return Target.NONE
@@ -286,6 +299,13 @@ func fire(prefer_enemy: bool, shot_action: String = "grapple", recorded_aim: Dic
 	return Target.ENEMY if prefer_enemy else Target.ANCHOR
 
 
+func _rope_intent() -> bool:
+	if aim_intent.get("candidate_kind", "") == "rope" or int(aim_intent.get("rope_token", 0)) != 0:
+		return true
+	var id := String(aim_intent.get("target_id", ""))
+	var marker := get_node_or_null(NodePath(id)) as Node3D if not id.is_empty() else null
+	return marker != null and marker.is_in_group("deployed_rope")
+
 func _prepare_rope_catch() -> bool:
 	var id := String(aim_intent.get("target_id", ""))
 	var marker := get_node_or_null(NodePath(id)) as Node3D if not id.is_empty() else null
@@ -295,45 +315,32 @@ func _prepare_rope_catch() -> bool:
 	var record: Dictionary = registry.records.get(key, {})
 	if record.is_empty() or not record.deployed:
 		return false
-	var hand := fighter.global_position + HAND
-	var grip := Geometry3D.get_closest_point_to_segment(hand, record.anchor, record.tail)
-	if hand.distance_to(grip) > range_m or not line_clear(hand, grip):
+	var contact := rope_grab_candidate(key)
+	if contact.is_empty():
 		return false
 	_pending_rope = key
 	_rope.visible = false
 	if _rope_visual != null:
 		_rope_visual.visible = false
-	anchor_point = grip
+	anchor_point = contact.point
 	phase = Phase.ROPE_REACH
 	return true
 
 
-func _drive_rope_reach(delta: float, held: bool) -> void:
+func _drive_rope_reach(_delta: float, held: bool) -> void:
 	if not held or not registry.records.has(_pending_rope):
 		_finish_idle()
 		return
 	var record: Dictionary = registry.records[_pending_rope]
 	var hand := fighter.global_position + HAND
-	anchor_point = Geometry3D.get_closest_point_to_segment(hand, record.anchor, record.tail)
-	if not line_clear(hand, anchor_point) or hand.distance_to(anchor_point) > range_m:
-		_finish_idle()
-		return
 	var grab := rope_grab_candidate(_pending_rope)
 	if int(grab.get("token", 0)) == _pending_rope:
 		_attach_existing(_pending_rope)
 		_pending_rope = 0
 		_draw_rope(hand, record.anchor)
 		return
-	# Ready hands do not stop ordinary travel toward the existing rope.
-	if fighter.on_ground():
-		fighter._walk_free(delta)
-	else:
-		var wish := fighter.wish()
-		var rate: float = fighter.data.air_control * fighter.data.walk_speed * 3.0 * delta
-		fighter.velocity.x = move_toward(fighter.velocity.x, wish.x * fighter.data.walk_speed * fighter.speed_mult(), rate)
-		fighter.velocity.z = move_toward(fighter.velocity.z, wish.z * fighter.data.walk_speed * fighter.speed_mult(), rate)
-		fighter.velocity.y -= Fighter.GRAVITY * delta
-		fighter.move_and_slide()
+	# Moving support or a new blocker invalidates preparation before confirmation.
+	_finish_idle()
 
 
 func _recorded_anchor_occupied() -> bool:

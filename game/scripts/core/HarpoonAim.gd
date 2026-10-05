@@ -138,7 +138,10 @@ func capture(f: Fighter, enemy_mode: bool, remember: bool = true) -> Dictionary:
 			var record: Dictionary = f.grapple.registry.records.get(rope_token, {})
 			if record.is_empty():
 				continue
-			position = Geometry3D.get_closest_point_to_segment(origin, record.anchor, record.tail)
+			var grip: Dictionary = f.grapple.registry.closest_grip(rope_token, origin)
+			if grip.is_empty():
+				continue
+			position = grip.point
 		var offset := position - origin
 		var length := offset.length()
 		if length > distance or length < 0.1 or not _clear(f, origin, position):
@@ -202,7 +205,8 @@ func capture(f: Fighter, enemy_mode: bool, remember: bool = true) -> Dictionary:
 	point = origin + (point - origin).limit_length(distance)
 	return {"tick": InputRouter.frame(), "player": f.player_index, "enemy_mode": enemy_mode,
 		"origin": origin, "point": point, "direction": (point - origin).normalized(), "target_id": id, "manual": manual, "camera_aim": camera_aim,
-		"candidate_kind": kind, "rope_token": selected_token, "reachable": reachable}
+		"candidate_kind": kind, "rope_token": selected_token, "reachable": reachable,
+		"contact_distance": origin.distance_to(point)}
 
 func _exit_tree() -> void:
 	InputRouter.clear_view_basis(1)

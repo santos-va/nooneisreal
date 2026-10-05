@@ -68,7 +68,7 @@ func _run() -> void:
 	director._update_conversations()
 	check(director.population.snapshot() == social_snapshot, "social cooldown prevents greeting spam")
 	var first: Node3D = director.actors[3]
-	city.player.global_position = first.global_position + Vector3(0, 0, 1.5)
+	city.player.global_position = first.global_position + Vector3(0, 0, 1.0)
 	await ticks(2)
 	check(director.find_nearest() == 3, "nearby resident selectable")
 	director.dialogue.show_fact(director.population.meet(0))

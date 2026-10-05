@@ -91,6 +91,8 @@ func _ready() -> void:
 	npc_director.name = "Residents"
 	add_child(npc_director)
 	npc_director.setup(player, progress)
+	npc_director.conversation_started.connect(camera_rig.begin_conversation)
+	npc_director.conversation_ended.connect(camera_rig.end_conversation)
 	hud.bind_quest_context(npc_director)
 	_reset_observation()
 

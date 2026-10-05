@@ -16,6 +16,7 @@ extends Node3D
 ## bone first gets a rest alignment (its rest direction turned onto the mannequin's), then the mannequin's rotation
 ## from rest. Bone lengths stay the hero's; only the hips move, scaled by the hip-height ratio.
 
+const HookSource = preload("res://scripts/fighter/AuthoredHookMotion.gd")
 const HookMotion = preload("res://scripts/fighter/GrappleMotion.gd")
 const Cadence = preload("res://scripts/fighter/LocomotionCadence.gd")
 const MotionFallback = preload("res://scripts/fighter/ProceduralMotionFallback.gd")
@@ -103,6 +104,7 @@ var authored_combat = AuthoredCombat.new()
 var locomotion = GroundMotion.new()
 var authored_dodge = DodgeSource.new()
 var authored_landing = LandingSource.new()
+var authored_hook = HookSource.new()
 
 
 func setup(f: Fighter) -> void:
@@ -120,6 +122,7 @@ func setup(f: Fighter) -> void:
 	player.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	authored_combat.setup(player, skeleton)
 	authored_landing.setup(player, skeleton)
+	authored_hook.setup(player, skeleton)
 	# retarget after the mannequin's modifiers ran: outside this signal get_bone_global_pose() gives the clip's pose,
 	# not the skeleton ragdoll's (launch 7.1)
 	skeleton.skeleton_updated.connect(_on_mannequin_updated)
@@ -218,6 +221,7 @@ func retarget() -> void:
 			hero_skeleton.set_bone_pose_position(hi, hero_skeleton.get_bone_rest(hi).origin + (s_now - s_rest) * _hip_scale)
 	authored_combat.adjust_hero_contact(hero_skeleton, _fighter)
 	authored_landing.apply(hero_skeleton, locomotion.moving_landing_phase())
+	authored_hook.apply_hands(hero_skeleton, _fighter)
 	_align_attack_gaze()
 
 
@@ -320,7 +324,7 @@ static func walk_clip(velocity: Vector3, forward: Vector3) -> String:
 func state_clip(f: Fighter) -> String:
 	if not locomotion.special_clip.is_empty() and f.state in [Fighter.State.IDLE, Fighter.State.WALK, Fighter.State.JUMP]:
 		return locomotion.special_clip
-	if f.state in [Fighter.State.IDLE, Fighter.State.WALK] and locomotion.moving():
+	if (f.state in [Fighter.State.IDLE, Fighter.State.WALK] or HookSource.grounded_travel(f)) and locomotion.moving():
 		return locomotion.source_clip
 	if f.state == Fighter.State.WALK and locomotion.active and not locomotion.moving():
 		return f.data.idle_clip
@@ -342,7 +346,9 @@ func state_clip(f: Fighter) -> String:
 			if enter != "" and float(_state_frames) / 60.0 < player.get_animation(enter).length:
 				return "Crouch_Enter"
 			return STATE_CLIPS["crouch"]
-		Fighter.State.JUMP, Fighter.State.GRAPPLE:
+		Fighter.State.GRAPPLE:
+			return f.data.idle_clip if f.on_ground() else STATE_CLIPS["jump"]
+		Fighter.State.JUMP:
 			return STATE_CLIPS["jump"]
 		Fighter.State.DASH:
 			return DodgeSource.source(f) if f.dodging else f.data.dash_clip
@@ -371,6 +377,7 @@ func _physics_process(delta: float) -> void:
 	rotation.y = _fighter.animator.rotation.y
 	if get_tree().paused or _fighter.frozen_frames > 0 or _fighter.hitstop_frames > 0:
 		return   # time stop / hitstop: hold the drawing
+	authored_hook.update(_fighter, skeleton, delta)
 	authored_dodge.prepare(skeleton, _fighter)
 	var return_allowed: bool = _fighter.state in [Fighter.State.IDLE, Fighter.State.WALK, Fighter.State.CROUCH] and ragdoll == null and not RigAnimator.levitating(_fighter) and not HookMotion.recovery_active(_fighter)
 	if _last_state == Fighter.State.ATTACK and return_allowed and attack_return_seconds > 0.0:
@@ -400,7 +407,7 @@ func _physics_process(delta: float) -> void:
 	var distance: float = Vector2(_fighter.global_position.x - previous_position.x, _fighter.global_position.z - previous_position.z).length()
 	if not _gait_position_valid:
 		distance = Vector2(_fighter.velocity.x, _fighter.velocity.z).length() * delta
-	_gait_position_valid = _fighter.state in [Fighter.State.IDLE, Fighter.State.WALK]
+	_gait_position_valid = _fighter.state in [Fighter.State.IDLE, Fighter.State.WALK] or HookSource.grounded_travel(_fighter)
 	locomotion.update(_fighter, distance, delta, _gait_scale, ragdoll == null and not RigAnimator.levitating(_fighter) and _crouch_exit_frames < 0)
 	var source: Dictionary = AuthoredCombat.resolve(_fighter.current_move, _fighter.data.id) if _fighter.state == Fighter.State.ATTACK else {}
 	var want := clip_name(state_clip(_fighter))
@@ -441,6 +448,7 @@ func _physics_process(delta: float) -> void:
 		clip_pos = minf(float(_state_frames) * delta, anim.length)
 	# Undo our previous overlay before seeking: constant tracks may be absent in a clip.
 	_restore_attack_return_base()
+	authored_hook.restore(skeleton)
 	authored_dodge.restore(skeleton)
 	authored_combat.restore(skeleton)
 	SwordMotion.restore_mirror(skeleton, _sword_mirror_base)
@@ -454,12 +462,11 @@ func _physics_process(delta: float) -> void:
 	locomotion.apply(skeleton, clip, delta)
 	authored_combat.apply(skeleton, source, _fighter)
 	authored_dodge.apply(skeleton, _fighter, delta)
+	authored_hook.apply(skeleton, _fighter)
 	_sword_mirror_base = SwordMotion.mirror_authored(skeleton, _fighter)
 	var recovering: bool = HookMotion.recovery_active(_fighter)
 	if procedural:
 		MotionFallback.apply(skeleton, _fighter.animator)
-	elif ragdoll == null and recovering:
-		MotionFallback.apply(skeleton, _fighter.animator, true)
 	if ragdoll == null and not recovering and not RigAnimator.levitating(_fighter) and not locomotion.moving():
 		idle_presence.apply(skeleton, _fighter, delta)
 	_apply_attack_return(delta)
@@ -500,7 +507,7 @@ func _apply_attack_return(delta: float) -> void:
 func uses_procedural_motion() -> bool:
 	if ragdoll != null:
 		return false
-	return RigAnimator.levitating(_fighter) or _fighter.state == Fighter.State.GRAPPLE or (_fighter.state == Fighter.State.ATTACK and MotionFallback.supports(_fighter.data.id, _fighter.current_move) and AuthoredCombat.resolve(_fighter.current_move, _fighter.data.id).is_empty())
+	return RigAnimator.levitating(_fighter) or (_fighter.state == Fighter.State.ATTACK and MotionFallback.supports(_fighter.data.id, _fighter.current_move) and AuthoredCombat.resolve(_fighter.current_move, _fighter.data.id).is_empty())
 
 
 func _on_mannequin_updated() -> void:

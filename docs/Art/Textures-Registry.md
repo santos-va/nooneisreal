@@ -206,5 +206,12 @@
 
 Раніше перенесено вгору: 8 рядків 2026-10-03, ще 2 (M-0, M-1) і `ult_end` — того ж дня; ще 4 (річка, вода ×2, якорі) і 10 нових рядків канону хвилі 2 — T6 у хмарі того ж дня.
 
+## Процедурні runtime-джерела без нових файлів assets
+
+| id | джерело | автор / права | використання |
+|---|---|---|---|
+| npc-fantasy-residents-v2 | `game/scripts/npc/NpcAppearance.gd`, 2026-10-05 | оригінал проєкту; сторонніх моделей, персонажів або нових ліцензій немає; CC0 не оголошено | власні fox/moth/stone силуети, одяг, handheld parcel/cloth/tool; повторно використовує три зареєстровані SVG NPC; [[2026-10-05-Fantasy-Residents-And-Chatter]] |
+| npc-nonverbal-chatter | `game/scripts/npc/NpcChatter.gd`, 2026-10-05 | оригінальний детермінований синтез проєкту; без sample pack, запису голосу чи voice clone; CC0 не оголошено | три тембри коротких безсловесних сигналів, PCM кешується в пам'яті; WAV у evidence — приклади перевірки, не нові export assets; [[2026-10-05-Fantasy-Residents-And-Chatter]] |
+
 ## Related
 - [[Style-Guide]] · [[Backgrounds]] · [[Prompts]] · [[07-Audio]] · [[constitution]] · [[Palette-Remap]] · [[Pack-Review]]

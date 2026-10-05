@@ -39,6 +39,18 @@ jobs:
           echo "GODOT_BIN=$PWD/Godot_v${GODOT_VERSION}_linux.x86_64" >> "$GITHUB_ENV"
       - name: make check-playable (import, parse, smoke, presentation regressions)
         run: make check-playable
+      - name: Local NPC HTTP protocol and failure regressions (mock only)
+        timeout-minutes: 2
+        env:
+          NIR_LLM_LOG_DIR: ${{ runner.temp }}/npc-http
+        run: bash tools/npc/local_http_check.sh
+      - name: Upload NPC HTTP protocol logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npc-http-protocol-logs
+          path: ${{ runner.temp }}/npc-http
+          if-no-files-found: warn
       - name: Install native Compatibility test dependencies
         timeout-minutes: 5
         run: |

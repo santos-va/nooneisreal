@@ -11,11 +11,11 @@ static func shops() -> Array[Dictionary]:
 		var x: float = -26.6 + float(index) * 6.6
 		result.append({"id": ids[index], "title": titles[index], "npc_index": index,
 			"door": Vector3(x, 0, 12), "approach": Vector3(x, 0, 10),
-			"visit": Vector3(x, 0, 15.4), "worker": Vector3(x + 1.45, 0, 18.8),
+			"visit": Vector3(x, 0, 15.4), "worker": Vector3(x + 2.10, 0, 17.60), "service": Vector3(x + 2.10, 0, 16.40),
 			"radius": 2.8, "door_width": 2.4, "door_height": 3.2,
 			"bounds": AABB(Vector3(x - 3.1, 0, 12.2), Vector3(6.2, 4, 7.6)),
 			"worker_path": [Vector3(x, 0, 10), Vector3(x, 0, 12), Vector3(x, 0, 15.4),
-				Vector3(x, 0, 16.65), Vector3(x + 2.55, 0, 16.65), Vector3(x + 2.55, 0, 18.8), Vector3(x + 1.45, 0, 18.8)]})
+				Vector3(x, 0, 16.65), Vector3(x + 2.55, 0, 16.65), Vector3(x + 2.10, 0, 17.60)]})
 	return result
 
 static func worker_positions() -> Dictionary:

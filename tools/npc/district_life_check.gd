@@ -45,9 +45,9 @@ func _run() -> void:
 		var before: float = visual._arms[0].rotation.x
 		await ticks(20)
 		check(absf(visual._arms[0].rotation.x - before) > 0.01, "visible work gesture " + str(shop.id))
-		city.player.global_position = shop.visit
+		city.player.global_position = shop.service
 		await ticks(2)
-		check(director.find_nearest() == index, "worker reachable across counter " + str(shop.id))
+		check(director.find_nearest() == index, "worker reachable beside counter " + str(shop.id))
 		director.open_conversation(index)
 		check(director.dialogue.opened and root.get_node("InputRouter").ui_suppressed(), "choice dialogue owns focus " + str(shop.id))
 		director._choose("topic:work")
@@ -59,11 +59,13 @@ func _run() -> void:
 			await capture("/tmp/district-grocer-dialogue.png")
 		director.dialogue.close()
 	check(progress.quest_status("introductions") == "ready", "meeting actual workers advances quest")
+	city.player.global_position = CityPlaces.shops()[0].service
 	director.open_conversation(0)
 	director._choose("turn:introductions")
 	check(progress.summary().credits == 3, "NPC turn-in grants explicit reward")
 	director._choose("accept:parcel")
 	director.dialogue.close()
+	city.player.global_position = CityPlaces.shops()[1].service
 	director.open_conversation(1)
 	director._choose("parcel")
 	check(progress.quest_status("parcel") == "ready", "tailor receives actual accepted parcel")
@@ -87,16 +89,20 @@ func _run() -> void:
 			city.player.global_position = place.position
 			await ticks(2)
 	check(progress.quest_status("roof_walk") == "ready", "physical roof visits feed progress")
+	city.player.global_position = CityPlaces.shops()[2].service
 	director.open_conversation(2)
 	director._choose("turn:roof_walk")
 	director.dialogue.close()
 	progress.accept_quest("neighbours")
 	for index: int in range(3, 7):
+		city.player.global_position = director.actors[index].global_position + Vector3(0, 0, 1)
 		director.open_conversation(index)
 		director.dialogue.close()
+	city.player.global_position = CityPlaces.shops()[1].service
 	director.open_conversation(1)
 	director._choose("turn:neighbours")
 	director.dialogue.close()
+	city.player.global_position = director.actors[3].global_position + Vector3(0, 0, 1)
 	director.open_conversation(3)
 	for action: String in ["topic:work", "topic:district", "topic:route", "topic:neighbours"]:
 		director._choose(action)

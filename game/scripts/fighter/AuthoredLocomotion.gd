@@ -52,7 +52,8 @@ func update(f: Fighter, distance: float, delta: float, leg_scale: float, permitt
 	_last_state = f.state
 	if not permitted:
 		special_clip = ""
-	active = permitted and f.state in [Fighter.State.IDLE, Fighter.State.WALK]
+	var grounded_hook: bool = f.state == Fighter.State.GRAPPLE and f.on_ground() and f.grapple.phase != GrappleHook.Phase.WINDUP
+	active = permitted and (f.state in [Fighter.State.IDLE, Fighter.State.WALK] or grounded_hook)
 	speed = maxf(distance, 0.0) / maxf(delta, 0.00001) if active else 0.0
 	acceleration = (speed - previous_speed) / maxf(delta, 0.00001)
 	if not active:

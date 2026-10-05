@@ -163,7 +163,7 @@ func _initialize() -> void:
 			for frame: int in 30:
 				f.animator.tick(1.0 / 60.0, f, false)
 				sk._physics_process(1.0 / 60.0)
-			check(sk.uses_procedural_motion(), id + " hook phase reaches hero")
+			check(not sk.uses_procedural_motion() and not sk.authored_hook.source_clip.is_empty(), id + " hook phase has authored upper-body source")
 			if phase == hook_script.Phase.WINDUP:
 				check(f.animator.root_offset.y < -0.15 and absf(f.animator.pose["torso"].y) > 0.4, id + " hook windup loads hips and torso")
 			var drawing: int = hash(f.animator.target_pose)

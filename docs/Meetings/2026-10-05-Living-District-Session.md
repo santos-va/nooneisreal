@@ -14,6 +14,14 @@ Santos повідомив: «Приймаю на М3», уже оглянув г
 
 Read-only GitHub перевірка цієї сесії: для merge `f4defd5` [CI 37247205459](https://github.com/santos-va/nooneisreal/actions/runs/37247205459) та [macOS main app 37247205418](https://github.com/santos-va/nooneisreal/actions/runs/37247205418) мають `completed/success`. Це стан workflow, не підтвердження конкретного встановленого SHA на Mac Santos.
 
+## CP1 — нативний огляд
+
+Перші actual city frames показали перекриття NPC центральною панеллю й віконною рамою. T4 та art незалежно підтвердили проблему. План доповнено боковою панеллю й безпечним кадруванням розмови; до повторного native огляду visual acceptance відкритий. Аудит звуку також виявив різні точки виміру: гра рахувала близькість від героя, а рушій слухав із камери. Art вирівнює цей контракт через scene-owned AudioListener3D.
+
+## CP2 — приймання source
+
+T4 завершив незалежний огляд: [[2026-10-05-Living-District-Review]] GREEN. Root повторив повний runner після виправлення audio fixture: 70/0, smoke164/19847, gates99/0. Усі попередні 62 сценарії й 12 negative controls залишені. Новий checkpoint і межі — [[2026-10-05-Living-District-Checkpoint]]. Код і тести заморожені; exact-SHA export/CI/PR наступні, не оголошені виконаними наперед.
+
 ## Related
 
 - [[2026-10-05-Living-District-Characters]] · [[2026-10-05-District-Motion-Session]] · [[2026-10-05-Local-NPC-Models-And-Physics-Reuse]] · [[state]]

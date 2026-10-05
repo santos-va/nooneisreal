@@ -343,7 +343,7 @@ func exploration_help() -> String:
 	text += "Jump / reel: %s / A · Parkour: tap %s / L3 (or Y + LT)\n" % [InputRouter.binding_label(1, "jump", false), InputRouter.binding_label(1, "grapple_parkour", false)]
 	text += "Face a nearby anchor and tap parkour to hook or transfer.\n"
 	text += "Detach: %s / B · Dodge: %s / X · Dash skill: %s / Y + X\n" % [InputRouter.binding_label(1, "grapple_detach", false), InputRouter.binding_label(1, "dodge", false), InputRouter.binding_label(1, "dash", false)]
-	text += "Hooks are finite. GRAB ROPE reuses a line; PREPARE GRAB reaches for it.\n"
+	text += "Hooks are finite. Approach a rope within 0.70m of your hand to grab it.\n"
 	text += "Strikes: %s; %s; %s; %s\n" % [InputRouter.binding_label(1, "left_hand", false), InputRouter.binding_label(1, "right_hand", false), InputRouter.binding_label(1, "left_leg", false), InputRouter.binding_label(1, "right_leg", false)]
 	text += "Sword: %s / R3 · Talk: %s / Y + D-pad Down\n" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
 	return text + "Talk to residents for tasks. Your hero’s district progress is saved automatically."
@@ -477,9 +477,11 @@ func _process(_delta: float) -> void:
 		return
 	var kind: String = intent.get("candidate_kind", "")
 	var verb := "GRAB ROPE" if kind == "rope" else ("TRANSFER" if _player.grapple.busy() else "HOOK")
+	var binding: String = InputRouter.binding_label(_player.player_index, "grapple_parkour", helper.last_gamepad)
 	if kind == "rope" and not intent.get("reachable", true):
-		verb = "PREPARE GRAB"
-	_aim_cue.text = "◇ %s · %s · %.1fm" % [InputRouter.binding_label(_player.player_index, "grapple_parkour", helper.last_gamepad), verb, _player.global_position.distance_to(point)]
+		verb = "APPROACH ROPE"
+		binding = ""
+	_aim_cue.text = "◇ %s%s · %.2fm" % [(binding + " · ") if not binding.is_empty() else "", verb, float(intent.get("contact_distance", (_player.global_position + GrappleHook.HAND).distance_to(point)))]
 	_aim_cue.position = _root.get_global_transform_with_canvas().affine_inverse() * screen + Vector2(-18, -32)
 	var bounds := get_viewport().get_visible_rect().size
 	var extent := _aim_cue.get_minimum_size()
