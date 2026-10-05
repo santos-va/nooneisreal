@@ -6,6 +6,9 @@ signal looked(radians: float)
 @export var follow_distance: float = 6.0 # PLACEHOLDER city framing; device review pending.
 @export var focus_height: float = 1.4
 @export var aim_shoulder_offset: float = 1.0 # PLACEHOLDER metres, clear torso when aiming up.
+@export var close_lift: float = 0.65 # PLACEHOLDER safer view over the shoulder near walls.
+var proximity := CityCameraProximity.new()
+var _close_weight: float = 0.0
 var _shoulder_shape: SphereShape3D
 @export var base_pitch: float = -0.24
 var player: CityFighter
@@ -55,12 +58,15 @@ func _ready() -> void:
 
 func setup(fighter: CityFighter) -> void:
 	player = fighter
+	proximity.setup(player)
 	arm.add_excluded_object(player.get_rid())
 	camera.make_current()
 	reset_view()
 
 func reset_view() -> void:
 	aim.reset()
+	proximity.reset()
+	_close_weight = 0.0
 	_yaw = 0.0
 	_pitch = 0.0
 	rotation = Vector3.ZERO
@@ -81,6 +87,7 @@ func _physics_process(delta: float) -> void:
 	arm.rotation.x = base_pitch + aim.pitch_offset
 	global_position = global_position.lerp(player.global_position + Vector3.UP * focus_height, 1.0 - exp(-15.0 * delta))
 	_update_shoulder(delta)
+	_update_close_framing(delta)
 	_publish_basis()
 	var turn := Vector2(angle_difference(previous, _yaw), _pitch - previous_pitch).length()
 	if turn > 0.00001:
@@ -108,8 +115,35 @@ func _update_shoulder(delta: float) -> void:
 			offset *= fractions[0]
 	arm.position.x = offset
 
+func _update_close_framing(delta: float) -> void:
+	# Keep the existing SpringArm sweep authoritative. A bounded vertical pivot
+	# sweep raises the near-wall view without pushing the lens through geometry.
+	var desired: float = 1.0 - smoothstep(0.35, 1.5, arm.get_hit_length())
+	_close_weight = lerpf(_close_weight, desired, 1.0 - exp(-10.0 * delta))
+	var lift: float = close_lift * _close_weight
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = _shoulder_shape
+	query.transform.origin = global_position + global_basis.x * arm.position.x
+	query.motion = Vector3.UP * lift
+	query.collision_mask = arm.collision_mask
+	query.exclude = [player.get_rid()]
+	if lift > 0.0001:
+		var fractions: PackedFloat32Array = get_world_3d().direct_space_state.cast_motion(query)
+		if not fractions.is_empty():
+			lift *= fractions[0]
+	arm.position.y = lift
+	arm.rotation.x = base_pitch + aim.pitch_offset - 0.12 * _close_weight
+
+func _process(delta: float) -> void:
+	# SpringArm has placed the final lens before the render-only body policy runs.
+	if player != null and camera.is_current():
+		proximity.update(camera, delta)
+	else:
+		proximity.reset()
+
 func _publish_basis() -> void:
 	InputRouter.set_view_basis(player.player_index, Vector3(-sin(_yaw), 0.0, -cos(_yaw)))
 
 func _exit_tree() -> void:
+	proximity.restore()
 	InputRouter.clear_view_basis(1)

@@ -106,6 +106,25 @@ func _run() -> void:
 	var interiors: Node = district.get_node("CityInteriors")
 	_expect(interiors.get_meta("visual_parts", 0) > 250, "three interiors contain real furnishings")
 	_expect(interiors.get_meta("material_batches", 99) <= 19, "interior kit batches shared materials")
+	var backdrop: Node3D = district.get_node("CityBackdrop")
+	_expect(backdrop.get_meta("skyline_buildings", 0) == 10, "skyline has ten bounded buildings")
+	_expect(backdrop.get_meta("triangle_count", 999999) <= 16000, "skyline stays within triangle budget")
+	_expect(backdrop.get_child_count() <= 7, "skyline stays within seven material mesh nodes")
+	_expect(backdrop.find_children("*", "CollisionObject3D", true, false).is_empty(), "skyline creates no collision or phantom anchors")
+	for node: Node in backdrop.get_children():
+		var outside: bool = true
+		for vertex: Vector3 in (node as MeshInstance3D).mesh.get_faces():
+			var point: Vector3 = (node as Node3D).global_transform * vertex
+			if absf(point.x) < 32.0 and absf(point.z) < 32.0:
+				outside = false
+		_expect(outside, "backdrop material mesh stays outside playable square: " + node.name)
+	var bridge_rails: Array[Node] = district.find_children("BridgeParapet*", "Node3D", false, false)
+	_expect(bridge_rails.size() == 2, "both bridge edge rails remain present")
+	for parapet: Node3D in bridge_rails:
+		var collision: BoxShape3D = (parapet.get_child(1) as CollisionShape3D).shape as BoxShape3D
+		_expect(collision.size == Vector3(20, 1, 0.2), "open bridge rail preserves the complete safety collider")
+		var infill: MeshInstance3D = parapet.get_child(0) as MeshInstance3D
+		_expect((infill.mesh as BoxMesh).size.y <= 0.25 and infill.position.y < -0.3, "bridge infill reveals footfalls")
 	var anchors: Array[Node] = get_nodes_in_group("grapple_anchor")
 	_expect(anchors.size() == 4, "four sparse street anchors")
 	for node: Node in anchors:

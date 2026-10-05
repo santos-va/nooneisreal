@@ -6,6 +6,7 @@ const Materials = preload("res://scripts/world/CityMaterials.gd")
 const Architecture = preload("res://scripts/world/CityArchitecture.gd")
 const Market = preload("res://scripts/world/CityMarket.gd")
 const Interiors = preload("res://scripts/world/CityInteriors.gd")
+const Backdrop = preload("res://scripts/world/CityBackdrop.gd")
 var materials: Dictionary = {}
 var geometry_count: int = 0
 
@@ -19,6 +20,7 @@ func _ready() -> void:
 	Architecture.populate(self)
 	add_child(Market.new())
 	add_child(Interiors.new())
+	add_child(Backdrop.new())
 	_street_details()
 	_markers()
 
@@ -84,7 +86,11 @@ func _ramp(spec: Dictionary) -> void:
 
 func _roofs_and_rails() -> void:
 	for z: float in [-22.0, -18.0]:
-		_box("BridgeParapet" + str(z), Vector3(0, 4.5, z), Vector3(20, 1, 0.2), "slate", 9)
+		var parapet: Node3D = _box("BridgeParapet" + str(z), Vector3(0, 4.5, z), Vector3(20, 1, 0.2), "slate", 9)
+		# Keep the exact safety collider; only the visible infill becomes an open railing.
+		var infill: MeshInstance3D = parapet.get_child(0) as MeshInstance3D
+		(infill.mesh as BoxMesh).size.y = 0.24
+		infill.position.y = -0.38
 	# North edges are guarded, while the ramps and bridge mouths stay open.
 	for x: float in [-20.0, 20.0]:
 		_box("NorthParapet" + str(x), Vector3(x, 4.45, -30), Vector3(20, 0.9, 0.22), "slate", 9)

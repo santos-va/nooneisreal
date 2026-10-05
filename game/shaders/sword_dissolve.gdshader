@@ -3,6 +3,8 @@
 shader_type spatial;
 render_mode cull_back, depth_draw_opaque, specular_disabled;
 
+#include "res://shaders/camera_proximity.gdshaderinc"
+
 uniform vec4 albedo : source_color = vec4(1.0);
 uniform sampler2D albedo_tex : source_color, hint_default_white;
 uniform float bands : hint_range(1.0, 6.0) = 3.0;
@@ -16,8 +18,11 @@ uniform float desat : hint_range(0.0, 1.0) = 0.0;   // TIME STOP: grey-blue froz
 // PLACEHOLDER art grain. Object coordinates freeze with hitstop; no TIME or random state.
 uniform float dissolve : hint_range(0.0, 1.0) = 0.0;
 varying vec3 local_point;
-void vertex() { local_point = VERTEX; }
+void vertex() {
+	camera_main_pass = distance(INV_VIEW_MATRIX[3].xyz, MAIN_CAM_INV_VIEW_MATRIX[3].xyz) < 0.001 ? 1.0 : 0.0;
+ local_point = VERTEX; }
 void fragment() {
+	if (camera_proximity_hidden(FRAGCOORD.xy)) { discard; }
 	vec3 cell = floor(local_point * 90.0);
 	float grain = fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
 	if (dissolve > 0.0 && grain < dissolve) { discard; }

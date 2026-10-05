@@ -3,6 +3,8 @@
 shader_type spatial;
 render_mode cull_back, depth_draw_opaque, specular_disabled;
 
+#include "res://shaders/camera_proximity.gdshaderinc"
+
 uniform vec4 albedo : source_color = vec4(1.0);
 uniform sampler2D albedo_tex : source_color, hint_default_white;
 uniform float bands : hint_range(1.0, 6.0) = 3.0;
@@ -13,7 +15,12 @@ uniform float rim_width : hint_range(0.0, 1.0) = 0.55;
 uniform float hit_flash : hint_range(0.0, 1.0) = 0.0;
 uniform float desat : hint_range(0.0, 1.0) = 0.0;   // TIME STOP: grey-blue frozen look
 
+void vertex() {
+	camera_main_pass = distance(INV_VIEW_MATRIX[3].xyz, MAIN_CAM_INV_VIEW_MATRIX[3].xyz) < 0.001 ? 1.0 : 0.0;
+}
+
 void fragment() {
+	if (camera_proximity_hidden(FRAGCOORD.xy)) { discard; }
 	vec4 tex = texture(albedo_tex, UV);
 	vec3 base = albedo.rgb * tex.rgb;
 	float g = dot(base, vec3(0.3, 0.59, 0.11));
