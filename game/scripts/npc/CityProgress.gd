@@ -202,6 +202,11 @@ func track_quest(id: String) -> bool:
 	_changed()
 	return true
 
+func track_automatically() -> void:
+	if heroes[hero_id].has("tracked_quest"):
+		heroes[hero_id].erase("tracked_quest")
+		_changed()
+
 func tracked_quest_id() -> String:
 	var profile: Dictionary = heroes[hero_id]
 	if profile.has("tracked_quest"):

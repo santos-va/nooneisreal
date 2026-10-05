@@ -12,6 +12,9 @@ var ropes: MatchRopes
 var onboarding: CityOnboarding
 var hud: CityHud
 var npc_director: CityNpcDirector
+var lower_story: CityLowerStory
+@export var lower_story_save_path: String = CityLowerStory.SAVE_PATH
+@export var lower_story_save_enabled: bool = true
 var story: CityStory
 var story_dialogue: NpcDialogue
 @export var story_save_path: String = CityStory.SAVE_PATH
@@ -95,7 +98,14 @@ func _ready() -> void:
 	story_dialogue.name = "StoryInspection"
 	add_child(story_dialogue)
 	story_dialogue.local_toggle.hide()
+	lower_story = CityLowerStory.new()
+	lower_story.name = "LowerMarkStory"
+	add_child(lower_story)
+	lower_story.setup(GameState.p1_character, story, lower_story_save_enabled, lower_story_save_path)
+	lower_story.changed.connect(_apply_lower_world)
+	_apply_lower_world()
 	hud.bind_story(story, self)
+	hud.bind_lower_story(lower_story)
 	cosmetics = CityCosmetics.new()
 	cosmetics.name = "CityClothStyle"
 	add_child(cosmetics)
@@ -105,7 +115,7 @@ func _ready() -> void:
 	npc_director = CityNpcDirector.new()
 	npc_director.name = "Residents"
 	add_child(npc_director)
-	npc_director.setup(player, progress, story)
+	npc_director.setup(player, progress, story, lower_story)
 	npc_director.conversation_started.connect(camera_rig.begin_conversation)
 	npc_director.conversation_ended.connect(camera_rig.end_conversation)
 	hud.bind_quest_context(npc_director)
@@ -148,7 +158,36 @@ func _story_points() -> Dictionary:
 	var maintenance: Node = district.get("maintenance")
 	return maintenance.story_points() if is_instance_valid(maintenance) else {}
 
+func _apply_lower_world() -> void:
+	var gallery: Node = district.get("lower_gallery")
+	if is_instance_valid(gallery):
+		gallery.set_lamp_aligned(lower_story.lamp_aligned())
+		gallery.set_record_delivered(lower_story.record_delivered())
+
+func active_episode() -> Node:
+	if story.stage() != "completed":
+		return story
+	if lower_story != null and lower_story.stage() not in ["locked", "completed"]:
+		return lower_story
+	return null
+
+func _interaction_point(id: String) -> Node3D:
+	if id in ["lower_lamp", "lower_plate"]:
+		var gallery: Node = district.get("lower_gallery")
+		return gallery.lower_points().get(id.trim_prefix("lower_")) if is_instance_valid(gallery) else null
+	var key: String = {"latch": "clue_a", "counterweight_trace": "clue_b", "mechanism": "mechanism"}.get(id, "")
+	return _story_points().get(key)
+
+func _lower_target() -> Dictionary:
+	if lower_story.stage() in ["available", "return"]:
+		return {"id": "lower_lada", "title": lower_story.current_hint(), "position": CityPlaces.worker_positions().workshop}
+	var id: String = "lower_lamp" if lower_story.stage() == "lighting" else "lower_plate"
+	var point: Node3D = _interaction_point(id)
+	return {"id": id, "title": lower_story.current_hint(), "position": point.global_position} if is_instance_valid(point) else {}
+
 func story_target() -> Dictionary:
+	if active_episode() == lower_story and lower_story != null:
+		return _lower_target()
 	if story.stage() in ["available", "return"]:
 		return {"id": "story_lada", "title": story.text(story.stage()), "position": CityPlaces.worker_positions().workshop}
 	var points := _story_points()
@@ -164,8 +203,9 @@ func can_inspect_story(id: String) -> bool:
 		return false
 	if player.state not in [Fighter.State.IDLE, Fighter.State.WALK, Fighter.State.CROUCH, Fighter.State.BLOCK]:
 		return false
-	var key: String = {"latch": "clue_a", "counterweight_trace": "clue_b", "mechanism": "mechanism"}.get(id, "")
-	var point: Node3D = _story_points().get(key)
+	if id.begins_with("lower_") and (lower_story == null or not lower_story.prerequisite_ready()):
+		return false
+	var point: Node3D = _interaction_point(id)
 	if not is_instance_valid(point):
 		return false
 	var origin: Vector3 = player.global_position + Vector3.UP * 1.1
@@ -180,6 +220,8 @@ func can_inspect_story(id: String) -> bool:
 func interact_story(id: String) -> bool:
 	if not can_inspect_story(id) or npc_director.find_nearest() >= 0:
 		return false
+	if id.begins_with("lower_"):
+		return _interact_lower(id)
 	var response: String
 	if story.stage() == "available":
 		response = story.text("before_accept")
@@ -196,25 +238,53 @@ func interact_story(id: String) -> bool:
 	story_dialogue.show_fact(response)
 	return true
 
+func _interact_lower(id: String) -> bool:
+	var response: String
+	if lower_story.stage() == "available":
+		response = lower_story.text("available")
+	elif id == "lower_lamp":
+		if not lower_story.toggle_lamp():
+			return false
+		response = lower_story.text("lamp_toward" if lower_story.lamp_aligned() else "lamp_away")
+		if lower_story.has_copy():
+			response += "\n" + lower_story.text("copy_retained")
+	elif id == "lower_plate":
+		var gallery: Node = district.get("lower_gallery")
+		if lower_story.has_copy():
+			response = lower_story.text("copied_fact")
+		elif not lower_story.lamp_aligned() or not is_instance_valid(gallery) or not gallery.plate_is_lit():
+			response = lower_story.text("unlit_plate")
+		elif lower_story.copy_mark():
+			response = lower_story.text("copied_fact") + "\n\n" + lower_story.text(lower_story.hero_id + "_observation") + "\n" + lower_story.text("boundary")
+		else:
+			return false
+	else:
+		return false
+	story_dialogue.show_fact(response)
+	return true
+
 func _update_story_interaction() -> void:
 	hud.set_story_prompt("")
 	if InputRouter.ui_suppressed() or npc_director.find_nearest() >= 0:
 		return
 	var selected: String = ""
 	var best: float = INF
-	var points := _story_points()
-	for pair: Array in [["latch", "clue_a"], ["counterweight_trace", "clue_b"], ["mechanism", "mechanism"]]:
-		if can_inspect_story(pair[0]):
-			var distance: float = player.global_position.distance_squared_to(points[pair[1]].global_position)
+	for id: String in ["latch", "counterweight_trace", "mechanism", "lower_lamp", "lower_plate"]:
+		if can_inspect_story(id):
+			var distance: float = player.global_position.distance_squared_to(_interaction_point(id).global_position)
 			if distance < best:
 				best = distance
-				selected = pair[0]
+				selected = id
 	if selected.is_empty():
 		return
 	var gamepad: bool = camera_rig.aim.last_gamepad
 	var action: String = story.text("prompt_" + selected)
 	if selected == "mechanism" and story.stage() != "mechanism":
 		action = "Оглянути механізм"
+	elif selected == "lower_lamp":
+		action = "Оглянути ліхтар" if lower_story.stage() == "available" else lower_story.text("prompt_lamp_away" if lower_story.lamp_aligned() else "prompt_lamp_toward")
+	elif selected == "lower_plate":
+		action = lower_story.text("prompt_plate") if lower_story.stage() == "copy" else "Переглянути схему"
 	hud.set_story_prompt(InputRouter.binding_label(1, "interact", gamepad) + " · " + action)
 	if InputRouter.just_pressed(1, "interact"):
 		interact_story(selected)

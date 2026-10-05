@@ -21,6 +21,8 @@ if binary is None:
 logs = Path(os.environ.get('PLAYABLE_LOG_DIR') or tempfile.mkdtemp(prefix='nir-playable-'))
 logs.mkdir(parents=True, exist_ok=True)
 cases = [
+    ('city-lower-story', 'tools/world/city_lower_story_check.gd', r'CITY_LOWER_STORY_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('city-lower-gallery', 'tools/world/city_lower_gallery_check.gd', r'CITY_LOWER_GALLERY_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-story', 'tools/world/city_story_check.gd', r'CITY_STORY_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-maintenance', 'tools/world/city_maintenance_check.gd', r'CITY_MAINTENANCE_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('weapon-craft', 'tools/animation/weapon_craft_check.gd', r'WEAPON_CRAFT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
