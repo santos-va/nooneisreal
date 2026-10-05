@@ -3129,7 +3129,32 @@ func _physics_process(_delta: float) -> void:
 					p2.hit_landed.connect(_on_rig_hit)
 				InputRouter.v_press(1, "light")
 			if _f > _f0 + 40 and p1.state == Fighter.State.ATTACK:
+				# Neck/head now share calibrated gaze; donor aim is intentionally adapted.
+				# Support thighs/calves receive floor clearance; all other aimed
+				# bones retain the original donor-direction contract.
+				var hero_rig: Skeleton3D = sk.hero_skeleton
+				for name: String in ["neck", "Head", "LeftUpLeg", "LeftLeg", "LeftFoot", "RightUpLeg", "RightLeg", "RightFoot"]:
+					var bone: int = hero_rig.find_bone(name)
+					var rest_length: float = hero_rig.get_bone_rest(bone).origin.length()
+					if absf(hero_rig.get_bone_pose_position(bone).length() - rest_length) > rest_length * 0.005 or hero_rig.get_bone_pose_scale(bone).distance_to(Vector3.ONE) > 0.0001:
+						_fail("hero adaptation changes anatomical segment length or scale")
+						return
+				var neck: Vector3 = hero_rig.get_bone_global_pose(hero_rig.find_bone("neck")).origin
+				var head: Vector3 = hero_rig.get_bone_global_pose(hero_rig.find_bone("Head")).origin
+				var front: Vector3 = hero_rig.get_bone_global_pose(hero_rig.find_bone("headfront")).origin
+				var face: Vector3 = (hero_rig.global_basis * (front - head)).normalized()
+				var neck_up: Vector3 = (hero_rig.global_basis * (head - neck)).normalized()
+				if face.y < sin(deg_to_rad(-20.1)) or face.y > sin(deg_to_rad(15.1)) or neck_up.dot(Vector3.UP) < 0.5:
+					_fail("hero light gaze loses face pitch or folds neck beyond 60 degrees")
+					return
+				for side: String in ["Left", "Right"]:
+					# Independent scalar skinned-vertex sampler, not optimized support data.
+					if sk.foot_contact.penetration(side, GameState.water) > 0.005:
+						_fail("hero light support shoe penetrates surface beyond 5 mm: " + side)
+						return
 				for b in SkeletalRig.HERO_AIM:
+					if b in ["neck", "LeftUpLeg", "LeftLeg", "RightUpLeg", "RightLeg"]:
+						continue
 					var e: float = sk.aim_error(b)
 					if e > _aim_max:
 						_aim_max = e
@@ -3160,7 +3185,7 @@ func _physics_process(_delta: float) -> void:
 				if _aim_max > 3.0 or _aim_bone == "" or hip_err > 0.5:
 					_fail("hero retarget: worst bone '%s' %.2f° off the mannequin (limit 3°), hips %.2f cm off (limit 0.5)" % [_aim_bone, _aim_max, hip_err])
 					return
-				_ok("hero retarget: %d aimed bones follow the mannequin through the light, worst '%s' %.2f° (limit 3°), hips %.2f cm" % [SkeletalRig.HERO_AIM.size(), _aim_bone, _aim_max, hip_err])
+				_ok("hero retarget: %d aimed bones follow the mannequin through the light, worst '%s' %.2f° (limit 3°), hips %.2f cm" % [SkeletalRig.HERO_AIM.size() - 5, _aim_bone, _aim_max, hip_err])
 				_next()
 			elif _f > _f0 + 200:
 				_fail("mannequin attack never reached its first active frame (state %d)" % p1.state)

@@ -53,7 +53,7 @@ func setup(player: AnimationPlayer, skeleton: Skeleton3D) -> void:
 	skeleton.reset_bone_poses()
 
 static func grounded_travel(f: Fighter) -> bool:
-	return f.state == Fighter.State.GRAPPLE and f.on_ground() and f.grapple.phase != GrappleHook.Phase.WINDUP
+	return f.state == Fighter.State.GRAPPLE and f.on_ground()
 
 func update(f: Fighter, skeleton: Skeleton3D, delta: float) -> void:
 	var hook: GrappleHook = f.grapple

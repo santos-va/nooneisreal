@@ -83,7 +83,15 @@ func _initialize() -> void:
 						var target: Vector3 = (sk.skeleton.global_basis.inverse() * pivot.global_basis * axis).normalized()
 						check(direction.angle_to(target) < deg_to_rad(0.1), "capsule direction transfer " + move.id + "/" + bone_name)
 					for key: String in Rig.HERO_AIM:
-						check(sk.aim_error(key) < 3.0, "fallback retarget direction " + move.id + "/" + key)
+						# Head gaze and crouched ground support deliberately adapt final
+						# anatomy. Preserve source-direction guards on every other joint.
+						if key == "neck" or (move.id == "crouch_light" and key in ["LeftUpLeg", "LeftLeg", "RightUpLeg", "RightLeg"]):
+							var rig: Skeleton3D = sk.hero_skeleton
+							var joint: int = rig.find_bone(key)
+							var length: float = rig.get_bone_rest(joint).origin.length()
+							check(absf(rig.get_bone_pose_position(joint).length() - length) < length * 0.005, "adapted fallback keeps anatomy " + move.id + "/" + key)
+						else:
+							check(sk.aim_error(key) < 3.0, "fallback retarget direction " + move.id + "/" + key)
 			else:
 				for chain in 2:
 					f.chain_index = chain

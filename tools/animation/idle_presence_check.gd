@@ -114,6 +114,8 @@ func _initialize() -> void:
 			sk.retarget()
 			check(sk.idle_presence.phase == phase, id + " transfer does not advance idle clock")
 			check(authority(f) == transfer_authority, id + " transfer posture has no authority")
+			# Inspect IdlePresence alone, before the independent neutral transition.
+			sk.body_motion.restore_source(source)
 			var transfer_pose: Array = bones(source)
 			if id == "choko":
 				var hero: Skeleton3D = sk.hero_skeleton
@@ -138,8 +140,8 @@ func _initialize() -> void:
 			sk._physics_process(1.0 / 60.0)
 			# ATTACK -> WALK now owns a short return overlay. Compare its settled target,
 			# retaining the independent fresh-rig check below for stale/unkeyed offsets.
-			for return_frame in 15:
-				if sk._attack_return_source.is_empty():
+			for return_frame in 24:
+				if sk._attack_return_source.is_empty() and sk.body_motion._transition_from.is_empty() and sk.locomotion._blend_source.is_empty():
 					break
 				sk._physics_process(1.0 / 60.0)
 			check(sk._attack_return_source.is_empty() and sk._attack_return_base.is_empty(), id + " non-idle return releases all offsets")

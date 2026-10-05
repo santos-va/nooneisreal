@@ -56,8 +56,16 @@ func run() -> void:
 						# The low jab solves the final hero's short arm and planted legs;
 						# those joints are validated by actual contact/plant geometry below.
 						var adjusted: bool = source.variant == "lowhand" and (bone in ["LeftUpLeg", "LeftLeg", "RightUpLeg", "RightLeg"] or bone in [("Left" if source.side == "left" else "Right") + "Arm", ("Left" if source.side == "left" else "Right") + "ForeArm"])
-						if not adjusted:
+						if not adjusted and bone != "neck":
 							check(f.skeletal.aim_error(bone) < 3.0, "hero anatomy retarget " + move.id + "/" + bone)
+					# Gaze now distributes a calibrated correction over neck/head. Their
+					# source aim intentionally differs; physical chain lengths may not.
+					var actual_rig: Skeleton3D = f.skeletal.hero_skeleton
+					for name: String in ["neck", "Head"]:
+						var joint: int = actual_rig.find_bone(name)
+						var length: float = actual_rig.get_bone_rest(joint).origin.length()
+						check(absf(actual_rig.get_bone_pose_position(joint).length() - length) < length * 0.005, "calibrated neck/head keeps anatomy " + move.id + "/" + name)
+						check(actual_rig.get_bone_pose_scale(joint).distance_to(Vector3.ONE) < 0.0001, "calibrated neck/head keeps scale " + name)
 					if source.variant == "lowhand":
 						for side: String in ["Left", "Right"]:
 							var body: Skeleton3D = f.skeletal.hero_skeleton

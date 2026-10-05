@@ -65,6 +65,11 @@ func _initialize() -> void:
 		check(is_equal_approx(sk.cadence.phase, old_phase), id + " blocked body does not treadmill")
 		contacts.sort()
 		# Independent old-behaviour control: same hero, distance and ground; Walk played at 1x.
+		# Keep the old fixed-Walk control raw: the new runtime contact cache belongs
+		# to the current Jog sample and would otherwise "fix" this historical control.
+		# Restore the exact helper object afterwards, preserving its runtime history.
+		var saved_ground = sk.ground_contact
+		sk.ground_contact = load("res://scripts/fighter/HeroGroundContact.gd").new()
 		var baseline: Array[float] = []
 		var old_walk: String = sk.clip_name("Walk_Loop")
 		var old_length: float = sk.player.get_animation(old_walk).length
@@ -78,6 +83,7 @@ func _initialize() -> void:
 			if frame > 0 and point.y < 0.10 and last_foot.y < 0.10:
 				baseline.append(Vector2(point.x - last_foot.x, point.z - last_foot.z).length() * 60.0)
 			last_foot = point
+		sk.ground_contact = saved_ground
 		baseline.sort()
 		check(contacts.size() >= 5 and baseline.size() >= 5, id + " both contact traces sampled")
 		if contacts.size() >= 5 and baseline.size() >= 5:

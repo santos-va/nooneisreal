@@ -68,7 +68,7 @@ func run() -> void:
 			check(ResourceLoader.exists(path) and load(path) is AudioStream, "Configured audio stream loads: " + key)
 	for singleton: String in ["GameState", "InputRouter", "Sfx", "Music"]:
 		check(root.has_node(singleton), "Autoload supplied implicitly by packed project: " + singleton)
-	for path: String in ["res://scripts/fighter/AuthoredHookMotion.gd", "res://scripts/npc/NpcConversationContext.gd", "res://scripts/npc/NpcLocalConversation.gd", "res://scripts/npc/NpcChatter.gd", "res://scripts/world/CityCameraProximity.gd", "res://scripts/world/CityConversationFrame.gd", "res://shaders/camera_proximity.gdshaderinc"]:
+	for path: String in ["res://scripts/fighter/AuthoredHookMotion.gd", "res://scripts/fighter/FighterMotionSignals.gd", "res://scripts/fighter/HeroBodyMotion.gd", "res://scripts/fighter/HeroGroundContact.gd", "res://scripts/npc/NpcConversationContext.gd", "res://scripts/npc/NpcLocalConversation.gd", "res://scripts/npc/NpcChatter.gd", "res://scripts/world/CityCameraProximity.gd", "res://scripts/world/CityConversationFrame.gd", "res://shaders/camera_proximity.gdshaderinc"]:
 		check(ResourceLoader.exists(path), "Packed resource exists: " + path)
 		if ResourceLoader.exists(path):
 			check(load(path) != null, "Packed resource loads: " + path)
@@ -123,20 +123,46 @@ func run() -> void:
 		check(stream == chatter.stream_for(seed_value, "talk"), "Packed chatter stream is cached")
 		timbres[stream.data.hex_encode().sha256_text()] = true
 	check(timbres.size() == 3, "Three distinct packed chatter timbres")
-	# A real hero forces both imported animation libraries and the hook sampler to load.
+	# Both real heroes initialize the packed motion helpers on actual solid support.
 	var state: Node = root.get_node("GameState")
 	state.skeletal_rig = true
 	state.free_move = true
-	var fighter: Node3D = load("res://scenes/fighter/Fighter.tscn").instantiate()
-	fighter.data = load("res://data/characters/skea.tres")
-	stage.add_child(fighter)
-	fighter.set_physics_process(false)
-	fighter.position = Vector3(-4.0,0,0)
-	check(fighter.skeletal != null, "Packed authored hero rig builds")
-	if fighter.skeletal != null:
+	state.water = null
+	check(FileAccess.file_exists("res://data/animation/foot_contacts.json"), "Packed source-contact profiles exist")
+	var profiles: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/animation/foot_contacts.json"))
+	check(profiles is Dictionary and not profiles.get("clips", {}).is_empty(), "Packed source-contact profiles parse")
+	var ground := StaticBody3D.new()
+	var collision := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(20,0.2,8)
+	collision.shape = shape
+	ground.add_child(collision)
+	stage.add_child(ground)
+	ground.position.y = -0.1
+	for hero: String in ["choko", "skea"]:
+		var fighter: Node3D = load("res://scenes/fighter/Fighter.tscn").instantiate()
+		fighter.set_script(load("res://scripts/world/CityFighter.gd"))
+		fighter.data = load("res://data/characters/" + hero + ".tres")
+		stage.add_child(fighter)
+		fighter.set_physics_process(false)
+		fighter.restart_at(Vector3(-4.0 if hero == "choko" else 4.0,0,0))
+		check(fighter.skeletal != null, "Packed authored hero rig builds: " + hero)
+		if fighter.skeletal == null:
+			continue
+		fighter.skeletal.set_physics_process(false)
 		var hook: RefCounted = fighter.skeletal.authored_hook
 		for clip: String in ["Interact", "Climb_Enter", "Climb_Idle", "Climb_Up", "OverhandThrow"]:
-			check(hook._cache.has(clip) and not hook._cache[clip].is_empty(), "Imported hook source sampled from package: " + clip)
+			check(hook._cache.has(clip) and not hook._cache[clip].is_empty(), "Imported hook source sampled from package: " + hero + " " + clip)
+		for frame: int in 12:
+			await physics_frame
+			fighter._ground_physics(1.0/60.0,0.0)
+			fighter.animator.tick(1.0/60.0,fighter,false)
+			fighter.skeletal._physics_process(1.0/60.0)
+			fighter.skeletal.retarget()
+		check(fighter.on_ground() and fighter.skeletal.motion_signals.grounded, "Packed motion snapshot sees real support: " + hero)
+		check(fighter.skeletal.motion_signals.distance < 0.001, "Stationary packed hero does not accumulate strides: " + hero)
+		check(fighter.skeletal.body_motion.serial >= 12 and is_finite(fighter.skeletal.body_motion.gaze_pitch), "Packed anatomical body/gaze pass runs: " + hero)
+		check(not fighter.skeletal.ground_contact.samples.is_empty() and fighter.skeletal.ground_contact.query_count > 0, "Packed skinned soles query support: " + hero)
 	for index: int in 4:
 		var path: String = ["toon", "outline", "sword_dissolve", "camera_cloth"][index]
 		var shader: Shader = load("res://shaders/" + path + ".gdshader")

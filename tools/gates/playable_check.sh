@@ -21,6 +21,9 @@ if binary is None:
 logs = Path(os.environ.get('PLAYABLE_LOG_DIR') or tempfile.mkdtemp(prefix='nir-playable-'))
 logs.mkdir(parents=True, exist_ok=True)
 cases = [
+    ('whole-body-motion', 'tools/animation/whole_body_motion_check.gd', r'WHOLE_BODY_MOTION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('ground-contact', 'tools/animation/ground_contact_check.gd', r'GROUND_CONTACT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('physics-motion', 'tools/animation/physics_motion_check.gd', r'PHYSICS_MOTION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-journey', 'tools/world/city_journey_check.gd', r'CITY_JOURNEY_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('quest-tracking', 'tools/npc/quest_tracking_check.gd', r'\[quest-tracking\] [1-9][0-9]* checks / 0 failures', [], 0),
     ('quest-journal', 'tools/ui/quest_journal_check.gd', r'QUEST_JOURNAL_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
