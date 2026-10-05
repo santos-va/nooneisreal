@@ -6,6 +6,18 @@
 
 Santos відхилив **дивні окремі круги на книзі** та **кислотний колір меча**. Усі наведені нижче ранні/frozen геометричні кадри з цими поверхнями не є їхнім художнім прийманням. Джерело точного горизонтального знака ∞, підписані незмінні оригінали, SHA й приглушена палітра — [[2026-10-05-Equipment-Canonical-References]]. T2 виправляє лише emblem/material; motion/cloth fitting не переробляються. Чергу старих expensive surface captures зупинено; вже завершені 1800 locomotion кадрів лишаються geometry-only evidence. Після корекції потрібні вузькі matched views, без повтору всіх дуг заради кольору.
 
+## Перевірене виправлення за збереженим референсом
+
+Останній bounded pass: `HeroGearPresentation d1e0719a`, `grimoire_sigil aa191264`, `SwordPresentation e5d19e6c`, sword shader `9cc1365e`; `SwordMotion b082a476`, authored motion `d3b082b0`, mask `4659ca51` не змінювались. Manifest — `gear-readability/reference-correction/candidate-source.json`. **18 native body poses + 6 book close**, усі логи clean (Godot4.7 Compatibility llvmpipe).
+
+T6 особисто звірив stowed/right-hand/ultimate blade та rear-book gameplay/close: один горизонтальний violet ∞ із центральним перехрестям; лезо приглушене forest emerald, тепла латунь узгоджена з одягом; золотий стан відрізняється як ultimate. Root окремо переглянув і прийняв ці вузькі виправлення. Це поточна ілюстрація для PR; попередній checkpoint нижче — історичний, із відхиленими поверхнями.
+
+![Rejected acid-green and rings on left; corrected reference-based palette and single infinity on right](../assets/screenshots/2026-10-05-equipment/reference-correction.jpg)
+
+Окремий запис руху завершив **1800 native кадрів**: 450 кадрів × Choko/Skea × front/side, реальні 60 fps; walk→run→stop→turn90→crouch→block→jump/landing→jab. T6 оглянув 4 sheets по 30 вибіркових кадрів і крупні fitting views; великих видимих відривів спорядження або нових деформацій на цих вибірках не видно. Повні кадри та trace збережені. Цей запис містить **старі відхилені колір/кільця** до останньої корекції, тому відео `equipment-geometry-matched-30s.mp4` прямо підписане `GEOMETRY ONLY — COLOR AND SIGN SUPERSEDED`. Пара baseline бере `whole-body/after/locomotion60`, чия тотожність 4c підтверджена `before/motion-reuse-provenance.json`; це не старий baseline 3df43a5. Palette/emblem-only fix перевірений новими 24 кадрами вище, а не підставлений у старе відео. Новий hook render зупинено за steering, full hook geometry guards лишаються окремими доказами T2/T4.
+
+Фактура plain cover/paper/new cloth panels ще не фінальна. Створений revised muted texture job `581e7a06` замінює старий `f2667187`, але локальних bytes немає; за всі 7 успішних зображень витрачено 63 кредити, поточний набір — 6 maps. Provider quality/admission лишається відкритою, без blanket art GREEN.
+
 ## Фактична база
 
 - `SwordPresentation` будує оригінальний procedural mesh: найбільша ширина леза 0.23 м, товщина 0.066 м, guard близько 0.44 м із quillons. UV немає; матеріал — рівна emerald заливка. Товсті латунні рейки й проста поперечина читаються грубо поряд із тонкою графікою героя. Нову карту кольору не можна коректно накласти без UV або іншої явної параметризації.

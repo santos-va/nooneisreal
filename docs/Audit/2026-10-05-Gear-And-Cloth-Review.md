@@ -1,6 +1,6 @@
 # Спорядження й тканина — незалежний аудит
 
-2026-10-05 · T4 Феміда · **RED кандидатів: weapon edge geometry чисельно пройшла; hero cloth acceptance лишається відкритим після chest-pin false-green через invalid attachment; виправлення й фінальне приймання тривають.** База `4c68473ce88e167828c3425fa1ecbe3062dc96ca`, продовження PR #178. Нове доручення Santos прямо стосується перевернутого меча в руці й за спиною, тоншого індивідуального спорядження та якості/руху одягу героїв і NPC. Попередній [[2026-10-05-Whole-Body-Anatomy-Review]] не оголошував остаточного художнього приймання спорядження.
+2026-10-05 · T4 Феміда · **GREEN у визначеному обсязі: код, native geometry/material correction та exact package `08b443d` прийнято. CI очікується окремо; provider asset admission не завершено.** Ранні RED та відкликаний false-green нижче збережено як історію перевірки, а не поточні blockers. База `4c68473ce88e167828c3425fa1ecbe3062dc96ca`, продовження PR #178. Нове доручення Santos прямо стосується перевернутого меча в руці й за спиною, тоншого індивідуального спорядження та якості/руху одягу героїв і NPC. Попередній [[2026-10-05-Whole-Body-Anatomy-Review]] не оголошував остаточного художнього приймання спорядження.
 
 Перевірки виконано в ізольованих копіях Godot4.7 stable; native — Compatibility/Mesa llvmpipe через Xvfb, не на Mac користувача. Natural render-rate replay перевіряє детермінованість physics/presentation, не доводить цільовий FPS на M3. Raw evidence зберігається у `/workspace/nooneisreal-evidence/gear-review`, `weapon-craft` та `gear-readability`; production і shared Godot T4 не змінював.
 
@@ -105,6 +105,29 @@ Native `weapon-craft/final-native/source.json` збігається з шост�
 Final hero static close Skea idle/crouch side та Choko stow-crouch side особисто переглянуто: beige page block/cover розрізняються, book слідує torso, sword tip униз, rigid waist bars відсутні, face/skin мотиви збережені. Маленькі Skea25мм tabs майже непомітні на gameplay distance; прийняті root як малі пришиті деталі, без обіцянки довгих cloth tails. Continuous hero gear captures ще очікуються.
 
 Side native завершився: особисто прочитаний log5966/0, raw errors0. Незалежний side BEFORE→AFTER authority comparison також688/688 rows,0 differences (`native-review/side-authority.json`). Обидва ракурси разом1376 PNG,28 sequence videos/sheets. Current SwordPresentation diff проти цього native snapshot незалежно прочитано: лише palette constants, rim/shadow parameters та optional muted inlay path; geometry/pose незмінні. Отже старі motion докази залишаються geometry acceptance, а muted static material captures оцінюються окремо.
+
+## Фінальний source/native та integration checkpoint
+
+Незалежно звірено reuse baseline: 135 файлів scripts/data/scenes/shaders старого `whole-body/after` і immutable4c gear baseline, відрізняється лише unused `SmokeTest.gd`. Поточні1800 native locomotion rows мають **0 authority та0 recorded-bone differences** до цього валідного4c baseline (`native-review/hero-authority.json`). Особисто оглянуті continuous crouch/block excerpts обох героїв не показали нового fitting дефекту. Раніші motion proof з кислотною palette/чотирма rings явно superseded лише за surface/sign.
+
+Остаточний bounded reference correction особисто переглянуто у `gear-readability/reference-correction/comparison.jpg`: muted sword та один горизонтальний violet∞ прийнято; NPC `npc-surface-fixed/comparison.jpg` підтверджує повернення baseline macro folds. HeroGear `d1e0719afde81fc021611ac8b9f60dc421962508a39388ee614b76615d298b5a` відрізняється від tested b9db лише emblem mesh/shader; mask4659 і cloth/pins/motion незмінні. SwordPresentation `e5d19e6c4131b2334abcc783580234e583c88ddff3c9eaf98a81c5765214e2b2` має palette-only delta; SwordMotionb082/AuthoredCombatd3b незмінні. Native18body+6close logs чисті. Нові provider maps/rich surface polish цим висновком не заявляються.
+
+Root integration logs особисто прочитано: smoke164 checks/19847frames; `equipment-final/validation/playable-final.log` **76 scenarios/0 failures** (попередні73 збережено); незалежне сканування64 positive raw logs не знайшло SCRIPT ERROR/ERROR/ObjectDB/resource leak. Negative controls очікувано мають rc1. Це aggregate до останніх material-only deltas; окремі `hero-gear-emblem.log`7930/0 і `muted-material-check.log`230/0 підтверджують ці deltas. `gates-final.log`:106 GDS/0 parse failures,175 assets зареєстровані, БАТАРЕЯ ЗЕЛЕНА; `native-camera.log`:4/0, actual Compatibility hide/shadow metrics.
+
+**Exact package f6d31fa7a4b7e873e696276dab0e844c9694a7cf не прийнято.** Root export208767132B/SHA256c150e3b24cc3df6de1dd2fe2e67e3f35de81b05514c4792795905f67057097fa, але особисто прочитаний `/workspace/nooneisreal-evidence/district-close/pck-f6d31fa/native.log` завершується **137 checks/2 failures**: late hero gear/shared NPC material fade та exact reset pointer. На цьому етапі причина ще не була встановлена; старий результат не приймався автоматично. Подальшу діагностику та остаточний пакет наведено нижче.
+
+## Остаточне packaged acceptance
+
+T4 незалежно прочитав diff `f6d31fa → 08b443d`: змінено лише `tools/distribution/living_district_pck_check.gd`, production game files незмінні. Дві попередні failures походили від lazy shader default: getter до компіляції повертав `null`, після enumeration — `1`, обидва означають повну видимість. Fixture тепер порівнює effective visibility та явно вибирає матеріал власника NpcAppearance; перевірки clone identity, локального fade й exact restored pointer залишені. Це виправлення verifier, не послаблення production camera isolation.
+
+Особисто прочитано `/workspace/nooneisreal-evidence/district-close/pck-08b443d/evidence.json`, повні import/export/native logs і diff source. Незалежно обчислено розмір та SHA256 самого `living-district.pck`:
+
+- Revision: `08b443dcbfe544a1624ed48569a4089eb31a71be`, version `0.5.0`.
+- Розмір: **208767116 bytes**.
+- SHA256: `aade8b44a80061f298418bd201a366b19e78fa15fa04f95d42d0ef50da0ac8d9`.
+- Native Compatibility verifier із порожньої директорії: **137 checks / 0 failures**, packed revision збігається. Строгий raw-log scan import/export/native не знайшов SCRIPT ERROR, ERROR, leaks або failures; є лише відома V-Sync warning llvmpipe.
+
+**Exact package прийнято.** Native runtime та геометрія обмежені описаними сценаріями, матеріали — перевіреним muted sword / horizontal infinity correction і відновленими NPC macro folds. Це не приймання нових provider maps, довгих cloth полотнищ, фізичного прослуховування аудіо чи виміряного M3 FPS. CI на момент замороження цього audit ще pending; його результат фіксує coordinator окремо.
 
 ## Related
 

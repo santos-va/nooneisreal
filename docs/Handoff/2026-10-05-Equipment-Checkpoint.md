@@ -1,6 +1,6 @@
 # Спорядження й одяг — checkpoint інтеграції
 
-2026-10-05 · T1. Продовження [PR #178](https://github.com/santos-va/nooneisreal/pull/178), **draft до admission нових матеріалів і завершення фінальних перевірок**. Цей checkpoint не стверджує оновлення встановленого macOS застосунку. Попередня база — [[2026-10-05-Whole-Body-Checkpoint]].
+2026-10-05 · T1. Продовження [PR #178](https://github.com/santos-va/nooneisreal/pull/178), **draft до admission нових матеріалів**. Цей checkpoint не стверджує оновлення встановленого macOS застосунку. Попередня база — [[2026-10-05-Whole-Body-Checkpoint]].
 
 ## Що змінено
 
@@ -16,9 +16,15 @@ NPC мають tailored panels, шви й кишені, обмежений ру�
 
 Owner results, прочитані T1 у raw logs: weapon10950/0, hero7930/0, NPC142747/0. Незалежний T4:36 final blade-edge/full-skin poses без перетинів; hero54 actual body/hook poses без перетинів або invalid geometry. Natural render30/60/120 має482 common callbacks із точним збігом body/bones/cloth. Чинні ground/body helper source hashes залишились незмінними. [[2026-10-05-Gear-And-Cloth-Review]].
 
-Root smoke:164 перевірки /19847 кадрів,106 GDScript без parse failures. Перший broad runner дав75/76 через помилку нового NPC sentinel regex: числові mesh/triangle/hinge counters у кінці успішного рядка не були передбачені. Raw NPC test був142747/0; regex виправлено без зміни production чи старих73 tuples. Повтор corrected runner завершився76/0, rc0; gates зелені,106 GDScript/175assets. Наступні user surface corrections перевіряються окремо: hero7930/0, muted sword230/0; їхні зміни не приписуються заднім числом старому aggregate. Exact-commit PCK та current-head CI ще очікуються.
+Root smoke:164 перевірки /19847 кадрів,106 GDScript без parse failures. Перший broad runner дав75/76 через помилку нового NPC sentinel regex: числові mesh/triangle/hinge counters у кінці успішного рядка не були передбачені. Raw NPC test був142747/0; regex виправлено без зміни production чи старих73 tuples. Повтор corrected runner завершився76/0, rc0; gates зелені,106 GDScript/175assets. Наступні user surface corrections перевіряються окремо: hero7930/0, muted sword230/0; їхні зміни не приписуються заднім числом старому aggregate. Native Compatibility camera поточного production4/0. Exact-commit PCK пройшов нижче; current-head CI відстежується в PR і тут не припускається зеленим.
 
 Matched native й межі видимості — [[2026-10-05-Equipment-Visual-Audit]]. Linux helper CPU/resource measurements — [[2026-10-05-Equipment-And-Cloth-Research]]; це не full-frame FPS/M3 сертифікація.
+
+## Точна збірка
+
+Source **`08b443dcbfe544a1624ed48569a4089eb31a71be`**, версія0.5.0. Fresh import/export, native Compatibility із порожньої теки через `--main-pack`, новий OS profile: **137/0**, rc0, без runtime/script/shader errors. PCK **208767116B**, SHA-256 **`aade8b44a80061f298418bd201a366b19e78fa15fa04f95d42d0ef50da0ac8d9`**; розмір/hash окремо звірено `stat`/`sha256sum`. Докази `/workspace/nooneisreal-evidence/district-close/pck-08b443d/`: evidence.json, import/export/native.log, native.png.
+
+Перша package перевірка f6d31fa дала137/2: native lazy shader getter повертав `null` до компіляції й `1.0` після неї. Actual clone/fade/reset pointer працювали правильно; source material не змінювався. Verifier тепер порівнює effective default і явно вибирає NPC owner; негативний контроль зі справжньою мутацією джерела лишається137/2, rc1. Production game tree f6→08 незмінне; виправлений лише verifier. Перший невдалий прогін не підмінено успішним. [[2026-10-05-Gear-And-Cloth-Review]].
 
 ## Матеріали: конкретний blocker
 

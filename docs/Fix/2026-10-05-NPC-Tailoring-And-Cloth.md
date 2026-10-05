@@ -44,6 +44,12 @@ T3 виміряв окремо 12 NPC seeds40..51, 21 hinges (max3): helper ense
 
 Ця смуга створює панелі кодом проєкту, без зовнішніх моделей. Спільні surface textures, додатково дозволені Santos, інтегрує owner GearSurface з provenance/registry від T6; сама NPC-смуга provider jobs не запускає. Загальні `make check-playable` / `make gates`, exact-SHA пакет і PR веде T1 після інтеграції.
 
+### Native default uniform regression у verifier
+
+Перший exact package `f6d31fa` повернув137/2 саме у camera-isolation fixture. Instrumented запуск того самого PCK у порожньому cwd підтвердив: до lazy native shader compilation `camera_visibility` getter повертав `null`, після enumeration/duplicate — default `1.0`; clone був окремим із visibility0, reset відновлював точний source pointer. Source NPC матеріал не змінювався. Fixture тепер порівнює effective visibility (`null` означає shader default1), зберігаючи exact pointer та реальні fade assertions. Джерело також вибирається лише всередині actual NpcAppearance, без залежності від порядку інших героїв.
+
+На тому самому `f6d31fa` PCK виправлений external verifier: native Compatibility **137/0**, rc0. Negative fixture, яка реально записує0,25 у shared NPC source, дає **137/2**, rc1: ізоляція й restore assertions досі ловлять справжню мутацію. Докази й відтворюваний launcher: `/workspace/nooneisreal-evidence/clothing/pck-camera-debug/{native.log,fixed-native.log,negative-source-mutation.log,run.py}`. Це діагностика попереднього пакета з новим verifier; остаточний commit та повторний exact-SHA export лишаються окремим gate T1.
+
 ## Related
 
 - [[2026-10-05-Equipment-And-Cloth]] · [[2026-10-05-Equipment-Session]] · [[2026-10-05-Equipment-And-Cloth-Research]]

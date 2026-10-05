@@ -68,6 +68,12 @@ Root corrected runner завершився**76/0**, rc0; попередній sm
 
 Нова flat sword map job`581e7a06-428e-4394-bfe3-75798f99fa5f` успішно завершена. Exact canonical reference подано через public GitHub URL4c68473; prompt/submission/completion/balance receipts збережено. Balance4505,5 проти4514,5 до revision:9кредитів, загальнавитрата**63**. Старий swordjob superseded, актуальні6 URLs у `docs/assets/provenance/equipment-20261005/download-list-v2.json`; всього7 успішних outputjobs. CDN policy лишаєтьсяrestricted/allowed_hosts[], тому originals/maps не інтегровані й не оголошені художньо прийнятими.
 
+## CP10 — точний пакет і доставка на review
+
+Production `08b443dcbfe544a1624ed48569a4089eb31a71be`, fresh imported/exported0.5.0, native empty-directory Compatibility **137/0**, rc0, rawclean. Розмір208767116B, independently SHA-256 `aade8b44a80061f298418bd201a366b19e78fa15fa04f95d42d0ef50da0ac8d9`. Перша137/2 на f6 була verifier default-null normalization; actualfade/clone/reset працювали, source-mutation negativecontrol післяfix досі відхиляється. Деталі й чесні межі — [[2026-10-05-Equipment-Checkpoint]].
+
+Branch PR оновлюється без main/release mutation, merge за Santos. Поточний headCI перевіряється післяpush; старий greenrun не підміняє новий. ОригінальніPNGнеотримані, тому PRdraft і планadmissionpending; approvedgeometry/code/referencecorrection не видаються за завершенийtexturepolish.
+
 ## Related
 
 - [[2026-10-05-Equipment-And-Cloth]] · [[2026-10-05-Whole-Body-Checkpoint]] · [[2026-10-05-Whole-Body-Session]] · [[state]]
