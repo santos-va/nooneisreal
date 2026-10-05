@@ -96,6 +96,10 @@ func _ready() -> void:
 	pause_button.size = Vector2(140, 34)
 	_root.add_child(pause_button)
 	hint_label = _label("", 18)
+	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint_label.add_theme_color_override("font_outline_color", Color("171322"))
+	hint_label.add_theme_constant_override("outline_size", 6)
 	hint_label.hide()
 	hint_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	hint_label.offset_left = 24
@@ -123,13 +127,13 @@ func _build_pause() -> void:
 	pause_panel.add_child(center)
 	var column := VBoxContainer.new()
 	column.custom_minimum_size.x = 1000
-	column.add_theme_constant_override("separation", 12)
+	column.add_theme_constant_override("separation", 8)
 	center.add_child(column)
 	column.add_child(_label("CRONSHIFT  /  JOURNEY PAUSED", 36))
 	column.add_child(_label(BuildInfo.label(), 18))
 	resume_location_label = _label("Continue from safe district checkpoints.", 22)
 	column.add_child(resume_location_label)
-	var help := _label(exploration_help(), 24)
+	var help := _label(exploration_help(), 22)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(help)
 	var journal_scroll := ScrollContainer.new()
@@ -340,10 +344,12 @@ func _refresh_quest_guide() -> void:
 
 func exploration_help() -> String:
 	var text := "Move: WASD / left stick · Look: RMB + drag / right stick\n"
-	text += "Jump / reel: %s / A · Parkour: tap %s / L3 (or Y + LT)\n" % [InputRouter.binding_label(1, "jump", false), InputRouter.binding_label(1, "grapple_parkour", false)]
-	text += "Face a nearby anchor and tap parkour to hook or transfer.\n"
+	text += "Jump / hold to reel: %s / A · Hook: tap %s / L3 (or Y + LT)\n" % [InputRouter.binding_label(1, "jump", false), InputRouter.binding_label(1, "grapple_parkour", false)]
+	text += "Face an anchor to hook / transfer. Reuse a rope within 0.70m of your hand.\n"
+	text += "Ledge: hold jump + move into edge; release, then press jump to climb.\n"
+	text += "Skea: hold jump + move into a wall for short wall steps; release to drop.\n"
 	text += "Detach: %s / B · Dodge: %s / X · Dash skill: %s / Y + X\n" % [InputRouter.binding_label(1, "grapple_detach", false), InputRouter.binding_label(1, "dodge", false), InputRouter.binding_label(1, "dash", false)]
-	text += "Hooks are finite. Approach a rope within 0.70m of your hand to grab it.\n"
+	text += "Hooks are finite. Reel has a limit, before the anchor; steer to swing.\n"
 	text += "Strikes: %s; %s; %s; %s\n" % [InputRouter.binding_label(1, "left_hand", false), InputRouter.binding_label(1, "right_hand", false), InputRouter.binding_label(1, "left_leg", false), InputRouter.binding_label(1, "right_leg", false)]
 	text += "Sword: %s / R3 · Talk: %s / Y + D-pad Down\n" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
 	return text + "Talk to residents for tasks. Your hero’s district progress is saved automatically."
@@ -353,6 +359,8 @@ func set_paused(value: bool) -> void:
 	if paused_ui == value:
 		return
 	paused_ui = value
+	if value and hint_label != null:
+		hint_label.hide()
 	if _quest_guide != null:
 		_quest_guide.hide()
 	if onboarding != null:
@@ -452,6 +460,7 @@ func _on_stamina(value: float, maximum: float) -> void:
 
 
 func _process(_delta: float) -> void:
+	_refresh_traversal_hint()
 	_guide_elapsed += _delta
 	if paused_ui or InputRouter.ui_suppressed():
 		if _quest_guide != null:
@@ -494,6 +503,35 @@ func _process(_delta: float) -> void:
 	if _quest_guide.visible and _quest_guide.get_rect().intersects(Rect2(_aim_cue.position, extent)):
 		_aim_cue.position.y = _quest_guide.get_rect().end.y + 8.0
 	_aim_cue.show()
+
+
+func _refresh_traversal_hint() -> void:
+	if hint_label == null:
+		return
+	hint_label.hide()
+	if not is_instance_valid(_player) or paused_ui or InputRouter.ui_suppressed():
+		return
+	var gamepad := false
+	var camera := get_viewport().get_camera_3d()
+	if camera != null and camera.has_meta("harpoon_aim"):
+		var helper: HarpoonAim = camera.get_meta("harpoon_aim")
+		gamepad = helper.last_gamepad
+	var jump := InputRouter.binding_label(_player.player_index, "jump", gamepad)
+	var detach := InputRouter.binding_label(_player.player_index, "grapple_detach", gamepad)
+	var parkour: Dictionary = _player.get_meta("parkour_presentation", {})
+	match str(parkour.get("phase", "")):
+		"hang":
+			var grip := "Grip %.1fs · " % maxf(0.0, float(parkour.hold_remaining)) if parkour.has("hold_remaining") else ""
+			hint_label.text = "LEDGE · %sRelease, then press %s to climb · %s to drop" % [grip, jump, detach]
+		"mantle":
+			hint_label.text = "CLIMBING"
+		"wall_run":
+			hint_label.text = "WALL STEPS · Hold %s + move into wall · Release to drop" % jump
+		_:
+			if _player.grapple.phase != GrappleHook.Phase.HANG:
+				return
+			hint_label.text = ("ROPE · Hold %s to reel · Steer to swing · %s to detach" % [jump, detach]) if _player.grapple.reel_remaining() > 0.001 else ("REEL LIMIT · Steer to swing · %s to detach" % detach)
+	hint_label.show()
 
 
 func _label(text: String, font_size: int) -> Label:

@@ -162,6 +162,7 @@ var ult_fx: GrimoireFx = null    # the running beat ultimate (armor, «SKI» fla
 var spring_frames: int = 0        # «Spring»: one extra air jump or air dash while > 0      # this combo already had its wall splat (reset when the fighter recovers)
 var _limb_action: String = ""
 var _normal_connected: bool = false
+var combat_intent: CombatIntent = CombatIntent.new()
 var _wish: Vector3 = Vector3.ZERO   # free_move: camera-relative stick in world space, this frame
 var _dash_vec: Vector3 = Vector3.RIGHT
 var _track_left: float = 0.0       # free_move: radians the current attack may still turn
@@ -239,6 +240,8 @@ func _ready() -> void:
 
 # --- round lifecycle -------------------------------------------------------------------------
 func reset_for_round(x: float, face: int) -> void:
+	combat_intent.clear()
+	InputRouter.clear_player_presses(player_index)
 	motion_revision += 1
 	SwordStormFx.cancel_owner(self)
 	GrimoireFx.cancel_owner(self)
@@ -312,6 +315,8 @@ func reset_for_round(x: float, face: int) -> void:
 
 func set_control(enabled: bool) -> void:
 	control_locked = not enabled
+	if not enabled:
+		combat_intent.clear()
 	if enabled and state == State.INTRO:
 		_set_state(State.IDLE)
 	if not enabled and is_cpu:
@@ -368,6 +373,8 @@ func move_end_frame(m: MoveData) -> int:
 
 # --- main tick ---------------------------------------------------------------------------------
 func _physics_process(delta: float) -> void:
+	var continuation: bool = state == State.ATTACK and current_move != null and current_move.kind == MoveData.Kind.NORMAL and _limb_action != "" and _normal_connected and chain_index < 2
+	combat_intent.update(player_index, continuation, hitstop_frames > 0, control_locked or frozen_frames > 0, grapple.hands_busy())
 	if _free() and opponent != null:
 		var a: Fighter = self if player_index == 1 else opponent
 		GameState.duel.sync(a.global_position, a.opponent.global_position, InputRouter.frame())
@@ -418,7 +425,7 @@ func _physics_process(delta: float) -> void:
 		State.ATTACK:
 			_tick_attack(delta)
 		State.HITSTUN:
-			_tick_hitstun(delta)
+			_tick_hitstun(delta, intent)
 		State.BLOCKSTUN:
 			_tick_blockstun(delta, intent)
 		State.DASH:
@@ -456,10 +463,14 @@ func _read_intent() -> Dictionary:
 
 func _pressed(action: String) -> bool:
 	if grapple.hands_busy() and action in ["left_hand", "right_hand", "light", "skill1", "skill2", "ultimate", "weapon_swap"]:
+		if combat_intent.action == action:
+			combat_intent.clear()
 		InputRouter.buffered(player_index, action) # Consume blocked intent, never replay after extraction.
 		return false
 	if control_locked:
 		return false
+	if combat_intent.take(player_index, action):
+		return true
 	return InputRouter.buffered(player_index, action)
 
 
@@ -1025,6 +1036,7 @@ func _try_limb_attack(air: bool, chaining: bool = false, legs_only: bool = false
 func _start_move(m: MoveData, slot: String = "") -> void:
 	if m == null:
 		return
+	combat_intent.clear()
 	if _free() and not is_cpu and opponent != null and state != State.ATTACK:
 		_set_forward(opponent.global_position - global_position)
 	attack_sword_hand = sword_hand
@@ -1485,7 +1497,7 @@ func _apply_hitstop(other: Fighter, frames: int) -> void:
 		other.hitstop_frames = maxi(other.hitstop_frames, frames)
 
 
-func _tick_hitstun(delta: float) -> void:
+func _tick_hitstun(delta: float, intent: Dictionary = {}) -> void:
 	stun_frames -= 1
 	_friction(HIT_FRICTION * delta)
 	velocity.y -= GRAVITY * delta
@@ -1495,7 +1507,8 @@ func _tick_hitstun(delta: float) -> void:
 	if stun_frames <= 0:
 		combo_count = 0
 		_update_facing()
-		_set_state(State.IDLE if on_ground() else State.JUMP)
+		var held_guard: bool = bool(intent.get("block", InputRouter.held(player_index, "block"))) and not control_locked
+		_set_state((State.BLOCK if held_guard else State.IDLE) if on_ground() else State.JUMP)
 
 
 func _tick_blockstun(delta: float, intent: Dictionary) -> void:
@@ -1511,6 +1524,7 @@ func _tick_blockstun(delta: float, intent: Dictionary) -> void:
 func freeze(frames: int) -> bool:
 	if state == State.KO or state == State.LAUNCHED or invulnerable_frames > 0:
 		return false
+	combat_intent.clear()
 	frozen_frames = maxi(frozen_frames, frames)
 	animator.set_frozen_tint(1.0)
 	if state == State.GRAPPLE:
@@ -1552,6 +1566,8 @@ func rewind() -> void:
 	record_marker = null
 	if state == State.KO:
 		return
+	combat_intent.clear()
+	InputRouter.clear_player_presses(player_index)
 	var root := Fx.root(self)
 	var from := global_position
 	for i in 5:
@@ -1983,6 +1999,8 @@ func _update_hitbox_debug() -> void:
 
 
 func _set_state(s: State) -> void:
+	if s != State.ATTACK:
+		combat_intent.clear()
 	if state == State.DASH and s != State.DASH:
 		dodging = false
 		flashing = false

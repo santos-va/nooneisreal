@@ -226,6 +226,7 @@ func run() -> void:
 	Input.parse_input_event(pad_b)
 	Input.flush_buffered_events()
 	await assistance()
+	await responsive_profile()
 	registry.clear_match()
 	check(f.grapple._pending_rope == 0 and not f.grapple.busy(), "match clear removes catch and attachment state")
 	f.free()
@@ -312,3 +313,50 @@ func assistance() -> void:
 			break
 	check(f.grapple.phase == Hook.Phase.MISS_REWIND and f.grapple.token != 0, "solid world collision stops projectile and keeps its token recoverable")
 	wall.free()
+
+
+func responsive_profile() -> void:
+	# Identical input packets exercise the opt-in city profile and legacy duel profile.
+	var launch_ticks: Array[int] = []
+	var contact_ticks: Array[int] = []
+	for city: bool in [false, true]:
+		registry.clear_match()
+		f.position = Vector3(0, 3, 0)
+		f.velocity = Vector3(5, 0, 0)
+		f._wish = Vector3.RIGHT
+		f.control_locked = false
+		first.position = Vector3(4, 9.25, 0)
+		next.position = Vector3(40, 9, 0)
+		f.grapple.responsive_parkour = city
+		var stock: int = f.grapple.charges
+		f.grapple.fire(false, "grapple_parkour", {"point": first.position, "target_id": String(first.get_path())})
+		var ticks: int = 0
+		while f.grapple.phase == Hook.Phase.WINDUP and ticks < 40:
+			f.grapple.drive(1.0 / 60.0, true)
+			ticks += 1
+		launch_ticks.append(ticks)
+		check(f.grapple.phase == Hook.Phase.FLIGHT and not f.grapple.attached, "profile launches without an unconfirmed tether city=%s" % city)
+		check(f.grapple.charges == stock - 1 and registry.records.size() == 1, "profile launch spends exactly once city=%s" % city)
+		check(is_equal_approx(f.velocity.x, 5.0 if city else 0.0), "only opted-in city windup preserves travel speed city=%s" % city)
+		while f.grapple.phase == Hook.Phase.FLIGHT and ticks < 70:
+			f.grapple.drive(1.0 / 60.0, true)
+			ticks += 1
+		contact_ticks.append(ticks)
+		check(f.grapple.attached and f.grapple.charges == stock - 1, "profile confirms swept contact without spending twice city=%s" % city)
+	check(launch_ticks == [30, 10], "city shot responds in 10 ticks while duel remains 30")
+	check(contact_ticks[1] < contact_ticks[0], "city initial support arrives sooner on identical target")
+	print("RESPONSIVE_ROPE launch_ticks=%s contact_ticks=%s" % [launch_ticks, contact_ticks])
+	# City opt-in cannot accelerate an enemy shot or change its startup commitment.
+	registry.clear_match()
+	f.position = Vector3(0, 3, 0)
+	f.velocity = Vector3(5, 0, 0)
+	f.grapple.fire(true, "grapple_enemy", {"point": Vector3(0, 4.25, 10), "target_id": ""})
+	for tick: int in 29:
+		f.grapple.drive(1.0 / 60.0, true)
+	check(f.grapple.phase == Hook.Phase.WINDUP and is_zero_approx(f.velocity.x), "city opt-in preserves enemy startup and braking")
+	f.grapple.drive(1.0 / 60.0, true)
+	var before: Vector3 = f.grapple.projectile_position
+	f.grapple._flight(1.0 / 60.0, true)
+	check(is_equal_approx(before.distance_to(f.grapple.projectile_position), 0.6), "city enemy projectile keeps 36 m/s")
+	registry.clear_match()
+	f.grapple.responsive_parkour = false

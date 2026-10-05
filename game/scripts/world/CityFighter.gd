@@ -4,21 +4,43 @@ extends Fighter
 ## Only city support/flash bounds and unavailable combat systems differ from Fighter.
 
 @export var support_probe_depth: float = 64.0 # PLACEHOLDER district safety depth.
+const ParkourMotor = preload("res://scripts/world/CityParkourMotor.gd")
+@export var parkour_profile: Resource = preload("res://data/world/city_parkour.tres")
+var parkour: ParkourMotor = ParkourMotor.new()
 
 func _ready() -> void:
 	super._ready()
+	parkour.profile = parkour_profile
+	grapple.responsive_parkour = true
 	floor_snap_length = 0.3 # PLACEHOLDER: follows the district ramp without snapping a jump.
 	floor_constant_speed = true
 	if printer != null:
 		printer.process_mode = Node.PROCESS_MODE_DISABLED
 
 func _physics_process(delta: float) -> void:
+	parkour.prepare(self)
 	# Terrain snap is a walking aid, not an extra tether during a grapple or jump.
 	floor_snap_length = 0.3 if state in [State.IDLE, State.WALK, State.CROUCH, State.BLOCK] else 0.0
 	super._physics_process(delta)
 	# Walking off a roof must use airborne controls/gravity, never a grounded jump in midair.
 	if not on_ground() and velocity.y < -0.01 and state in [State.IDLE, State.WALK, State.CROUCH, State.BLOCK]:
 		_set_state(State.JUMP)
+
+func _tick_air(delta: float, intent: Dictionary) -> void:
+	if not parkour.tick(self, delta, intent):
+		super._tick_air(delta, intent)
+
+func _set_state(next: State) -> void:
+	if next != State.JUMP and parkour != null:
+		parkour.reset(self, false)
+	super._set_state(next)
+
+func reset_for_round(x: float, face: int) -> void:
+	super.reset_for_round(x, face)
+	parkour.reset(self)
+
+func parkour_snapshot() -> Dictionary:
+	return get_meta("parkour_presentation", {}).duplicate()
 
 func _pressed(action: String) -> bool:
 	if action in ["skill1", "skill2", "ultimate", "grapple_enemy"]:

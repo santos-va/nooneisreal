@@ -2,10 +2,14 @@ class_name AuthoredHookMotion
 extends RefCounted
 ## Existing CC0 UAL upper-body gestures over authored gait/jump. No rope authority writes.
 ## Wall-climb feet are deliberately excluded; actual hero arm lengths bound every grip.
-const SOURCES: Array[String] = ["Interact", "Climb_Enter", "Climb_Idle", "Climb_Up", "OverhandThrow"]
+const SOURCES: Array[String] = ["Interact", "Climb_Enter", "Climb_Idle", "Climb_Up", "ClimbLedge", "OverhandThrow"]
 const SAMPLE_HZ: float = 30.0
 const CATCH_SECONDS: float = 0.20 # PLACEHOLDER presentation timing, never an input delay.
+const PARKOUR_CATCH_SECONDS: float = 0.12
+const REEL_STROKE: float = 0.65 # PLACEHOLDER hand-over-hand cycle in real shortened metres.
 const RELEASE_SECONDS: float = 0.14
+var catch_seconds: float = CATCH_SECONDS
+var reel_stroke: float = 1.2
 var source_clip: String = ""
 var source_time: float = 0.0
 var source_phase: String = "idle"
@@ -58,6 +62,8 @@ static func grounded_travel(f: Fighter) -> bool:
 func update(f: Fighter, skeleton: Skeleton3D, delta: float) -> void:
 	var hook: GrappleHook = f.grapple
 	var phase: int = hook.phase
+	catch_seconds = PARKOUR_CATCH_SECONDS if hook._responsive_traversal() else CATCH_SECONDS
+	reel_stroke = REEL_STROKE if hook._responsive_traversal() else maxf(hook.reel_distance, 0.001)
 	var recovery: bool = GrappleMotion.recovery_active(f)
 	var active: bool = f.state == Fighter.State.GRAPPLE or recovery
 	if active and not _active:
@@ -89,8 +95,8 @@ func update(f: Fighter, skeleton: Skeleton3D, delta: float) -> void:
 	_entry_elapsed += maxf(delta, 0.0)
 	_reeling = active and phase == GrappleHook.Phase.HANG and hook.attached and hook.rope_length < _previous_length - 0.00001
 	if _reeling:
-		# One source cycle over the real bounded reel stroke; time alone cannot turn it.
-		reel_cycle += (_previous_length - hook.rope_length) / maxf(hook.reel_distance, 0.001)
+		# Compact alternating pulls follow real shortening, independently of the total reel budget.
+		reel_cycle += (_previous_length - hook.rope_length) / reel_stroke
 	_previous_length = hook.rope_length
 	_reel_mix = move_toward(_reel_mix, 1.0 if _reeling else 0.0, delta / 0.10)
 	if not active:
@@ -116,13 +122,13 @@ func update(f: Fighter, skeleton: Skeleton3D, delta: float) -> void:
 		source_phase = "transfer" if hook.chain_throw else "throw"
 	elif phase == GrappleHook.Phase.ROPE_REACH:
 		source_clip = "Interact"
-		source_time = lerpf(0.30, 0.80, clampf(_phase_elapsed / CATCH_SECONDS, 0.0, 1.0))
+		source_time = lerpf(0.30, 0.80, clampf(_phase_elapsed / catch_seconds, 0.0, 1.0))
 		source_phase = "reach"
 	elif phase == GrappleHook.Phase.HANG:
 		# ROPE_REACH can be just one tick. Catch has its own presentation clock.
-		if _phase_elapsed < CATCH_SECONDS:
+		if _phase_elapsed < catch_seconds:
 			source_clip = "Climb_Enter"
-			source_time = lerpf(0.25, 0.75, _phase_elapsed / CATCH_SECONDS)
+			source_time = lerpf(0.25, 0.75, _phase_elapsed / catch_seconds)
 			source_phase = "catch"
 		else:
 			source_clip = "Climb_Idle"
@@ -158,10 +164,13 @@ func apply(skeleton: Skeleton3D, f: Fighter) -> void:
 	for bone: int in _mask:
 		var name: String = skeleton.get_bone_name(bone)
 		var torso: bool = name.begins_with("spine_") or name.begins_with("neck_") or name == "Head"
+		if torso and _phase == GrappleHook.Phase.HANG and source_phase != "catch" and f.grapple._responsive_traversal():
+			continue # Physical rope load owns the torso; authored climbing supplies the arms.
 		if _recovery and f.state == Fighter.State.ATTACK and torso:
 			continue # Preserve the kicking counterbalance along with hips and legs.
 		var pose: Transform3D = _pose(source_clip, source_time, bone)
 		if _phase == GrappleHook.Phase.HANG and source_phase != "catch" and _reel_mix > 0.0:
+			# Rope load already drives the torso; a wall-climb torso folds into a low rope.
 			pose = pose.interpolate_with(_pose("Climb_Up", fposmod(reel_cycle, 1.0) * float(_lengths["Climb_Up"]), bone), _reel_mix)
 		# Local source rotation only: no wall-climb roots, translations, or scaled limbs.
 		var weight: float = (0.65 if torso else 1.0) * smoothstep(0.0, 0.10, _entry_elapsed)
@@ -188,6 +197,9 @@ func apply_hands(hero: Skeleton3D, f: Fighter) -> void:
 		var anchor: Vector3 = hook.anchor_point
 		for side: String in ["Right", "Left"]:
 			var shoulder: Vector3 = hero.global_transform * hero.get_bone_global_pose(hero.find_bone(side + "Arm")).origin
+			var elbow: Vector3 = hero.global_transform * hero.get_bone_global_pose(hero.find_bone(side + "ForeArm")).origin
+			var hand: Vector3 = hero.global_transform * hero.get_bone_global_pose(hero.find_bone(side + "Hand")).origin
+			var reach: float = (shoulder.distance_to(elbow) + elbow.distance_to(hand)) * 0.97
 			var radial: Vector3 = (anchor - origin).normalized()
 			var wanted: Vector3 = shoulder + radial * (0.44 if side == "Right" else 0.31)
 			var point: Vector3 = Geometry3D.get_closest_point_to_segment(wanted, origin, anchor) if _phase == GrappleHook.Phase.HANG else origin
@@ -195,13 +207,14 @@ func apply_hands(hero: Skeleton3D, f: Fighter) -> void:
 			if _phase == GrappleHook.Phase.HANG and _reel_mix > 0.0:
 				var bone: int = hero.find_bone(side + "Hand")
 				var authored: Vector3 = hero.global_transform * hero.get_bone_global_pose(bone).origin
-				var along: float = clampf((authored - shoulder).dot(radial), 0.10, 0.55)
+				# Wall-climb source hands can retract to the chest. A supported rope
+				# grip stays beyond the folded forearm, measured from this hero's arm.
+				var minimum: float = reach * 0.72 if hook._responsive_traversal() else 0.10
+				var maximum: float = reach * 0.95 if hook._responsive_traversal() else 0.55
+				var along: float = clampf((authored - shoulder).dot(radial), minimum, maximum)
 				var pull: Vector3 = Geometry3D.get_closest_point_to_segment(shoulder + radial * along, origin, anchor)
 				point = point.lerp(pull, _reel_mix)
 			# Intersect the physical span with this hero's actual arm reach sphere.
-			var elbow: Vector3 = hero.global_transform * hero.get_bone_global_pose(hero.find_bone(side + "ForeArm")).origin
-			var hand: Vector3 = hero.global_transform * hero.get_bone_global_pose(hero.find_bone(side + "Hand")).origin
-			var reach: float = (shoulder.distance_to(elbow) + elbow.distance_to(hand)) * 0.97
 			var along_shoulder: float = (shoulder - origin).dot(radial)
 			var perpendicular: float = shoulder.distance_squared_to(origin + radial * along_shoulder)
 			var budget: float = sqrt(maxf(0.0, reach * reach - perpendicular))
@@ -212,7 +225,7 @@ func apply_hands(hero: Skeleton3D, f: Fighter) -> void:
 			else:
 				point = Geometry3D.get_closest_point_to_segment(shoulder, origin, anchor)
 			targets[side] = point
-		weight = smoothstep(0.0, CATCH_SECONDS, _phase_elapsed) if source_phase == "catch" else smoothstep(0.0, 0.10, _entry_elapsed)
+		weight = smoothstep(0.0, catch_seconds, _phase_elapsed) if source_phase == "catch" else smoothstep(0.0, 0.10, _entry_elapsed)
 	elif _phase in [GrappleHook.Phase.WINDUP, GrappleHook.Phase.FLIGHT] or _recovery:
 		var endpoint: Vector3 = hook.visual_endpoint() if _recovery else hook.anchor_point
 		if _phase == GrappleHook.Phase.WINDUP:
@@ -227,7 +240,17 @@ func apply_hands(hero: Skeleton3D, f: Fighter) -> void:
 		var end: int = hero.find_bone(side + "Hand")
 		var original: Array[Quaternion] = [hero.get_bone_pose_rotation(a), hero.get_bone_pose_rotation(b), hero.get_bone_pose_rotation(end)]
 		var target: Vector3 = hero.global_transform.affine_inverse() * Vector3(targets[side])
+		var wrist_rotation: Quaternion = AuthoredCombatMotion._global_rotation(hero, end)
+		var supported_rope: bool = _active and _phase == GrappleHook.Phase.HANG and hook._responsive_traversal()
+		if supported_rope:
+			weight = 1.0 # A caught rope is a support, including the authored catch gesture.
+			# A wall-climb elbow twist is not a rope pull. Keep source regrip targets
+			# and wrist orientation, but solve the supported arms from their rest plane.
+			for bone: int in [a, b]:
+				hero.set_bone_pose_rotation(bone, hero.get_bone_rest(bone).basis.orthonormalized().get_rotation_quaternion())
 		AuthoredCombatMotion._solve_chain(hero, a, b, end, target)
+		if supported_rope:
+			AuthoredCombatMotion._set_global_rotation(hero, end, wrist_rotation)
 		for index: int in 3:
 			var bone: int = [a, b, end][index]
 			hero.set_bone_pose_rotation(bone, original[index].slerp(hero.get_bone_pose_rotation(bone), weight))

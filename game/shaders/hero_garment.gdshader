@@ -1,4 +1,4 @@
-// Strict cached garment vertex mask; original skin/face path is unchanged.
+// Separate bounded face, cloth and highlight masks on the original hero atlas.
 // Cel / toon surface shader — banded diffuse, tinted shadow, rim, hit flash.
 // Outline comes from outline.gdshader attached as `next_pass`. Docs: docs/Tech/Cel-Shading.md
 shader_type spatial;
@@ -12,8 +12,14 @@ uniform float fabric_strength = 0.0;
 // Mean must be measured from admitted texture in linear color space. White fallback is neutral.
 uniform float fabric_luma_mean = 1.0;
 varying float garment_mask;
+varying float delight_mask;
+varying float face_mask;
+// PLACEHOLDER cotton highlight rebalance. Source atlas and protected surfaces stay intact.
+uniform float garment_delight : hint_range(0.0, 1.0) = 0.96;
+uniform vec4 garment_highlight : source_color = vec4(0.40,0.16,0.50,1.0);
 uniform vec4 albedo : source_color = vec4(1.0);
 uniform sampler2D albedo_tex : source_color, hint_default_white;
+#include "res://shaders/hero_face.gdshaderinc"
 uniform float bands : hint_range(1.0, 6.0) = 3.0;
 uniform float shadow_strength : hint_range(0.0, 1.0) = 0.45;
 uniform vec4 shadow_tint : source_color = vec4(0.25, 0.3, 0.45, 1.0);
@@ -24,12 +30,20 @@ uniform float desat : hint_range(0.0, 1.0) = 0.0;   // TIME STOP: grey-blue froz
 
 void vertex() {
 	garment_mask = COLOR.g;
+	delight_mask = COLOR.b;
+	face_mask = COLOR.r;
 	camera_main_pass = distance(INV_VIEW_MATRIX[3].xyz, MAIN_CAM_INV_VIEW_MATRIX[3].xyz) < 0.001 ? 1.0 : 0.0;
 }
 
 void fragment() {
 	if (camera_proximity_hidden(FRAGCOORD.xy)) { discard; }
 	vec4 tex = texture(albedo_tex, UV);
+	tex.rgb = hero_face_color(tex.rgb,UV,face_mask);
+	float baked_highlight = smoothstep(0.35,0.85,max(tex.r,max(tex.g,tex.b)));
+	// Protected triangles are exactly zero at every LOD; do not leave a broad
+	// white interpolation halo within otherwise verified cloth triangles.
+	float cloth_coverage = smoothstep(0.0,0.05,delight_mask);
+	tex.rgb = mix(tex.rgb,garment_highlight.rgb,baked_highlight * cloth_coverage * garment_delight);
 	vec3 base = albedo.rgb * tex.rgb;
 	vec2 grid = UV * 700.0;
 	float resolved = 1.0 - smoothstep(0.22,0.8,max(fwidth(grid.x),fwidth(grid.y)));

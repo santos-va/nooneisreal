@@ -16,11 +16,13 @@ extends Node3D
 ## bone first gets a rest alignment (its rest direction turned onto the mannequin's), then the mannequin's rotation
 ## from rest. Bone lengths stay the hero's; only the hips move, scaled by the hip-height ratio.
 
+const FacePresentation = preload("res://scripts/fighter/HeroFacePresentation.gd")
 const HeroGear = preload("res://scripts/fighter/HeroGearPresentation.gd")
 const BodyMotion = preload("res://scripts/fighter/HeroBodyMotion.gd")
 const GroundContact = preload("res://scripts/fighter/HeroGroundContact.gd")
 const MotionSignals = preload("res://scripts/fighter/FighterMotionSignals.gd")
 const HookSource = preload("res://scripts/fighter/AuthoredHookMotion.gd")
+const ParkourSource = preload("res://scripts/fighter/ParkourMotion.gd")
 const HookMotion = preload("res://scripts/fighter/GrappleMotion.gd")
 const Cadence = preload("res://scripts/fighter/LocomotionCadence.gd")
 const MotionFallback = preload("res://scripts/fighter/ProceduralMotionFallback.gd")
@@ -70,7 +72,7 @@ const HERO_AIM := {
 	"RightUpLeg": "RightLeg", "RightLeg": "RightFoot", "RightFoot": "RightToeBase",
 }
 ## Ink outline width on the hero, metres — same as the capsule rig (RigAnimator._mat).
-const HERO_OUTLINE := 0.022
+const HERO_OUTLINE := 0.006 # PLACEHOLDER art width, verified against facial silhouette.
 
 var player: AnimationPlayer
 var skeleton: Skeleton3D
@@ -107,10 +109,12 @@ var locomotion = GroundMotion.new()
 var authored_dodge = DodgeSource.new()
 var authored_landing = LandingSource.new()
 var authored_hook = HookSource.new()
+var parkour_motion = ParkourSource.new()
 var body_motion = BodyMotion.new()
 var ground_contact = GroundContact.new()
 var motion_signals = MotionSignals.new()
 var gear: Node3D
+var face_presentation = FacePresentation.new()
 
 
 func setup(f: Fighter) -> void:
@@ -145,6 +149,7 @@ func setup(f: Fighter) -> void:
 		gear.name = "HeroGear"
 		add_child(gear)
 		gear.setup(f,self)
+		face_presentation.setup(f,self)
 
 
 ## Loads the hero GLB beside the mannequin, hides the mannequin's mesh and precomputes the retarget.
@@ -205,7 +210,7 @@ func _cel_material() -> void:
 	if src is BaseMaterial3D and (src as BaseMaterial3D).albedo_texture != null:
 		m.set_shader_parameter("albedo_tex", (src as BaseMaterial3D).albedo_texture)
 	var o := ShaderMaterial.new()
-	o.shader = RigAnimator.OUTLINE
+	o.shader = preload("res://shaders/hero_outline.gdshader")
 	# the outline pushes vertices in the mesh's local space; the Meshy armature is scaled (bones in cm)
 	o.set_shader_parameter("width", HERO_OUTLINE / maxf(hero_mesh.global_transform.basis.get_scale().x / global_transform.basis.get_scale().x, 1e-4))
 	m.next_pass = o
@@ -240,6 +245,8 @@ func retarget() -> void:
 	ground_contact.apply(_fighter, skeleton, clip, clip_pos, body_motion._dt, ragdoll)
 	authored_combat.adjust_hero_contact(hero_skeleton, _fighter)
 	authored_hook.apply_hands(hero_skeleton, _fighter)
+	if ragdoll == null:
+		parkour_motion.apply_contacts(hero_skeleton, _fighter)
 	body_motion.apply_gaze(hero_skeleton, skeleton, _fighter, ragdoll)
 
 
@@ -379,6 +386,7 @@ func _physics_process(delta: float) -> void:
 		locomotion = GroundMotion.new()
 		cadence.phase = 0.0
 		body_motion.reset()
+		face_presentation.reset()
 		ground_contact.reset()
 		_last_state = _fighter.state
 		_state_frames = 0
@@ -386,7 +394,9 @@ func _physics_process(delta: float) -> void:
 		_attack_return_source.clear()
 		_attack_return_base.clear()
 	body_motion.update(_fighter, delta, motion_signals.actual_velocity, motion_signals.acceleration)
+	face_presentation.update(_fighter, delta, body_motion.serial)
 	ground_contact.begin_frame(delta)
+	parkour_motion.update(_fighter, motion_signals.actual_velocity, delta, motion_signals.discontinuous)
 	body_motion.prepare_source(skeleton, _fighter)
 	authored_hook.update(_fighter, skeleton, delta)
 	authored_dodge.prepare(skeleton, _fighter)
@@ -455,6 +465,7 @@ func _physics_process(delta: float) -> void:
 	# Undo our previous overlay before seeking: constant tracks may be absent in a clip.
 	body_motion.restore_source(skeleton)
 	_restore_attack_return_base()
+	parkour_motion.restore(skeleton)
 	authored_hook.restore(skeleton)
 	authored_dodge.restore(skeleton)
 	authored_combat.restore(skeleton)
@@ -470,6 +481,7 @@ func _physics_process(delta: float) -> void:
 	authored_combat.apply(skeleton, source, _fighter)
 	authored_dodge.apply(skeleton, _fighter, delta)
 	authored_hook.apply(skeleton, _fighter)
+	parkour_motion.apply_source(skeleton, authored_hook)
 	_sword_mirror_base = SwordMotion.mirror_authored(skeleton, _fighter)
 	var recovering: bool = HookMotion.recovery_active(_fighter)
 	if procedural:
@@ -532,7 +544,8 @@ func _on_mannequin_updated() -> void:
 		return
 	retarget()
 	if sword != null:
-		SwordMotion.apply_transfer(hero_skeleton, _fighter)
+		if parkour_motion.phase.is_empty():
+			SwordMotion.apply_transfer(hero_skeleton, _fighter)
 		sword.update_pose()
 	if gear != null:
 		gear.update_pose()
