@@ -15,13 +15,15 @@ const SOURCES: Dictionary = {
 	"airkick": ["Kick", "", "right", 0.517, 0.583],
 	"knee": ["Melee_Knee", "", "right", 0.300, 0.450],
 	"cut": ["Sword_Light_A", "Sword_Light_A_Rec", "right", 0.233, 0.367],
-	"thrust": ["Sword_Light_B", "Sword_Light_B_Rec", "right", 0.233, 0.433],
+	# D extends the real grip forward; B is a downward slice. D has its own return.
+	# Measured source interval: 2026-10-05-Equipment-Sword-Craft.
+	"thrust": ["Sword_Light_D", "", "right", 0.300, 0.433],
 	"rising": ["Sword_UpperCut", "", "right", 0.200, 0.267],
 	"cleave": ["Sword_Heavy_D", "", "right", 0.600, 0.700],
 	"aircut": ["Sword_Aerial_A", "Sword_Aerial_A_Rec", "right", 0.233, 0.400],
 	"lowhand": ["Punch_Jab", "", "left", 0.200, 0.250],
 	"lowkick": ["Kick", "", "right", 0.517, 0.583],
-	"lowcut": ["Sword_Regular_A", "Sword_Regular_A_Rec", "right", 0.233, 0.433],
+	"lowcut": ["Sword_Regular_A", "Sword_Regular_A_Rec", "right", 0.250, 0.433],
 	"spin": ["Kick", "", "right", 0.517, 0.583],
 	"hookspin": ["Kick", "", "right", 0.517, 0.583],
 	"hammer": ["OverhandThrow", "", "right", 0.383, 0.393],

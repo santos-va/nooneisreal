@@ -14,9 +14,12 @@ var pause_left: float = 0.0
 var speech_left: float = 0.0
 var speech: Label3D
 var work_kind: String = ""
+var conversing: bool = false
 
 static func home_for(index: int) -> Vector3:
-	var homes: Array[Vector3] = [Vector3(-25.15, 0, 18.8), Vector3(-18.55, 0, 18.8), Vector3(-11.95, 0, 18.8),
+	if index >= 0 and index < 3:
+		return CityPlaces.shops()[index].worker
+	var homes: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO, Vector3.ZERO,
 		Vector3(-5.5, 0, -5), Vector3(3.8, 0, -11), Vector3(5.6, 0, 4), Vector3(-4, 0, 13),
 		Vector3(2, 0, 22), Vector3(-20, 0, 2), Vector3(-15, 0, -3), Vector3(25, 0, 4), Vector3(-1.7, 0, -4)]
 	return homes[clampi(index, 0, homes.size() - 1)]
@@ -66,6 +69,8 @@ func restore_motion(state: Dictionary) -> void:
 	waypoint = state.waypoint
 	clock = state.clock
 	pause_left = state.pause
+	if visual != null and visual.has_method("reset_clothing"):
+		visual.call("reset_clothing")
 
 func _physics_process(delta: float) -> void:
 	clock += delta
@@ -87,5 +92,17 @@ func _physics_process(delta: float) -> void:
 				pause_left = stop_seconds + (resident_index % 3) * 0.4
 	if visual != null and visual.has_method("set_motion"):
 		visual.call("set_motion", speed, clock)
-		if not work_kind.is_empty() and visual.has_method("set_work"):
+		if not conversing and not work_kind.is_empty() and visual.has_method("set_work"):
 			visual.call("set_work", work_kind, clock)
+		if visual.has_method("step_clothing"):
+			visual.call("step_clothing", delta)
+
+func interaction_radius() -> float:
+	return float(visual.call("interaction_radius")) if visual != null and visual.has_method("interaction_radius") else 0.3
+
+func presentation_event(kind: String, listener: Vector3) -> void:
+	var direction: Vector3 = listener - global_position
+	if Vector2(direction.x, direction.z).length_squared() > 0.001:
+		rotation.y = atan2(-direction.x, -direction.z)
+	if visual != null and visual.has_method("presentation_event"):
+		visual.call("presentation_event", kind)

@@ -1,0 +1,57 @@
+[
+  {
+    "index": 1,
+    "job_id": "581e7a06-428e-4394-bfe3-75798f99fa5f",
+    "status": "completed",
+    "type": "image",
+    "model": "gpt_image_2_5",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261005_042751_581e7a06-428e-4394-bfe3-75798f99fa5f.png",
+    "name": "sword_inlay_muted",
+    "supersedes_job_id": "f2667187-a897-493e-a964-164b7f48a851"
+  },
+  {
+    "index": 2,
+    "job_id": "ffbbdc35-0d7e-4f09-981b-b94a98b06a64",
+    "status": "completed",
+    "type": "image",
+    "model": "gpt_image_2_5",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261005_031749_ffbbdc35-0d7e-4f09-981b-b94a98b06a64.png",
+    "name": "choko_fabric"
+  },
+  {
+    "index": 3,
+    "job_id": "30db9a22-4f6a-42c3-8e48-516e929360c6",
+    "status": "completed",
+    "type": "image",
+    "model": "gpt_image_2_5",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261005_032330_30db9a22-4f6a-42c3-8e48-516e929360c6.png",
+    "name": "skea_fabric"
+  },
+  {
+    "index": 4,
+    "job_id": "5c6ca169-245a-4bcf-aa0f-4a48926a583e",
+    "status": "completed",
+    "type": "image",
+    "model": "gpt_image_2_5",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261005_031750_5c6ca169-245a-4bcf-aa0f-4a48926a583e.png",
+    "name": "dark_leather"
+  },
+  {
+    "index": 5,
+    "job_id": "590d9dd1-1509-4733-a42e-f665b584ec3e",
+    "status": "completed",
+    "type": "image",
+    "model": "gpt_image_2_5",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261005_031750_590d9dd1-1509-4733-a42e-f665b584ec3e.png",
+    "name": "grimoire_cover"
+  },
+  {
+    "index": 6,
+    "job_id": "c57f41ad-1df8-40e0-9b5b-dc1dad162ba3",
+    "status": "completed",
+    "type": "image",
+    "model": "gpt_image_2_5",
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO/hf_20261005_031750_c57f41ad-1df8-40e0-9b5b-dc1dad162ba3.png",
+    "name": "npc_workwear"
+  }
+]

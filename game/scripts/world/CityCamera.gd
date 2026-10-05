@@ -18,6 +18,20 @@ var aim: HarpoonAim
 var _yaw: float = 0.0
 var _pitch: float = 0.0
 var _cue: MeshInstance3D
+var _conversation: Node3D
+var _conversation_frame := CityConversationFrame.new()
+var _conversation_goal: Dictionary = {}
+var _conversation_weight: float = 0.0
+var _normal_arm_position := Vector3.ZERO
+
+func begin_conversation(actor: Node3D) -> void:
+	if not is_instance_valid(actor) or player == null:
+		return
+	_conversation = actor
+	_conversation_goal = _conversation_frame.choose(player, actor, camera)
+
+func end_conversation() -> void:
+	_conversation = null
 
 func _ready() -> void:
 	process_physics_priority = -50 # InputRouter first, camera packet next, fighter last.
@@ -64,6 +78,11 @@ func setup(fighter: CityFighter) -> void:
 	reset_view()
 
 func reset_view() -> void:
+	_conversation = null
+	_conversation_goal.clear()
+	_conversation_weight = 0.0
+	_normal_arm_position = Vector3.ZERO
+	arm.spring_length = follow_distance
 	aim.reset()
 	proximity.reset()
 	_close_weight = 0.0
@@ -84,10 +103,14 @@ func _physics_process(delta: float) -> void:
 	_yaw = aim.yaw_offset
 	_pitch = aim.pitch_offset
 	rotation.y = _yaw
-	arm.rotation.x = base_pitch + aim.pitch_offset
+	arm.position = _normal_arm_position
+	arm.rotation = Vector3(base_pitch + aim.pitch_offset - 0.12 * _close_weight, 0.0, 0.0)
 	global_position = global_position.lerp(player.global_position + Vector3.UP * focus_height, 1.0 - exp(-15.0 * delta))
 	_update_shoulder(delta)
-	_update_close_framing(delta)
+	if _conversation_weight <= 0.0:
+		_update_close_framing(delta)
+	_normal_arm_position = arm.position
+	_update_conversation(delta)
 	_publish_basis()
 	var turn := Vector2(angle_difference(previous, _yaw), _pitch - previous_pitch).length()
 	if turn > 0.00001:
@@ -96,6 +119,22 @@ func _physics_process(delta: float) -> void:
 	_cue.visible = not String(packet.target_id).is_empty() and not InputRouter.ui_suppressed()
 	if _cue.visible:
 		_cue.global_position = packet.point
+
+func _update_conversation(delta: float) -> void:
+	var active: bool = is_instance_valid(_conversation) and not _conversation_goal.is_empty()
+	_conversation_weight = move_toward(_conversation_weight, 1.0 if active else 0.0, delta * 4.0)
+	arm.spring_length = follow_distance
+	if _conversation_weight <= 0.0 or _conversation_goal.is_empty():
+		return
+	var weight: float = smoothstep(0.0, 1.0, _conversation_weight)
+	var regular: Transform3D = arm.global_transform
+	var desired: Transform3D = _conversation_goal.transform
+	var pose := regular.interpolate_with(desired, weight)
+	# The pivot transition is swept as well as the final lens, which remains
+	# exclusively positioned by the original SpringArm sphere sweep.
+	pose.origin = _conversation_frame.safe_end(get_world_3d().direct_space_state, regular.origin, pose.origin, [player.get_rid()])
+	arm.global_transform = pose
+	arm.spring_length = lerpf(follow_distance, float(_conversation_goal.length), weight)
 
 func _update_shoulder(delta: float) -> void:
 	# Shift the arm pivot, not its camera child: the existing spring-arm sweep

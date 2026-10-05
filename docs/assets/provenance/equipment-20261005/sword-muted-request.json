@@ -1,0 +1,17 @@
+{
+  "model": "gpt_image_2_5",
+  "variant": "flare",
+  "quality": "max",
+  "resolution": "2k",
+  "aspect_ratio": "2:3",
+  "count": 1,
+  "use_unlim": false,
+  "background": "opaque",
+  "prompt": "Create one production-ready flat 2D albedo texture for a narrow fantasy sword blade, NOT a sword illustration, concept sheet, photograph or product render. Fill the whole rectangular canvas edge-to-edge with material. Orthographic flat surface only: no perspective, object silhouette, guard, handle, background, cast shadow, ambient occlusion, lighting gradient, bloom, labels, text or watermark. Use the attached canonical sword reference ONLY for its restrained hand-inked Sketch-Cel craftsmanship, broad quiet faceted material and aged brass ornament; do not reproduce its sword silhouette or bright white background. Match muted orange clothing and graphite/violet shadows. Dominant blade body is desaturated forest-teal emerald #315D52; broad longitudinal shadow facets #183C36, a few narrow sage facet highlights #91A78A. Sage highlights are sparse matte facets, not bright continuous neon edges. Graphite ink #2B2230 defines a few precise long facet boundaries, never noisy dense scratches. ONE extremely fine muted aged-brass ornamental filament #9A8960 runs vertically at exactly center U=0.5; occasional tiny highlight #B8AA7B. Keep all restrained filament curls within the central 16 percent of width. Add ONE tiny elongated brass diamond centered at U=0.5 and image Y=0.88, near the lower 12 percent of image height, where the blade meets the guard in the runtime UV mapping. Outermost 25 percent on either side stays quiet forest-teal. The rectangle will be UV-mapped onto a long thin blade, so all ornament must stay slender, coherent and uncluttered. Fine original artisan inlay, dark leather-and-cloth palette harmony. Absolutely no acid green, lime, fluorescent chartreuse, bright yellow edges, glow, emission, glossy plastic, chrome, sparkle, photorealistic grain, border frame, giant runes or repeating diamonds. Do not include leather, a hilt or any separate object. Flat albedo only; shading is performed by the game.",
+  "medias": [
+    {
+      "role": "image",
+      "value": "https://raw.githubusercontent.com/santos-va/nooneisreal/4c68473ce88e167828c3425fa1ecbe3062dc96ca/game/assets/characters/cards/weapon_choko_main_sword.png"
+    }
+  ]
+}

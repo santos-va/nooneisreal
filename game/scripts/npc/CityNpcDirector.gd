@@ -1,9 +1,12 @@
 class_name CityNpcDirector
 extends Node3D
+signal conversation_started(actor: Node3D)
+signal conversation_ended
 ## Logical population is bounded; only nearby residents own render actors.
 @export var active_radius: float = 24.0 # PLACEHOLDER streaming budget.
 @export var tick_seconds: float = 6.0 # PLACEHOLDER fictional schedule clock.
-@export var talk_radius: float = 4.2
+const TALK_GAP: float = 0.70
+const TALK_VERTICAL: float = 0.75
 @export var social_radius: float = 4.2 # PLACEHOLDER nearby greeting distance.
 @export var social_seconds: float = 2.6 # PLACEHOLDER speech visibility.
 @export var social_cooldown: float = 18.0 # PLACEHOLDER quiet interval per resident.
@@ -22,6 +25,13 @@ var refresh_elapsed: float = 1.0
 var nearest: int = -1
 var save_enabled: bool = true
 var load_failed: bool = false
+var conversation_context := NpcConversationContext.new()
+var local_conversation: NpcLocalConversation
+var local_token: int = -1
+var chatter: Node
+var current_context: Dictionary = {}
+var current_fallback: String = ""
+var listen_at: float = INF
 
 func setup(target: Node3D, district_progress: CityProgress = null) -> void:
 	player = target
@@ -35,11 +45,27 @@ func setup(target: Node3D, district_progress: CityProgress = null) -> void:
 	dialogue = NpcDialogue.new()
 	add_child(dialogue)
 	dialogue.choice_selected.connect(_choose)
+	dialogue.closed.connect(_close_conversation)
+	dialogue.local_enabled_changed.connect(_set_local_enabled)
+	local_conversation = NpcLocalConversation.new()
+	add_child(local_conversation)
+	local_conversation.line_ready.connect(_local_line)
+	dialogue.local_toggle.set_pressed_no_signal(local_conversation.enabled)
+	# Optional presentation helper owns bounded audio voices.
+	var chatter_script := load("res://scripts/npc/NpcChatter.gd") as Script
+	if chatter_script != null:
+		chatter = chatter_script.new()
+		add_child(chatter)
+		chatter.call("configure", player)
 	_refresh_actors()
 
 func _physics_process(delta: float) -> void:
 	if player == null:
 		return
+	if progress != null and progress.hero_id != hero_id:
+		if dialogue.opened:
+			dialogue.close()
+		hero_id = progress.hero_id
 	elapsed += delta
 	runtime += delta
 	refresh_elapsed += delta
@@ -51,9 +77,10 @@ func _physics_process(delta: float) -> void:
 	if refresh_elapsed >= 0.5:
 		refresh_elapsed = 0.0
 		_refresh_actors()
-		if not dialogue.opened:
-			_update_conversations()
+		_update_conversations()
 	if dialogue.opened:
+		if runtime >= listen_at:
+			_present(conversation_index, "listen", player.global_position)
 		return
 	nearest = find_nearest()
 	dialogue.prompt.visible = nearest >= 0 and not InputRouter.ui_suppressed()
@@ -66,28 +93,44 @@ func _physics_process(delta: float) -> void:
 		if InputRouter.just_pressed(1, "interact"):
 			open_conversation(nearest)
 
+func player_radius() -> float:
+	var shape: CollisionShape3D = player.get_node_or_null("BodyShape") as CollisionShape3D
+	if shape != null and shape.shape is CapsuleShape3D:
+		return shape.shape.radius * maxf(absf(shape.global_basis.get_scale().x), absf(shape.global_basis.get_scale().z))
+	return 0.35
+
+func surface_gap(index: int) -> float:
+	if player == null or not actors.has(index):
+		return INF
+	var difference: Vector3 = actors[index].global_position - player.global_position
+	return maxf(0.0, Vector2(difference.x, difference.z).length() - player_radius() - actors[index].interaction_radius())
+
+func can_talk(index: int) -> bool:
+	if player == null or not actors.has(index):
+		return false
+	var actor: CityNpcActor = actors[index]
+	if absf(player.global_position.y - actor.global_position.y) > TALK_VERTICAL or surface_gap(index) > TALK_GAP + 0.00001:
+		return false
+	var query := PhysicsRayQueryParameters3D.create(player.global_position + Vector3.UP * 1.5, actor.global_position + Vector3.UP * 1.5, 1)
+	if player is CollisionObject3D:
+		query.exclude = [player.get_rid()]
+	return get_world_3d().direct_space_state.intersect_ray(query).is_empty()
+
 func find_nearest() -> int:
 	var result: int = -1
-	var best: float = talk_radius
+	var best: float = INF
 	for index: int in actors:
-		var actor: CityNpcActor = actors[index]
-		var distance: float = player.global_position.distance_to(actor.global_position)
-		if distance >= best:
-			continue
-		var query := PhysicsRayQueryParameters3D.create(player.global_position + Vector3.UP * 1.5, actor.global_position + Vector3.UP * 1.5, 1)
-		if player is CollisionObject3D:
-			query.exclude = [player.get_rid()]
-		if not get_world_3d().direct_space_state.intersect_ray(query).is_empty():
-			continue
-		best = distance
-		result = index
+		var gap: float = surface_gap(index)
+		if gap < best and can_talk(index):
+			best = gap
+			result = index
 	return result
 
 func _refresh_actors() -> void:
 	for index: int in population.people.size():
 		var center: Vector3 = to_global(CityNpcActor.home_for(index))
 		# Include the complete local route so walking cannot cross the streaming edge.
-		var active: bool = center.distance_to(player.global_position) < active_radius + 4.1
+		var active: bool = (dialogue.opened and index == conversation_index) or center.distance_to(player.global_position) < active_radius + 4.1
 		if active and not actors.has(index):
 			var actor := CityNpcActor.new()
 			add_child(actor)
@@ -100,19 +143,21 @@ func _refresh_actors() -> void:
 			actors[index] = actor
 		elif not active and actors.has(index):
 			actor_states[index] = actors[index].motion_state()
+			if chatter != null:
+				chatter.call("release_actor", str(population.people[index].id))
 			actors[index].queue_free()
 			actors.erase(index)
 		if actors.has(index):
 			# Work/rest goals describe the routine, not a command to freeze the actor.
-			actors[index].walking = not dialogue.opened and actors[index].work_kind.is_empty()
+			actors[index].walking = not (dialogue.opened and index == conversation_index) and actors[index].work_kind.is_empty()
 
 func _update_conversations() -> void:
 	for index: int in actors:
-		if runtime < float(social_ready.get(index, 1.0)):
+		if (dialogue.opened and index == conversation_index) or runtime < float(social_ready.get(index, 1.0)):
 			continue
 		var actor: CityNpcActor = actors[index]
 		for other: int in actors:
-			if other <= index or runtime < float(social_ready.get(other, 1.0)):
+			if other <= index or (dialogue.opened and other == conversation_index) or runtime < float(social_ready.get(other, 1.0)):
 				continue
 			var peer: CityNpcActor = actors[other]
 			if actor.global_position.distance_to(peer.global_position) > social_radius:
@@ -123,32 +168,44 @@ func _update_conversations() -> void:
 			var lines: Array[String] = population.greet(index, other)
 			actor.say(lines[0], peer.global_position, social_seconds)
 			peer.say(lines[1], actor.global_position, social_seconds)
+			_present(index, "greet", peer.global_position)
+			_present(other, "greet", actor.global_position)
 			social_ready[index] = runtime + social_cooldown
 			social_ready[other] = runtime + social_cooldown
 			break
 
-func open_conversation(index: int) -> void:
-	if not actors.has(index):
-		return
+func open_conversation(index: int) -> bool:
+	if not can_talk(index):
+		return false
+	if dialogue.opened:
+		_close_conversation()
 	conversation_index = index
+	actors[index].walking = false
+	actors[index].conversing = true
+	_present(index, "greet", player.global_position)
 	population.meet(index, hero_id)
 	if progress != null:
 		progress.record_event("meet", population.people[index].id)
 		if index >= 3:
 			progress.record_event("resident", population.people[index].id)
 	_show_conversation()
+	conversation_started.emit(actors[index])
 	persist()
+	return true
 
 func _job(index: int) -> String:
 	return ["grocer", "tailor", "workshop"][index] if index < 3 else ""
 
-func _show_conversation(response: String = "") -> void:
+func _show_conversation(response: String = "", topic: String = "greeting") -> void:
 	if conversation_index < 0:
 		return
 	var index: int = conversation_index
 	var job: String = _job(index)
 	var job_title: String = {"grocer": "Крамниця · припаси й доручення", "tailor": "Кравець · кольорові перев’язі", "workshop": "Майстерня · міські маршрути"}.get(job, str(population.people[index].role))
-	var text: String = str(population.people[index].name) + " — " + job_title + "\n" + population.dialogue(index, hero_id)
+	current_context = conversation_context.facts(population, index, hero_id, progress, topic)
+	current_fallback = conversation_context.reply(current_context, index)
+	var relation: String = "друзі" if int(current_context.trust) >= 6 else ("знайомі" if int(current_context.meetings) > 1 else "знайомство")
+	var text: String = str(population.people[index].name) + " — " + job_title + " · " + relation + "\n\n" + current_fallback
 	if not response.is_empty():
 		text += "\n\n" + response
 	var options: Array[Dictionary] = []
@@ -167,6 +224,7 @@ func _show_conversation(response: String = "") -> void:
 			if progress.quest_status("parcel") == "active":
 				options.append({"id": "parcel", "label": "Передати пакунок ниток"})
 			options.append({"id": "styles", "label": "Приміряти перев’язь · %d жет." % int(progress.summary().credits)})
+	options.append({"id": "memory", "label": "Наші знайомства"})
 	options.append({"id": "topic:work", "label": "Розкажи про свою роботу"})
 	options.append({"id": "topic:district", "label": "Що порадиш подивитися в районі?"})
 	if progress != null and progress.quest_status("roof_walk") == "completed":
@@ -174,11 +232,17 @@ func _show_conversation(response: String = "") -> void:
 	if progress != null and progress.quest_status("neighbours") == "completed":
 		options.append({"id": "topic:neighbours", "label": "Поговорити про спільних знайомих"})
 	dialogue.show_choices(text, options)
+	if response.is_empty():
+		_request_local()
 
 func _choose(action: String) -> void:
 	if conversation_index < 0 or not dialogue.opened:
 		return
+	local_conversation.cancel()
+	local_token = -1
+	current_context = {}
 	var index: int = conversation_index
+	_present(index, "talk", player.global_position)
 	var job: String = _job(index)
 	var pair: PackedStringArray = action.split(":", true, 1)
 	var argument: String = pair[1] if pair.size() > 1 else ""
@@ -195,10 +259,12 @@ func _choose(action: String) -> void:
 		if pair[0] == "accept" and progress.accept_quest(argument):
 			_show_conversation("Записано в журнал. " + str(q.hint))
 		elif pair[0] == "turn" and progress.complete_quest(argument):
+			_present(index, "agree", player.global_position)
 			population.bond_once(index, hero_id, "quest_" + argument, "Ти допоміг: " + str(q.title) + ".", 2)
 			_show_conversation("Дякую за допомогу. Нагороду додано; це доручення завершене.")
 	elif action == "parcel" and job == "tailor" and progress != null and progress.quest_status("parcel") == "active":
 		progress.record_event("deliver", "thread_parcel")
+		_present(index, "agree", player.global_position)
 		population.bond_once(index, hero_id, "parcel", "Ти приніс пакунок ниток із крамниці.", 2)
 		_show_conversation("Саме ці нитки я чекав. Повернися до крамниці — там подякують за доставку.")
 	elif action == "styles" and job == "tailor" and progress != null:
@@ -210,20 +276,15 @@ func _choose(action: String) -> void:
 		dialogue.show_choices("Кольорова перев’язь · " + hero_id.capitalize() + "\n\nПерев’язь відразу з’явиться поверх твого вбрання. Вибери колір до смаку.\nЖетони: %d" % int(progress.summary().credits), options)
 	elif pair[0] == "palette" and job == "tailor" and progress != null:
 		if progress.set_palette(argument):
+			_present(index, "agree", player.global_position)
 			_show_conversation("Перев’язь змінено. Можна вийти з розмови й оглянути героя.")
+	elif action == "memory":
+		dialogue.show_choices(population.dialogue(index, hero_id), [{"id": "back", "label": "Назад до розмови"}])
 	elif pair[0] == "topic":
-		var reply: String = ""
-		if argument == "work":
-			reply = {"grocer": "Тримаю припаси для сусідів. Спершу познайомся з працівниками, а тоді допоможи доставити нитки.", "tailor": "Підбираю кольори. М'ятну перев’язь можна приміряти без жетонів; інші відкриваються за зароблене у районі.", "workshop": "Перевіряю спорядження й проходи. До верхньої вулиці ведуть дві рампи; не обов'язково починати з мотузки."}.get(job, "Я працюю тут: " + str(population.people[index].role) + ". Між справами гуляю районом і вітаюся із сусідами.")
-		elif argument == "district":
-			reply = "На півночі є міст між дахами та годинникова вежа. Майданчик ринку — на півдні. Крамниці шукай на заході, входи позначені вивісками."
-		elif argument == "route" and progress != null and progress.quest_status("roof_walk") == "completed":
-			reply = "Тепер у нас є спільна тема — верхній маршрут. Добре зустріти того, хто сам його пройшов."
-		elif argument == "neighbours" and progress != null and progress.quest_status("neighbours") == "completed":
-			reply = "Ти вже знаєш наших сусідів. Заходь і без доручень — тепер ти тут своє обличчя."
-		if not reply.is_empty():
+		var allowed: bool = argument in ["work", "district"] or (argument == "route" and progress != null and progress.quest_status("roof_walk") == "completed") or (argument == "neighbours" and progress != null and progress.quest_status("neighbours") == "completed")
+		if allowed:
 			population.bond_once(index, hero_id, "topic_" + argument, "Ми поговорили: " + {"work": "про роботу", "district": "про місця району", "route": "про пройдений верхній маршрут", "neighbours": "про спільних знайомих"}.get(argument, "про район") + ".", 2 if argument in ["route", "neighbours"] else 1)
-			_show_conversation(reply)
+			_show_conversation("", argument)
 	else:
 		_show_conversation()
 	persist()
@@ -238,3 +299,46 @@ func persist() -> bool:
 
 func _exit_tree() -> void:
 	persist()
+
+func _present(index: int, kind: String, listener: Vector3) -> void:
+	if not actors.has(index):
+		return
+	actors[index].presentation_event(kind, listener)
+	if index == conversation_index:
+		listen_at = runtime + NpcAppearance.GESTURE_SECONDS + 0.05
+	if chatter != null:
+		chatter.call("speak", actors[index].global_position, int(population.people[index].appearance_seed), kind, str(population.people[index].id))
+
+func _close_conversation() -> void:
+	local_conversation.cancel()
+	local_token = -1
+	current_context = {}
+	if chatter != null:
+		chatter.call("stop_all")
+	if actors.has(conversation_index):
+		_present(conversation_index, "goodbye", player.global_position)
+		actors[conversation_index].walking = actors[conversation_index].work_kind.is_empty()
+		actors[conversation_index].conversing = false
+	conversation_index = -1
+	conversation_ended.emit()
+
+func _set_local_enabled(value: bool) -> void:
+	local_conversation.set_enabled(value)
+	dialogue.flavor.text = ""
+	if value and dialogue.opened and not current_context.is_empty():
+		_request_local()
+
+func _request_local() -> void:
+	if not local_conversation.enabled:
+		return
+	dialogue.flavor.text = "Добирає слова…"
+	# Synchronous cache/failure signals use the next generation too.
+	local_token = local_conversation.generation + 1
+	local_conversation.generate(current_context, current_fallback)
+
+func _local_line(token: int, line: String, status: String) -> void:
+	if not dialogue.opened or token != local_token or conversation_index < 0 or current_context.get("hero", "") != hero_id or (progress != null and progress.hero_id != hero_id):
+		return
+	dialogue.flavor.text = line if not line.is_empty() else ("" if status == "cooldown" else "Додаткові репліки зараз недоступні.")
+	if not line.is_empty():
+		_present(conversation_index, "talk", player.global_position)

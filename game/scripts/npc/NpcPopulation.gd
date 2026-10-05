@@ -140,8 +140,10 @@ func restore(data: Variant) -> bool:
 		var p: Variant = records[index]
 		if not p is Dictionary:
 			return false
-		for key: String in ["id", "appearance_seed", "name", "role"]:
-			if p.get(key) != expected.people[index][key]:
+		if not _integer(p.get("appearance_seed"), 1, 2147483646) or int(p.appearance_seed) != int(expected.people[index].appearance_seed):
+			return false
+		for key: String in ["id", "name", "role"]:
+			if not p.get(key) is String or p[key] != expected.people[index][key]:
 				return false
 		if p.get("goal") not in ["працює", "гуляє районом", "відпочиває"]:
 			return false

@@ -79,16 +79,38 @@ func deploy(token: int, player: int, anchor: Vector3, _tail: Vector3, length: fl
 	_notify(player)
 	return true
 
-func nearby(point: Vector3, max_distance: float = 2.0) -> int:
+## Contact follows authoritative loaded spans, never presentation-only Verlet points.
+func closest_grip(token: int, point: Vector3) -> Dictionary:
+	var record: Dictionary = records.get(token, {})
+	if record.is_empty() or not record.deployed:
+		return {}
+	var ends: Array[Vector3] = []
+	var users: Array = record.users.keys()
+	users.sort()
+	for id: int in users:
+		var user: Node = record.users[id].get_ref()
+		if is_instance_valid(user) and user.attached and user._deployed_token == token and is_instance_valid(user.fighter):
+			ends.append(user.fighter.global_position + GrappleHook.HAND)
+	if ends.is_empty():
+		ends.append(record.tail)
+	var best: Dictionary = {}
+	for end: Vector3 in ends:
+		var grip: Vector3 = Geometry3D.get_closest_point_to_segment(point, record.anchor, end)
+		var distance: float = point.distance_to(grip)
+		if best.is_empty() or distance < float(best.distance):
+			best = {"point": grip, "distance": distance, "end": end}
+	return best
+
+func nearby(point: Vector3, max_distance: float = 0.70) -> int:
 	var selected: int = 0
 	var best := max_distance
 	for key: int in records:
 		var record: Dictionary = records[key]
 		if not record.deployed:
 			continue
-		var near := Geometry3D.get_closest_point_to_segment(point, record.anchor, record.tail)
-		var distance := point.distance_to(near)
-		if distance < best:
+		var grip := closest_grip(key, point)
+		var distance: float = grip.distance
+		if distance <= best:
 			best = distance
 			selected = key
 	return selected

@@ -41,13 +41,13 @@
 | sfx-sword-2 | `game/assets/audio/sfx/sword_2.wav` | `tools/audio/synth_hits.py` (4 шари: транзієнт+тіло+саб, компресор, −1 dBFS), 2026-10-03, варіант 2 | проєкт | CC0 (наше) | `AudioStreamRandomizer` для «sword» |
 | sfx-book | `game/assets/audio/sfx/book.wav` | ffmpeg: 55/82.5/110 Hz дрон | проєкт | CC0 | Cursed Grimoire |
 | bg-kronshift-river | `game/assets/backgrounds/bg_kronshift_river.jpg` | надіслав Santos у чаті 2026-10-03 (1500×848 JPEG, ймовірно Higgsfield, оригінальна URL невідома) | Santos | підтвердити (Архімед) | стадія `river` (дефолтна), джерело для [[Stage-River]] |
-| card-skea-v1 | `game/assets/characters/cards/card_skea_v1.jpg` | надіслав Santos у чаті 2026-10-02 (1500×848 JPEG; згенеровано в Higgsfield, оригінальна URL невідома) | Santos / Higgsfield | Higgsfield ToS (підтвердити, Архімед) | картка Skea в меню; референс для 3D |
+| card-skea-v1 | `game/assets/characters/cards/card_skea_v1.jpg` | надіслав Santos у чаті 2026-10-02 (1500×848 JPEG; згенеровано в Higgsfield, оригінальна URL невідома) | Santos / Higgsfield | Higgsfield ToS (підтвердити, Архімед) | картка Skea в меню; референс для 3D; **канонічний знак гримуара — один горизонтальний ∞, одяг v1 застарів**, підпис/незмінний SHA: [[2026-10-05-Equipment-Canonical-References]] |
 | bg-market | `game/assets/backgrounds/bg_kronshift_market_street.webp` | Higgsfield CDN `hf_20261002_131105_0b5c85b7-…_min.webp`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield, GPT Image 2.5 ([[Prompts]] § Фони) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | stage `market_street` — поза ротацією, наступниця [[Stage-Bazaar]] |
 | bg-alley | `game/assets/backgrounds/bg_kronshift_back_alley.webp` | Higgsfield CDN `hf_20261002_131105_a479d377-…_min.webp`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield, GPT Image 2.5 ([[Prompts]] § Фони) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | stage `back_alley` |
 | bg-main | `game/assets/backgrounds/bg_kronshift_main_street.webp` | Higgsfield CDN `hf_20261002_131104_8510a1fc-…_min.webp`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield, GPT Image 2.5 ([[Prompts]] § Фони) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | stage `main_street` |
 | bg-city-ref | `game/assets/backgrounds/bg_kronshift_city_reference.webp` | Higgsfield CDN `hf_20261002_102352_6c5c895d-…_min.webp`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield, GPT Image 2.5 (референс міста) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | stage `city_reference`; історична чернетка стилю. За уточненням Santos 2026-10-04 чинні форми й стиль визначають найсвіжіші окремі текстури/вирізки ([[Art/2026-10-04-City-Style-Match]]) |
 | card-choko-v3 | `game/assets/characters/cards/card_choko_v3.png` | Higgsfield CDN `hf_20261002_111512_bcddbbc6-…png`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield ([[Prompts]] § Choko v3) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | портрет/картка Choko |
-| weapon-choko-main | `game/assets/characters/cards/weapon_choko_main_sword.png` | Higgsfield CDN `hf_20261002_111511_9652a5b1-…png`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield ([[Prompts]] § Зброя) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | референс меча для 3D |
+| weapon-choko-main | `game/assets/characters/cards/weapon_choko_main_sword.png` | Higgsfield CDN `hf_20261002_111511_9652a5b1-…png`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield ([[Prompts]] § Зброя) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | референс меча для 3D; dark emerald/aged brass та SHA: [[2026-10-05-Equipment-Canonical-References]] |
 | weapons-choko-ult | `game/assets/characters/cards/weapons_choko_ultimate.png` | Higgsfield CDN `hf_20261002_102352_f00d0272-…png`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield ([[Prompts]] § Зброя) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | референс ульт-мечів |
 | hands-choko | `game/assets/characters/cards/hands_choko.png` | Higgsfield CDN `hf_20261002_110646_b776f4f8-…png`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield ([[Prompts]] § Руки) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед) | референс рук/рукавичок |
 | model-choko-m0 | `game/assets/characters/models/choko_m0.glb` | Higgsfield CDN `hf_20261003_034701_2488e146-…glb`, job `2488e146-f049-4469-9aad-4a512a810022`, завантажено `tools/fetch_assets.sh` на Mac Santos 2026-10-03 | Higgsfield `multi_image_to_3d` + авториг Meshy, з T-поз F-0 / G-0 / Z-1 ([[2026-10-03-C2-3D-Heroes]], [[Menu-Skyline-Prompts]] § C2) | Higgsfield ToS (комерційне на платних планах — підтвердити, Архімед; [[ADR-013-License-Check-At-Release]]) | тіло Choko, запуск 5 (Гефест); без меча |
@@ -186,6 +186,8 @@
 | npc-knit-stripes | `game/assets/characters/npc/knit_stripes.svg` | оригінальний SVG, локально створено 2026-10-04; [[2026-10-04-NPC-Appearance]] | проєкт | оригінал проєкту; сторонніх матеріалів немає, CC0 не оголошено | `NpcAppearance`, процедурні меші NPC |
 | npc-skin-marks | `game/assets/characters/npc/skin_marks.svg` | оригінальний SVG, локально створено 2026-10-04; [[2026-10-04-NPC-Appearance]] | проєкт | оригінал проєкту; сторонніх матеріалів немає, CC0 не оголошено | `NpcAppearance`, процедурні меші NPC |
 
+| equipment-cloth-weave | `game/assets/characters/equipment/cloth_weave.svg` | оригінальний SVG, T2 rope, локально створено 2026-10-05; [[2026-10-05-Equipment-Visual-Audit]] | проєкт, авторські weave та подвійний шов | оригінал проєкту; сторонніх матеріалів немає, CC0 не оголошено | `GearSurface`/геройські тканинні деталі; fallback для матеріальних карт |
+
 ## Паки-джерела (сирці поза `game/assets/`)
 
 Паки 3D-пропів, з яких беремо моделі ([[2026-10-03-Santos-Packs-Arenas]]). Сирці живуть на гілці `textures/santos-pack`,
@@ -205,6 +207,13 @@
 | — | шари decompose `bc9d78b2` (річка) і `9fe905f1` (меню) | Higgsfield `image_decompose`, Santos «так»; `show_generation_by_ids` 2026-10-03 повертає лише вхід, URL шарів — ні | Higgsfield `image_decompose` | Higgsfield ToS — до релізу (ADR-013) | не завантажено: дістати з галереї Higgsfield вручну або розкласти в рушії |
 
 Раніше перенесено вгору: 8 рядків 2026-10-03, ще 2 (M-0, M-1) і `ult_end` — того ж дня; ще 4 (річка, вода ×2, якорі) і 10 нових рядків канону хвилі 2 — T6 у хмарі того ж дня.
+
+## Процедурні runtime-джерела без нових файлів assets
+
+| id | джерело | автор / права | використання |
+|---|---|---|---|
+| npc-fantasy-residents-v2 | `game/scripts/npc/NpcAppearance.gd`, 2026-10-05 | оригінал проєкту; сторонніх моделей, персонажів або нових ліцензій немає; CC0 не оголошено | власні fox/moth/stone силуети, одяг, handheld parcel/cloth/tool; повторно використовує три зареєстровані SVG NPC; [[2026-10-05-Fantasy-Residents-And-Chatter]] |
+| npc-nonverbal-chatter | `game/scripts/npc/NpcChatter.gd`, 2026-10-05 | оригінальний детермінований синтез проєкту; без sample pack, запису голосу чи voice clone; CC0 не оголошено | три тембри коротких безсловесних сигналів, PCM кешується в пам'яті; WAV у evidence — приклади перевірки, не нові export assets; [[2026-10-05-Fantasy-Residents-And-Chatter]] |
 
 ## Related
 - [[Style-Guide]] · [[Backgrounds]] · [[Prompts]] · [[07-Audio]] · [[constitution]] · [[Palette-Remap]] · [[Pack-Review]]

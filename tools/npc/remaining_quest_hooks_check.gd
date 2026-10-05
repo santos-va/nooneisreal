@@ -30,7 +30,7 @@ func press(fragment: String) -> void:
 	check(false,"missing button " + fragment)
 func open_worker(index: int) -> void:
 	director.dialogue.close()
-	f.restart_at(Places.shops()[index].visit + Vector3(0,0,0.9))
+	f.restart_at(Places.shops()[index].service)
 	f.set_physics_process(false)
 	director._refresh_actors()
 	await ticks(3)

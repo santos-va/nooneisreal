@@ -1,0 +1,456 @@
+{
+  "baseline": "3df43a520e494c809905854efff44ffe7de4341f",
+  "source_raw_sha256": "63e37af2f5d09fcacfca87ec2c6d2603126b31361373b8666b7bbe2ef994dc3a",
+  "classification": {
+    "point": "UAL ball_l/ball_r; hero ToeBase, not ankle",
+    "height_envelope_m": 0.015,
+    "max_vertical_speed_mps": 0.15,
+    "minimum_source_window_seconds": 0.05,
+    "candidate_dependent": false,
+    "note": "Both endpoints low and slow vertically. Horizontal speed is deliberately not a filter: source slip cannot exclude a failing support interval. Toe roll is allowed around this ball point. Wrap intervals must join across loop boundary."
+  },
+  "clips": {
+    "Jog_Bwd_L_Loop": {
+      "length": 0.9333333373069763,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.3214285828325213,
+              0.39285714969951274
+            ]
+          ],
+          "min_ball_height_m": 0.01514965708991925
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.8214285509014617,
+              0.8928571177684532
+            ]
+          ],
+          "min_ball_height_m": 0.015157739206049237
+        }
+      }
+    },
+    "Jog_Bwd_Loop": {
+      "length": 0.9333333373069763,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.3214285828325213,
+              0.39285714969951274
+            ]
+          ],
+          "min_ball_height_m": 0.015148955056548702
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.8214285509014617,
+              0.8928571177684532
+            ]
+          ],
+          "min_ball_height_m": 0.015149881737329368
+        }
+      }
+    },
+    "Jog_Bwd_R_Loop": {
+      "length": 0.9333333373069763,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.3214285828325213,
+              0.39285714969951274
+            ]
+          ],
+          "min_ball_height_m": 0.015154936959713913
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.8214285509014617,
+              0.8928571177684532
+            ]
+          ],
+          "min_ball_height_m": 0.01515407859299922
+        }
+      }
+    },
+    "Jog_Fwd_L_Loop": {
+      "length": 0.9333333373069763,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.07142857484975638,
+              0.17857143313300852
+            ]
+          ],
+          "min_ball_height_m": 0.015157546485265266
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.5714285987980511,
+              0.6785714171674787
+            ]
+          ],
+          "min_ball_height_m": 0.015142125141623136
+        }
+      }
+    },
+    "Jog_Fwd_Loop": {
+      "length": 0.9333333373069763,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.07142857484975638,
+              0.17857143313300852
+            ]
+          ],
+          "min_ball_height_m": 0.015134774675028079
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.5714285987980511,
+              0.6785714171674787
+            ]
+          ],
+          "min_ball_height_m": 0.015132130642940944
+        }
+      }
+    },
+    "Jog_Fwd_R_Loop": {
+      "length": 0.9333333373069763,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.07142857484975638,
+              0.17857143313300852
+            ]
+          ],
+          "min_ball_height_m": 0.015141995664856966
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.5714285987980511,
+              0.6785714171674787
+            ]
+          ],
+          "min_ball_height_m": 0.01515743481966908
+        }
+      }
+    },
+    "Jog_Left_Loop": {
+      "length": 0.9333333373069763,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.0,
+              0.07142857484975638
+            ]
+          ],
+          "min_ball_height_m": 0.014753198624554237
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.5357142834334957,
+              0.7499999840344702
+            ]
+          ],
+          "min_ball_height_m": 0.015451580953793898
+        }
+      }
+    },
+    "Jog_Right_Loop": {
+      "length": 0.9333333373069763,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.0,
+              0.25
+            ]
+          ],
+          "min_ball_height_m": 0.01406064411373456
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.5,
+              0.5714285987980511
+            ]
+          ],
+          "min_ball_height_m": 0.014773153042021786
+        }
+      }
+    },
+    "Sprint_Loop": {
+      "length": 0.6666666865348816,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.05000000111758705,
+              0.2000000044703482
+            ]
+          ],
+          "min_ball_height_m": 0.015158031965004842
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.5999999910593036,
+              0.6999999821186071
+            ]
+          ],
+          "min_ball_height_m": 0.015154149216099033
+        }
+      }
+    },
+    "Walk_Loop": {
+      "length": 1.3333333730697632,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.125,
+              0.5499999955296517
+            ]
+          ],
+          "min_ball_height_m": 0.015179001218634261
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.0,
+              0.05000000111758705
+            ],
+            [
+              0.6249999664723883,
+              1.0
+            ]
+          ],
+          "min_ball_height_m": 0.015530577496461723
+        }
+      }
+    },
+    "Walk_Bwd_L_Loop": {
+      "length": 1.3333333730697632,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.0,
+              0.37499998882412944
+            ],
+            [
+              0.949999959766866,
+              1.0
+            ]
+          ],
+          "min_ball_height_m": 0.015190586813626478
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.4500000044703482,
+              0.8749999441206472
+            ]
+          ],
+          "min_ball_height_m": 0.015527278253228971
+        }
+      }
+    },
+    "Walk_Bwd_Loop": {
+      "length": 1.3333333730697632,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.0,
+              0.37499998882412944
+            ],
+            [
+              0.949999959766866,
+              1.0
+            ]
+          ],
+          "min_ball_height_m": 0.015198595074000024
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.4500000044703482,
+              0.8749999441206472
+            ]
+          ],
+          "min_ball_height_m": 0.015530335273724799
+        }
+      }
+    },
+    "Walk_Bwd_R_Loop": {
+      "length": 1.3333333730697632,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.0,
+              0.37499998882412944
+            ],
+            [
+              0.949999959766866,
+              1.0
+            ]
+          ],
+          "min_ball_height_m": 0.01519925795373643
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.4500000044703482,
+              0.8749999441206472
+            ]
+          ],
+          "min_ball_height_m": 0.015536660757601586
+        }
+      }
+    },
+    "Walk_Fwd_L_Loop": {
+      "length": 1.3333333730697632,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.125,
+              0.5499999955296517
+            ]
+          ],
+          "min_ball_height_m": 0.015172796915406475
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.0,
+              0.05000000111758705
+            ],
+            [
+              0.6249999664723883,
+              1.0
+            ]
+          ],
+          "min_ball_height_m": 0.015531380368309866
+        }
+      }
+    },
+    "Walk_Fwd_Loop": {
+      "length": 1.3333333730697632,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.125,
+              0.5499999955296517
+            ]
+          ],
+          "min_ball_height_m": 0.015179001218634261
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.0,
+              0.05000000111758705
+            ],
+            [
+              0.6249999664723883,
+              1.0
+            ]
+          ],
+          "min_ball_height_m": 0.015530577496461723
+        }
+      }
+    },
+    "Walk_Fwd_R_Loop": {
+      "length": 1.3333333730697632,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.125,
+              0.5499999955296517
+            ]
+          ],
+          "min_ball_height_m": 0.015181636020014641
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.0,
+              0.05000000111758705
+            ],
+            [
+              0.6249999664723883,
+              1.0
+            ]
+          ],
+          "min_ball_height_m": 0.015528966361478547
+        }
+      }
+    },
+    "Walk_L_Loop": {
+      "length": 1.3333333730697632,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.0,
+              0.5249999754130847
+            ]
+          ],
+          "min_ball_height_m": 0.015172450210471838
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.474999979883433,
+              1.0
+            ]
+          ],
+          "min_ball_height_m": 0.01517727638995979
+        }
+      }
+    },
+    "Walk_R_Loop": {
+      "length": 1.3333333730697632,
+      "sides": {
+        "Left": {
+          "intervals": [
+            [
+              0.0,
+              0.5249999754130847
+            ]
+          ],
+          "min_ball_height_m": 0.015190899668712038
+        },
+        "Right": {
+          "intervals": [
+            [
+              0.474999979883433,
+              1.0
+            ]
+          ],
+          "min_ball_height_m": 0.015155104375401574
+        }
+      }
+    }
+  }
+}

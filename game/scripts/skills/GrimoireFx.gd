@@ -93,9 +93,7 @@ func _ready() -> void:
 		# free movement: the effect's local +x is the gaze, so the book floats in front, not to the screen side
 		rotation.y = owner_f.yaw()
 		_book.position = Vector3(0.55, BOOK_HEIGHT, 0.25)
-	var cover := StandardMaterial3D.new()
-	cover.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	cover.albedo_color = Color(0.22, 0.1, 0.3)
+	var cover := GearSurface.make("leather",Color("38243f"),Color("927c9a"))
 	for side in [-1, 1]:
 		var half := Fx.mesh(BoxMesh.new(), cover)
 		(half.mesh as BoxMesh).size = Vector3(0.24, 0.04, 0.34)

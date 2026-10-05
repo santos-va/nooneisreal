@@ -122,16 +122,15 @@ func run() -> void:
 	camera.position = Vector3(0, 4.25, 6)
 	camera.look_at(Vector3(6, 4.25, 0))
 	var candidate: Dictionary = helper.capture(f, false)
-	check(candidate.candidate_kind == "rope" and not candidate.reachable and candidate.rope_token == reused, "camera previews existing span before 2 m pickup")
+	check(candidate.candidate_kind == "rope" and not candidate.reachable and candidate.rope_token == reused, "camera previews distant existing span as approach cue")
+	check(is_equal_approx(candidate.contact_distance, 6.0), "cue distance uses the same physical hand-to-span measure")
 	stock = f.grapple.charges
-	check(f.grapple.fire(false, "grapple_parkour", candidate) == Hook.Target.ANCHOR and f.grapple.phase == Hook.Phase.ROPE_REACH, "early activation prepares catch instead of launch")
-	check(f.grapple.charges == stock and f.grapple.token == 0, "prepared catch spends nothing")
-	for frame: int in 120:
-		f.grapple.drive(1.0 / 60.0, true)
-		if f.grapple.attached:
-			break
-	check(f.grapple.attached and f.grapple._deployed_token == reused and f.grapple.charges == stock, "normal travel catches prepared existing rope without shot")
-	# Early reach must retain an actual buffered ground jump, not turn Space into reel.
+	check(f.grapple.fire(false, "grapple_parkour", candidate) == Hook.Target.NONE and not f.grapple.busy(), "far approach cue cannot prepare or launch")
+	check(f.grapple.charges == stock and f.grapple.token == 0, "far approach spends nothing")
+	f.position.x = 5.31
+	f.grapple.fire(false, "grapple_parkour", candidate)
+	check(f.grapple.attached and f.grapple._deployed_token == reused and f.grapple.charges == stock, "current hand within 0.70 m catches without shot")
+	# A far cue must leave the ordinary buffered jump available.
 	f.grapple.detach()
 	f.position = Vector3.ZERO
 	f.velocity = Vector3.DOWN
@@ -143,14 +142,14 @@ func run() -> void:
 	camera.look_at(Vector3(6, 1.25, 0))
 	candidate = helper.capture(f, false)
 	f.grapple.fire(false, "grapple_parkour", candidate)
-	f.state = Actor.State.GRAPPLE
+	f.state = Actor.State.IDLE
 	var input: Node = root.get_node("InputRouter")
 	input.v_press(1, "jump")
 	await physics_frame
-	f._tick_grapple(f._read_intent())
+	f._tick_ground(1.0 / 60.0, f._read_intent())
 	input.v_release(1, "jump")
-	check(f.velocity.y > 0.0 and f.position.y > 0.0 and f.grapple.phase == Hook.Phase.ROPE_REACH, "Space jumps while ready to catch, without spending")
-	check(f.grapple.charges == stock, "ready jump does not issue a device")
+	check(f.velocity.y > 0.0 and f.state == Actor.State.JUMP and not f.grapple.busy(), "Space after distant rope cue remains ordinary jump")
+	check(f.grapple.charges == stock, "approach jump does not issue a device")
 	# Reachable spans have priority even if an unrelated free anchor was snapshotted.
 	f.grapple.detach()
 	f.position = Vector3(5.5, 2, 0)

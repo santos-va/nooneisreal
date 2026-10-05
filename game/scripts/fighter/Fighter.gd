@@ -88,6 +88,9 @@ const MIN_LINE := 0.05            # below this the direction to the opponent is 
 
 @export var player_index: int = 1
 @export var data: CharacterData
+
+## Explicit discontinuity for read-only presentation histories (restart/rewind).
+var motion_revision: int = 0
 @export var is_cpu: bool = false
 
 var state: State = State.INTRO
@@ -236,6 +239,7 @@ func _ready() -> void:
 
 # --- round lifecycle -------------------------------------------------------------------------
 func reset_for_round(x: float, face: int) -> void:
+	motion_revision += 1
 	SwordStormFx.cancel_owner(self)
 	GrimoireFx.cancel_owner(self)
 	_break_ult()
@@ -1560,6 +1564,7 @@ func rewind() -> void:
 	hurt_shape.disabled = false
 	grapple.detach()
 	global_position = Vector3(target.x, maxf(target.y, 0.0), target.z if _free() else 0.0)
+	motion_revision += 1
 	velocity = Vector3.ZERO
 	if rec_hp > hp:
 		hp = minf(rec_hp, hp + data.max_hp * REWIND_HEAL_CAP)

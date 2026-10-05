@@ -1,0 +1,83 @@
+# Зброя, інструменти та одяг: якість і фізичний рух
+
+2026-10-05 · T1 · **Статус: approved**. Пряме доручення Santos: тонкі візерунчасті індивідуальні мечі, якість усіх наявних інструментів і одягу героїв/NPC, фізика одягу. Окремо уточнено: меч треба перевернути **і на спині, і в руці**. База `4c68473ce88e167828c3425fa1ecbe3062dc96ca`, PR #178 відкритий та незмерджений за поточним API. Журнал [[2026-10-05-Equipment-Session]], попередній результат [[2026-10-05-Whole-Body-Checkpoint]].
+
+## Аудит і погляди
+
+До production-правок прочитані SwordPresentation, CityCosmetics, SkeletalRig, NpcAppearance та чинний Style-Guide. Меч має процедурний diamond-section mesh без UV, суцільний emerald матеріал і окремі латунні рейки. Поточні максимальні ширина/товщина — 0,23/0,066 м із `_blade_mesh`; спинне кріплення спрямовує клинок угору. Нова текстура сама не виправить цей силует чи напрям.
+
+Hero GLB отримує один material_override на весь mesh. Тому загальний fabric shader може зіпсувати шкіру, волосся й обличчя. CityCosmetics називає sash фізичним, але зараз лише жорстко слідує за hip/neck: strap BoxMesh і belt TorusMesh не мають незалежної тканинної реакції. NPC вже мають original SVG seams/knit, проте матеріали й вільні частини одягу потребують окремого огляду. Native baseline, точний перелік інструментів і topology audit виконують T2/T3/T4/T6 у незалежних копіях до зміни їхнього напряму.
+
+| Варіант | Наслідок | Вибір |
+|---|---|---|
+| Просто змінити колір меча й хитати весь mesh | Не виправляє ширину, хват, поверхні; викривляє тіло | Відхилено |
+| Замінити героїв і ввімкнути повну cloth simulation | Великий re-rig, ризик втратити прийняту анатомію й M3 бюджет | Відкладено |
+| Переробити наявну зброю, додати цільові UV/поверхні й обмежену фізику вільних тканинних деталей | Видима зміна без зміни бою; можна перевірити конкретний контакт/прикріплення | Обрано |
+
+| Погляд | Критерій |
+|---|---|
+| Santos зблизька | Правильний напрям меча й тонкий силует, виразні персональні деталі |
+| Гравець у бою | Читабельна зброя в обох руках, жодної зміни damage/reach/timing |
+| Гравець у місті | Ремінці, край тканини й інструменти реагують на розгін/зупинку та лишаються прикріпленими |
+| Інший герой, Skea | Власна предметна мова; не отримує Choko sword, зберігає свої чинні інструменти |
+| NPC і натовп | Різні матеріали/професії, обмежена вартість на багатьох мешканцях, кешовані ресурси |
+| M3 | Локальні поверхні, небагато сегментів, physics-rate update; без глобальної дороговартісної симуляції |
+| Художник/модер | Профілі, ясна власність матеріалів, provenance та реєстр, без маскування незавершеного під нову texture |
+
+## Власність і виконання
+
+1. **T2 combat:** SwordPresentation, SwordMotion, sword_dissolve та weapon regressions. Перевернути напрям у обох руках і на спині, узгодити hand/stow mount та transition. Створити тонший профіль, UV/цільову орнаментику, grip/guard матеріали за ТЗ T6. Ульта зберігає особливу gold форму. Перед будь-якою правкою SkeletalRig узгодити з rope.
+2. **T2 rope:** геройські інструменти/одяг, окремий shared equipment/garment material helper за погодженим API; SkeletalRig інтеграція за потреби. Інвентаризувати всі реально видимі поточні інструменти обох героїв і оновити їх, не створюючи неіснуючих здібностей. Додати bounded рух вільних cloth/strap частин від фактичного руху; кріплення слідує остаточній позі. Оригінальні шкіра/обличчя/волосся лишаються поза тканинним шаром.
+3. **T2 npc:** NPC appearance, одяг і його вторинний рух. Розрізнювати тканину/шкіру/метал, індивідуальні seams/patches/професійні інструменти за seed. Спільні ресурси; не міняти маршрути, діалоги, identity/save або skin marks. Спільний material API узгоджується з rope.
+4. **T6 art:** точне художнє ТЗ, наявні референси, native before/after, registry для кожного нового asset. Нові оригінальні векторні/процедурні assets дозволені в межах доручення; існуючі зображення не редагуються Python. Оплачені Higgsfield текстури тепер прямо дозволені Santos (CP3 нижче); заміна GLB не входить у цей крок.
+5. **T3:** topology/API/source/performance факти, lightweight reuse. **T4:** незалежне приймання напрямку/контактів/анатомії, фізичних меж тканини, поведінки після reset/freeze та native видимості.
+6. **T1:** послідовна інтеграція, snapshot checkpoints, загальні гейти, exact-commit export і PR з фінальним CI. Shared Godot запускає лише root; агенти використовують ізольовані game копії.
+
+## Перевірка та ризики
+
+- До/після з однаковими камерою/світлом: меч у правій/лівій руці, на спині, draw/stow/swap, атаки й гарпун; hero/NPC тканина у спокої, русі, гальмуванні, повороті, crouch/jump, розмові й роботі.
+- Незалежна перевірка кінчик/руків'я/кисть і детермінантів basis; очікування старого тесту, яке кодує стару помилку напряму, замінюється новим геометричним контрактом, а не видаляється без заміни.
+- Cloth anchors не відриваються від тіла; вільні сегменти мають обмежені stretch/angle/penetration, не накопичують offset, reset/rewind/freeze без вибуху. Числа художні PLACEHOLDER до native-приймання; gameplay/RNG незмінні.
+- Material detail не заміняє оригінальні обличчя/шкіру. Fine ornament читається на близькій і звичайній дистанції без мерехтіння; прозорість/dissolve/camera occlusion й outline збережені.
+- Ресурси кешуються; кількість mesh/vertices/materials та CPU вплив вимірюються, не видаються за M3 FPS. Всі нові game/assets мають provenance/license рядок у Textures-Registry.
+- Фінально `make check-playable`, `make gates`, native Compatibility/raw shader logs, нові регресії й незалежний до/після; точний committed PCK та CI останнього head. PR мерджить Santos.
+
+## CP1 — конкретний контракт після baseline
+
+T2/T4 native підтвердили: first-active cut обох рук має blade forward dot −0,416; back grip близько0,726м, tip1,546м. Поточні contact tests порівнюють pose із тим самим helper і не відхиляють симетрично неправильну орієнтацію. Тому незалежний oracle використовує landmarks і фізичний зміст напрямку, не нову функцію як власне очікування.
+
+T3 raw GLB підтвердив для обох героїв1mesh/primitive/material, один2048²JPEG atlas,24bones, жодного morph/cloth chain. SpringBone4.7 не є drop-in для scaled cm skeleton. Обрано окремі unit-scale garment/gear transforms без переприв’язки hero. Shared `GearSurface.make(kind, color, accent)` і shader належать T2 rope; T6 задає artwork/матеріальні деталі, NPC лише споживає API. Оригінальний Choko back лишається гладким; Skea ∞8 читається на grimoire/backpanel, не розкидається по тілу.
+
+Дозволений конкретний hero scope: Choko wristwatch та чинні rope/tool surfaces; Skea grimoire, hip kunai, чинні projectile/rope surfaces; тонкі tailored garment overlays/вільні краї та straps обох героїв, поліпшений CityCosmetics. Окремий літаючий drone не додається як нова система. Обидва оригінальні outfit silhouettes і їхні тканинні кольори зберігають ідентичність; нові речі мають давати видиме поліпшення і на звичайній дистанції камери.
+
+T4 приймання: back grip над плечем, tip униз; єдиний actual mount target для draw, правильний hand-side landmark і positive determinant; torso/head clearance, all sword variants, handoff contact guard збережений. Для тканини pinned anchors≤1мм; natural30/60/120 same-physics secondary pose≤1мм/0,1° (PLACEHOLDER); bounds/stretch/clamp виконавець фіксує до candidate. Pause/hitstop freeze й restart/teleport reset без whip, original bone/skin/gameplay/RNG/save незмінні. Camera proximity охоплює вкладені/пізні gear і відновлюється після виходу; shared NPC materials не отримують player fade. Ніякого physics-driven деформування всього героя.
+
+## Інструментальні межі
+
+Game Development Studio прочитано для маршруту asset→integration→visual. Локальний `game-dev` не знайдено в PATH чи відомих tool directories; цей CLI-конвеєр недоступний. Нічого не встановлюється й не підмінюється стороннім сервісом. Використовуємо чинні repository Godot/native засоби; не заявляємо receipts або валідацію від недоступного CLI. Іконка незмінна до оригінального PNG.
+
+## CP3 — дозвіл на якісні Higgsfield матеріали
+
+Santos прямо викликав Higgsfield, Build 3D Game Rooms і Game Development Studio та дозволив «не жалуй кредитів ... на текстури якісні». Це замінює початкове обмеження без провайдерів. Перевірений баланс перед генерацією — **4568,5 кредитів**, Ultra; unlimited не доступний. GPT Image 2.5 `flare/max/2k`, один результат: **9 кредитів** за актуальним estimate для 1:1 та 2:3. Перший обмежений пакет — шість матеріалів, **54 кредити**; повтор лише за конкретною непридатністю результату, із записом job ID та вартості.
+
+Після аудиту UV обрано шість flat maps: emerald/gold sword inlay, Choko canvas, Skea knit, neutral leather, grimoire cover, NPC linen. Варіанти: залишити лише procedural деталі (мало індивідуального арту); генерувати повні нові герої/текстурні атласи (ризик anatomy/skin/UV); цільові матеріали на перевіреній геометрії (обрано). Погляди CP1 збережені: гравець зблизька — деталь; боєць — читабельний клинок; міський гравець — помітна фактура; Skea — власний knit/book; NPC — спільний дешевий linen; M3 — mipmaps та обмежені runtime tiers; художник — точні prompts, hashes, provenance. Геройська тканина застосовується семантичною маскою до існуючого mesh зі збереженими UV, skin weights і LOD, а не тільки доданими panels.
+
+Зберігаємо вихідні provider bytes і manifest із prompt/job/model/cost/hash окремо від нормалізованих runtime files; жодних loose downloads без реєстру. Build 3D Game Rooms тут задає лише релевантні prop/contact/camera критерії: нова кімната, Meshy або заміна топології не замовлялись. Приймання — actual UV, near/normal camera, відсутність baked lighting/seams/shimmer, protected face/skin, native Compatibility shader logs, `make check` і `make gates`. Недоступний game-dev CLI не видається за виконаний pipeline.
+
+## CP5 — завершити знайдені анімаційні й посадкові дефекти
+
+T4 exact blade-edge↔full-skin перевірка доповнює centerline guards: не дозволено приймати клинок, край якого проходить крізь одяг/тіло. Після корекції залишився right lowcut frame6; постійний тест `tools/animation/weapon_craft_check.gd` має включити саме знайдені worst poses, не порівнювати результат із власним helper як oracle.
+
+Виявлений `thrust` використовує downward-cut `Sword_Light_B`. T3 перевірив усі36 наявних sword clips: Light_D має wrist extension0,7702м за0,20→0,30s і blade forward dot0,84 біля контакту. Варіанти — залишити стару невідповідну назву/кліп (відхилено), примусово повертати кисть procedural-поправкою (гірше читається й навантажує анатомію), використати наявний authored Light_D (обрано для actual candidate перевірки). Дозволено цільово змінити `AuthoredCombatMotion.gd`; незмінні gameplay timing/hitboxes/reach. Уточнення T2:18 foot profiles належать locomotion loops, ATTACK використовує geometric penetration lift, а Light_D має власний return без окремого `_Rec` кліпу. Тому не додаємо вигадані/невикористані profiles і не змінюємо stance policy; source recovery window документується з фактичного кліпу. Обидві руки, ACTIVE читабельність, grounded support усіх фаз, full-skin clearance, старі combat/whole-body/ground guards і `make check-playable` — обов'язкові.
+
+Skea crouch виявив прив'язку вільного краю до waist замість chest: pin pool помилково залежав від render mask. T2 rope розділяє семантику attachment та recolor, перевіряє actual skinned chest pin і постійний worst-crouch triangle guard. Відсутність Spine01 у cloth whitelist перевіряється окремо як неповна маска; розширення можливе лише після protected-anatomy/LOD й native перевірки, з чинним Skea backpack exclusion. Нові матеріали й ці виправлення не оголошуються завершеними за одним числовим тестом.
+
+## CP8 — пряма художня корекція Santos
+
+Після перегляду native checkpoint Santos відхилив окремі круги на книзі й кислотний меч: «має бути8 як у референсу ... збережений й підписаний» та «під стиль одягу». T1/T6 особисто переглянули original `card_skea_v1.jpg`: канонічний знак гримуара — **одна горизонтальна фіолетова infinity-eight ∞**, не сума окремих кілець; одяг цієї картки застарілий і не повертається. T6 зберігає підписаний reference із точним джерелом/хешем; T2 rope виправляє лише rear-panel emblem, не прийняті cloth/rig.
+
+Sword original `weapon_choko_main_sword.png` має темний forest emerald, sage facets і aged brass. T6 target: blade#315D52, dark#183C36, edge#91A78A, wrap#263B35, brass#9A8960; T2 combat змінює surface й optional-map revision path, зберігає accepted geometry/timing/IK. Варіанти — лишити кислотний material (відхилено Santos), просто затемнити wholehero (порушує skin/style), адресний weapon palette+ink-map revision (обрано). Одна нова Higgsfield blade-map revision у межах чинного дозволу; old emerald job не підключається випадково. Приймання: canonical sign на rearface, native close/gameplay sword поруч із одягом, scoped gear/sword/shader checks і final exact-PCK. Попередні geometry positives не називаються acceptance відхилених поверхонь.
+
+## Related
+
+- [[2026-10-05-Equipment-Session]] · [[2026-10-05-Whole-Body-Checkpoint]] · [[Style-Guide]] · [[Textures-Registry]] · [[Characters/Choko]] · [[Characters/Skea]] · [[ADR-004-Physics-Is-Presentation]] · [[ADR-019-Audit-And-Many-Views-Before-Decision]] · [[state]]

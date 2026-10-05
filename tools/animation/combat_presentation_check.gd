@@ -66,7 +66,7 @@ func run() -> void:
 	for form in 3:
 		f.sword_form = form
 		sword.update_pose()
-		forms.append(sword.blade.scale)
+		forms.append(sword.blade.mesh.get_aabb().size * sword.blade.scale)
 	check(forms[0] != forms[1] and forms[1] != forms[2] and forms[0] != forms[2], "three different blade silhouettes")
 	check_attack_return(f)
 	f.free()
