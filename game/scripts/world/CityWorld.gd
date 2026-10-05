@@ -12,6 +12,10 @@ var ropes: MatchRopes
 var onboarding: CityOnboarding
 var hud: CityHud
 var npc_director: CityNpcDirector
+var story: CityStory
+var story_dialogue: NpcDialogue
+@export var story_save_path: String = CityStory.SAVE_PATH
+@export var story_save_enabled: bool = true
 var progress: CityProgress
 var cosmetics: CityCosmetics
 var journey: CityJourney
@@ -81,6 +85,17 @@ func _ready() -> void:
 	add_child(progress)
 	progress.setup(GameState.p1_character)
 	hud.bind_progress(progress)
+	story = CityStory.new()
+	story.name = "ClocktowerStory"
+	add_child(story)
+	story.setup(GameState.p1_character, story_save_enabled, story_save_path)
+	story.changed.connect(_apply_story_world)
+	_apply_story_world()
+	story_dialogue = NpcDialogue.new()
+	story_dialogue.name = "StoryInspection"
+	add_child(story_dialogue)
+	story_dialogue.local_toggle.hide()
+	hud.bind_story(story, self)
 	cosmetics = CityCosmetics.new()
 	cosmetics.name = "CityClothStyle"
 	add_child(cosmetics)
@@ -90,7 +105,7 @@ func _ready() -> void:
 	npc_director = CityNpcDirector.new()
 	npc_director.name = "Residents"
 	add_child(npc_director)
-	npc_director.setup(player, progress)
+	npc_director.setup(player, progress, story)
 	npc_director.conversation_started.connect(camera_rig.begin_conversation)
 	npc_director.conversation_ended.connect(camera_rig.end_conversation)
 	hud.bind_quest_context(npc_director)
@@ -121,7 +136,88 @@ func _physics_process(delta: float) -> void:
 			for index: int in points.size():
 				if player.grapple.anchor_point.distance_to(points[index]) < 0.6:
 					progress.record_event("rope", "anchor_%d" % index)
+	_update_story_interaction()
 	_reset_observation()
+
+func _apply_story_world() -> void:
+	var maintenance: Node = district.get("maintenance")
+	if is_instance_valid(maintenance):
+		maintenance.set_story_shortcut_open(story.shortcut_open())
+
+func _story_points() -> Dictionary:
+	var maintenance: Node = district.get("maintenance")
+	return maintenance.story_points() if is_instance_valid(maintenance) else {}
+
+func story_target() -> Dictionary:
+	if story.stage() in ["available", "return"]:
+		return {"id": "story_lada", "title": story.text(story.stage()), "position": CityPlaces.worker_positions().workshop}
+	var points := _story_points()
+	for pair: Array in [["latch", "clue_a"], ["counterweight_trace", "clue_b"], ["mechanism", "mechanism"]]:
+		if (pair[0] == "mechanism" and story.stage() == "mechanism") or (pair[0] != "mechanism" and story.stage() == "investigating" and not story.has_clue(pair[0])):
+			var target: Node3D = points.get(pair[1])
+			if is_instance_valid(target):
+				return {"id": "story_" + pair[0], "title": story.text("prompt_" + pair[0]), "position": target.global_position}
+	return {}
+
+func can_inspect_story(id: String) -> bool:
+	if story == null or player == null or story.hero_id != player.data.id or get_tree().paused or InputRouter.ui_suppressed() or player.control_locked or player.frozen_frames > 0 or player.hitstop_frames > 0 or not player.on_ground() or player.grapple.busy():
+		return false
+	if player.state not in [Fighter.State.IDLE, Fighter.State.WALK, Fighter.State.CROUCH, Fighter.State.BLOCK]:
+		return false
+	var key: String = {"latch": "clue_a", "counterweight_trace": "clue_b", "mechanism": "mechanism"}.get(id, "")
+	var point: Node3D = _story_points().get(key)
+	if not is_instance_valid(point):
+		return false
+	var origin: Vector3 = player.global_position + Vector3.UP * 1.1
+	var offset: Vector3 = point.global_position - origin
+	# PLACEHOLDER hand-height inspection reach; no cross-floor or through-wall actions.
+	if not offset.is_finite() or absf(offset.y) > 0.75 or Vector2(offset.x, offset.z).length() > 1.35:
+		return false
+	var query := PhysicsRayQueryParameters3D.create(origin, point.global_position, 1, [player.get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	return hit.is_empty() or (point.has_meta("interaction_body") and is_instance_valid(point.get_meta("interaction_body")) and hit.collider == point.get_meta("interaction_body"))
+
+func interact_story(id: String) -> bool:
+	if not can_inspect_story(id) or npc_director.find_nearest() >= 0:
+		return false
+	var response: String
+	if story.stage() == "available":
+		response = story.text("before_accept")
+	elif id == "mechanism":
+		if story.open_shortcut():
+			response = story.text("opened")
+		else:
+			response = story.current_hint()
+	else:
+		story.inspect(id)
+		response = story.text(id)
+		if story.stage() == "mechanism":
+			response += "\n\n" + story.text(story.hero_id + "_observation") + "\n" + story.text("mechanism_hint")
+	story_dialogue.show_fact(response)
+	return true
+
+func _update_story_interaction() -> void:
+	hud.set_story_prompt("")
+	if InputRouter.ui_suppressed() or npc_director.find_nearest() >= 0:
+		return
+	var selected: String = ""
+	var best: float = INF
+	var points := _story_points()
+	for pair: Array in [["latch", "clue_a"], ["counterweight_trace", "clue_b"], ["mechanism", "mechanism"]]:
+		if can_inspect_story(pair[0]):
+			var distance: float = player.global_position.distance_squared_to(points[pair[1]].global_position)
+			if distance < best:
+				best = distance
+				selected = pair[0]
+	if selected.is_empty():
+		return
+	var gamepad: bool = camera_rig.aim.last_gamepad
+	var action: String = story.text("prompt_" + selected)
+	if selected == "mechanism" and story.stage() != "mechanism":
+		action = "Оглянути механізм"
+	hud.set_story_prompt(InputRouter.binding_label(1, "interact", gamepad) + " · " + action)
+	if InputRouter.just_pressed(1, "interact"):
+		interact_story(selected)
 
 func _reset_observation() -> void:
 	_last_position = player.global_position

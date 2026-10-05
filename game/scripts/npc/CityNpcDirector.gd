@@ -11,6 +11,8 @@ const TALK_VERTICAL: float = 0.75
 @export var social_seconds: float = 2.6 # PLACEHOLDER speech visibility.
 @export var social_cooldown: float = 18.0 # PLACEHOLDER quiet interval per resident.
 var population := NpcPopulation.new()
+var story: CityStory
+var _story_offer_open: bool = false
 var progress: CityProgress
 var hero_id: String = "choko"
 var conversation_index: int = -1
@@ -33,9 +35,10 @@ var current_context: Dictionary = {}
 var current_fallback: String = ""
 var listen_at: float = INF
 
-func setup(target: Node3D, district_progress: CityProgress = null) -> void:
+func setup(target: Node3D, district_progress: CityProgress = null, story_model: CityStory = null) -> void:
 	player = target
 	progress = district_progress
+	story = story_model
 	hero_id = progress.hero_id if progress != null else "choko"
 	if not population.load_from():
 		load_failed = FileAccess.file_exists(NpcPopulation.SAVE_PATH)
@@ -58,6 +61,9 @@ func setup(target: Node3D, district_progress: CityProgress = null) -> void:
 		add_child(chatter)
 		chatter.call("configure", player)
 	_refresh_actors()
+	if story != null:
+		story.changed.connect(_sync_story_memory)
+		_sync_story_memory()
 
 func _physics_process(delta: float) -> void:
 	if player == null:
@@ -197,6 +203,7 @@ func _job(index: int) -> String:
 	return ["grocer", "tailor", "workshop"][index] if index < 3 else ""
 
 func _show_conversation(response: String = "", topic: String = "greeting") -> void:
+	_story_offer_open = false
 	if conversation_index < 0:
 		return
 	var index: int = conversation_index
@@ -209,6 +216,12 @@ func _show_conversation(response: String = "", topic: String = "greeting") -> vo
 	if not response.is_empty():
 		text += "\n\n" + response
 	var options: Array[Dictionary] = []
+	if story != null:
+		if job == "workshop":
+			var action: String = "offer" if story.stage() == "available" else ("complete" if story.stage() == "return" else "hint")
+			options.append({"id": "story:" + action, "label": "Сюжет: " + story.text("title")})
+		elif job in ["grocer", "tailor"]:
+			options.append({"id": "story:route", "label": "Про службовий двір біля вежі"})
 	if progress != null:
 		for q: Dictionary in progress.quests:
 			if q.giver != job:
@@ -238,6 +251,10 @@ func _show_conversation(response: String = "", topic: String = "greeting") -> vo
 func _choose(action: String) -> void:
 	if conversation_index < 0 or not dialogue.opened:
 		return
+	if action.begins_with("story:"):
+		_choose_story(action.trim_prefix("story:"))
+		return
+	_story_offer_open = false
 	local_conversation.cancel()
 	local_token = -1
 	current_context = {}
@@ -289,6 +306,42 @@ func _choose(action: String) -> void:
 		_show_conversation()
 	persist()
 
+func _choose_story(action: String) -> void:
+	# Revalidate a stale choice against physical contact, current hero, stage and modal owner.
+	if story == null or story.hero_id != hero_id or get_tree().paused or not dialogue.opened or not InputRouter.ui_owned_only_by(dialogue) or not can_talk(conversation_index):
+		return
+	local_conversation.cancel()
+	local_token = -1
+	current_context = {}
+	var job: String = _job(conversation_index)
+	if action == "route" and job in ["grocer", "tailor"]:
+		var key: String = "before_accept"
+		if story.stage() in ["investigating", "mechanism"]:
+			key = "mira_route" if job == "grocer" else "taras_route"
+		elif story.stage() in ["return", "completed"]:
+			key = "neighbour_" + story.stage()
+		_show_conversation(story.text(key))
+		return
+	if job != "workshop":
+		return
+	if action == "offer" and story.stage() == "available":
+		_story_offer_open = true
+		dialogue.show_choices(story.text("title") + "\n\n" + story.text("offer"), [{"id": "story:accept", "label": story.text("accept_label")}, {"id": "back", "label": "Поки відкласти"}])
+	elif action == "accept" and _story_offer_open and story.accept():
+		_story_offer_open = false
+		_show_conversation(story.text("accepted"))
+	elif action == "complete" and story.complete():
+		_present(conversation_index, "agree", player.global_position)
+		_show_conversation(story.text("complete"))
+	elif action == "hint" and story.stage() != "available":
+		dialogue.show_fact(story.journal_text())
+
+func _sync_story_memory() -> void:
+	# Story is authoritative. Repair the independent NPC document after a partial save/reload.
+	if story != null and story.save_enabled and story.save_ok and story.stage() == "completed":
+		if population.bond_once(2, story.hero_id, "story_clocktower_trace", story.text("memory"), 1):
+			persist()
+
 func persist() -> bool:
 	if not save_enabled:
 		return false
@@ -310,6 +363,7 @@ func _present(index: int, kind: String, listener: Vector3) -> void:
 		chatter.call("speak", actors[index].global_position, int(population.people[index].appearance_seed), kind, str(population.people[index].id))
 
 func _close_conversation() -> void:
+	_story_offer_open = false
 	local_conversation.cancel()
 	local_token = -1
 	current_context = {}
