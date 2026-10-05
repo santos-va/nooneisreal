@@ -1,6 +1,8 @@
 # Session handoff — start here
 
-**Current branch update — PR #172:** the working branch adds aimed/latched rope traversal, separate stamina dodges, revised controls, and a persistent 12-resident city slice with seeded appearance, factual dialogue and NPC saves. The merged-baseline descriptions below predate this branch; full campaign saves, authored story NPCs and a local LLM remain unfinished. Real Santos soundtrack files are still unavailable. See [[2026-10-04-Living-City-Session]] and [[2026-10-04-Living-City-Traversal]].
+**Поточна навігація — 2026-10-05:** починай із [[state]] та [[2026-10-05-Repository-Reconciliation-Session]]. Текст нижче — історичний англомовний зріз 2026-10-04 із тодішнім branch update; він не визначає чинні PR, незавершені функції або наступне призначення. Повний state до актуальної звірки збережений без змін у [[Handoff/2026-10-05-State-Before-Reconciliation]].
+
+**Historical branch update — PR #172:** the working branch adds aimed/latched rope traversal, separate stamina dodges, revised controls, and a persistent 12-resident city slice with seeded appearance, factual dialogue and NPC saves. The merged-baseline descriptions below predate this branch; full campaign saves, authored story NPCs and a local LLM remain unfinished. Real Santos soundtrack files are still unavailable. See [[2026-10-04-Living-City-Session]] and [[2026-10-04-Living-City-Traversal]].
 
 Snapshot: **2026-10-04 UTC**, fetched `origin/main` **2c50938702e596b6f951ceb894d899182b583858**. English handoff requested by Santos; Ukrainian Plans, Fix and Audit pages retain detailed evidence.
 
@@ -14,7 +16,7 @@ Snapshot: **2026-10-04 UTC**, fetched `origin/main` **2c50938702e596b6f951ceb894
 4. [[Handoff/2026-10-04-Remaining-Work]] — unresolved acceptance and future work.
 5. Relevant Plan, Fix and Audit before editing implementation. Historical checkboxes and role tables are not current assignments.
 
-## Current game and direction
+## Game and direction at the snapshot date
 
 No One Is Real is a stylized 3D fighter with Choko and Skea, plus a first explorable Cronshift district. The city-first direction is to build a shared world and later locate fights within it, while preserving existing arenas. The merged district has real streets, ramps, roofs, a bridge, parkour anchors, a separate camera and optional action-based guidance. It is a bounded prototype, not a completed open world; city encounters, story, saves, NPCs and portals are not implemented by this slice.
 
@@ -24,7 +26,7 @@ Combat now includes continuous screen-relative movement, 5/3 dash budgets, visib
 
 Primary personal test machine: MacBook Air M3, approximately 8 GB RAM. Display scaling, measured performance, listening and physical controller acceptance remain open. Anatomical weight and muscular strength are presentation/gameplay goals, not a completed muscle simulator.
 
-## Current work boundary
+## Work boundary at the snapshot date
 
 Santos requested cleanup and reconciliation after the consolidated PR. This pass updates current documentation, corrects help text to match existing controls and removes confirmed redundant material; it does not start the next gameplay slice. The next product instruction is pending. Retain unresolved work in the recovery queue without treating every historical plan as an active assignment.
 
