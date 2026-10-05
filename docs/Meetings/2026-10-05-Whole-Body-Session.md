@@ -14,6 +14,12 @@ R8: порівнюються локальні процедурні латки, �
 
 T1 прочитав runtime head-аудит combat: у Jab обмежувач тримає голову рівно на −20° протягом усіх 17/15 кадрів Choko/Skea, хоча початкова дуга змінюється. Source-аудит підтвердив відсутність звичайної ground-contact корекції та city-surface sampling у чинному вузькому helper. План переведено в approved: калібрований погляд, окремий bounded helper опори та виправлення виміряних gait-сигналів. Native/sole baseline і уточнення windup тривають; production дозволений в описаній власності. Траси помилково підписаних hammer/lowhand відхилені як докази.
 
+## Виміряний baseline
+
+T1 прочитав `whole-body/physics-motion-audit.json`: grounded WINDUP лишає gait inactive попри рух; сума переміщень Choko 0,476667 м / 11 кадрів, Skea 0,59 м / 12 кадрів. City restart на 10 м породжує хибні 600 м/с в animation speed; на EastRamp враховується лише XZ, приблизно на 2,38% менше пройденого вздовж поверхні. Дані є сигналом для presentation-виправлень; дефект solver-фізики цим не доведений.
+
+У `hero-anatomy/feet-before/metrics.json` source-defined stance та повний skinning підошов дають forwardWalk drift 6,35/6,09 см; lateralWalk — приблизно 35/32 см. T1 відкрив actual native Choko front frame120: під час Jog обличчя нахилене до землі. Ці докази визначають цілі поточної хвилі. Кадри та JSON лишаються у `/workspace/nooneisreal-evidence/`; у репозиторій потрапляють стислий доказ і відтворювані перевірки.
+
 ## Related
 
 - [[2026-10-05-Whole-Body-Motion]] · [[2026-10-05-Living-District-Session]] · [[2026-10-05-Living-District-Checkpoint]] · [[state]]
