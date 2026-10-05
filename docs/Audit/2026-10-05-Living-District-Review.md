@@ -45,6 +45,14 @@ Native hook capture: `Godot --path ISOLATE/game --rendering-method gl_compatibil
 
 Огляд motion проводився через послідовні native contact sheets без пропуску кадрів, не через заявлене ручне програвання відео. Порівняльний файл `/workspace/nooneisreal-evidence/living-district/hook-before-after.mp4` має21.2s; основні фрагменти60fps, уповільнення окремо позначене. Важкі native/MP4 лишаються поза git; представницькі PNG збережено в `docs/assets/screenshots/2026-10-05-living-residents/` та пов'язано з art/fix docs.
 
+## Приймання пакета
+
+Фінальний production commit — `2a72f9da976d01331c487f131431ee6c116cb692`, версія **0.5.0**, draft PR **#178**. Native source manifest незалежно звірено саме з цим git commit. Після повної батареї координатор повторив HTTP wrapper: **51/0**, `validation/http-wrapper.log`; native Compatibility renderer: **4/0**, `validation/native-renderer.log`, hide delta0.007507 і збережена тінь delta0.006035. T4 особисто прочитав обидва чисті raw logs.
+
+Пакет `/workspace/nooneisreal-evidence/district-close/pck-2a72f9d/living-district.pck`: **208683020 bytes**, SHA256 `26bfc234200c66591af3fc0bafc7c68282f4f24e910f91459caee949cd4ad0df` — незалежно повторно обчислено. `source/game/build_info.cfg` вказує той самий full commit. Import/export logs без engine errors; запуск із окремого порожнього verifier дав **PCK_LIVING_COMPLETE64/0**, version0.5.0, exact revision, renderer=gl_compatibility (`native.log`, `evidence.json`). Це приймання зібраного PCK, не твердження про встановлення його на Mac.
+
+**CI run37250732359 ще виконувався на момент цього доповнення; CI GREEN тут не заявлено.** Останній docs-only commit координатора може мати інший SHA; перевірений gameplay/package SHA наведено вище.
+
 ## Межі
 
 Godot4.7 Linux/Mesa llvmpipe/Xvfb — не M3/FPS benchmark. Santos повідомив про прийнятну роботу гри на M3, але installed SHA в тому повідомленні не визначений. Тут немає заяви про30хв ручної гри, hardware audio listening або числовий FPS на Mac.

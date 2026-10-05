@@ -22,6 +22,10 @@ Read-only GitHub перевірка цієї сесії: для merge `f4defd5` 
 
 T4 завершив незалежний огляд: [[2026-10-05-Living-District-Review]] GREEN. Root повторив повний runner після виправлення audio fixture: 70/0, smoke164/19847, gates99/0. Усі попередні 62 сценарії й 12 negative controls залишені. Новий checkpoint і межі — [[2026-10-05-Living-District-Checkpoint]]. Код і тести заморожені; exact-SHA export/CI/PR наступні, не оголошені виконаними наперед.
 
+## CP3 — доставка кандидата
+
+Source `2a72f9da976d01331c487f131431ee6c116cb692` запушений у feature branch, [PR #178](https://github.com/santos-va/nooneisreal/pull/178) створений draft для фінальної перевірки. Root отримав HTTP51/0, native renderer4/0 та exact-SHA PCK64/0, version0.5.0; bytes/hash/команди й межі зафіксовані у [[2026-10-05-Living-District-Checkpoint]]. Merge і publish не виконувалися. Ready-for-review дозволений лише після успішного CI поточного head; його живий результат має бути в PR, без повторного збирання чи переписування gameplay через суто документальний commit.
+
 ## Related
 
 - [[2026-10-05-Living-District-Characters]] · [[2026-10-05-District-Motion-Session]] · [[2026-10-05-Local-NPC-Models-And-Physics-Reuse]] · [[state]]

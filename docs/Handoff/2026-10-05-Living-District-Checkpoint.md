@@ -20,7 +20,17 @@
 
 Основні докази поза git: `/workspace/nooneisreal-evidence/district-close/validation/`, `/workspace/nooneisreal-evidence/living-district/hook-final-v2/`, `/workspace/nooneisreal-evidence/living-residents/final-city/`. Відео `/workspace/nooneisreal-evidence/living-district/hook-before-after.mp4`: 21,2 с, 1000×550, 60 fps; додатковий повтор хвату позначений 0,5×. Компактні native PNG/JPG включені у відповідні wiki-сторінки й репозиторій.
 
-Exact-SHA PCK, фінальні CI та PR записуються наступним checkpoint після фактичного виконання; цей розділ не оголошує їх наперед.
+## CP3 — точний пакет і PR
+
+Production commit **`2a72f9da976d01331c487f131431ee6c116cb692`**. [PR #178](https://github.com/santos-va/nooneisreal/pull/178) створений для рев’ю й мерджу Santos. Фінальний стан CI показує сам PR; його не слід виводити з датованого локального логу. Агент не мерджив PR і не публікував macOS release.
+
+Root додатково виконав постійний HTTP wrapper: **34/0 protocol + 17/0 Director**, строгі журнали чисті; це реальний HTTPRequest проти mock server, не модель. Нативний renderer із shared source: **4/0**, OpenGL Compatibility/Mesa, shader errors немає.
+
+PCK отриманий з `git archive` точного production commit, в окремій копії й профілі Godot 4.7. До staging додано лише чинний `build_info.cfg` з повним SHA та його include filter. Fresh import/export завершилися з rc0 без engine/script/shader errors. Пакет **208683020 B**, SHA256 **`26bfc234200c66591af3fc0bafc7c68282f4f24e910f91459caee949cd4ad0df`**. Порівняно з попереднім локальним PCK `9685dfa` це +39656 B; це розміри конкретних PCK, не обіцянка macOS updater delta.
+
+`living_district_pck_check.gd` запущений native через `--main-pack` із порожньої verifier-директорії: **64/0**, version0.5.0, revision точно `2a72f9d…`. Перевірені нові класи, implicit autoloads, три NPC-фенотипи, кешований PCM, UAL motion source, camera shaders, district JSON із шістьма дорученнями, audio manifest та default-OFF відсутність HTTP-запиту. Checkout resources не могли замаскувати пропущений файл. Metadata й raw logs: `/workspace/nooneisreal-evidence/district-close/pck-2a72f9d/`.
+
+Наступні зміни після цього production commit — документація. Публікація встановлюваного macOS застосунку лишається чинним workflow після merge у main; локальний PCK не є встановленим застосунком Santos.
 
 ## Межі та наступний крок
 
