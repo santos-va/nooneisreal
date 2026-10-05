@@ -5,6 +5,8 @@
 
 ## Поточний маршрут і історичний handoff
 
+**Доставка після звірки 2026-10-05:** PR #181 з «Нижньою позначкою» змерджений у main (`611c85d`); документальне cleanup перенесене на `codex/repository-reconciliation` і доставляється окремим [PR #182](https://github.com/santos-va/nooneisreal/pull/182). CI остаточного документального head ще очікується. Датовані попередні статуси збережені в журналі.
+
 [[state]] · [[2026-10-05-Repository-Reconciliation-Session]] — поточний стан і звірка репозиторію; [[Plans/2026-10-05-Repository-Reconciliation]] та [[Audit/2026-10-05-Repository-Reconciliation]] — план і перевірені підстави cleanup. [[Handoff/2026-10-05-State-Before-Reconciliation]] — незмінний архів state перед скороченням.
 
 **English handoff — historical snapshot, 2026-10-04.**
