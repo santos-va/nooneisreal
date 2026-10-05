@@ -1,6 +1,6 @@
 # Незалежний аудит виразів героїв, матеріалів і бойових намірів
 
-2026-10-05 · T4 Феміда. **Фінальний вердикт: GREEN у перевіреному обсязі.** Власні check/gates та три незалежні негативні форми пройшли; особисте читання повного playable підтвердило **81 сценарій / 0 failures**, rc0, на незмінних 779 source files. Попередні 79/0 належать checkpoint `94a09a6`, а не цьому заходу. Цей аудит не змінює `game/`, GDD або `state.md`.
+2026-10-05 · T4 Феміда. **Візуальний GREEN очей відкликано після відхилення Santos на `fda6983`: «Очі на лоба лізуть».** Нижче збережено датований технічний результат: власні check/gates та три незалежні негативні форми пройшли; особисте читання повного playable підтвердило **81 сценарій / 0 failures**, rc0, на незмінних 779 source files. Ці тести не довели анатомічне розташування повіки, тому не перекривають відхилення. Вузький повторний аудит — [[2026-10-05-Eyelid-Anchoring-Review]]. Попередні 79/0 належать checkpoint `94a09a6`, а не цьому заходу. Цей аудит не змінює `game/`, GDD або `state.md`.
 
 ## Межа й вихідний зріз
 
@@ -16,7 +16,7 @@
 | Вік і власність бойового наміру | GREEN у scoped перевірках | Final intent160/0 використовує реальні InputRouter/Fighter ticks, hitboxes і hitstop. Власний epoch-only mutant валить саме UI між physics ticks — 160/1, без сторонніх помилок. |
 | Маска тканини | GREEN у scoped перевірках | Початкове додавання sleeve weights у спільний `cloth` розширювало COLOR.g shader domain; final G/B eligibility розділено. `_skin_pin` прямо не читає shader mask, тому первинна підозра на physical attachment не підтвердилася. Actual protected neck/chest/hand geometry та native ROI перевірені нижче; власний corner-guard mutant ловить обидва герої на реальних base/LOD triangles. |
 | Власність міміки | GREEN у scoped перевірках | Helper керує shader-параметрами оригінального atlas surface, не вершинами/bones. Прочитано face1734/0; власний actual-hero контроль4/0 стає4/2 після вимкнення serial guard. Native доводить фактичну зміну surface; це не анатомічний facial rig. |
-| Закриття обох очей | GREEN у native зрізі | Ранні `eyes-first/*closed.png` із залишковими aperture не прийнято. Фінальний head-domain і hero-only outline прибрали UV/LOD дірки та внутрішні hull fragments. Особисто відкриті обидва front_closed, Choko focus, Skea 3/4 hurt і final sequence sheet підтверджують обидва закриті ока й повернення idle; T6 також прийняв увесь native набір. |
+| Закриття обох очей | ВІДКЛИКАНО | Ранні `eyes-first/*closed.png` із залишковими aperture відхилили, head-domain і hero-only outline прибрали UV/LOD дірки та внутрішні hull fragments. Проте T4 помилково прийняв світлу закриту форму як коректну повіку: не перевірив її верхню межу відносно початкової очної щілини. Santos відхилив `fda6983`; T6 підтвердив світлий овал вище original Skea aperture. Старий native/state GREEN не є доказом placement. |
 
 ## Незалежні негативні форми
 

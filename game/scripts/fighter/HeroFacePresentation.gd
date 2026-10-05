@@ -26,6 +26,28 @@ static func valid_profile(data: Resource) -> bool:
 		return false
 	if not is_finite(data.atlas_size) or data.atlas_size <= 0.0 or not is_finite(data.blink_interval) or not is_finite(data.blink_seconds) or data.blink_seconds <= 0.0 or data.blink_interval <= data.blink_seconds:
 		return false
+	for side: String in ["left", "right"]:
+		var upper: PackedVector2Array = data.get("upper_" + side)
+		var lower: PackedVector2Array = data.get("lower_" + side)
+		if upper.size() != 5 or lower.size() != 5 or upper[0] != lower[0] or upper[4] != lower[4]:
+			return false
+		for point: Vector2 in upper + lower:
+			if not point.is_finite() or point.x < 0.0 or point.y < 0.0 or point.x >= data.atlas_size or point.y >= data.atlas_size:
+				return false
+		if upper[0].distance_to(upper[4]) < 1.0:
+			return false
+		var direction: Vector2 = (upper[4] - upper[0]).normalized()
+		var side_sign: float = signf(direction.cross(lower[2] - upper[2]))
+		if side_sign == 0.0:
+			return false
+		for index: int in range(1,5):
+			if direction.dot(upper[index] - upper[index-1]) <= 0.0 or direction.dot(lower[index] - lower[index-1]) <= 0.0:
+				return false
+		for index: int in range(1,4):
+			if signf(direction.cross(lower[index] - upper[index])) != side_sign:
+				return false
+			if upper[index].distance_to(lower[index]) < 0.25:
+				return false
 	for region: Vector4 in [data.eye_left, data.eye_right]:
 		if not region.is_finite() or region.z <= 0.0 or region.w <= 0.0 or region.x - region.z < 0.0 or region.y - region.w < 0.0 or region.x + region.z > data.atlas_size or region.y + region.w > data.atlas_size:
 			return false
@@ -64,7 +86,7 @@ func setup(f: Fighter, rig: SkeletalRig) -> void:
 	material.set_shader_parameter("face_axis_left", profile.axis_left.normalized())
 	material.set_shader_parameter("face_axis_right", profile.axis_right.normalized())
 	material.set_shader_parameter("face_skin_side", profile.skin_side)
-	for property: String in ["eye_skin_left","eye_skin_right","ink_left","ink_right","mouth_left","mouth_right","mouth_axis_left","mouth_axis_right","cheek_left","cheek_right","brow_left","brow_right"]:
+	for property: String in ["upper_left","lower_left","upper_right","lower_right","eye_skin_left","eye_skin_right","ink_left","ink_right","mouth_left","mouth_right","mouth_axis_left","mouth_axis_right","cheek_left","cheek_right","brow_left","brow_right"]:
 		material.set_shader_parameter("face_"+property,profile.get(property))
 	reset()
 

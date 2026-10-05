@@ -22,3 +22,10 @@ extends Resource
 @export var brow_right: Vector4 = Vector4.ZERO
 @export var eye_skin_left: Vector2
 @export var eye_skin_right: Vector2
+
+# Five original-atlas landmarks per lid, ordered from the same physical corner.
+# Upper/lower are anatomical, independent of mirrored UV-island orientation.
+@export var upper_left: PackedVector2Array
+@export var lower_left: PackedVector2Array
+@export var upper_right: PackedVector2Array
+@export var lower_right: PackedVector2Array
