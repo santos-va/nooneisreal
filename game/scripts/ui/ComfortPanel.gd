@@ -12,6 +12,9 @@ var _invoker: Control
 var _focus_order: Array[Control] = []
 var _status: Label
 var _settings: Node
+var _graphics: Node
+var quality_choice: OptionButton
+var _graphics_save_error: int = OK
 var _syncing := true
 
 func _ready() -> void:
@@ -19,6 +22,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_settings = get_node("/root/ComfortSettings")
+	_graphics = get_node("/root/GraphicsSettings")
 	var dim := ColorRect.new()
 	dim.color = Color(0.025, 0.02, 0.035, 0.94)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -44,6 +48,23 @@ func _ready() -> void:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.add_theme_constant_override("separation", 18)
 	scroll.add_child(content)
+	content.add_child(_label("GRAPHICS QUALITY", 32))
+	quality_choice = OptionButton.new()
+	quality_choice.name = "GraphicsQuality"
+	quality_choice.custom_minimum_size.y = 48
+	quality_choice.add_theme_font_size_override("font_size", 32)
+	quality_choice.get_popup().add_theme_font_size_override("font_size", 32)
+	for label: String in ["Low — lighter rendering", "Medium — balanced", "High — full detail"]:
+		quality_choice.add_item(label)
+	content.add_child(quality_choice)
+	_focus_order.append(quality_choice)
+	quality_choice.item_selected.connect(func(index: int):
+		if not _syncing and _graphics.call("set_profile", QualityProfile.ids()[index]):
+			_graphics_save_error = _graphics.call("save_settings")
+			_save())
+	var quality_help := _label("Applies immediately. Text and controls stay sharp.", 24)
+	quality_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(quality_help)
 	var labels := {"master": "MASTER", "sfx": "SOUND EFFECTS", "music": "MUSIC", "shake": "CAMERA SHAKE"}
 	for key: String in labels:
 		var row := VBoxContainer.new()
@@ -66,7 +87,7 @@ func _ready() -> void:
 				_settings.call("set_value", key, value / 100.0)
 				_save())
 		slider.value_changed.emit(slider.value)
-	restore_button = _button("RESTORE COMFORT DEFAULTS", func():
+	restore_button = _button("RESTORE SOUND & SHAKE DEFAULTS", func():
 		_settings.call("reset_defaults")
 		_sync_values()
 		_save())
@@ -122,6 +143,7 @@ func show_panel(invoker: Control, controls: String) -> void:
 
 func close_panel() -> void:
 	_save()
+	quality_choice.get_popup().hide()
 	hide()
 	InputRouter.release_ui(self)
 	if is_instance_valid(_invoker) and _invoker.is_visible_in_tree():
@@ -130,6 +152,7 @@ func close_panel() -> void:
 
 func _sync_values() -> void:
 	_syncing = true
+	quality_choice.select(QualityProfile.ids().find(_graphics.call("get_profile")))
 	for key: String in sliders:
 		(sliders[key] as HSlider).value = float(_settings.call("get_value", key)) * 100
 	_syncing = false
@@ -138,13 +161,15 @@ func _save() -> void:
 	if _status == null:
 		return
 	var result: int = _settings.call("save_settings")
-	_status.text = "Could not save preferences; changes apply for this session." if result != OK else ""
+	_status.text = "Could not save preferences; changes apply for this session." if result != OK or _graphics_save_error != OK else ""
 
 func _keep_focus(control: Control) -> void:
 	if visible and control != null and not is_ancestor_of(control):
 		back_button.grab_focus.call_deferred()
 
 func _input(event: InputEvent) -> void:
+	if quality_choice != null and quality_choice.get_popup().visible:
+		return
 	if visible and not event.is_echo() and (event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_pause")):
 		get_viewport().set_input_as_handled()
 		close_panel()

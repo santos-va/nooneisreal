@@ -17,3 +17,16 @@ extends Resource
 @export var wall_along_speed: float = 4.0
 @export var maximum_catch_fall_speed: float = 8.0
 @export var minimum_wall_approach: float = 0.4
+@export_group("Wall kick — PLACEHOLDER")
+@export var wall_kick_up_speed: float = 7.4
+@export var wall_kick_out_speed: float = 6.8
+@export var wall_kick_seconds: float = 0.32
+@export var minimum_kick_away: float = 0.4
+@export_group("Landing roll — PLACEHOLDER")
+@export var roll_min_fall_speed: float = 6.0
+@export var roll_min_speed: float = 3.0
+@export var roll_max_speed: float = 7.5
+@export var roll_deceleration: float = 7.5
+@export var roll_seconds: float = 0.6
+@export var roll_min_floor_dot: float = 0.95
+@export var roll_support_depth: float = 0.15

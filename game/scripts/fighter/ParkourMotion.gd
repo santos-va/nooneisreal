@@ -15,14 +15,22 @@ var _serial: int = 0
 var _feet_serial: int = -1
 var _plants: Dictionary = {}
 var _frame_feet: Dictionary = {}
+var _kick_source: String = "WallRun_Jump_R"
+var _hero_id: String = ""
+var _gear_serial: int = -1
+var _accessory_points: Dictionary = {}
+var accessory_lift: float = 0.0
+var roll_support = preload("res://scripts/fighter/RollGroundSupport.gd").new()
 
 func update(f: Fighter, velocity: Vector3, delta: float, discontinuous: bool) -> void:
 	_serial += 1
+	_hero_id = f.data.id
 	var previous: String = phase
-	var metadata: Variant = f.get_meta("parkour_presentation", {}) if f.state == Fighter.State.JUMP and not f.grapple.busy() else {}
+	var metadata: Variant = f.get_meta("parkour_presentation", {}) if not f.grapple.busy() else {}
 	_snapshot = metadata if metadata is Dictionary else {}
 	phase = str(_snapshot.get("phase", ""))
-	if not valid_snapshot(_snapshot) or (phase == "wall_run" and f.data.id != "skea"):
+	var state_allowed: bool = f.state in [Fighter.State.IDLE, Fighter.State.WALK] and f.is_on_floor() if phase == "landing_roll" else f.state == Fighter.State.JUMP
+	if not state_allowed or not valid_snapshot(_snapshot) or (phase == "wall_run" and f.data.id != "skea"):
 		phase = ""
 		_snapshot = {}
 	if discontinuous or previous != phase:
@@ -34,17 +42,22 @@ func update(f: Fighter, velocity: Vector3, delta: float, discontinuous: bool) ->
 	if phase == "wall_run" and not discontinuous:
 		# Actual 3D displacement: vertical wall travel advances feet; a blocked body does not.
 		cycle = fposmod(cycle + velocity.length() * maxf(delta, 0.0) / WALL_STRIDE, 1.0)
-	source_clip = "Climb_Idle" if phase == "hang" else ("ClimbLedge" if phase == "mantle" else ("Climb_Up" if phase == "wall_run" else ""))
+	if phase == "wall_kick" and previous != phase:
+		_kick_source = "WallRun_Jump_L" if Vector3(_snapshot.wall_normal).dot(f.forward.cross(Vector3.UP)) < 0.0 else "WallRun_Jump_R"
+	source_clip = {"hang": "Climb_Idle", "mantle": "ClimbLedge", "wall_run": "Climb_Up", "wall_kick": _kick_source, "landing_roll": "Roll"}.get(phase, "")
 	grip_error = 0.0
 
 static func valid_snapshot(snapshot: Dictionary) -> bool:
 	var mode: String = str(snapshot.get("phase", ""))
-	if mode not in ["hang", "mantle", "wall_run"]:
+	if mode not in ["hang", "mantle", "wall_run", "wall_kick", "landing_roll"]:
 		return false
-	for key: String in (["wall_point", "wall_normal"] if mode == "wall_run" else ["left_hand", "right_hand"]):
+	var contacts: Array = ["floor_point", "floor_normal", "direction"] if mode == "landing_roll" else (["wall_point", "wall_normal"] if mode in ["wall_run", "wall_kick"] else ["left_hand", "right_hand"])
+	for key: String in contacts:
 		if not snapshot.get(key) is Vector3 or not Vector3(snapshot[key]).is_finite():
 			return false
-	if mode == "wall_run" and Vector3(snapshot.wall_normal).length_squared() < 0.5:
+	if mode in ["wall_run", "wall_kick"] and Vector3(snapshot.wall_normal).length_squared() < 0.5:
+		return false
+	if mode == "landing_roll" and (Vector3(snapshot.floor_normal).normalized().dot(Vector3.UP) < 0.95 or Vector3(snapshot.direction).length_squared() < 0.5):
 		return false
 	var progress: Variant = snapshot.get("progress", 0.0)
 	return (progress is int or progress is float) and is_finite(float(progress))
@@ -59,20 +72,41 @@ func apply_source(source: Skeleton3D, clips: AuthoredHookMotion) -> void:
 		return
 	_base = AuthoredLocomotion._poses(source)
 	var progress: float = clampf(float(_snapshot.get("progress", 0.0)), 0.0, 1.0)
-	var at: float = (cycle if phase == "wall_run" else (progress if phase == "mantle" else 0.35)) * float(clips._lengths[source_clip])
+	var at: float = (cycle if phase == "wall_run" else (0.35 if phase == "hang" else progress)) * float(clips._lengths[source_clip])
 	var weight: float = smoothstep(0.0, ENTRY_SECONDS, _elapsed)
+	if phase in ["wall_kick", "landing_roll"]:
+		weight *= 1.0 - smoothstep(0.80, 1.0, progress)
 	for bone: int in source.get_bone_count():
 		var pose: Transform3D = clips._pose(source_clip, at, bone)
 		# Rotations only: no imported wall-root translation or limb scaling.
 		var target: Quaternion = pose.basis.orthonormalized().get_rotation_quaternion()
+		if _hero_id == "choko" and phase in ["landing_roll", "wall_kick"] and (source.get_bone_name(bone).begins_with("spine_") or source.get_bone_name(bone).begins_with("clavicle_")):
+			# Keep the compact hero's chest shell from folding through itself.
+			var rest: Quaternion = source.get_bone_rest(bone).basis.orthonormalized().get_rotation_quaternion()
+			target = rest.slerp(target, 0.20 if source.get_bone_name(bone).begins_with("spine_") else 0.0)
+		if _hero_id == "choko" and phase == "landing_roll" and (source.get_bone_name(bone).begins_with("neck_") or source.get_bone_name(bone) == "Head"):
+			# Preserve the hero's neck clearance instead of folding its larger head into chest tabs.
+			var rest: Quaternion = source.get_bone_rest(bone).basis.orthonormalized().get_rotation_quaternion()
+			target = rest.slerp(target, 0.25)
 		var original: Quaternion = _base[bone].basis.orthonormalized().get_rotation_quaternion()
 		source.set_bone_pose_rotation(bone, original.slerp(target, weight))
 	# Supported poses must not inherit Jump_Loop's backward root translation.
 	var pelvis: int = source.find_bone("pelvis")
-	source.set_bone_pose_position(pelvis, _base[pelvis].origin.lerp(source.get_bone_rest(pelvis).origin, weight))
+	var target_position: Vector3 = source.get_bone_rest(pelvis).origin
+	if phase == "landing_roll":
+		# Retain only authored vertical compression, never imported horizontal travel.
+		var parent: int = source.get_bone_parent(pelvis)
+		var parent_basis: Basis = source.get_bone_global_pose(parent).basis if parent >= 0 else Basis.IDENTITY
+		var up: Vector3 = ((source.global_basis * parent_basis).inverse() * Vector3.UP).normalized()
+		var authored: Vector3 = clips._pose(source_clip, at, pelvis).origin
+		target_position += up * (authored - target_position).dot(up)
+	source.set_bone_pose_position(pelvis, _base[pelvis].origin.lerp(target_position, weight))
 
 func apply_contacts(hero: Skeleton3D, f: Fighter) -> void:
 	grip_error = 0.0
+	if phase == "landing_roll":
+		roll_support.apply(hero, f.skeletal.hero_mesh, _snapshot, _serial)
+		return
 	if phase == "wall_run":
 		_apply_wall_feet(hero, f)
 		return
@@ -191,3 +225,43 @@ func _shoe_contact(hero: Skeleton3D, f: Fighter, side: String, ankle: Vector3, p
 	# Measure the whole shoe's leading extent, not an assumed ankle radius.
 	var coordinate: float = support - bounds_min.z + HeroFootContact.CLEARANCE
 	return {"point": plant + normal * (coordinate - plant.dot(normal))}
+
+func finish_roll_support(f: Fighter) -> bool:
+	if phase != "landing_roll" or _gear_serial == _serial:
+		return false
+	_gear_serial = _serial
+	accessory_lift = 0.0
+	var minimum: float = INF
+	var normal: Vector3 = Vector3(_snapshot.floor_normal).normalized()
+	var floor_point: Vector3 = _snapshot.floor_point
+	var holders: Array = [f.skeletal.gear]
+	if f.skeletal.sword != null:
+		holders.append(f.skeletal.sword)
+	for holder: Node3D in holders:
+		if holder == null:
+			continue
+		for mesh: MeshInstance3D in holder.find_children("*", "MeshInstance3D", true, false):
+			if not mesh.is_visible_in_tree() or mesh.mesh == null:
+				continue
+			var key: int = mesh.mesh.get_instance_id()
+			if not _accessory_points.has(key):
+				var points := PackedVector3Array()
+				for surface: int in mesh.mesh.get_surface_count():
+					points.append_array(mesh.mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX])
+				_accessory_points[key] = points
+			var local_normal: Vector3 = mesh.global_basis.transposed() * normal
+			var offset: float = (mesh.global_position - floor_point).dot(normal)
+			for point: Vector3 in _accessory_points[key]:
+				minimum = minf(minimum, point.dot(local_normal) + offset)
+	if not is_finite(minimum):
+		return false
+	accessory_lift = maxf(0.0, 0.003 - minimum) / maxf(normal.y, 0.95)
+	if accessory_lift < 0.000001:
+		return false
+	# Gear is part of the visible support silhouette. Keep the same correction
+	# in the physics cache so repeated retargets rebuild the identical final pose.
+	roll_support.lift += accessory_lift
+	var hero: Skeleton3D = f.skeletal.hero_skeleton
+	var hips: int = hero.find_bone("Hips")
+	hero.set_bone_pose_position(hips, hero.get_bone_pose_position(hips) + hero.global_basis.inverse() * (Vector3.UP * accessory_lift))
+	return true

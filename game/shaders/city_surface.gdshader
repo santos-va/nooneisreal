@@ -26,6 +26,13 @@ float cell_hash(vec2 point) {
 	return fract((p.x + p.y) * p.z);
 }
 
+// Fade each projected frequency before the screen-axis Nyquist limit.
+// World-distance fading alone misses grazing/diagonal high-frequency patterns.
+float phase_visibility(float phase) {
+	float pixel_phase = max(abs(dFdx(phase)), abs(dFdy(phase)));
+	return 1.0 - smoothstep(PI * 0.5, PI, pixel_phase);
+}
+
 void vertex() {
 	world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	world_normal = normalize(MODEL_NORMAL_MATRIX * NORMAL);
@@ -79,7 +86,8 @@ void fragment() {
 		float end_distance = min(fract(along), 1.0 - fract(along)) * cell_metres.y;
 		float end_seam = 1.0 - smoothstep(joint_metres, joint_metres + max(pixel_metres, 0.001), end_distance);
 		seam = max(seam, end_seam * 0.7);
-		float grain = sin(across * 13.0 + sin(metres.y * 2.0 + board) * 0.8);
+		float grain_phase = across * 13.0 + sin(metres.y * 2.0 + board) * 0.8;
+		float grain = sin(grain_phase) * phase_visibility(grain_phase);
 		float board_tint = cell_hash(vec2(board, floor(along))) - 0.5;
 		paint *= 1.0 + (grain * 0.35 + board_tint) * variation * detail_visibility;
 		paint = mix(paint, ink_color.rgb, seam * ink_strength * detail_visibility);
@@ -89,8 +97,13 @@ void fragment() {
 		if (surface_kind == 6) {
 			// Coarse woven threads appear only at arm's length and fade before aliasing.
 			float weave_visibility = 1.0 - smoothstep(0.003, 0.014, pixel_metres);
-			vec2 threads = cos(metres * 210.0);
-			paint *= 1.0 + threads.x * threads.y * 0.045 * weave_visibility;
+			vec2 thread_phase = metres * 210.0;
+			float diagonal_a = thread_phase.x + thread_phase.y;
+			float diagonal_b = thread_phase.x - thread_phase.y;
+			// cos(x)*cos(y) = (cos(x+y)+cos(x-y))/2: filter both actual frequencies.
+			float weave = 0.5 * (cos(diagonal_a) * phase_visibility(diagonal_a)
+				+ cos(diagonal_b) * phase_visibility(diagonal_b));
+			paint *= 1.0 + weave * 0.045 * weave_visibility;
 		}
 	}
 	ALBEDO = paint;

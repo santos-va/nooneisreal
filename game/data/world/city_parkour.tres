@@ -4,3 +4,14 @@
 
 [resource]
 script = ExtResource("1")
+wall_kick_up_speed = 7.4
+wall_kick_out_speed = 6.8
+wall_kick_seconds = 0.32
+minimum_kick_away = 0.4
+roll_min_fall_speed = 6.0
+roll_min_speed = 3.0
+roll_max_speed = 7.5
+roll_deceleration = 7.5
+roll_seconds = 0.6
+roll_min_floor_dot = 0.95
+roll_support_depth = 0.15

@@ -19,33 +19,48 @@ var support_transform: Transform3D
 var revision: int = -1
 var tick_start: Vector3 = Vector3.ZERO
 var tick_delta: float = 1.0 / 60.0
+var kick_spent: bool = false
+var kick_release_frame: int = -1
+var input_revision: int = -1
+var floor_point: Vector3 = Vector3.ZERO
+var floor_normal: Vector3 = Vector3.UP
 
 func reset(actor: Fighter, recharge: bool = true) -> void:
 	phase = ""
 	elapsed = 0.0
 	support = null
 	hands.clear()
+	kick_release_frame = -1
 	actor.set_meta("parkour_presentation", {})
 	if recharge:
 		wall_spent = false
 		grip_spent = false
+		kick_spent = false
 	revision = actor.motion_revision
+	input_revision = InputRouter.press_history_revision(actor.player_index)
 
 func prepare(actor: Fighter) -> void:
 	if revision != actor.motion_revision:
 		reset(actor)
-	if actor.control_locked or actor.state != Fighter.State.JUMP:
+	var rolling: bool = phase == "landing_roll" and actor.state in [Fighter.State.IDLE, Fighter.State.WALK]
+	if actor.control_locked or InputRouter.ui_suppressed() or input_revision != InputRouter.press_history_revision(actor.player_index) or (actor.state != Fighter.State.JUMP and not rolling):
 		reset(actor, false)
 	# Only a genuine new supported cycle replenishes airborne effort.
 	if phase.is_empty() and actor.is_on_floor() and actor.velocity.y <= 0.0:
 		wall_spent = false
 		grip_spent = false
+		kick_spent = false
 
 func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 	tick_start = actor.global_position
 	tick_delta = delta
-	if actor.control_locked or actor.grapple.busy():
+	if actor.control_locked or InputRouter.ui_suppressed() or actor.grapple.busy():
 		reset(actor, false)
+		return false
+	if not intent.jump_held:
+		kick_release_frame = InputRouter.frame()
+	if phase == "wall_kick":
+		# The ordinary air controller owns gravity, steering, actions and swept collision.
 		return false
 	if not phase.is_empty():
 		if intent.block or intent.crouch or actor._pressed("grapple_detach"):
@@ -59,6 +74,8 @@ func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 		if not _support_valid(actor):
 			reset(actor, false)
 			return false
+		if phase == "hang" and _try_kick(actor, delta, intent, {"collider":support,"normal":normal,"position":wall_point}):
+			return false
 		if phase == "hang":
 			elapsed += delta
 			if elapsed > profile.hang_seconds:
@@ -68,6 +85,10 @@ func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 			if not intent.jump_held:
 				jump_released = true
 			if actor._pressed("jump") and jump_released:
+				# An obstructed away-kick must not turn into an opposite mantle.
+				if actor.wish().dot(normal) >= profile.minimum_kick_away:
+					_publish(actor)
+					return true
 				if not _mantle_clear(actor):
 					_publish(actor)
 					return true
@@ -93,6 +114,8 @@ func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 		if phase == "wall_run":
 			if not intent.jump_held or actor.wish().dot(-normal) < profile.minimum_wall_approach:
 				reset(actor, false)
+				if not intent.jump_held:
+					kick_release_frame = InputRouter.frame()
 				return false
 			if not grip_spent and _try_grip(actor, -normal):
 				return true
@@ -108,6 +131,9 @@ func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 			actor.move_and_slide()
 			_publish(actor)
 			return true
+	if not kick_spent and kick_release_frame >= 0 and intent.jump_held and not intent.block and not intent.crouch and actor.wish().length() >= profile.minimum_kick_away:
+		if _try_kick(actor, delta, intent, _wall(actor, -actor.wish().normalized())):
+			return false
 	if not intent.jump_held or actor.wish().length() < profile.minimum_wall_approach or actor.velocity.y < -profile.maximum_catch_fall_speed:
 		return false
 	var direction: Vector3 = actor.wish().normalized()
@@ -124,6 +150,101 @@ func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 	_set_support(wall)
 	actor._set_forward(-normal)
 	_publish(actor)
+	return true
+
+func _try_kick(actor: Fighter, delta: float, intent: Dictionary, wall: Dictionary) -> bool:
+	if kick_spent or kick_release_frame < 0 or not intent.jump_held or wall.is_empty():
+		return false
+	var age: int = InputRouter.buffered_age(actor.player_index, "jump")
+	# A press can follow release observation within the same router frame. Older
+	# buffered presses are rejected; holding the initial jump never arms this path.
+	if age < 0 or age > InputRouter.BUFFER_FRAMES or InputRouter.frame() - age < kick_release_frame:
+		return false
+	var outward: Vector3 = wall.normal
+	if actor.wish().dot(outward) < profile.minimum_kick_away:
+		return false
+	var launch: Vector3 = outward * profile.wall_kick_out_speed + Vector3.UP * profile.wall_kick_up_speed
+	if not _clear(actor, actor.global_position, actor.global_position + launch * delta) or not actor._pressed("jump"):
+		return false
+	kick_spent = true
+	wall_spent = true
+	grip_spent = true
+	kick_release_frame = -1
+	hands.clear()
+	_set_support(wall)
+	phase = "wall_kick"
+	elapsed = 0.0
+	actor.velocity = launch
+	actor._set_forward(outward)
+	return true
+
+func after_air(actor: Fighter, delta: float, intent: Dictionary, previous_velocity: Vector3) -> void:
+	if phase == "wall_kick":
+		elapsed += delta
+		if actor.state != Fighter.State.JUMP or actor.grapple.busy() or elapsed >= profile.wall_kick_seconds:
+			reset(actor, false)
+		else:
+			_publish(actor)
+	if actor.state != Fighter.State.IDLE or not actor.is_on_floor() or actor.control_locked or actor.grapple.busy():
+		return
+	if not intent.crouch or intent.block or previous_velocity.y > -profile.roll_min_fall_speed:
+		return
+	var travel := Vector3(actor.velocity.x, 0.0, actor.velocity.z)
+	if travel.length() < profile.roll_min_speed or actor.wish().dot(travel.normalized()) < profile.minimum_wall_approach:
+		return
+	if not _roll_support(actor, actor.global_position):
+		return
+	phase = "landing_roll"
+	elapsed = 0.0
+	actor.velocity = travel.limit_length(profile.roll_max_speed)
+	actor.land_lag = 0
+	actor._set_forward(travel.normalized())
+	_publish(actor)
+
+func tick_ground(actor: Fighter, delta: float, intent: Dictionary) -> bool:
+	if phase != "landing_roll":
+		return false
+	if actor.control_locked or InputRouter.ui_suppressed() or actor.grapple.busy() or not intent.crouch or intent.block:
+		reset(actor, false)
+		return false
+	# Preserve normal action priority and queued presses; the parent consumes them.
+	for action: String in ["jump", "dodge", "dash", "grapple", "grapple_parkour", "left_hand", "right_hand", "left_leg", "right_leg", "light", "heavy", "weapon_swap"]:
+		var age: int = InputRouter.buffered_age(actor.player_index, action)
+		if age >= 0 and age <= InputRouter.BUFFER_FRAMES:
+			reset(actor, false)
+			return false
+	tick_start = actor.global_position
+	tick_delta = delta
+	var travel := Vector3(actor.velocity.x, 0.0, actor.velocity.z).move_toward(Vector3.ZERO, profile.roll_deceleration * delta)
+	if not actor.is_on_floor() or not _roll_support(actor, actor.global_position + travel * delta):
+		reset(actor, false)
+		return false
+	actor.velocity = travel - Vector3.UP * Fighter.GRAVITY * delta
+	actor.move_and_slide()
+	elapsed += delta
+	if not actor.is_on_floor() or actor.is_on_wall() or elapsed >= profile.roll_seconds or travel.length() < profile.roll_min_speed * 0.25:
+		reset(actor, false)
+		return true
+	_roll_support(actor, actor.global_position)
+	_publish(actor)
+	return true
+
+func _roll_support(actor: Fighter, point: Vector3) -> bool:
+	if actor.get_floor_normal().dot(Vector3.UP) < profile.roll_min_floor_dot:
+		return false
+	var shape: CapsuleShape3D = (actor.get_node("BodyShape") as CollisionShape3D).shape as CapsuleShape3D
+	if shape == null:
+		return false
+	var radius: float = shape.radius
+	var center: Dictionary = {}
+	for offset: Vector3 in [Vector3.ZERO, Vector3.RIGHT * radius, Vector3.LEFT * radius, Vector3.FORWARD * radius, Vector3.BACK * radius]:
+		var hit: Dictionary = _ray(actor, point + offset + Vector3.UP * 0.04, point + offset - Vector3.UP * profile.roll_support_depth)
+		if hit.is_empty() or Vector3(hit.normal).dot(Vector3.UP) < profile.roll_min_floor_dot:
+			return false
+		if offset == Vector3.ZERO:
+			center = hit
+	floor_point = center.position
+	floor_normal = center.normal
 	return true
 
 func _ray(actor: Fighter, from: Vector3, to: Vector3) -> Dictionary:
@@ -225,10 +346,18 @@ func _move_clear(actor: Fighter, target: Vector3) -> bool:
 
 func _publish(actor: Fighter) -> void:
 	var actual: Vector3 = (actor.global_position - tick_start) / maxf(tick_delta, 0.0001)
+	var duration: float = profile.wall_seconds
+	if phase == "mantle":
+		duration = profile.mantle_seconds
+	elif phase == "wall_kick":
+		duration = profile.wall_kick_seconds
+	elif phase == "landing_roll":
+		duration = profile.roll_seconds
 	actor.set_meta("parkour_presentation", {
-		"phase": phase, "progress": clampf(elapsed / (profile.mantle_seconds if phase == "mantle" else profile.wall_seconds), 0.0, 1.0),
+		"phase": phase, "progress": clampf(elapsed / maxf(duration, 0.0001), 0.0, 1.0), "duration":duration,
 		"hold_remaining": maxf(0.0, (profile.hang_seconds if phase == "hang" else profile.wall_seconds) - elapsed),
 		"left_hand": hands[0] if hands.size() == 2 else Vector3.ZERO,
 		"right_hand": hands[1] if hands.size() == 2 else Vector3.ZERO,
 		"wall_normal": normal, "wall_point": wall_point,
+		"floor_point": floor_point, "floor_normal":floor_normal,
 		"direction": actual.normalized(), "speed": actual.length()})
