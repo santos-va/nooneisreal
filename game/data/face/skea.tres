@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="HeroFaceProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighter/HeroFaceProfile.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+eye_left = Vector4(1009, 271, 20, 11)
+eye_right = Vector4(226, 292, 25, 12)
+axis_left = Vector2(0.60, 0.80)
+axis_right = Vector2(0.69, 0.723809)
+skin_side = Vector2(-1, 1)
+blink_interval = 6.2
+blink_seconds = 0.14
+focus_close = 0.34
+ink_left = Vector2(1000, 275)
+ink_right = Vector2(227, 298)
+mouth_left = Vector4(1048, 258, 29, 13)
+mouth_right = Vector4(209, 332, 30, 13)
+mouth_axis_left = Vector2(0.82, 0.572364)
+mouth_axis_right = Vector2(0.73, 0.683447)
+cheek_left = Vector2(1071, 245)
+cheek_right = Vector2(216, 315)
+eye_skin_left = Vector2(1040, 235)
+eye_skin_right = Vector2(218, 316)

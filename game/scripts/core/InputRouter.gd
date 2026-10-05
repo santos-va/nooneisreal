@@ -64,6 +64,7 @@ var _pad_events: Dictionary = {}    # action -> Array of gamepad events captured
 var _ui_owners: Dictionary = {}  # instance id -> WeakRef; nested overlays own separate tokens
 var _neutral_pending: Dictionary = {}  # physical actions held across a UI boundary
 var _ui_consumed: Dictionary = {}  # stale just_pressed flags need a fresh device press
+var _press_revisions: Dictionary = {1: 0, 2: 0}
 var profile: String = PROFILE_SOLO
 
 
@@ -280,6 +281,8 @@ func ui_suppressed() -> bool:
 
 
 func _clear_ui_history() -> void:
+	for player: int in [1, 2]:
+		_press_revisions[player] = press_history_revision(player) + 1
 	GameState.duel.clear_human_gestures()
 	_view_bases.clear()
 	_recorded_view_bases.clear()
@@ -419,6 +422,30 @@ func buffered(player: int, action: String, window: int = BUFFER_FRAMES) -> bool:
 	return false
 
 
+## The original age is preserved when a fighter retains one confirmed-hit continuation.
+func buffered_age(player: int, action: String) -> int:
+	if ui_suppressed():
+		return -1
+	var n: String = action_name(player, action)
+	var at: int = maxi(int(_pressed_at.get(n, -999)), int(_virtual_just.get(n, -999)))
+	return _frame - at if at >= 0 else -1
+
+
+func press_history_revision(player: int) -> int:
+	return int(_press_revisions.get(player, 0))
+
+
+## Reset queued edges for one player; physically held movement/guard remain current.
+func clear_player_presses(player: int) -> void:
+	_press_revisions[player] = press_history_revision(player) + 1
+	for action: String in ACTIONS:
+		var n: String = action_name(player, action)
+		_pressed_at.erase(n)
+		_virtual_just.erase(n)
+		_routed_just.erase(n)
+		_ui_consumed[n] = true # A stale physical just_pressed cannot rehydrate after reset.
+
+
 # --- virtual input (CPU brain, smoke test) --------------------------------------------------
 func v_press(player: int, action: String) -> void:
 	if ui_suppressed():
@@ -514,6 +541,7 @@ func _route_pad(event: InputEvent) -> void:
 func _pad_connection_changed(device: int, connected: bool) -> void:
 	if connected:
 		return
+	clear_player_presses(device + 1)
 	_pad_modifier.erase(device)
 	_look_neutral_pending[device + 1] = true
 	clear_recorded_view_basis(device + 1)

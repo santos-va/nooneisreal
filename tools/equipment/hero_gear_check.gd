@@ -50,14 +50,26 @@ func buffer_check() -> void:
 		var colors_ok: bool = true
 		for i: int in colors.size():
 			var old: Color = old_colors[i] if not old_colors.is_empty() else Color.WHITE
-			colors_ok = colors_ok and is_equal_approx(colors[i].r,old.r) and is_equal_approx(colors[i].b,old.b) and is_equal_approx(colors[i].a,old.a)
-		check(colors_ok,"outline R and original B/A preserved")
+			colors_ok = colors_ok and is_equal_approx(colors[i].a,old.a)
+			colors_ok = colors_ok and colors[i].r in [0.0,1.0] and colors[i].g in [0.0,1.0] and colors[i].b in [0.0,1.0]
+		check(colors_ok,"declared R face/G cloth/B highlight masks are binary; original A preserved")
 		var joints: PackedInt32Array = b[Mesh.ARRAY_BONES]
 		var weights: PackedFloat32Array = b[Mesh.ARRAY_WEIGHTS]
 		var stride: int = joints.size()/colors.size()
 		var protected: int = 0
 		var wrong: int = 0
+		var protected_anatomy := PackedByteArray()
+		protected_anatomy.resize(colors.size())
+		var highlight_protected := PackedByteArray()
+		highlight_protected.resize(colors.size())
+		var face_weight_ok: bool = true
+		var neckline_ok: bool = true
+		var neckline_count: int = 0
+		var hip: Vector3 = f.skeletal.hero_skeleton.get_bone_global_rest(f.skeletal.hero_skeleton.find_bone("Hips")).origin
+		var scale_m: float = f.skeletal.hero_skeleton.global_transform.basis.get_scale().x
 		for vertex: int in colors.size():
+			var head_weight: float = 0.0
+			var relative: Vector3 = (gear.garment.rest_points[vertex]-hip)*scale_m
 			for j: int in stride:
 				var at: int = vertex*stride+j
 				if weights[at] <= 0.000001:
@@ -65,14 +77,45 @@ func buffer_check() -> void:
 				var skin: Skin = f.skeletal.hero_mesh.skin
 				var bone: int = f.skeletal.hero_skeleton.find_bone(skin.get_bind_name(joints[at])) if skin.get_bind_name(joints[at]) != &"" else skin.get_bind_bone(joints[at])
 				var name: String = f.skeletal.hero_skeleton.get_bone_name(bone)
+				if name in ["Head","head_end","headfront"]:
+					head_weight += weights[at]
 				if name.contains("Head") or name.contains("neck") or name.contains("Hand") or name.contains("Foot") or name.contains("Toe"):
 					protected += 1
+					protected_anatomy[vertex] = 1
 					wrong += 1 if colors[vertex].g > 0 else 0
-		check(protected > 100 and wrong == 0,"actual head/neck/hands/feet vertex influences never receive cloth")
+					# Skea sleeve cloth has small hand weights before the wrist.
+					# Physical hand skin is beyond the independently measured 500 mm guard.
+					if not name.contains("Hand") or f.data.id != "skea" or absf(relative.x) >= 0.50:
+						highlight_protected[vertex] = 1
+						wrong += 1 if colors[vertex].b > 0 else 0
+			face_weight_ok = face_weight_ok and (colors[vertex].r == 0.0 or head_weight >= 0.90)
+			if f.data.id == "skea" and relative.y >= 0.28 and absf(relative.x) <= 0.16:
+				neckline_count += 1
+				highlight_protected[vertex] = 1
+				neckline_ok = neckline_ok and colors[vertex].b == 0.0
+		check(protected > 100 and wrong == 0,"protected head/neck/physical hands/feet receive no highlight; cloth keeps strict bone domain")
+		check(face_weight_ok and gear.garment.face_vertices > 0,"face mask has real samples exclusively bound to head")
+		check(f.data.id != "skea" or (neckline_count > 100 and neckline_ok),"actual shoulder-weighted bare neckline remains outside highlight mask")
+		check(gear.garment.delighted_vertices > 100 if f.data.id == "skea" else gear.garment.delighted_vertices == 0,"Skea has positive highlight domain while Choko atlas is not recolored")
 		var old_surface: Dictionary = RenderingServer.mesh_get_surface(original.get_rid(),surface)
 		var new_surface: Dictionary = RenderingServer.mesh_get_surface(current.get_rid(),surface)
 		check(old_surface.get("lods",[]).size() == 3,"fixture has real imported decimation LODs")
 		check(old_surface.get("lods",[]) == new_surface.get("lods",[]),"all original LOD indices and distances preserved")
+		var index_sets: Array = [a[Mesh.ARRAY_INDEX]]
+		index_sets.append_array(gear.garment._surface_lods(original,surface,a[Mesh.ARRAY_INDEX].size()).values())
+		var triangle_safe: bool = true
+		var protected_triangles: int = 0
+		for triangles: PackedInt32Array in index_sets:
+			for tri: int in triangles.size()/3:
+				var corners: Array[int] = [triangles[tri*3],triangles[tri*3+1],triangles[tri*3+2]]
+				if protected_anatomy[corners[0]] != 0 or protected_anatomy[corners[1]] != 0 or protected_anatomy[corners[2]] != 0:
+					protected_triangles += 1
+					for corner: int in corners:
+						triangle_safe = triangle_safe and colors[corner].g == 0.0
+				if highlight_protected[corners[0]] != 0 or highlight_protected[corners[1]] != 0 or highlight_protected[corners[2]] != 0:
+					for corner: int in corners:
+						triangle_safe = triangle_safe and colors[corner].b == 0.0
+		check(protected_triangles > 100 and triangle_safe,"every protected anatomy triangle at base and all imported LODs has zero cloth/highlight interpolation")
 	var mat: ShaderMaterial = f.skeletal.hero_mesh.material_override
 	check(mat.get_shader_parameter("albedo_tex") != null,"original atlas remains bound")
 	print("HERO_GARMENT_METRICS ",f.data.id," selected=",gear.garment.selected_vertices," total=",gear.garment.total_vertices)
@@ -238,6 +281,15 @@ func run() -> void:
 		root.add_child(duplicate)
 		check(duplicate.skeletal.hero_mesh.mesh == mesh,"cached garment buffer shared across same hero")
 		check(duplicate.skeletal.gear.cloth_material != f.skeletal.gear.cloth_material,"per-hero material state never shared")
+		var hero_material: ShaderMaterial = f.skeletal.hero_mesh.material_override
+		var other_material: ShaderMaterial = duplicate.skeletal.hero_mesh.material_override
+		check(hero_material != other_material and hero_material.next_pass != other_material.next_pass,"same hero keeps independent surface and outline material instances")
+		check((hero_material.next_pass as ShaderMaterial).shader.resource_path == "res://shaders/hero_outline.gdshader","only hero material selects the face-safe hull")
+		var original_delight: Variant = hero_material.get_shader_parameter("garment_delight")
+		var original_closure: Variant = hero_material.get_shader_parameter("face_closure")
+		other_material.set_shader_parameter("garment_delight",0.0)
+		other_material.set_shader_parameter("face_closure",Vector2.ONE)
+		check(hero_material.get_shader_parameter("garment_delight") == original_delight and hero_material.get_shader_parameter("face_closure") == original_closure,"cached masks never share per-instance face or cloth uniforms")
 		duplicate.free()
 		var biggest_spring: float = 0.0
 		for frame: int in 150:
@@ -326,6 +378,7 @@ func run() -> void:
 		for i: int in 30:
 			proximity.update(camera,DT)
 		check(proximity.visibility < 0.01,"near-body camera fixture actually fades")
+		check(float((f.skeletal.hero_mesh.material_override.next_pass as ShaderMaterial).get_shader_parameter("camera_visibility")) < 0.01,"face-safe hero outline participates in camera proximity fade")
 		for item: MeshInstance3D in late:
 			check(item.get_surface_override_material(0) is ShaderMaterial and float(item.get_surface_override_material(0).get_shader_parameter("camera_visibility")) < 0.01,"late nested surface slot joins fade")
 		check(shared.get_shader_parameter("camera_visibility") == null or is_equal_approx(float(shared.get_shader_parameter("camera_visibility")),1.0),"NPC shared shader receives no player fade")

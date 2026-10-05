@@ -16,6 +16,7 @@ extends Node3D
 ## bone first gets a rest alignment (its rest direction turned onto the mannequin's), then the mannequin's rotation
 ## from rest. Bone lengths stay the hero's; only the hips move, scaled by the hip-height ratio.
 
+const FacePresentation = preload("res://scripts/fighter/HeroFacePresentation.gd")
 const HeroGear = preload("res://scripts/fighter/HeroGearPresentation.gd")
 const BodyMotion = preload("res://scripts/fighter/HeroBodyMotion.gd")
 const GroundContact = preload("res://scripts/fighter/HeroGroundContact.gd")
@@ -71,7 +72,7 @@ const HERO_AIM := {
 	"RightUpLeg": "RightLeg", "RightLeg": "RightFoot", "RightFoot": "RightToeBase",
 }
 ## Ink outline width on the hero, metres — same as the capsule rig (RigAnimator._mat).
-const HERO_OUTLINE := 0.022
+const HERO_OUTLINE := 0.006 # PLACEHOLDER art width, verified against facial silhouette.
 
 var player: AnimationPlayer
 var skeleton: Skeleton3D
@@ -113,6 +114,7 @@ var body_motion = BodyMotion.new()
 var ground_contact = GroundContact.new()
 var motion_signals = MotionSignals.new()
 var gear: Node3D
+var face_presentation = FacePresentation.new()
 
 
 func setup(f: Fighter) -> void:
@@ -147,6 +149,7 @@ func setup(f: Fighter) -> void:
 		gear.name = "HeroGear"
 		add_child(gear)
 		gear.setup(f,self)
+		face_presentation.setup(f,self)
 
 
 ## Loads the hero GLB beside the mannequin, hides the mannequin's mesh and precomputes the retarget.
@@ -207,7 +210,7 @@ func _cel_material() -> void:
 	if src is BaseMaterial3D and (src as BaseMaterial3D).albedo_texture != null:
 		m.set_shader_parameter("albedo_tex", (src as BaseMaterial3D).albedo_texture)
 	var o := ShaderMaterial.new()
-	o.shader = RigAnimator.OUTLINE
+	o.shader = preload("res://shaders/hero_outline.gdshader")
 	# the outline pushes vertices in the mesh's local space; the Meshy armature is scaled (bones in cm)
 	o.set_shader_parameter("width", HERO_OUTLINE / maxf(hero_mesh.global_transform.basis.get_scale().x / global_transform.basis.get_scale().x, 1e-4))
 	m.next_pass = o
@@ -383,6 +386,7 @@ func _physics_process(delta: float) -> void:
 		locomotion = GroundMotion.new()
 		cadence.phase = 0.0
 		body_motion.reset()
+		face_presentation.reset()
 		ground_contact.reset()
 		_last_state = _fighter.state
 		_state_frames = 0
@@ -390,6 +394,7 @@ func _physics_process(delta: float) -> void:
 		_attack_return_source.clear()
 		_attack_return_base.clear()
 	body_motion.update(_fighter, delta, motion_signals.actual_velocity, motion_signals.acceleration)
+	face_presentation.update(_fighter, delta, body_motion.serial)
 	ground_contact.begin_frame(delta)
 	parkour_motion.update(_fighter, motion_signals.actual_velocity, delta, motion_signals.discontinuous)
 	body_motion.prepare_source(skeleton, _fighter)
