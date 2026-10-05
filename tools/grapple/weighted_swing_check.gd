@@ -18,7 +18,7 @@ func check(ok: bool, label: String) -> void:
 		failures += 1
 		push_error("WEIGHTED_SWING: " + label)
 
-func hang(length: float) -> void:
+func hang(length: float, city: bool = false) -> void:
 	registry.clear_match()
 	f.position = Vector3(0, 3, 0)
 	f.velocity = Vector3.ZERO
@@ -28,7 +28,8 @@ func hang(length: float) -> void:
 	anchor.position = f.position + Hook.HAND + Vector3.UP * length
 	var token: int = registry.issue(1)
 	registry.deploy(token, 1, anchor.position, f.position + Hook.HAND, length)
-	f.grapple.fire(false)
+	f.grapple.responsive_parkour = city
+	f.grapple.fire(false, "grapple_parkour" if city else "grapple")
 
 func energy() -> float:
 	var bottom: float = f.grapple.anchor_point.y - f.grapple.rope_length
@@ -75,31 +76,21 @@ func _run() -> void:
 	check(absf(f.velocity.y) < 0.02, "reel correction does not become inward spring momentum")
 	f.grapple.drive(1.0 / 60.0, false, false)
 	check(not f.grapple.attached, "both released detaches")
-	for length: float in [2.2, 8.0]:
-		hang(length)
-		f.velocity = Vector3(3.0, 0, 0)
-		var previous_energy: float = energy()
-		var passive_ok: bool = true
-		for frame: int in 240:
-			f.grapple.drive(1.0 / 60.0, true)
-			var measured: float = energy()
-			passive_ok = passive_ok and measured <= previous_energy + 0.03
-			previous_energy = measured
-		check(passive_ok, "unpowered short/long pendulum dissipates energy %.1f" % length)
-		hang(length)
-		var below_anchor: bool = true
-		var bounded: bool = true
-		var constrained: bool = true
-		for frame: int in 600:
-			f._wish = Vector3.RIGHT if f.velocity.x >= 0 else Vector3.LEFT
-			f.grapple.drive(1.0 / 60.0, true, true)
-			below_anchor = below_anchor and f.position.y + Hook.HAND.y < anchor.position.y
-			bounded = bounded and f.velocity.length() <= 11.001
-			constrained = constrained and (f.position + Hook.HAND).distance_to(anchor.position) <= f.grapple.rope_length + 0.03
-		check(below_anchor and bounded and constrained, "sustained pumping plus Space cannot orbit/run away %.1f" % length)
-		var speed: float = f.velocity.length()
-		f.grapple.drive(1.0 / 60.0, false)
-		check(f.velocity.length() <= speed + 0.001, "release cannot manufacture speed %.1f" % length)
+	# Faster city motor must preserve the finite physical stroke and release energy.
+	hang(6.0, true)
+	check(is_equal_approx(f.grapple.reel_remaining(), 1.2), "city HUD exposes actual bounded stroke")
+	start_y = f.position.y
+	for frame: int in 20:
+		f.grapple.drive(1.0 / 60.0, true, true)
+	check(f.position.y > start_y + 1.19 and f.position.y < start_y + 1.21, "city reel completes 1.2 m stroke in 20 ticks")
+	check(f.grapple.reel_remaining() < 0.0001, "city HUD reports spent stroke")
+	for frame: int in 180:
+		f.grapple.drive(1.0 / 60.0, true, true)
+	check(is_equal_approx(f.grapple.rope_length, 4.8) and absf(f.velocity.y) < 0.02, "city held reel cannot become a perpetual lift")
+	f.grapple.drive(1.0 / 60.0, false)
+	check(is_zero_approx(f.grapple.reel_remaining()) and absf(f.velocity.y) < 0.02, "city release has no phantom stroke or vertical kick")
+	for city: bool in [false, true]:
+		verify_pendulum(city)
 	# Render attachment offsets must not turn physical tension into spare cable.
 	hang(6.0)
 	var hand_rig = load("res://scripts/fighter/SkeletalRig.gd").new()
@@ -173,3 +164,31 @@ func _run() -> void:
 		OS.delay_msec(1)
 	print("WEIGHTED_SWING_COMPLETE checks=%d failures=%d" % [checks, failures])
 	quit(1 if failures else 0)
+
+
+func verify_pendulum(city: bool) -> void:
+	for length: float in [2.2, 8.0]:
+		hang(length, city)
+		f.velocity = Vector3(3.0, 0, 0)
+		var previous_energy: float = energy()
+		var passive_ok: bool = true
+		for frame: int in 240:
+			f.grapple.drive(1.0 / 60.0, true)
+			var measured: float = energy()
+			passive_ok = passive_ok and measured <= previous_energy + 0.03
+			previous_energy = measured
+		check(passive_ok, "unpowered short/long pendulum dissipates energy %.1f" % length)
+		hang(length, city)
+		var below_anchor: bool = true
+		var bounded: bool = true
+		var constrained: bool = true
+		for frame: int in 600:
+			f._wish = Vector3.RIGHT if f.velocity.x >= 0 else Vector3.LEFT
+			f.grapple.drive(1.0 / 60.0, true, true)
+			below_anchor = below_anchor and f.position.y + Hook.HAND.y < anchor.position.y
+			bounded = bounded and f.velocity.length() <= 11.001
+			constrained = constrained and (f.position + Hook.HAND).distance_to(anchor.position) <= f.grapple.rope_length + 0.03
+		check(below_anchor and bounded and constrained, "sustained pumping plus Space cannot orbit/run away %.1f" % length)
+		var speed: float = f.velocity.length()
+		f.grapple.drive(1.0 / 60.0, false)
+		check(f.velocity.length() <= speed + 0.001, "release cannot manufacture speed %.1f" % length)

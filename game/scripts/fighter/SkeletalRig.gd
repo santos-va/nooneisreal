@@ -21,6 +21,7 @@ const BodyMotion = preload("res://scripts/fighter/HeroBodyMotion.gd")
 const GroundContact = preload("res://scripts/fighter/HeroGroundContact.gd")
 const MotionSignals = preload("res://scripts/fighter/FighterMotionSignals.gd")
 const HookSource = preload("res://scripts/fighter/AuthoredHookMotion.gd")
+const ParkourSource = preload("res://scripts/fighter/ParkourMotion.gd")
 const HookMotion = preload("res://scripts/fighter/GrappleMotion.gd")
 const Cadence = preload("res://scripts/fighter/LocomotionCadence.gd")
 const MotionFallback = preload("res://scripts/fighter/ProceduralMotionFallback.gd")
@@ -107,6 +108,7 @@ var locomotion = GroundMotion.new()
 var authored_dodge = DodgeSource.new()
 var authored_landing = LandingSource.new()
 var authored_hook = HookSource.new()
+var parkour_motion = ParkourSource.new()
 var body_motion = BodyMotion.new()
 var ground_contact = GroundContact.new()
 var motion_signals = MotionSignals.new()
@@ -240,6 +242,8 @@ func retarget() -> void:
 	ground_contact.apply(_fighter, skeleton, clip, clip_pos, body_motion._dt, ragdoll)
 	authored_combat.adjust_hero_contact(hero_skeleton, _fighter)
 	authored_hook.apply_hands(hero_skeleton, _fighter)
+	if ragdoll == null:
+		parkour_motion.apply_contacts(hero_skeleton, _fighter)
 	body_motion.apply_gaze(hero_skeleton, skeleton, _fighter, ragdoll)
 
 
@@ -387,6 +391,7 @@ func _physics_process(delta: float) -> void:
 		_attack_return_base.clear()
 	body_motion.update(_fighter, delta, motion_signals.actual_velocity, motion_signals.acceleration)
 	ground_contact.begin_frame(delta)
+	parkour_motion.update(_fighter, motion_signals.actual_velocity, delta, motion_signals.discontinuous)
 	body_motion.prepare_source(skeleton, _fighter)
 	authored_hook.update(_fighter, skeleton, delta)
 	authored_dodge.prepare(skeleton, _fighter)
@@ -455,6 +460,7 @@ func _physics_process(delta: float) -> void:
 	# Undo our previous overlay before seeking: constant tracks may be absent in a clip.
 	body_motion.restore_source(skeleton)
 	_restore_attack_return_base()
+	parkour_motion.restore(skeleton)
 	authored_hook.restore(skeleton)
 	authored_dodge.restore(skeleton)
 	authored_combat.restore(skeleton)
@@ -470,6 +476,7 @@ func _physics_process(delta: float) -> void:
 	authored_combat.apply(skeleton, source, _fighter)
 	authored_dodge.apply(skeleton, _fighter, delta)
 	authored_hook.apply(skeleton, _fighter)
+	parkour_motion.apply_source(skeleton, authored_hook)
 	_sword_mirror_base = SwordMotion.mirror_authored(skeleton, _fighter)
 	var recovering: bool = HookMotion.recovery_active(_fighter)
 	if procedural:
@@ -532,7 +539,8 @@ func _on_mannequin_updated() -> void:
 		return
 	retarget()
 	if sword != null:
-		SwordMotion.apply_transfer(hero_skeleton, _fighter)
+		if parkour_motion.phase.is_empty():
+			SwordMotion.apply_transfer(hero_skeleton, _fighter)
 		sword.update_pose()
 	if gear != null:
 		gear.update_pose()

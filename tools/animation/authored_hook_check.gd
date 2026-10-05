@@ -45,7 +45,7 @@ func render_tick(hero: String, scenario: String, frame: int) -> void:
 		check(is_finite(motion.grip_error), "finite grip solve")
 		maximum_grip_error = maxf(maximum_grip_error, motion.grip_error)
 		if f.grapple.phase == hook.Phase.HANG and previous_phase == hook.Phase.HANG:
-			var expected_cycle: float = reel_before + maxf(0.0, previous_length - f.grapple.rope_length) / f.grapple.reel_distance
+			var expected_cycle: float = reel_before + maxf(0.0, previous_length - f.grapple.rope_length) / (0.65 if f.grapple._responsive_traversal() else f.grapple.reel_distance)
 			check(absf(motion.reel_cycle - expected_cycle) < 0.00001, "regrip cycle follows real shortening only")
 		check(motion.grip_error < 0.04, "%s/%s/%d actual hero reaches physical span within 4 cm: %.4f" % [hero, scenario, frame, motion.grip_error])
 	var sk: Skeleton3D = f.skeletal.hero_skeleton

@@ -218,7 +218,7 @@ func update_pose() -> void:
 	var tick := Engine.get_physics_frames()
 	if tick != _last_tick and not fighter.get_tree().paused and fighter.frozen_frames <= 0 and fighter.hitstop_frames <= 0:
 		_last_tick = tick
-		var busy := not fighter.sword_drawn or fighter.state == Fighter.State.GRAPPLE or fighter.grapple.recovering()
+		var busy: bool = not fighter.sword_drawn or fighter.state == Fighter.State.GRAPPLE or fighter.grapple.recovering() or not rig.parkour_motion.phase.is_empty()
 		stow_weight = move_toward(stow_weight, 1.0 if busy else 0.0, 1.0 / 12.0)
 	if fighter.state == Fighter.State.SWAP and fighter.sword_swap_drawing:
 		# Draw hand reaches and holds the actual socket before ownership releases.

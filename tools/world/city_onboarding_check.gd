@@ -69,7 +69,7 @@ func _run() -> void:
 		viewport.size = dimensions
 		await _settle()
 		for control: Control in [hud.resume_button, hud.skip_button, hud.restart_button, hud.exit_button, hud.objective_label, hud.hint_label]:
-			_check(Rect2(Vector2.ZERO, Vector2(dimensions)).encloses(control.get_global_rect()), "city control fits logical viewport")
+			_check(Rect2(Vector2.ZERO, Vector2(dimensions)).encloses(control.get_global_rect()), "city control %s %s fits %s" % [control.get_path(), control.get_global_rect(), dimensions])
 	for action: String in ["jump", "dash", "left_hand", "grapple_parkour"]:
 		Input.action_press("p1_" + action)
 	hud.resume_button.pressed.emit()
@@ -117,6 +117,42 @@ func _run() -> void:
 	world.player.dash_changed.emit(0, 4.5, 3)
 	_check("HOOKS 0 / 2" in world.hud.resource_label.text and "Reuse" in world.hud.resource_label.text, "empty hooks disclose usable recovery choices")
 	_check("DASH 0 / 3" in world.hud.resource_label.text and "4.5s" in world.hud.resource_label.text, "dash stock and recovery are visible")
+	# The presentation snapshot is a one-way HUD input; rendering a hint must not consume gameplay input.
+	var hero: Node = world.player
+	var city_hud: Node = world.hud
+	var camera: Camera3D = world.get_viewport().get_camera_3d()
+	var aim: Node = camera.get_meta("harpoon_aim")
+	hero.set_meta("parkour_presentation", {"phase": "hang", "hold_remaining": 2.4})
+	var keyboard_event := InputEventKey.new()
+	keyboard_event.physical_keycode = KEY_SPACE
+	keyboard_event.pressed = true
+	aim._unhandled_input(keyboard_event)
+	city_hud._refresh_traversal_hint()
+	_check(city_hud.hint_label.visible and "Space" in city_hud.hint_label.text and "Release, then press" in city_hud.hint_label.text, "ledge HUD explains fresh keyboard jump instead of automatic climb")
+	_check("Grip 2.4s" in city_hud.hint_label.text, "ledge hint discloses the actual remaining grip before automatic release")
+	hero.set_meta("parkour_presentation", {"phase": "hang", "hold_remaining": 0.6})
+	city_hud._refresh_traversal_hint()
+	_check("Grip 0.6s" in city_hud.hint_label.text and not "2.4s" in city_hud.hint_label.text, "ledge hint replaces expired grip values")
+	var pad_event := InputEventJoypadButton.new()
+	pad_event.device = 0
+	pad_event.button_index = JOY_BUTTON_A
+	pad_event.pressed = true
+	aim._unhandled_input(pad_event)
+	city_hud._refresh_traversal_hint()
+	_check("A / Cross" in city_hud.hint_label.text and "B / Circle" in city_hud.hint_label.text and not "Space" in city_hud.hint_label.text, "ledge HUD follows last controller input")
+	hero.set_meta("parkour_presentation", {"phase": "wall_run"})
+	city_hud._refresh_traversal_hint()
+	_check("Release to drop" in city_hud.hint_label.text and not "Grip" in city_hud.hint_label.text and not "0.6s" in city_hud.hint_label.text, "wall hint explains release without stale ledge countdown")
+	city_hud.set_paused(true)
+	_check(not city_hud.hint_label.visible, "pause immediately clears traversal instructions")
+	city_hud.set_paused(false)
+	router.acquire_ui(self)
+	city_hud._refresh_traversal_hint()
+	_check(not city_hud.hint_label.visible, "dialogue input owner suppresses traversal instructions")
+	router.release_ui(self)
+	hero.remove_meta("parkour_presentation")
+	city_hud._refresh_traversal_hint()
+	_check(not city_hud.hint_label.visible, "leaving contact clears transient footer")
 	world.hud.set_paused(true)
 	world.hud.exit_button.pressed.emit()
 	await _settle()

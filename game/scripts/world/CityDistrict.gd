@@ -22,7 +22,21 @@ func _ready() -> void:
 	add_child(Interiors.new())
 	add_child(Backdrop.new())
 	_street_details()
+	_parkour_steps()
 	_markers()
+
+func _parkour_steps() -> void:
+	# PLACEHOLDER solid service terraces: broad landings with visible stone/brass lips.
+	# The existing street centre and east ramp remain open. Each rise is reachable by both heroes.
+	var steps: Array[Dictionary] = [
+		{"name": "PracticeLedge", "center": Vector3(4, 1.4, 29), "size": Vector3(2.8, 2.8, 2.4)},
+		{"name": "RoofApproachLow", "center": Vector3(12, 1.0, -5.8), "size": Vector3(3.0, 2.0, 2.8)},
+		{"name": "RoofApproachHigh", "center": Vector3(12, 2.0, -8.6), "size": Vector3(3.0, 4.0, 2.8)},
+	]
+	for step: Dictionary in steps:
+		_box(step.name, step.center, step.size, "stone", 9)
+		var lip: Vector3 = step.center + Vector3(0, Vector3(step.size).y * 0.5 - 0.06, Vector3(step.size).z * 0.5 + 0.006)
+		_box(String(step.name) + "GripLip", lip, Vector3(Vector3(step.size).x, 0.12, 0.012), "brass")
 
 func _box(id: String, center: Vector3, size: Vector3, material_key: String, layer: int = 0) -> Node3D:
 	var holder: Node3D = StaticBody3D.new() if layer != 0 else Node3D.new()

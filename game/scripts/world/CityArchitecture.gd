@@ -1,7 +1,7 @@
 class_name CityArchitecture
 extends RefCounted
 ## Architectural vocabulary from the existing Cronshift illustrations. Metres are design placeholders.
-## Repeated facade details are batched by shared material; collision is reserved for structural volumes.
+## Repeated facade details are batched by shared material; protruding facade trim shares its visible collision dimensions.
 var _district: Node3D
 var _batches: Dictionary = {}
 var _authored_triangles: Dictionary = {}
@@ -51,18 +51,18 @@ func _facade(origin: Vector3, width: float, height: float, yaw: float, balconies
 	var basis: Basis = Basis(Vector3.UP, yaw)
 	var bays: int = maxi(1, floori(width / 3.5))
 	var bay_width: float = width / float(bays)
-	_local_box(origin, basis, Vector3(0, 0.38, 0.1), Vector3(width, 0.76, 0.2), "stone")
-	_local_box(origin, basis, Vector3(0, height - 0.22, 0.18), Vector3(width + 0.2, 0.22, 0.46), "stone")
-	_local_box(origin, basis, Vector3(0, height - 0.03, 0.22), Vector3(width + 0.3, 0.12, 0.56), "iron")
+	_local_box(origin, basis, Vector3(0, 0.38, 0.1), Vector3(width, 0.76, 0.2), "stone", true)
+	_local_box(origin, basis, Vector3(0, height - 0.22, 0.18), Vector3(width + 0.2, 0.22, 0.46), "stone", true)
+	_local_box(origin, basis, Vector3(0, height - 0.03, 0.22), Vector3(width + 0.3, 0.12, 0.56), "iron", true)
 	for bay: int in range(bays + 1):
 		var x: float = -width * 0.5 + float(bay) * bay_width
-		_local_box(origin, basis, Vector3(x, height * 0.5, 0.08), Vector3(0.22, height - 0.3, 0.2), "stone")
+		_local_box(origin, basis, Vector3(x, height * 0.5, 0.08), Vector3(0.22, height - 0.3, 0.2), "stone", true)
 		for level: int in range(1, ceili(height / 3.0)):
-			_local_box(origin, basis, Vector3(x, float(level) * 3.0, 0.16), Vector3(0.42, 0.22, 0.32), "stone")
+			_local_box(origin, basis, Vector3(x, float(level) * 3.0, 0.16), Vector3(0.42, 0.22, 0.32), "stone", true)
 	for level: int in range(maxi(1, floori(height / 3.0))):
 		var bottom: float = 0.9 + float(level) * 3.0
 		if level > 0:
-			_local_box(origin, basis, Vector3(0, bottom - 0.4, 0.12), Vector3(width, 0.13, 0.28), "stone")
+			_local_box(origin, basis, Vector3(0, bottom - 0.4, 0.12), Vector3(width, 0.13, 0.28), "stone", true)
 		for bay: int in range(bays):
 			var x: float = -width * 0.5 + (float(bay) + 0.5) * bay_width
 			if level == 0:
@@ -73,7 +73,7 @@ func _facade(origin: Vector3, width: float, height: float, yaw: float, balconies
 				_balcony(origin, basis, Vector3(x, bottom - 0.12, 0), 1.8)
 			elif level > 0 and bay % 3 == 1:
 				for side: float in [-1.0, 1.0]:
-					_local_box(origin, basis, Vector3(x + side * 0.79, bottom + 0.75, 0.12), Vector3(0.3, 1.5, 0.12), "roof_slate")
+					_local_box(origin, basis, Vector3(x + side * 0.79, bottom + 0.75, 0.12), Vector3(0.3, 1.5, 0.12), "roof_slate", true)
 
 func _window(origin: Vector3, basis: Basis, bottom: Vector3, width: float, height: float, warm: bool) -> void:
 	var radius: float = width * 0.5
@@ -87,12 +87,12 @@ func _window(origin: Vector3, basis: Basis, bottom: Vector3, width: float, heigh
 	disc.radial_segments = 12
 	_mesh(disc, origin + basis * (bottom + Vector3(0, straight, -0.01)), pane, basis * Basis(Vector3.RIGHT, PI * 0.5))
 	for side: float in [-1.0, 1.0]:
-		_local_box(origin, basis, bottom + Vector3(side * (radius + 0.09), straight * 0.5, 0.065), Vector3(0.18, straight, 0.2), "stone")
+		_local_box(origin, basis, bottom + Vector3(side * (radius + 0.09), straight * 0.5, 0.065), Vector3(0.18, straight, 0.2), "stone", true)
 	for segment: int in 9:
 		var angle: float = PI * (float(segment) + 0.5) / 9.0
 		var point: Vector3 = bottom + Vector3(cos(angle) * (radius + 0.09), straight + sin(angle) * (radius + 0.09), 0.065)
-		_box(origin + basis * point, Vector3(0.24, 0.18, 0.2), "stone", basis * Basis(Vector3.BACK, angle + PI * 0.5))
-	_local_box(origin, basis, bottom + Vector3(0, -0.06, 0.09), Vector3(width + 0.4, 0.16, 0.35), "stone")
+		_box(origin + basis * point, Vector3(0.24, 0.18, 0.2), "stone", basis * Basis(Vector3.BACK, angle + PI * 0.5), true)
+	_local_box(origin, basis, bottom + Vector3(0, -0.06, 0.09), Vector3(width + 0.4, 0.16, 0.35), "stone", true)
 	_local_box(origin, basis, bottom + Vector3(0, straight * 0.5, 0.045), Vector3(0.065, straight + 0.05, 0.05), "iron")
 	_local_box(origin, basis, bottom + Vector3(0, straight, 0.045), Vector3(width, 0.06, 0.05), "iron")
 
@@ -100,9 +100,9 @@ func _rectangular_window(origin: Vector3, basis: Basis, bottom: Vector3, width: 
 	var pane: String = "warm_window" if warm else "glass"
 	_local_box(origin, basis, bottom + Vector3(0, height * 0.5, 0), Vector3(width, height, 0.045), pane)
 	for side: float in [-1.0, 1.0]:
-		_local_box(origin, basis, bottom + Vector3(side * (width * 0.5 + 0.08), height * 0.5, 0.06), Vector3(0.16, height + 0.1, 0.19), "stone")
-	_local_box(origin, basis, bottom + Vector3(0, height + 0.06, 0.06), Vector3(width + 0.32, 0.16, 0.21), "stone")
-	_local_box(origin, basis, bottom + Vector3(0, -0.06, 0.09), Vector3(width + 0.4, 0.16, 0.35), "stone")
+		_local_box(origin, basis, bottom + Vector3(side * (width * 0.5 + 0.08), height * 0.5, 0.06), Vector3(0.16, height + 0.1, 0.19), "stone", true)
+	_local_box(origin, basis, bottom + Vector3(0, height + 0.06, 0.06), Vector3(width + 0.32, 0.16, 0.21), "stone", true)
+	_local_box(origin, basis, bottom + Vector3(0, -0.06, 0.09), Vector3(width + 0.4, 0.16, 0.35), "stone", true)
 	_local_box(origin, basis, bottom + Vector3(0, height * 0.5, 0.04), Vector3(0.06, height, 0.045), "iron")
 	_local_box(origin, basis, bottom + Vector3(0, height * 0.65, 0.04), Vector3(width, 0.06, 0.045), "iron")
 
@@ -223,8 +223,8 @@ func _bridge() -> void:
 			_box(Vector3(x, 4.62, z), Vector3(0.08, 0.8, 0.09), "iron")
 			_box(Vector3(x, 4.15, z), Vector3(0.18, 0.3, 0.22), "stone")
 
-func _local_box(origin: Vector3, basis: Basis, center: Vector3, size: Vector3, material: String) -> void:
-	_box(origin + basis * center, size, material, basis)
+func _local_box(origin: Vector3, basis: Basis, center: Vector3, size: Vector3, material: String, solid: bool = false) -> void:
+	_box(origin + basis * center, size, material, basis, solid)
 
 func _box(center: Vector3, size: Vector3, material: String, basis: Basis = Basis.IDENTITY, solid: bool = false) -> void:
 	var mesh: BoxMesh = BoxMesh.new()

@@ -1,6 +1,6 @@
 class_name GrappleHook
 extends Node3D
-## Charge-based swept harpoon: 30-frame windup, fixed flight, confirmed contact.
+## Charge-based swept harpoon: profiled windup, fixed flight, confirmed contact.
 ## Hold an attached anchor to hang; Space reels a bounded distance, movement pumps the pendulum.
 ## Finite match inventory. Only recovery refunds; deployed ropes persist across rounds.
 ## Design: docs/GDD/04-Grapple-System.md
@@ -61,6 +61,14 @@ var range_m: float = 14.0
 @export var steer_accel: float = 5.0
 @export var swing_drag: float = 0.65
 @export var swing_speed_ratio: float = 0.85
+# Explicitly enabled by city exploration. Duel and enemy shots keep their profile.
+# PLACEHOLDER responsive traversal tuning; unchanged constraint and motor budget.
+@export var responsive_parkour: bool = false
+@export var parkour_windup_frames: int = 10
+@export var parkour_projectile_speed: float = 48.0
+@export var parkour_reel_speed: float = 3.6
+@export var parkour_steer_accel: float = 9.0
+@export var parkour_swing_drag: float = 0.30
 var _hang_start_length: float = 0.0
 var cone_deg: float = 30.0      # free movement only (docs/GDD/04-Grapple-System.md § Конус вибору в 3D)
 
@@ -177,6 +185,18 @@ func tick_regen(delta: float, tethered: bool) -> void:
 
 func busy() -> bool:
 	return phase != Phase.IDLE
+
+
+func _responsive_traversal() -> bool:
+	return responsive_parkour and action == "grapple_parkour" and not _prefer_enemy
+
+
+## Remaining physical stroke, shared by the motor and its contextual HUD.
+func reel_remaining() -> float:
+	if not attached or phase != Phase.HANG:
+		return 0.0
+	var shortest := minf(_hang_start_length, maxf(minimum_rope, _hang_start_length - reel_distance))
+	return maxf(0.0, rope_length - shortest)
 
 
 ## Current hand contact only. Future velocity cannot extend the authorized reach.
@@ -392,7 +412,8 @@ func _launch() -> void:
 
 
 func _flight(delta: float, held: bool) -> void:
-	var step := minf(projectile_speed * delta, range_m - _flight_distance)
+	var speed := parkour_projectile_speed if _responsive_traversal() else projectile_speed
+	var step := minf(speed * delta, range_m - _flight_distance)
 	var end := projectile_position + _flight_direction * step
 	var q := PhysicsRayQueryParameters3D.create(projectile_position, end, ArenaLayout.COVER_LAYER | 1 | 4)
 	q.collide_with_areas = true
@@ -545,12 +566,14 @@ func drive(delta: float, held: bool, reel_held: bool = false) -> void:
 				_draw_rope(fighter.global_position + HAND, anchor_point)
 				return
 		_frames += 1
-		windup_progress = float(_frames) / float(WINDUP_FRAMES)
-		fighter.velocity.x = move_toward(fighter.velocity.x, 0.0, 30.0 * delta)
-		fighter.velocity.z = move_toward(fighter.velocity.z, 0.0, 30.0 * delta)
+		var windup_frames := maxi(1, parkour_windup_frames) if _responsive_traversal() else WINDUP_FRAMES
+		windup_progress = float(_frames) / float(windup_frames)
+		if not _responsive_traversal():
+			fighter.velocity.x = move_toward(fighter.velocity.x, 0.0, 30.0 * delta)
+			fighter.velocity.z = move_toward(fighter.velocity.z, 0.0, 30.0 * delta)
 		fighter.velocity.y -= Fighter.GRAVITY * delta
 		fighter.move_and_slide()
-		if _frames >= WINDUP_FRAMES:
+		if _frames >= windup_frames:
 			_launch()
 		return
 	if phase == Phase.FLIGHT:
@@ -572,13 +595,15 @@ func drive(delta: float, held: bool, reel_held: bool = false) -> void:
 		wish = Vector3.ZERO
 		reel_held = false
 	if reel_held:
-		var shortest := minf(_hang_start_length, maxf(minimum_rope, _hang_start_length - reel_distance))
-		rope_length = minf(rope_length, maxf(rope_length - reel_speed * delta, shortest))
+		var motor_speed := parkour_reel_speed if _responsive_traversal() else reel_speed
+		rope_length -= minf(maxf(0.0, motor_speed * delta), reel_remaining())
 	f.velocity.y -= Fighter.GRAVITY * delta
 	# Pump below the anchor only; full gravity and drag oppose perpetual powered loops.
 	if radial.y > 0.35:
-		f.velocity += (wish - radial * wish.dot(radial)) * steer_accel * delta
-	f.velocity *= exp(-swing_drag * delta)
+		var pump := parkour_steer_accel if _responsive_traversal() else steer_accel
+		f.velocity += (wish - radial * wish.dot(radial)) * pump * delta
+	var drag := parkour_swing_drag if _responsive_traversal() else swing_drag
+	f.velocity *= exp(-drag * delta)
 	var speed_limit := minf(max_speed, sqrt(Fighter.GRAVITY * maxf(rope_length, 0.01)) * swing_speed_ratio)
 	f.velocity = f.velocity.limit_length(speed_limit)
 	if not GameState.free_move:
