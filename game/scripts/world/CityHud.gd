@@ -406,15 +406,16 @@ func _refresh_quest_guide() -> void:
 
 func exploration_help() -> String:
 	var text := "Move: WASD / left stick · Look: RMB + drag / right stick\n"
-	text += "Jump / hold to reel: %s / A · Hook: tap %s / L3 (or Y + LT)\n" % [InputRouter.binding_label(1, "jump", false), InputRouter.binding_label(1, "grapple_parkour", false)]
-	text += "Face an anchor to hook / transfer. Reuse a rope within 0.70m of your hand.\n"
+	text += "Jump / hold to reel (limited): %s / A · Hook: tap %s / L3 (or Y + LT)\n" % [InputRouter.binding_label(1, "jump", false), InputRouter.binding_label(1, "grapple_parkour", false)]
+	text += "Face anchor: hook / transfer · Finite hooks · Reuse rope within 0.70m of hand.\n"
 	text += "Ledge: hold jump + move into edge; release, then press jump to climb.\n"
-	text += "Skea: hold jump + move into a wall for short wall steps; release to drop.\n"
+	text += "Skea wall steps: hold jump + move into wall; release to drop.\n"
+	text += "Wall kick: near a wall, release jump; move away + press jump. Once per landing.\n"
+	text += "Landing roll: hold %s / %s + move into a flat landing after a long drop.\n" % [InputRouter.binding_label(1, "crouch", false), InputRouter.binding_label(1, "crouch", true)]
 	text += "Detach: %s / B · Dodge: %s / X · Dash skill: %s / Y + X\n" % [InputRouter.binding_label(1, "grapple_detach", false), InputRouter.binding_label(1, "dodge", false), InputRouter.binding_label(1, "dash", false)]
-	text += "Hooks are finite. Reel has a limit, before the anchor; steer to swing.\n"
 	text += "Strikes: %s; %s; %s; %s\n" % [InputRouter.binding_label(1, "left_hand", false), InputRouter.binding_label(1, "right_hand", false), InputRouter.binding_label(1, "left_leg", false), InputRouter.binding_label(1, "right_leg", false)]
-	text += "Sword: %s / R3 · Talk: %s / Y + D-pad Down\n" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
-	return text + "Talk to residents for tasks. Your hero’s district progress is saved automatically."
+	text += "Sword: %s / R3 · Talk for tasks: %s / Y + D-pad Down" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
+	return text
 
 
 func set_paused(value: bool) -> void:
@@ -588,11 +589,16 @@ func _refresh_traversal_hint() -> void:
 	match str(parkour.get("phase", "")):
 		"hang":
 			var grip := "Grip %.1fs · " % maxf(0.0, float(parkour.hold_remaining)) if parkour.has("hold_remaining") else ""
-			hint_label.text = "LEDGE · %sRelease, then press %s to climb · %s to drop" % [grip, jump, detach]
+			hint_label.text = "LEDGE · %sRelease, then press %s: climb / + move away: kick · %s: drop" % [grip, jump, detach]
 		"mantle":
 			hint_label.text = "CLIMBING"
 		"wall_run":
 			hint_label.text = "WALL STEPS · Hold %s + move into wall · Release to drop" % jump
+		"wall_kick":
+			hint_label.text = "WALL KICK · Touch down before another kick"
+		"landing_roll":
+			var crouch := InputRouter.binding_label(_player.player_index, "crouch", gamepad)
+			hint_label.text = "LANDING ROLL · Release %s to stop rolling" % crouch
 		_:
 			if _player.grapple.phase != GrappleHook.Phase.HANG:
 				return

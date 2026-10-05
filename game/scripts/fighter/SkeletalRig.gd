@@ -185,6 +185,9 @@ func _setup_hero(path: String) -> void:
 			var hp := hero_skeleton.get_bone_parent(hi)
 			_align[hi] = _align.get(hp, Quaternion.IDENTITY)
 	foot_contact.setup(hero_skeleton, hero_mesh)
+	if _fighter.has_method("parkour_snapshot"):
+		# Warm city-only support data during actor loading, never on input arrival.
+		parkour_motion.roll_support.setup(hero_skeleton, hero_mesh)
 	body_motion.setup(hero_skeleton, skeleton)
 	ground_contact.setup(hero_skeleton, hero_mesh, foot_contact.samples)
 	var hips := hero_skeleton.find_bone("Hips")
@@ -237,17 +240,23 @@ func retarget() -> void:
 			var s_rest := skeleton.get_bone_global_rest(si).origin
 			var s_now := skeleton.get_bone_global_pose(si).origin
 			hero_skeleton.set_bone_pose_position(hi, hero_skeleton.get_bone_rest(hi).origin + (s_now - s_rest) * _hip_scale)
+	# A ground roll owns the whole authored silhouette, including its tucked head.
+	var rolling: bool = parkour_motion.phase == "landing_roll" and ragdoll == null
 	# One ordered final pose: body/support first, semantic contacts afterwards.
-	if ragdoll == null:
+	if ragdoll == null and not rolling:
 		body_motion.apply_balance(hero_skeleton, _fighter)
-	authored_landing.apply(hero_skeleton, locomotion.moving_landing_phase())
-	foot_contact.apply(_fighter, ragdoll)
-	ground_contact.apply(_fighter, skeleton, clip, clip_pos, body_motion._dt, ragdoll)
+	if not rolling:
+		authored_landing.apply(hero_skeleton, locomotion.moving_landing_phase())
+		foot_contact.apply(_fighter, ragdoll)
+		ground_contact.apply(_fighter, skeleton, clip, clip_pos, body_motion._dt, ragdoll)
+	else:
+		ground_contact.reset()
 	authored_combat.adjust_hero_contact(hero_skeleton, _fighter)
 	authored_hook.apply_hands(hero_skeleton, _fighter)
 	if ragdoll == null:
 		parkour_motion.apply_contacts(hero_skeleton, _fighter)
-	body_motion.apply_gaze(hero_skeleton, skeleton, _fighter, ragdoll)
+	if not rolling:
+		body_motion.apply_gaze(hero_skeleton, skeleton, _fighter, ragdoll)
 
 
 ## Presentation endpoint only; physics keeps GrappleHook.HAND and its deterministic rope constraint.
@@ -486,10 +495,11 @@ func _physics_process(delta: float) -> void:
 	var recovering: bool = HookMotion.recovery_active(_fighter)
 	if procedural:
 		MotionFallback.apply(skeleton, _fighter.animator)
-	if ragdoll == null and not recovering and not RigAnimator.levitating(_fighter) and not locomotion.moving():
+	if ragdoll == null and parkour_motion.phase.is_empty() and not recovering and not RigAnimator.levitating(_fighter) and not locomotion.moving():
 		idle_presence.apply(skeleton, _fighter, delta)
 	_apply_attack_return(delta)
-	body_motion.apply_source(skeleton)
+	if parkour_motion.phase != "landing_roll":
+		body_motion.apply_source(skeleton)
 	# Transitions start from what was actually drawn, including stance overlays.
 	locomotion._last_output = _bone_poses()
 	# State/rays advance at physics rate even when rendering is slower. Deferred
@@ -549,6 +559,11 @@ func _on_mannequin_updated() -> void:
 		sword.update_pose()
 	if gear != null:
 		gear.update_pose()
+	if ragdoll == null and parkour_motion.finish_roll_support(_fighter):
+		if sword != null:
+			sword.update_pose()
+		if gear != null:
+			gear.update_pose()
 
 
 ## Aligned hand rest used to calibrate a prop; leaf hand rests differ between the two Meshy arms.

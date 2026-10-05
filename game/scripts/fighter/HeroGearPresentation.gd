@@ -400,7 +400,9 @@ func pin_transform(tail: Dictionary) -> Transform3D:
 			corners[influence[4]] += (pose*influence[1])*influence[5]
 	if tail.skin[0].size() >= 6:
 		var facet: Vector3 = (corners[1]-corners[0]).cross(corners[2]-corners[0])
-		normal = facet if facet.dot(normal) >= 0.0 else -facet
+		# Godot triangle fronts are clockwise. Blended shading normals can
+		# oppose the deformed facet during a roll; they cannot choose its side.
+		normal = -facet
 	point = rig.hero_skeleton.global_transform * point
 	normal = rig.hero_skeleton.global_basis*normal
 	if not point.is_finite() or not normal.is_finite() or normal.length_squared() < 1e-12:

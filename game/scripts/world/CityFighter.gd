@@ -28,7 +28,18 @@ func _physics_process(delta: float) -> void:
 
 func _tick_air(delta: float, intent: Dictionary) -> void:
 	if not parkour.tick(self, delta, intent):
+		var previous_velocity: Vector3 = velocity
 		super._tick_air(delta, intent)
+		parkour.after_air(self, delta, intent, previous_velocity)
+
+func _tick_ground(delta: float, intent: Dictionary) -> void:
+	if not parkour.tick_ground(self, delta, intent):
+		super._tick_ground(delta, intent)
+
+func set_control(enabled: bool) -> void:
+	super.set_control(enabled)
+	if not enabled and parkour != null:
+		parkour.reset(self, false)
 
 func _set_state(next: State) -> void:
 	if next != State.JUMP and parkour != null:

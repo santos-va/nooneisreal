@@ -2,7 +2,7 @@ class_name AuthoredHookMotion
 extends RefCounted
 ## Existing CC0 UAL upper-body gestures over authored gait/jump. No rope authority writes.
 ## Wall-climb feet are deliberately excluded; actual hero arm lengths bound every grip.
-const SOURCES: Array[String] = ["Interact", "Climb_Enter", "Climb_Idle", "Climb_Up", "ClimbLedge", "OverhandThrow"]
+const SOURCES: Array[String] = ["Interact", "Climb_Enter", "Climb_Idle", "Climb_Up", "ClimbLedge", "OverhandThrow", "Roll", "WallRun_Jump_L", "WallRun_Jump_R"]
 const SAMPLE_HZ: float = 30.0
 const CATCH_SECONDS: float = 0.20 # PLACEHOLDER presentation timing, never an input delay.
 const PARKOUR_CATCH_SECONDS: float = 0.12

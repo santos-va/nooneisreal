@@ -26,6 +26,7 @@ Sfx="*res://scripts/core/Sfx.gd"
 UltMusic="*res://scripts/core/UltMusic.gd"
 Music="*res://scripts/core/Music.gd"
 ComfortSettings="*res://scripts/core/ComfortSettings.gd"
+GraphicsSettings="*res://scripts/core/GraphicsSettings.gd"
 
 [debug]
 
