@@ -280,6 +280,11 @@ func ui_suppressed() -> bool:
 	return not _ui_owners.is_empty()
 
 
+## Modal commands may act only while their own overlay is the sole input owner.
+func ui_owned_only_by(owner: Object) -> bool:
+	return is_instance_valid(owner) and ui_suppressed() and _ui_owners.size() == 1 and _ui_owners.has(owner.get_instance_id())
+
+
 func _clear_ui_history() -> void:
 	for player: int in [1, 2]:
 		_press_revisions[player] = press_history_revision(player) + 1

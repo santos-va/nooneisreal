@@ -4,6 +4,10 @@ extends CanvasLayer
 signal restart_requested
 signal exit_requested
 
+var _story: CityStory
+var _story_world: Node
+var _story_prompt: String = ""
+var story_button: Button
 var onboarding: CityOnboarding
 var paused_ui: bool = false
 var pause_panel: Control
@@ -210,6 +214,27 @@ func _build_quest() -> void:
 	_quest_card.hide()
 
 
+func bind_story(model: CityStory, world: Node) -> void:
+	_story = model
+	_story_world = world
+	_story.changed.connect(_refresh_progress)
+	story_button = _button("", _track_story)
+	story_button.add_theme_font_size_override("font_size", 23)
+	story_button.custom_minimum_size.y = 44
+	_journal_list.add_child(story_button)
+	story_button.focus_entered.connect(func(): _journal_scroll.ensure_control_visible(story_button))
+	_refresh_progress()
+
+func _story_leads() -> bool:
+	return is_instance_valid(_story) and _story.stage() != "completed" and (_story.guide_selected() or (is_instance_valid(_progress) and _progress.tracking_mode() == "auto"))
+
+func _track_story() -> void:
+	if is_instance_valid(_story):
+		_story.select_guide(true)
+
+func set_story_prompt(text: String) -> void:
+	_story_prompt = text
+
 func bind_progress(model: Node) -> void:
 	if is_instance_valid(_progress) and _progress.changed.is_connected(_refresh_progress):
 		_progress.changed.disconnect(_refresh_progress)
@@ -224,9 +249,14 @@ func _refresh_progress() -> void:
 	var summary: Dictionary = _progress.summary()
 	_quest_title.text = str(summary.get("active_title", "Explore the district"))
 	_quest_hint.text = str(summary.get("active_hint", "Talk to nearby residents."))
-	_quest_totals.text = "%d / %d tasks · %d credits" % [summary.get("completed", 0), summary.get("total", 0), summary.get("credits", 0)]
+	if _story_leads():
+		_quest_title.text = _story.text("title")
+		_quest_hint.text = _story.current_hint()
+	_quest_totals.text = "%d / %d district tasks · %d credits" % [summary.get("completed", 0), summary.get("total", 0), summary.get("credits", 0)]
 	if not summary.get("save_ok", true):
 		_quest_totals.text += " · Save unavailable"
+	if is_instance_valid(_story) and not _story.save_ok:
+		_quest_totals.text += " · Сюжет не збережено"
 	_quest_card.show()
 	_refresh_journal()
 	_refresh_quest_guide()
@@ -256,7 +286,7 @@ func _refresh_journal() -> void:
 				button.focus_entered.connect(func(): _journal_scroll.ensure_control_visible(button))
 				quest_buttons[id] = button
 			var button: Button = quest_buttons[id]
-			button.text = ("✓ TRACKING · " if id == selected else "TRACK · ") + caption
+			button.text = ("✓ TRACKING · " if id == selected and not _story_leads() else "TRACK · ") + caption
 			button.tooltip_text = str(entry.get("hint", ""))
 			button.show()
 		else:
@@ -267,8 +297,14 @@ func _refresh_journal() -> void:
 			if button.has_focus():
 				resume_button.grab_focus()
 			button.hide()
-	_journal.text = "\n".join(entries) if not entries.is_empty() else "Choose an accepted task to show its destination."
-	untrack_button.text = "QUEST GUIDE OFF ✓" if selected.is_empty() else "TURN OFF QUEST GUIDE"
+	if is_instance_valid(_story):
+		entries.insert(0, _story.journal_text())
+		story_button.text = ("✓ СЮЖЕТ · " if _story_leads() else "ВІДСТЕЖУВАТИ СЮЖЕТ · ") + _story.text("title")
+		if _story.stage() == "completed" and story_button.has_focus():
+			resume_button.grab_focus()
+		story_button.visible = _story.stage() != "completed"
+	_journal.text = "\n\n".join(entries) if not entries.is_empty() else "Choose an accepted task to show its destination."
+	untrack_button.text = "QUEST GUIDE OFF ✓" if selected.is_empty() and not _story_leads() else "TURN OFF QUEST GUIDE"
 	untrack_button.visible = _progress.has_method("track_quest")
 	# Accepted tasks first, then opt-out, then non-interactive available/completed entries.
 	var at := 0
@@ -281,6 +317,8 @@ func _refresh_journal() -> void:
 
 
 func _track_quest(id: String) -> void:
+	if is_instance_valid(_story):
+		_story.select_guide(false)
 	if is_instance_valid(_progress) and _progress.has_method("track_quest"):
 		_progress.track_quest(id)
 
@@ -338,7 +376,7 @@ func _refresh_quest_guide() -> void:
 	var camera := get_viewport().get_camera_3d()
 	if camera == null:
 		return
-	var target: Dictionary = CityQuestTargets.resolve(_progress, _quest_director, _player.global_position)
+	var target: Dictionary = _story_world.story_target() if _story_leads() and is_instance_valid(_story_world) else CityQuestTargets.resolve(_progress, _quest_director, _player.global_position)
 	_quest_guide.show_target(target, _player.global_position, camera, _root.size)
 
 
@@ -510,6 +548,10 @@ func _refresh_traversal_hint() -> void:
 		return
 	hint_label.hide()
 	if not is_instance_valid(_player) or paused_ui or InputRouter.ui_suppressed():
+		return
+	if not _story_prompt.is_empty():
+		hint_label.text = _story_prompt
+		hint_label.show()
 		return
 	var gamepad := false
 	var camera := get_viewport().get_camera_3d()

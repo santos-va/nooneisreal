@@ -18,7 +18,7 @@ static func combat_pockets() -> Array[Dictionary]:
 static func route_points() -> Array[Vector3]:
 	return [spawn_position(), Vector3.ZERO, Vector3(18, 0, 10), Vector3(18, 0, 8),
 		Vector3(18, 4, -10), Vector3(20, 4, -20), Vector3(0, 4, -20),
-		Vector3(-20, 4, -20), Vector3(-29, 4, -14), Vector3(-29, 4, -10),
+		Vector3(-20, 4, -20), Vector3(-29, 4, -20), Vector3(-29, 4, -14), Vector3(-29, 4, -10),
 		Vector3(-29, 0, 8), Vector3(-29, 0, 10), Vector3(-22, 0, 10), Vector3(-22, 0, 6), Vector3(-22, 0, 0),
 		Vector3.ZERO, spawn_position()]
 

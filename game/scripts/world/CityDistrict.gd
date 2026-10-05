@@ -9,6 +9,7 @@ const Interiors = preload("res://scripts/world/CityInteriors.gd")
 const Backdrop = preload("res://scripts/world/CityBackdrop.gd")
 var materials: Dictionary = {}
 var geometry_count: int = 0
+var maintenance: CityMaintenance
 
 func _ready() -> void:
 	materials = Materials.palette()
@@ -23,6 +24,9 @@ func _ready() -> void:
 	add_child(Backdrop.new())
 	_street_details()
 	_parkour_steps()
+	maintenance = CityMaintenance.new()
+	maintenance.name = "CityMaintenance"
+	add_child(maintenance)
 	_markers()
 
 func _parkour_steps() -> void:
