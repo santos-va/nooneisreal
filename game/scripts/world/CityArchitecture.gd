@@ -216,9 +216,12 @@ func _passage() -> void:
 
 func _bridge() -> void:
 	for z: float in [-22.0, -18.0]:
-		_box(Vector3(0, 5.03, z), Vector3(20, 0.12, 0.3), "stone")
-		for x: float in [-8.0, -4.0, 0.0, 4.0, 8.0]:
-			_box(Vector3(x, 4.55, z), Vector3(0.28, 1.2, 0.38), "stone")
+		_box(Vector3(0, 5.0, z), Vector3(20, 0.045, 0.085), "iron")
+		for index: int in 39:
+			_box(Vector3(-9.5 + float(index) * 0.5, 4.62, z), Vector3(0.035, 0.76, 0.045), "iron")
+		for x: float in [-8.0, -4.0, 4.0, 8.0]:
+			_box(Vector3(x, 4.62, z), Vector3(0.08, 0.8, 0.09), "iron")
+			_box(Vector3(x, 4.15, z), Vector3(0.18, 0.3, 0.22), "stone")
 
 func _local_box(origin: Vector3, basis: Basis, center: Vector3, size: Vector3, material: String) -> void:
 	_box(origin + basis * center, size, material, basis)

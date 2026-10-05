@@ -39,3 +39,54 @@ jobs:
           echo "GODOT_BIN=$PWD/Godot_v${GODOT_VERSION}_linux.x86_64" >> "$GITHUB_ENV"
       - name: make check-playable (import, parse, smoke, presentation regressions)
         run: make check-playable
+      - name: Install native Compatibility test dependencies
+        timeout-minutes: 5
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb xauth libgl1-mesa-dri libglx-mesa0
+          command -v xvfb-run Xvfb xauth timeout
+      - name: Native Compatibility camera pixels and shader compilation
+        timeout-minutes: 5
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          GALLIUM_DRIVER: llvmpipe
+        run: |
+          set -euo pipefail
+          native_profile=$(mktemp -d "$RUNNER_TEMP/nir-native-camera.XXXXXX")
+          trap 'rm -rf -- "$native_profile"' EXIT
+          export XDG_DATA_HOME="$native_profile/data"
+          export XDG_CONFIG_HOME="$native_profile/config"
+          export XDG_CACHE_HOME="$native_profile/cache"
+          export XDG_RUNTIME_DIR="$native_profile/runtime"
+          mkdir -p "$XDG_DATA_HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" "$XDG_RUNTIME_DIR"
+          chmod 700 "$XDG_RUNTIME_DIR"
+          native_log="$RUNNER_TEMP/city-camera-renderer.log"
+          native_rc=0
+          timeout --kill-after=10s 180s xvfb-run -a -s '-screen 0 1280x720x24 -nolisten tcp' \
+            "$GODOT_BIN" --path game --rendering-method gl_compatibility --audio-driver Dummy \
+            --script "$PWD/tools/camera/city_camera_renderer_check.gd" > "$native_log" 2>&1 || native_rc=$?
+          cat "$native_log"
+          if [ "$native_rc" -ne 0 ]; then
+            echo "Native Compatibility test failed: rc=$native_rc (unavailable renderer and timeout are failures)"
+            exit "$native_rc"
+          fi
+          python3 - "$native_log" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+          output = Path(sys.argv[1]).read_text()
+          sentinel = 'CITY_CAMERA_RENDERER_COMPLETE checks=4 failures=0'
+          complete = sentinel in output.splitlines()
+          compatibility = re.search(r'^CITY_CAMERA_RENDERER_TRACE renderer=gl_compatibility ', output, re.MULTILINE)
+          errors = re.search(r'^\s*(?:SHADER ERROR|SCRIPT ERROR|ERROR):', output, re.MULTILINE)
+          if not complete or not compatibility or errors:
+              sys.exit('Native Compatibility test failed: missing full 4/0 completion, wrong renderer, or runtime/shader error')
+          print('NATIVE_COMPATIBILITY_PASS checks=4 errors=0')
+          PY
+      - name: Upload native Compatibility log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-compatibility-log
+          path: ${{ runner.temp }}/city-camera-renderer.log
+          if-no-files-found: warn

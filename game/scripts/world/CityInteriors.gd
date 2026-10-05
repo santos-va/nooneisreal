@@ -141,6 +141,10 @@ func _tailor(pose: Transform3D) -> void:
 	_box(pose, Vector3(2.16, 1.04, 3.15), Vector3(0.8, 0.035, 1.3), "cloth_teal")
 	for i: int in 3:
 		_box(pose, Vector3(-0.85 + float(i) * 0.52, 1.1 + float(i) * 0.035, 5.6), Vector3(0.42, 0.06, 0.62), ["cloth_red", "cloth_teal", "cloth_cream"][i])
+	# Two recognisable coats above the cutting table break the repeated stock-cylinder rhythm.
+	_rod(pose * Vector3(3.01, 2.9, 2.05), pose * Vector3(3.01, 2.9, 4.65), 0.035, "brass")
+	for index: int in 2:
+		_hanging_coat(pose.translated_local(Vector3(2.99, 0, 2.65 + float(index) * 1.35)), "cloth_red" if index == 0 else "cloth_teal")
 	_sign(pose * Vector3(0, 2.7, 7.73), "КРІЙ · РЕМОНТ · ТКАНИНИ", 0.006)
 
 func _workshop(pose: Transform3D) -> void:
@@ -148,6 +152,10 @@ func _workshop(pose: Transform3D) -> void:
 	# Workbench vise, hanging tools, clock parts and a waiting stool.
 	_box(pose, Vector3(2.3, 1.22, 3.2), Vector3(0.5, 0.28, 0.4), "iron")
 	_rod(pose * Vector3(2, 1.28, 3.2), pose * Vector3(2.65, 1.28, 3.2), 0.035, "brass")
+	_box(pose, Vector3(3.16, 2.17, 3.23), Vector3(0.065, 1.25, 2.45), "wood")
+	for row: int in 3:
+		for column: int in 9:
+			_box(pose, Vector3(3.119, 1.73 + float(row) * 0.43, 2.22 + float(column) * 0.25), Vector3(0.012, 0.035, 0.035), "ink")
 	for i: int in 4:
 		var z: float = 2.45 + float(i) * 0.52
 		_box(pose, Vector3(3.08, 2.1, z), Vector3(0.07, 0.62, 0.06), "wood")
@@ -159,8 +167,31 @@ func _workshop(pose: Transform3D) -> void:
 		wheel.rings = 12
 		wheel.ring_segments = 4
 		_primitive(wheel, pose.translated_local(Vector3(-1.25 + float(i) * 0.65, 1.12, 5.6)), "brass")
+	_wall_clock(pose.translated_local(Vector3(2.55, 2.8, 7.72)).scaled_local(Vector3.ONE * 0.75))
 	_stool(pose.translated_local(Vector3(-2.2, 0, 1.15)))
 	_sign(pose * Vector3(0, 2.7, 7.73), "ГОДИННИКИ · МЕХАНІЗМИ", 0.006)
+
+func _hanging_coat(pose: Transform3D, cloth: String) -> void:
+	for side: float in [-1.0, 1.0]:
+		_rod(pose * Vector3(0, 2.9, 0), pose * Vector3(0, 2.62, side * 0.29), 0.018, "brass")
+		var sleeve := pose.translated_local(Vector3(-0.04, 2.31, side * 0.38)).rotated_local(Vector3.RIGHT, side * 0.55)
+		_box(sleeve, Vector3.ZERO, Vector3(0.14, 0.49, 0.23), cloth)
+	_box(pose, Vector3(-0.06, 2.15, 0), Vector3(0.15, 0.86, 0.56), cloth)
+	_box(pose, Vector3(-0.06, 1.74, 0), Vector3(0.17, 0.13, 0.64), cloth)
+	_box(pose, Vector3(-0.145, 2.16, 0), Vector3(0.01, 0.75, 0.024), "brass")
+	for side: float in [-1.0, 1.0]:
+		_box(pose, Vector3(-0.15, 1.99, side * 0.18), Vector3(0.014, 0.11, 0.16), "cloth_cream")
+
+func _wall_clock(pose: Transform3D) -> void:
+	var face := pose.rotated_local(Vector3.RIGHT, PI * 0.5)
+	_cylinder(face, Vector3.ZERO, 0.63, 0.63, 0.11, "wood", 24)
+	_cylinder(face, Vector3(0, -0.065, 0), 0.54, 0.54, 0.025, "cloth_cream", 24)
+	for hour: int in 12:
+		var angle: float = float(hour) * TAU / 12.0
+		var mark := pose.translated_local(Vector3(sin(angle) * 0.44, cos(angle) * 0.44, -0.09)).rotated_local(Vector3.BACK, -angle)
+		_box(mark, Vector3.ZERO, Vector3(0.025, 0.085, 0.02), "ink")
+	_box(pose, Vector3(0, 0.16, -0.11), Vector3(0.035, 0.34, 0.025), "ink")
+	_box(pose.rotated_local(Vector3.BACK, -1.05), Vector3(0, 0.12, -0.11), Vector3(0.045, 0.25, 0.025), "ink")
 
 func _table(pose: Transform3D, size: Vector2, material: String) -> void:
 	_box(pose, Vector3(0, 0.94, 0), Vector3(size.x, 0.12, size.y), material)

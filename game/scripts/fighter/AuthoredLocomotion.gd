@@ -118,6 +118,9 @@ func special_time(length: float) -> float:
 func moving() -> bool:
 	return active and gait != Gait.IDLE
 
+func moving_landing_phase() -> float:
+	return _land_elapsed / LAND_SECONDS if active and moving() and _land_elapsed < LAND_SECONDS else -1.0
+
 ## Call after restoring other previous-frame overlays, immediately before seeking.
 func restore(skeleton: Skeleton3D) -> void:
 	for bone: int in _base.size():
