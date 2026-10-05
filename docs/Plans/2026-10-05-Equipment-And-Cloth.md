@@ -29,7 +29,7 @@ Hero GLB отримує один material_override на весь mesh. Тому 
 1. **T2 combat:** SwordPresentation, SwordMotion, sword_dissolve та weapon regressions. Перевернути напрям у обох руках і на спині, узгодити hand/stow mount та transition. Створити тонший профіль, UV/цільову орнаментику, grip/guard матеріали за ТЗ T6. Ульта зберігає особливу gold форму. Перед будь-якою правкою SkeletalRig узгодити з rope.
 2. **T2 rope:** геройські інструменти/одяг, окремий shared equipment/garment material helper за погодженим API; SkeletalRig інтеграція за потреби. Інвентаризувати всі реально видимі поточні інструменти обох героїв і оновити їх, не створюючи неіснуючих здібностей. Додати bounded рух вільних cloth/strap частин від фактичного руху; кріплення слідує остаточній позі. Оригінальні шкіра/обличчя/волосся лишаються поза тканинним шаром.
 3. **T2 npc:** NPC appearance, одяг і його вторинний рух. Розрізнювати тканину/шкіру/метал, індивідуальні seams/patches/професійні інструменти за seed. Спільні ресурси; не міняти маршрути, діалоги, identity/save або skin marks. Спільний material API узгоджується з rope.
-4. **T6 art:** точне художнє ТЗ, наявні референси, native before/after, registry для кожного нового asset. Нові оригінальні векторні/процедурні assets дозволені в межах доручення; існуючі зображення не редагуються Python. Оплачені зовнішні генерації й заміна GLB не входять у цей крок.
+4. **T6 art:** точне художнє ТЗ, наявні референси, native before/after, registry для кожного нового asset. Нові оригінальні векторні/процедурні assets дозволені в межах доручення; існуючі зображення не редагуються Python. Оплачені Higgsfield текстури тепер прямо дозволені Santos (CP3 нижче); заміна GLB не входить у цей крок.
 5. **T3:** topology/API/source/performance факти, lightweight reuse. **T4:** незалежне приймання напрямку/контактів/анатомії, фізичних меж тканини, поведінки після reset/freeze та native видимості.
 6. **T1:** послідовна інтеграція, snapshot checkpoints, загальні гейти, exact-commit export і PR з фінальним CI. Shared Godot запускає лише root; агенти використовують ізольовані game копії.
 
@@ -55,6 +55,14 @@ T4 приймання: back grip над плечем, tip униз; єдиний
 ## Інструментальні межі
 
 Game Development Studio прочитано для маршруту asset→integration→visual. Локальний `game-dev` не знайдено в PATH чи відомих tool directories; цей CLI-конвеєр недоступний. Нічого не встановлюється й не підмінюється стороннім сервісом. Використовуємо чинні repository Godot/native засоби; не заявляємо receipts або валідацію від недоступного CLI. Іконка незмінна до оригінального PNG.
+
+## CP3 — дозвіл на якісні Higgsfield матеріали
+
+Santos прямо викликав Higgsfield, Build 3D Game Rooms і Game Development Studio та дозволив «не жалуй кредитів ... на текстури якісні». Це замінює початкове обмеження без провайдерів. Перевірений баланс перед генерацією — **4568,5 кредитів**, Ultra; unlimited не доступний. GPT Image 2.5 `flare/max/2k`, один результат: **9 кредитів** за актуальним estimate для 1:1 та 2:3. Перший обмежений пакет — шість матеріалів, **54 кредити**; повтор лише за конкретною непридатністю результату, із записом job ID та вартості.
+
+Після аудиту UV обрано шість flat maps: emerald/gold sword inlay, Choko canvas, Skea knit, neutral leather, grimoire cover, NPC linen. Варіанти: залишити лише procedural деталі (мало індивідуального арту); генерувати повні нові герої/текстурні атласи (ризик anatomy/skin/UV); цільові матеріали на перевіреній геометрії (обрано). Погляди CP1 збережені: гравець зблизька — деталь; боєць — читабельний клинок; міський гравець — помітна фактура; Skea — власний knit/book; NPC — спільний дешевий linen; M3 — mipmaps та обмежені runtime tiers; художник — точні prompts, hashes, provenance. Геройська тканина застосовується семантичною маскою до існуючого mesh зі збереженими UV, skin weights і LOD, а не тільки доданими panels.
+
+Зберігаємо вихідні provider bytes і manifest із prompt/job/model/cost/hash окремо від нормалізованих runtime files; жодних loose downloads без реєстру. Build 3D Game Rooms тут задає лише релевантні prop/contact/camera критерії: нова кімната, Meshy або заміна топології не замовлялись. Приймання — actual UV, near/normal camera, відсутність baked lighting/seams/shimmer, protected face/skin, native Compatibility shader logs, `make check` і `make gates`. Недоступний game-dev CLI не видається за виконаний pipeline.
 
 ## Related
 
