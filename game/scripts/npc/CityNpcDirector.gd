@@ -11,6 +11,8 @@ const TALK_VERTICAL: float = 0.75
 @export var social_seconds: float = 2.6 # PLACEHOLDER speech visibility.
 @export var social_cooldown: float = 18.0 # PLACEHOLDER quiet interval per resident.
 var population := NpcPopulation.new()
+var lower_story: CityLowerStory
+var _lower_offer_open: bool = false
 var story: CityStory
 var _story_offer_open: bool = false
 var progress: CityProgress
@@ -35,10 +37,11 @@ var current_context: Dictionary = {}
 var current_fallback: String = ""
 var listen_at: float = INF
 
-func setup(target: Node3D, district_progress: CityProgress = null, story_model: CityStory = null) -> void:
+func setup(target: Node3D, district_progress: CityProgress = null, story_model: CityStory = null, lower_model: CityLowerStory = null) -> void:
 	player = target
 	progress = district_progress
 	story = story_model
+	lower_story = lower_model
 	hero_id = progress.hero_id if progress != null else "choko"
 	if not population.load_from():
 		load_failed = FileAccess.file_exists(NpcPopulation.SAVE_PATH)
@@ -64,6 +67,9 @@ func setup(target: Node3D, district_progress: CityProgress = null, story_model: 
 	if story != null:
 		story.changed.connect(_sync_story_memory)
 		_sync_story_memory()
+	if lower_story != null:
+		lower_story.changed.connect(_sync_lower_memory)
+		_sync_lower_memory()
 
 func _physics_process(delta: float) -> void:
 	if player == null:
@@ -204,6 +210,7 @@ func _job(index: int) -> String:
 
 func _show_conversation(response: String = "", topic: String = "greeting") -> void:
 	_story_offer_open = false
+	_lower_offer_open = false
 	if conversation_index < 0:
 		return
 	var index: int = conversation_index
@@ -222,6 +229,9 @@ func _show_conversation(response: String = "", topic: String = "greeting") -> vo
 			options.append({"id": "story:" + action, "label": "Сюжет: " + story.text("title")})
 		elif job in ["grocer", "tailor"]:
 			options.append({"id": "story:route", "label": "Про службовий двір біля вежі"})
+	if lower_story != null and job == "workshop" and story != null and story.stage() == "completed":
+		var action: String = "offer" if lower_story.stage() == "available" else ("complete" if lower_story.stage() == "return" else "hint")
+		options.push_front({"id": "lower:" + action, "label": "Сюжет: " + lower_story.text("title")})
 	if progress != null:
 		for q: Dictionary in progress.quests:
 			if q.giver != job:
@@ -251,6 +261,10 @@ func _show_conversation(response: String = "", topic: String = "greeting") -> vo
 func _choose(action: String) -> void:
 	if conversation_index < 0 or not dialogue.opened:
 		return
+	if action.begins_with("lower:"):
+		_choose_lower(action.trim_prefix("lower:"))
+		return
+	_lower_offer_open = false
 	if action.begins_with("story:"):
 		_choose_story(action.trim_prefix("story:"))
 		return
@@ -296,7 +310,10 @@ func _choose(action: String) -> void:
 			_present(index, "agree", player.global_position)
 			_show_conversation("Перев’язь змінено. Можна вийти з розмови й оглянути героя.")
 	elif action == "memory":
-		dialogue.show_choices(population.dialogue(index, hero_id), [{"id": "back", "label": "Назад до розмови"}])
+		var memories: String = population.dialogue(index, hero_id)
+		if index == 2 and lower_story != null and lower_story.hero_id == hero_id and lower_story.stage() == "locked" and lower_story.heroes[hero_id].accepted:
+			memories = "Збережені спогади\n" + lower_story.current_hint() + "\n\n" + memories
+		dialogue.show_choices(memories, [{"id": "back", "label": "Назад до розмови"}])
 	elif pair[0] == "topic":
 		var allowed: bool = argument in ["work", "district"] or (argument == "route" and progress != null and progress.quest_status("roof_walk") == "completed") or (argument == "neighbours" and progress != null and progress.quest_status("neighbours") == "completed")
 		if allowed:
@@ -336,6 +353,35 @@ func _choose_story(action: String) -> void:
 	elif action == "hint" and story.stage() != "available":
 		dialogue.show_fact(story.journal_text())
 
+func _choose_lower(action: String) -> void:
+	if lower_story == null or lower_story.hero_id != hero_id or get_tree().paused or not dialogue.opened or not InputRouter.ui_owned_only_by(dialogue) or not can_talk(conversation_index) or _job(conversation_index) != "workshop":
+		return
+	local_conversation.cancel()
+	local_token = -1
+	current_context = {}
+	_story_offer_open = false
+	if lower_story.stage() == "locked":
+		_lower_offer_open = false
+		dialogue.show_fact(lower_story.current_hint())
+		return
+	if action == "offer" and lower_story.stage() == "available":
+		_lower_offer_open = true
+		dialogue.show_choices(lower_story.text("title") + "\n\n" + lower_story.text("offer"), [{"id": "lower:accept", "label": lower_story.text("accept_label")}, {"id": "back", "label": "Поки відкласти"}])
+	elif action == "accept" and _lower_offer_open and lower_story.accept():
+		_lower_offer_open = false
+		_show_conversation(lower_story.text("accepted"))
+	elif action == "complete" and lower_story.complete():
+		_present(conversation_index, "agree", player.global_position)
+		_show_conversation(lower_story.text("complete"))
+	elif action == "hint":
+		_lower_offer_open = false
+		dialogue.show_fact(lower_story.journal_text())
+
+func _sync_lower_memory() -> void:
+	if lower_story != null and lower_story.save_enabled and lower_story.save_ok and lower_story.stage() == "completed":
+		if population.bond_once(2, lower_story.hero_id, "story_lower_mark", lower_story.text("memory"), 1):
+			persist()
+
 func _sync_story_memory() -> void:
 	# Story is authoritative. Repair the independent NPC document after a partial save/reload.
 	if story != null and story.save_enabled and story.save_ok and story.stage() == "completed":
@@ -363,6 +409,7 @@ func _present(index: int, kind: String, listener: Vector3) -> void:
 		chatter.call("speak", actors[index].global_position, int(population.people[index].appearance_seed), kind, str(population.people[index].id))
 
 func _close_conversation() -> void:
+	_lower_offer_open = false
 	_story_offer_open = false
 	local_conversation.cancel()
 	local_token = -1
