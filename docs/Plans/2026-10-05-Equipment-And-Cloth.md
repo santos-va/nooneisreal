@@ -64,6 +64,14 @@ Santos прямо викликав Higgsfield, Build 3D Game Rooms і Game Devel
 
 Зберігаємо вихідні provider bytes і manifest із prompt/job/model/cost/hash окремо від нормалізованих runtime files; жодних loose downloads без реєстру. Build 3D Game Rooms тут задає лише релевантні prop/contact/camera критерії: нова кімната, Meshy або заміна топології не замовлялись. Приймання — actual UV, near/normal camera, відсутність baked lighting/seams/shimmer, protected face/skin, native Compatibility shader logs, `make check` і `make gates`. Недоступний game-dev CLI не видається за виконаний pipeline.
 
+## CP5 — завершити знайдені анімаційні й посадкові дефекти
+
+T4 exact blade-edge↔full-skin перевірка доповнює centerline guards: не дозволено приймати клинок, край якого проходить крізь одяг/тіло. Після корекції залишився right lowcut frame6; постійний тест `tools/animation/weapon_craft_check.gd` має включити саме знайдені worst poses, не порівнювати результат із власним helper як oracle.
+
+Виявлений `thrust` використовує downward-cut `Sword_Light_B`. T3 перевірив усі36 наявних sword clips: Light_D має wrist extension0,7702м за0,20→0,30s і blade forward dot0,84 біля контакту. Варіанти — залишити стару невідповідну назву/кліп (відхилено), примусово повертати кисть procedural-поправкою (гірше читається й навантажує анатомію), використати наявний authored Light_D (обрано для actual candidate перевірки). Дозволено цільово змінити `AuthoredCombatMotion.gd`; незмінні gameplay timing/hitboxes/reach. Уточнення T2:18 foot profiles належать locomotion loops, ATTACK використовує geometric penetration lift, а Light_D має власний return без окремого `_Rec` кліпу. Тому не додаємо вигадані/невикористані profiles і не змінюємо stance policy; source recovery window документується з фактичного кліпу. Обидві руки, ACTIVE читабельність, grounded support усіх фаз, full-skin clearance, старі combat/whole-body/ground guards і `make check-playable` — обов'язкові.
+
+Skea crouch виявив прив'язку вільного краю до waist замість chest: pin pool помилково залежав від render mask. T2 rope розділяє семантику attachment та recolor, перевіряє actual skinned chest pin і постійний worst-crouch triangle guard. Відсутність Spine01 у cloth whitelist перевіряється окремо як неповна маска; розширення можливе лише після protected-anatomy/LOD й native перевірки, з чинним Skea backpack exclusion. Нові матеріали й ці виправлення не оголошуються завершеними за одним числовим тестом.
+
 ## Related
 
 - [[2026-10-05-Equipment-Session]] · [[2026-10-05-Whole-Body-Checkpoint]] · [[Style-Guide]] · [[Textures-Registry]] · [[Characters/Choko]] · [[Characters/Skea]] · [[ADR-004-Physics-Is-Presentation]] · [[ADR-019-Audit-And-Many-Views-Before-Decision]] · [[state]]

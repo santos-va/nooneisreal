@@ -26,7 +26,16 @@ NPC кандидат зберігає старий budget:47meshes/2884triangles
 
 Геройський cloth shader тепер має semantic vertex mask для оригінального mesh; це уточнення початкових added overlays. Атлас і skin зберігаються. T3 виявив втрату трьох imported LOD у ранній копії mesh; T2 виправляє/перевіряє збереження до фінального ресурсного приймання. T4 також знайшов steady-walk перетин NPC coat із ногами; виконавець виправляє A-line форму, не послаблює кутові межі.
 
-## Related
+Перший batch завершився п'ятьма успіхами та terminal failure Skea knit. Перевірений balance після нього **4523,5**, різниця **45 кредитів**. Для невдалої карти подано один повтор із тим самим prompt/params за quote9: job `30db9a22-4f6a-42c3-8e48-516e929360c6`; повтор успішно завершився, усі шість карт створено. Фінальний balance **4514,5**, фактична загальна витрата **54 кредити**. Початкові успішні jobs не дублюються. Exact receipts — [[2026-10-05-Equipment-Texture-Production]]. Локальний CDN download отримав CONNECT403 від network policy, тому requested runtime integration ще не виконана. Santos отримав async запит дозволити конкретний CDN domain; обхід мережевої політики не застосовується.
 
+## CP4 — незалежні геометричні та ресурсні перевірки
+
+Нові all-variant sword guards виявили проникнення після перевороту клинка; T4 підтвердив actual full-skinned torso/hips перетини у cut16, thrust14–16 і lowcut6–7, тому це не просто надмірний capsule guard. T2 змінює actual forearm/wrist при незмінній wrist/contact position; до candidate зафіксував total50°/forearm45°/wrist45°, target core0,160м, чинний acceptance0,130м не послаблено. Перенесення цієї корекції на draw створило дві continuity failures — відхилено; draw trajectory виправляється окремо. Final sword acceptance ще відкрите.
+
+NPC незалежно пройшов743580 panel-interior envelope samples та natural30/60/120 replay без відмінностей; native T6 перевірив side-fit/рух original-material candidate. Root прочитав raw quiet budget log:12NPC, idle104/149µs median/p95, move-stop-turn108/170µs; max1378µs. Три respawn cycles збережені кеші й звільнені weakrefs, failures0. Це helper CPU Linux, не FPS/M3. Докладні snapshot hashes і межі — [[2026-10-05-Equipment-And-Cloth-Research]].
+
+Root прочитав незалежний garment-LOD log: обидва герої, base+3LOD, нуль protected-anatomy triangles із ненульовою маскою. Positions/UV/skin/indices збережені; повторна компресія дає normal≤0,007412° і tangent component≤0,000119, тому ці два buffers не називаються byte-exact. Маска в COLOR.g зберігає R/B/A. Hero fitting, camera lifecycle, повний regression/native/PCK і provider-map admission ще не закриті.
+
+## Related
 
 - [[2026-10-05-Equipment-And-Cloth]] · [[2026-10-05-Whole-Body-Checkpoint]] · [[2026-10-05-Whole-Body-Session]] · [[state]]
