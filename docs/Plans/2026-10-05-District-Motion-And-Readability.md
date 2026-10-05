@@ -1,6 +1,6 @@
 # Рух і читабельність кварталу
 
-2026-10-05 · T1 · **Статус: approved**. Пряме продовження Santos після merged PR #176, main `6d929f8`. Журнал [[2026-10-05-District-Motion-Session]]. Підстава — [[ADR-004-Physics-Is-Presentation]], [[ADR-023-City-First-Exploration]]; нових бойових правил немає.
+2026-10-05 · T1 · **Статус: done — локальне/native/PCK приймання; CI і merge див. PR #177**. Пряме продовження Santos після merged PR #176, main `6d929f8`. Журнал [[2026-10-05-District-Motion-Session]]. Підстава — [[ADR-004-Physics-Is-Presentation]], [[ADR-023-City-First-Exploration]]; нових бойових правил немає.
 
 ## Аудит і погляди
 
@@ -15,7 +15,7 @@
 1. **T2 motion:** `SkeletalRig.gd`, `AuthoredLocomotion.gd`, новий bounded presentation helper за потреби. Адаптувати наявні Dodge_Left/Right до реального напрямку й progress, перевірити ground/air та входи/виходи. Додати короткий authored контакт приземлення під час руху зі збереженням gait. Ризики: спотворення анатомії, foot sliding, sword clearance, stale overlays. Приймання: обидва герої, чотири напрями, ground/air, running landing/roof drop; native повні послідовності й before/after, контроль незмінних траєкторій/stamina/timing. Не міняти Fighter gameplay.
 2. **T2 camera:** `CityCamera.gd` лише після native reproduction. Перевірити pivot/near-plane/collision біля трьох крамниць, парапетів і відновлення checkpoint. Ризик: penetration, input basis/orbit зміниться. Приймання: геометричні swept-volume/LOS міри, native before/after, збережений orbit та ціль мотузки. Якщо дефект не підтвердиться — не робити косметичний rewrite.
 3. **T6 world:** `CityDistrict.gd`, окремий environment helper за потреби. Відкриті перила над низьким цоколем зі збереженням safety collision, фонова архітектура за чинними межами, масштаб/силует з наявної palette; жодних нових прохідних областей або обіцянки нового району. Ризик: перекриття маршрутів/опор, visual clutter, зайві draw calls. Native ground/roof/market before-after, bounded node count, незмінні gameplay collision/landmarks. У майстерні й ательє — виразні настінні інструменти/годинник та підвішений одяг замість додаткових однакових циліндрів, без зміни проходів. Геометричні ресурси без нових game/assets; paid generation і зміна ліцензій не потрібні.
-4. **T4:** незалежна перевірка анатомії/цілої послідовності, камерних метрик, фонового масштабу, усіх старих регресій; `make check-playable`, `make gates`, релевантні negative probes. Нові тестові сценарії ізолюють save. PR до main без self-merge; native M3/фізичний controller не заявляються.
+4. **T4:** незалежна перевірка анатомії/цілої послідовності, камерних метрик, фонового масштабу, усіх старих регресій; `make check-playable`, `make gates`, релевантні negative probes. Нові тестові сценарії ізолюють save. Через реально виявлену shader-помилку, яку headless не компілює, окремий CI-крок запускає pixel/shadow probe у Compatibility через Xvfb/Mesa; відсутність renderer або shader error не може бути пропуском. PR до main без self-merge; native M3/фізичний controller не заявляються.
 
 ## Контракти смуг
 
