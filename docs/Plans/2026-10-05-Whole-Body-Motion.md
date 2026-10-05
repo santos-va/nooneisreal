@@ -74,6 +74,12 @@ T4 запропонував після actual-Fighter baseline; T1 прийня�
 
 Порядок actual-hero шарів: body → feet → hand/contact → gaze/sword. Калібрування лиця прив'язане до rest-анатомії; м'яка межа зберігає авторський рух. Physics-facing, velocity, хітбокси та gameplay не записуються helper-ом. Freeze утримує і стан, і позу; restart/teleport очищає кеші. Контакти удару після корекції опори мають лишитися чинними. Дані й амплітуди — художні PLACEHOLDER з власним Fix-документом, не вигадані нормативи.
 
+## CP4 — вартість опори перед freeze
+
+T3 ранній sealed snapshot на цьому Linux-runner виміряв Choko presentation median: idle451→5401мкс, jog308→2373мкс, hang321→410мкс. Повторний callback уже кешований; основна вартість — перший повний skinning підошов (5406 samples для idle). Це не FPS M3, але істотне зростання проти baseline.
+
+Дозволено дві обмежені ітерації в `HeroGroundContact.gd` і його перевірках: кешовані bone/world transforms, проєкція skinning на площину опори, попередньо зважені bind-вектори/типізовані масиви. Перевага точній математичній еквівалентності всіх vertices; не зменшувати незалежний full-skinning тест або допуски CP2. WaveField неплаский: не підміняти його плоскою опорою мовчки. T3 повторює той самий warmed сценарій і додає actual WaveField; T4 перевіряє незмінність пози та метрик. Орієнтир1,5–2мс/героя на цьому runner — **PLACEHOLDER інженерний бюджет**, не обіцянка M3. Якщо дві ітерації не дають потрібного виграшу, записати фактичну межу й обрати наступний крок за даними, не крутити оптимізацію без кінця.
+
 ## Related
 
 - [[2026-10-05-Whole-Body-Session]] · [[2026-10-05-Living-District-Checkpoint]] · [[2026-10-05-Living-District-Characters]] · [[2026-10-05-Locomotion-States]] · [[2026-10-05-Authored-Hook-Motion]] · [[ADR-004-Physics-Is-Presentation]] · [[ADR-019-Audit-And-Many-Views-Before-Decision]] · [[state]]
