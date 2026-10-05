@@ -36,6 +36,38 @@ NPC незалежно пройшов743580 panel-interior envelope samples та
 
 Root прочитав незалежний garment-LOD log: обидва герої, base+3LOD, нуль protected-anatomy triangles із ненульовою маскою. Positions/UV/skin/indices збережені; повторна компресія дає normal≤0,007412° і tangent component≤0,000119, тому ці два buffers не називаються byte-exact. Маска в COLOR.g зберігає R/B/A. Hero fitting, camera lifecycle, повний regression/native/PCK і provider-map admission ще не закриті.
 
+## CP5 — точніші перевірки до загального прогону
+
+Незалежний blade-edge/full-skin oracle виявив те, чого не бачила centerline-перевірка. T2 використав реальний звужений профіль клинка та leg envelopes у bounded forearm/wrist solver, не збільшував затверджені межі. Root прочитав `profile-edge-full.log`: **5942/0**, з постійними assertions actual mesh. T4 повідомив36 fixed poses без перетинів; native приймання й загальні гейти ще попереду. `thrust` тепер бере наявний UAL `Sword_Light_D`; foot profiles лишаються locomotion-only, окремого вигаданого `_Rec` не додано.
+
+Hero cloth виявив важливий false-green: порожній Skea attachment давав нуль перетинів через вироджену геометрію. Такий результат відкликано. Перед collision oracle тепер обов'язкові nonempty weights, finite proper basis і ненульова геометрія; T4 записує клас рецидиву. Виправлений actual chest pin проходить Skea crouch, але незалежний audit ще уточнює Choko стики й crossed-arm clearance, тому cloth freeze не оголошено. Маска +Spine01 окремо пройшла protected-anatomy/LOD та native перевірку.
+
+Root звірив старі61 positive scenario tuples і12 negative controls: вони збережені; нові hero/NPC/weapon regressions додаються окремо. Усі6 оплачених карт лишаються **створеними, але не завантаженими/не підключеними** через destination policy. PR #178 досі open/draft/unmerged на попередній опублікованій вершині; жодного оновлення встановленого Mac app ця робоча копія не означає.
+
+## CP6 — native деталі й відповідність удару
+
+Новий actual blade↔declared-hitband guard виявив left lowcut ACTIVE mismatch: ранні edge-only positives не були достатнім прийманням. T2 шукає відповідний source window/installed clip без зміни gameplay timing, reach чи hitbox; до виправлення weapon freeze відкритий.
+
+Root особисто переглянув `npc-final/npc-fit-comparison.jpg` і знайшов втрату читабельних старих складок torso/sleeve. T6 підтвердив material regression: original textured `_material` замінено plain `_garment`. Native geometry acceptance не підміняє surface quality. T2 NPC отримав вузьке доручення зберегти existing cloth detail до admission provider maps, без повторної зміни geometry/bounds. Labels before/candidate й скоригований art verdict обов'язкові.
+
+## CP7 — weapon freeze, NPC detail відновлено
+
+Root прочитав raw `weapon-allforms-final.log`: **10950/0**. Source lowcut contact зсунено лише на один UAL frame0,233→0,250s у тому самому кліпі; follow/recovery та gameplay дані незмінні. Усі3 форми клинка,6 variants,2 руки; чинні independent actual-skin guards і ACTIVE hitband увійшли в постійну перевірку. T4 повторив final-source36 poses без перетинів. Runner містить76 сценаріїв: старі73 збережені та додано3 equipment regressions. Native motion ще проходить окремо.
+
+NPC owner regression **142747/0**, plain-material negative control відхиляється. T6 native8 views і особистий огляд root `npc-surface-fixed/comparison.jpg` підтвердили повернення старих графічних folds torso/sleeves/wings на новій geometry. Source `27e72a7…`; неприйнята гладка поверхня не підміняє фінальний fallback. Provider apron/cover quality досі pending.
+
+Hero actual body/hook clearance кандидат пройшов54 пози, але додатковий pin-margin guard виявив малий запас0,444мм до crossed-arm проти затверджених0,5мм. T2 виміряв локальний напрям і перевіряє вузьку поправку standoff3,0→3,2мм, не послаблюючи поріг4мм максимального відриву. Загальний source freeze очікує цей результат.
+
+## CP8 — корекція користувача після кадру
+
+Santos відхилив native surface checkpoint: круги на grimoire мають бути канонічною8, reference збереженим і підписаним; меч має відповідати одягу, без кислотності. Root/T6 перевірили originals: горизонтальний purple ∞ на Skea card, forest/sage/agedbrass sword. Тлумачення «∞8» як суми горизонтальних/вертикальних torus circles було помилковим; T2 виправляє лише знак. Поверхні оголошено RED до нових native кадрів, дорогі старі surface captures зупинено; geometry evidence лишається geometry-only. План CP8 містить точні targets і bounded paid map revision.
+
+## CP9 — корекції reference й фінальна інтеграція
+
+Root corrected runner завершився**76/0**, rc0; попередній smoke164/19847 лишається для незміненої gameplay бази. Після user surface delta owner hero**7930/0**, muted sword**230/0**; root raw logs прочитано. Root також особисто переглянув `reference-correction/poses/skea_idle_back.png` та `choko_right_idle_front.png`: один горизонтальний purple∞ і стриманий forest/agedbrass blade замінили відхилені круги/кислотність. Фінальне native surface statement, exact-PCK і current-head CI записуються після виконання.
+
+Нова flat sword map job`581e7a06-428e-4394-bfe3-75798f99fa5f` успішно завершена. Exact canonical reference подано через public GitHub URL4c68473; prompt/submission/completion/balance receipts збережено. Balance4505,5 проти4514,5 до revision:9кредитів, загальнавитрата**63**. Старий swordjob superseded, актуальні6 URLs у `docs/assets/provenance/equipment-20261005/download-list-v2.json`; всього7 успішних outputjobs. CDN policy лишаєтьсяrestricted/allowed_hosts[], тому originals/maps не інтегровані й не оголошені художньо прийнятими.
+
 ## Related
 
 - [[2026-10-05-Equipment-And-Cloth]] · [[2026-10-05-Whole-Body-Checkpoint]] · [[2026-10-05-Whole-Body-Session]] · [[state]]

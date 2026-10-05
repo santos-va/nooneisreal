@@ -72,6 +72,12 @@ T4 exact blade-edge↔full-skin перевірка доповнює centerline g
 
 Skea crouch виявив прив'язку вільного краю до waist замість chest: pin pool помилково залежав від render mask. T2 rope розділяє семантику attachment та recolor, перевіряє actual skinned chest pin і постійний worst-crouch triangle guard. Відсутність Spine01 у cloth whitelist перевіряється окремо як неповна маска; розширення можливе лише після protected-anatomy/LOD й native перевірки, з чинним Skea backpack exclusion. Нові матеріали й ці виправлення не оголошуються завершеними за одним числовим тестом.
 
+## CP8 — пряма художня корекція Santos
+
+Після перегляду native checkpoint Santos відхилив окремі круги на книзі й кислотний меч: «має бути8 як у референсу ... збережений й підписаний» та «під стиль одягу». T1/T6 особисто переглянули original `card_skea_v1.jpg`: канонічний знак гримуара — **одна горизонтальна фіолетова infinity-eight ∞**, не сума окремих кілець; одяг цієї картки застарілий і не повертається. T6 зберігає підписаний reference із точним джерелом/хешем; T2 rope виправляє лише rear-panel emblem, не прийняті cloth/rig.
+
+Sword original `weapon_choko_main_sword.png` має темний forest emerald, sage facets і aged brass. T6 target: blade#315D52, dark#183C36, edge#91A78A, wrap#263B35, brass#9A8960; T2 combat змінює surface й optional-map revision path, зберігає accepted geometry/timing/IK. Варіанти — лишити кислотний material (відхилено Santos), просто затемнити wholehero (порушує skin/style), адресний weapon palette+ink-map revision (обрано). Одна нова Higgsfield blade-map revision у межах чинного дозволу; old emerald job не підключається випадково. Приймання: canonical sign на rearface, native close/gameplay sword поруч із одягом, scoped gear/sword/shader checks і final exact-PCK. Попередні geometry positives не називаються acceptance відхилених поверхонь.
+
 ## Related
 
 - [[2026-10-05-Equipment-Session]] · [[2026-10-05-Whole-Body-Checkpoint]] · [[Style-Guide]] · [[Textures-Registry]] · [[Characters/Choko]] · [[Characters/Skea]] · [[ADR-004-Physics-Is-Presentation]] · [[ADR-019-Audit-And-Many-Views-Before-Decision]] · [[state]]

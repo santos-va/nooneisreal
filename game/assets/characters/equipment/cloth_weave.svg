@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<!-- Original project cloth weave and doubled edge seam; authored 2026-10-05. -->
+<defs><pattern id="w" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="4" fill="#f8f8f8"/><path d="M0 1h4M1 0v4" stroke="#f0f0f0" stroke-width="1"/></pattern></defs>
+<rect width="64" height="64" fill="url(#w)"/>
+<path d="M3 0v64M61 0v64" stroke="#999" stroke-width="1"/>
+<path d="M6 0v64M58 0v64" stroke="#ccc" stroke-width="1" stroke-dasharray="3 3"/>
+</svg>

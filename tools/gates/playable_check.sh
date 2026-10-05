@@ -21,6 +21,9 @@ if binary is None:
 logs = Path(os.environ.get('PLAYABLE_LOG_DIR') or tempfile.mkdtemp(prefix='nir-playable-'))
 logs.mkdir(parents=True, exist_ok=True)
 cases = [
+    ('weapon-craft', 'tools/animation/weapon_craft_check.gd', r'WEAPON_CRAFT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('npc-clothing', 'tools/npc/clothing_check.gd', r'NPC_CLOTHING_COMPLETE checks=[1-9][0-9]* failures=0 max_meshes=[1-9][0-9]* max_triangles=[1-9][0-9]* max_hinges=[1-9][0-9]*', [], 0),
+    ('hero-gear', 'tools/equipment/hero_gear_check.gd', r'HERO_GEAR_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('whole-body-motion', 'tools/animation/whole_body_motion_check.gd', r'WHOLE_BODY_MOTION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('ground-contact', 'tools/animation/ground_contact_check.gd', r'GROUND_CONTACT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('physics-motion', 'tools/animation/physics_motion_check.gd', r'PHYSICS_MOTION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),

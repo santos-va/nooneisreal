@@ -1,0 +1,50 @@
+# Одяг NPC: матеріали, крій і вторинний рух
+
+2026-10-05 · T2 Гефест · [[2026-10-05-Equipment-And-Cloth]], CP1. Статус: кандидат, native та незалежне приймання тривають.
+
+Предмет: для всіх підтриманих NPC вільна частина одягу реагує на фактичний рух, лишається прикріпленою й обмеженою та не змінює тіло, identity/save або жести.
+
+## Перевірена база
+
+На `4c68473` одяг мав одну toon-мову з roughness1, specular_disabled; apron/coat/scarf були нерухомими sphere/box. Ізольований Godot: 12 seed-профілів, 180 ticks руху/повороту/stop, garment-relative motion рівно0. Докази `/workspace/nooneisreal-evidence/clothing/npc-before/motion.{log,json}`. Baseline T6 із seed40..51 і працівниками40/41/42 — `/workspace/nooneisreal-evidence/gear-readability/before/npc`.
+
+## Реалізація
+
+`NpcAppearance` використовує окремі кешовані `GearSurface.make(kind,color,accent)` матеріали для тканини, шкіри й металу; factory/shader належать смузі hero equipment. Skin/fur/stone і незмінна seed-послідовність лишаються на попередньому shader/material. Для існуючих Torso/Shoulder/Sleeve/FoldedWing збережено початковий textured toon material: knit_stripes для outfit1, workwear_seams для інших. Нові coat panels використовують окремий GearSurface material. Boots, cuffs, belt/satchel, buckle й робочі предмети отримують відповідний матеріал без змін професії/діалогу.
+
+Плоскі apron/coat/scarf замінені tapered low-poly полотнищами, фіксованою верхньою частиною та окремим нижнім краєм. Середня складка, звужені/зрізані кути, дві бічні лінії шва й тонка підрубка є геометрією в метрах, а не випадковими лініями на stretched sphere UV. Pocket/верхній шов робочого шкіряного фартуха слідують за його нижньою частиною. Підрубка є лише внизу, не на hinge: зайва поперечна лінія першого preview створювала враження картонного згину й видалена. Hem/side seams — друга поверхня того самого cached mesh, без додаткового MeshInstance. Chatter, руки, голова, gait і interaction radius не змінюються.
+
+`NpcClothMotion` читає actual global displacement і yaw один раз наприкінці `CityNpcActor._physics_process`. Критично демпфований аналітичний spring рухає тільки вільний край навколо фіксованої X-осі; верхнє кріплення/waist seam не перекладаються. Whole-body wobble, cloth vertex simulation, physics rays та випадковий вітер відсутні. Restore/новий owner/teleport очищають інерцію; pause не просуває tick. Матеріали під час руху не мутуються, тому сусід із тим самим кольором не отримує чужих параметрів.
+
+До першого candidate зафіксовано PLACEHOLDER bounds: cloth outward angle≤0,24rad, leather≤0,10rad; transform-origin drift0, scale/stretch0, acceleration clamp20м/с², yaw-rate clamp6rad/s; spring ω12/s тканина,18/s шкіра. Переміщення>0,75м, yaw-step>0,8rad чи timestep>0,1s означає discontinuity/reset. На idle spring повертається до0; не лишає постійної синусоїди. Початково запропонована lateral ceiling0,12rad не використовується: actual lateral rotation0. Кутова межа сама не доводить відсутність перетину ноги. Початковий плоский resting coat hem перетинав steady-walk trouser envelope; A-line геометрія тепер відводить coat bottom на5,5см назовні від pinned лінії, apron bottom на2см. Це статичний крій, який працює і після осідання spring; постійне хитання для маскування перетину не додається.
+
+## Перевірки та межі
+
+Постійний `tools/npc/clothing_check.gd` перевіряє actual acceleration/turn/stop, bounded angles, pinned origin≤1мм, відсутність stretch, settling, teleport/reset/rebind, pause, незмінні identity/actor/work/gesture, original skin shader та production actor hook/stream restore. Same-physics pose не залежить від частоти читання transform; це test render-read purity, **не** видається за natural30/60/120FPS-пробу.
+
+Поточний власний ізолят: **142747/0**,24 профілі; maximum3 hinges,45 meshes/2728 triangles до lazy work props. Тест включає100980 barycentric samples інтер'єрів actual panel triangles проти actual transformed Trouser ellipsoids у17 фазах кроку; min normalized radius0,591605 при межі сфери0,5. Чинний `presentation_check.gd` на100 seeds із робочими props: **1076/0**, max47meshes/2908triangles; first-surface-only підрахунок виправлено на всі surfaces. Старі caps48meshes/8000triangles не підвищені.
+
+Три source-mutation negative controls у власному ізоляті: заблокувати cloth step →24 очікувані failures (рух відсутній); додати1см до hinge origin →9799 (кріплення відривається); прибрати flare →600 (steady-walk cloth/leg crossing). Усі rc1 зі штатним sentinel, без parser/runtime errors/leaks; isolated source після кожного відновлений. Логи та reproducible mutation script — `/workspace/nooneisreal-evidence/clothing/npc-candidate/`.
+
+Пізній matched native аудит T1/T6 виявив regression: перший GearSurface fallback стирав великі намальовані knit/seam деталі на torso/рукавах. Це не прийнято як очікування provider maps. Найвужча правка повернула точні baseline texture/shader на існуючі UV-mapped shapes без змін geometry чи cloth motion. Regression тепер перевіряє всі п'ять torso/shoulder/sleeve частин кожного з24 seeds; negative control повернути plain GearSurface дає120 очікуваних failures, rc1, без runtime errors/leaks. Докази `detail-restored.log` та `detail-negative-plain.log` у тому самому evidence каталозі. T4 підтвердив material-only diff: попередні geometry та natural FPS вимірювання лишаються валідними; T6 повторив8 matched native views із SHA27e72a7; особисто переглянув worker0/1/2 і підтвердив повернення намальованих folds на torso/sleeves/wing. Regression закритий: `/workspace/nooneisreal-evidence/gear-readability/npc-surface-fixed/`, `labeledcomparison.jpg`. Повтор360 motion frames не потрібен за T1, оскільки geometry/helper не змінювалися. Нові panel materials лишаються чесним fallback до окремого приймання provider maps.
+
+Незалежний T4: actual `CityNpcActor` natural30/60/120,6seeds×240 automatic physics ticks на кожній частоті, observer післяactor; render process spans119/239/478. Say/talk turn/pause та restore-motion teleport включені. Actor state, world garments transforms, angles і speeds на відповідних physics ticks **byte-exact**,0відмінностей. Окремий geometry probe: **743580** barycentric points,24seeds×17gaitphases×springextents0/.5/1 проти actual Torso/Trouser envelopes,0violations; min radius0,586407>0,5. Докази `/workspace/nooneisreal-evidence/gear-review/npc-fps/{30,60,120}.json`, `comparison.json`, `geometry.log`.
+
+T6 повторно переглянув близькі кадри всіх трьох працівників і 360 кадрів work → walk → turn → stop → greet: після видалення середньої підрубки немає вираженого картонного залому, один hinge за малого кута прийнятний. Sidefit не показав великого повітряного зазору; короткі fox coat panels лишаються стримано жорсткими. Preview: `/workspace/nooneisreal-evidence/gear-readability/cloth-preview2/{npc,npc-motion,npc-sidefit}`. Фінальні native кадри actual city та material maps ще приймаються. Це не повна soft-body тканина й не M3 FPS.
+
+T3 виміряв окремо 12 NPC seeds40..51, 21 hinges (max3): helper ensemble idle median104/p95149µs, move–stop–turn108/170µs (max1378µs). Ресурси цього fixture до останнього material-only відновлення macro detail: 502 mesh nodes загалом/max45, 29616 triangles загалом/max2752, 11 unique meshes/27 materials. Три respawn cycles повторно використовують ті самі resource IDs; weakrefs actors/helpers звільнені, raw logs чисті. Докази `/workspace/nooneisreal-evidence/equipment-cloth/budget/npc-stable/{budget.log,resource-summary.json,source-manifest.json}`. Це вузький CPU-budget helper, а не FPS усього міста чи вимірювання на M3.
+
+## Перевірка готового пакета
+
+`tools/distribution/living_district_pck_check.gd` зберігає всі попередні 86 assertions і додає 16 перевірок завантаження ресурсів та 35 runtime assertions для поточної хвилі. Ресурси завантажуються через packed `res://`: HeroGearPresentation/HeroGarmentMask/GearSurface/NpcClothMotion, обидва garment shaders, `grimoire_sigil.gdshader` і фактично наявний оригінальний `cloth_weave.svg`. Неприсутні generated maps не підмінено вигаданими шляхами.
+
+Обидва actual hero перевіряються на активний garment mask/shader, cloth/protected vertices, незмінні positions/UV/bones/weights/indices та всі три imported LOD. Для normal/tangent compressed decode–encode дозволено лише заздалегідь виміряне T4 округлення component ≤0,0002; решта buffers і LOD порівнюються точно. Додані рівно два skin pins із непорожніми source weights, proper-positive frames і три сегменти tail, тонкі sword forms з UV та actual torso stow socket із вістрям униз. Skea має рівно один `GrimoireEightSigil`: horizontal UV-mapped ArrayMesh, canonical purple `#9E4CF2`, окремий shader та реєстрацію в animator для hit_flash/desat/camera_visibility. Worker seeds40/41/42 мають реально рухомі bounded cloth hinges, точний reset/identity. Camera fixture навмисно додає пізній hero mesh зі спільним матеріалом NPC: fade створює локальний матеріал, не змінює сусіда, reset відновлює точний pointer.
+
+Ізольований source preflight нових runtime-функцій: **35/0**, без parser/runtime errors/leaks; `/workspace/nooneisreal-evidence/clothing/pck-equipment-preflight/` містить fixture, verifier snapshot і raw log. Цей headless запуск не видається за packaged/native proof. Очікуваний загальний лічильник готового PCK — **137** з screenshot assertion; exact-SHA export і native запуск у порожньому verifier directory виконує T1 після інтеграції. Generated textures на момент цієї перевірки ще недоступні через CDN policy403.
+
+Ця смуга створює панелі кодом проєкту, без зовнішніх моделей. Спільні surface textures, додатково дозволені Santos, інтегрує owner GearSurface з provenance/registry від T6; сама NPC-смуга provider jobs не запускає. Загальні `make check-playable` / `make gates`, exact-SHA пакет і PR веде T1 після інтеграції.
+
+## Related
+
+- [[2026-10-05-Equipment-And-Cloth]] · [[2026-10-05-Equipment-Session]] · [[2026-10-05-Equipment-And-Cloth-Research]]
+- [[2026-10-05-Fantasy-Residents-And-Chatter]] · [[Style-Guide]] · [[Textures-Registry]] · [[ADR-004-Physics-Is-Presentation]]

@@ -1,0 +1,100 @@
+{
+  "schema": "nir.higgsfield-material-batch.v1",
+  "state": "prepared",
+  "authorization": "Santos explicitly authorized quality Higgsfield texture credit spending in this conversation",
+  "balance_before": 4568.5,
+  "quote_per_image": 9,
+  "estimated_total": 54,
+  "requests": [
+    {
+      "index": 1,
+      "params": {
+        "model": "gpt_image_2_5",
+        "variant": "flare",
+        "quality": "max",
+        "resolution": "2k",
+        "aspect_ratio": "2:3",
+        "count": 1,
+        "use_unlim": false,
+        "background": "opaque",
+        "prompt": "Create a production-ready flat 2D game material texture, NOT a product render or concept sheet. Fill every pixel edge-to-edge with the specified material. Orthographic surface only, zero perspective, no folds, no cast shadows, no lighting gradient, no glossy highlight, no ambient occlusion, no background, no labels, no text, no watermark. Original restrained hand-inked Sketch-Cel game art: flat local colors, refined quiet craftsmanship, subtly irregular graphite detail, never photorealistic noise. A rectangular emerald blade-inlay albedo map. Entire canvas is deep emerald green #218657 with subtly differentiated broad green longitudinal facet bands, NOT a sword silhouette. A single extremely fine muted warm-gold ornamental filament runs vertically at exactly the center U=0.5, with elegant small angular curls close to this filament and one tiny elongated gold diamond near the lower 12 percent of image height. Keep ornament within central 16 percent width; outermost 25 percent on each side stays quiet emerald. Delicate graphite artisan etching, sparse, precise, expensive craftsmanship. The image will stretch along a narrow sword blade; ornament must remain slender and legible. No guard, handle, border frame, or object outline."
+      },
+      "name": "sword_inlay"
+    },
+    {
+      "index": 2,
+      "params": {
+        "model": "gpt_image_2_5",
+        "variant": "flare",
+        "quality": "max",
+        "resolution": "2k",
+        "aspect_ratio": "1:1",
+        "count": 1,
+        "use_unlim": false,
+        "background": "opaque",
+        "prompt": "Create a production-ready flat 2D game material texture, NOT a product render or concept sheet. Fill every pixel edge-to-edge with the specified material. Orthographic surface only, zero perspective, no folds, no cast shadows, no lighting gradient, no glossy highlight, no ambient occlusion, no background, no labels, no text, no watermark. Original restrained hand-inked Sketch-Cel game art: flat local colors, refined quiet craftsmanship, subtly irregular graphite detail, never photorealistic noise. Seamlessly tileable in both axes neutral warm-white fine tightly woven cotton canvas/twill, intended to modulate an existing orange jacket's color. Restrained broad diagonal twill with tiny graphite fiber interruptions; average very pale neutral warm grey, contrast under eight percent. Fairly large readable weave at close game-camera distance, smooth at distance. Uniform distribution, no directional illumination, no seams, no patches, no logos, no large stains. A tactile matte fabric flat albedo map, not fabric draped in a scene."
+      },
+      "name": "choko_fabric"
+    },
+    {
+      "index": 3,
+      "params": {
+        "model": "gpt_image_2_5",
+        "variant": "flare",
+        "quality": "max",
+        "resolution": "2k",
+        "aspect_ratio": "1:1",
+        "count": 1,
+        "use_unlim": false,
+        "background": "opaque",
+        "prompt": "Create a production-ready flat 2D game material texture, NOT a product render or concept sheet. Fill every pixel edge-to-edge with the specified material. Orthographic surface only, zero perspective, no folds, no cast shadows, no lighting gradient, no glossy highlight, no ambient occlusion, no background, no labels, no text, no watermark. Original restrained hand-inked Sketch-Cel game art: flat local colors, refined quiet craftsmanship, subtly irregular graphite detail, never photorealistic noise. Seamlessly tileable in both axes neutral light-grey dense soft hoodie knit, intended to modulate an existing violet hoodie color. Small restrained interlocking fiber loops with broad soft graphite strokes, visibly distinct from diagonal canvas, tonal contrast under ten percent. Smooth, comfortable dense cloth. Uniform distribution, no directional illumination, no seams, no sigils, no letters, no logos, no patches. Matte flat knit albedo map, not a knitted garment render."
+      },
+      "name": "skea_fabric"
+    },
+    {
+      "index": 4,
+      "params": {
+        "model": "gpt_image_2_5",
+        "variant": "flare",
+        "quality": "max",
+        "resolution": "2k",
+        "aspect_ratio": "1:1",
+        "count": 1,
+        "use_unlim": false,
+        "background": "opaque",
+        "prompt": "Create a production-ready flat 2D game material texture, NOT a product render or concept sheet. Fill every pixel edge-to-edge with the specified material. Orthographic surface only, zero perspective, no folds, no cast shadows, no lighting gradient, no glossy highlight, no ambient occlusion, no background, no labels, no text, no watermark. Original restrained hand-inked Sketch-Cel game art: flat local colors, refined quiet craftsmanship, subtly irregular graphite detail, never photorealistic noise. Seamlessly tileable in both axes neutral medium-light grey worked leather grain. Fine restrained pebbled grain with two or three sparse short artisan handling marks, tonal contrast under ten percent. Neutral grey so game shader can tint dark green grips, brown straps, charcoal sheaths. Fine natural irregularity rather than synthetic repeating dots. No stitched border or stitching across the tile, no gloss, no dramatic scratch, no wrinkles, no object edges. Matte flat leather albedo."
+      },
+      "name": "dark_leather"
+    },
+    {
+      "index": 5,
+      "params": {
+        "model": "gpt_image_2_5",
+        "variant": "flare",
+        "quality": "max",
+        "resolution": "2k",
+        "aspect_ratio": "1:1",
+        "count": 1,
+        "use_unlim": false,
+        "background": "opaque",
+        "prompt": "Create a production-ready flat 2D game material texture, NOT a product render or concept sheet. Fill every pixel edge-to-edge with the specified material. Orthographic surface only, zero perspective, no folds, no cast shadows, no lighting gradient, no glossy highlight, no ambient occlusion, no background, no labels, no text, no watermark. Original restrained hand-inked Sketch-Cel game art: flat local colors, refined quiet craftsmanship, subtly irregular graphite detail, never photorealistic noise. A single full square flat grimoire cover albedo design, charcoal-plum leather base. Refined thin worn-silver rectangular border inset six percent, delicate restrained angular corner flourishes with individually hand-inked lines. Central fifty percent of the cover must be quiet completely empty leather for a separate in-game infinity emblem. Fine subdued leather grain, dark muted plum and graphite colors, pale silver craftsmanship. No text, lettering, runes, symbols, skulls, infinity symbol, spine, pages, book thickness, perspective, drop shadow or background. This is the flat texture of one cover face filling the entire square, NOT a rendering of a book."
+      },
+      "name": "grimoire_cover"
+    },
+    {
+      "index": 6,
+      "params": {
+        "model": "gpt_image_2_5",
+        "variant": "flare",
+        "quality": "max",
+        "resolution": "2k",
+        "aspect_ratio": "1:1",
+        "count": 1,
+        "use_unlim": false,
+        "background": "opaque",
+        "prompt": "Create a production-ready flat 2D game material texture, NOT a product render or concept sheet. Fill every pixel edge-to-edge with the specified material. Orthographic surface only, zero perspective, no folds, no cast shadows, no lighting gradient, no glossy highlight, no ambient occlusion, no background, no labels, no text, no watermark. Original restrained hand-inked Sketch-Cel game art: flat local colors, refined quiet craftsmanship, subtly irregular graphite detail, never photorealistic noise. Seamlessly tileable in both axes neutral pale ecru coarse linen/canvas workwear. Restrained uneven warp-and-weft visible as lightly hand-inked squared weave, contrast under ten percent. A few irregular thicker threads, clean well-used artisan fabric. Neutral enough for varied colored shopkeepers' aprons and coats, distinct from fine diagonal twill and hoodie knit. No seams, patches, pockets, logos, embroidery, large stains, object edges or folds. Matte flat woven linen albedo map."
+      },
+      "name": "npc_workwear"
+    }
+  ]
+}

@@ -72,6 +72,10 @@ func run() -> void:
 		check(ResourceLoader.exists(path), "Packed resource exists: " + path)
 		if ResourceLoader.exists(path):
 			check(load(path) != null, "Packed resource loads: " + path)
+	for path: String in ["res://scripts/core/GearSurface.gd", "res://scripts/fighter/HeroGearPresentation.gd", "res://scripts/fighter/HeroGarmentMask.gd", "res://scripts/npc/NpcClothMotion.gd", "res://shaders/gear_surface.gdshader", "res://shaders/hero_garment.gdshader", "res://shaders/grimoire_sigil.gdshader", "res://assets/characters/equipment/cloth_weave.svg"]:
+		check(ResourceLoader.exists(path), "Packed equipment resource exists: " + path)
+		if ResourceLoader.exists(path):
+			check(load(path) != null, "Packed equipment resource loads: " + path)
 	check(not FileAccess.file_exists("user://npc_conversation.cfg"), "Fresh profile required to verify default OFF without changing user settings")
 	if failures > 0:
 		finish(version, revision)
@@ -115,6 +119,11 @@ func run() -> void:
 		var repeated := meshes(duplicate)
 		check(parts.size() == repeated.size() and parts[0].mesh == repeated[0].mesh and parts[0].material_override == repeated[0].material_override, "Packed phenotype reuses mesh/material cache")
 		duplicate.free()
+	for seed_value: int in [40, 41, 42]:
+		var worker: Node3D = appearance.build({"appearance_seed": seed_value})
+		stage.add_child(worker)
+		check_npc_cloth(worker)
+		worker.free()
 	var chatter: Script = load("res://scripts/npc/NpcChatter.gd")
 	var timbres: Dictionary = {}
 	for seed_value: int in 3:
@@ -163,6 +172,8 @@ func run() -> void:
 		check(fighter.skeletal.motion_signals.distance < 0.001, "Stationary packed hero does not accumulate strides: " + hero)
 		check(fighter.skeletal.body_motion.serial >= 12 and is_finite(fighter.skeletal.body_motion.gaze_pitch), "Packed anatomical body/gaze pass runs: " + hero)
 		check(not fighter.skeletal.ground_contact.samples.is_empty() and fighter.skeletal.ground_contact.query_count > 0, "Packed skinned soles query support: " + hero)
+		check_hero_equipment(fighter, hero)
+		check_camera_isolation(fighter, camera, stage)
 	for index: int in 4:
 		var path: String = ["toon", "outline", "sword_dissolve", "camera_cloth"][index]
 		var shader: Shader = load("res://shaders/" + path + ".gdshader")
@@ -194,3 +205,141 @@ func run() -> void:
 func finish(version: String, revision: String) -> void:
 	print("PCK_LIVING_COMPLETE checks=%d failures=%d version=%s revision=%s renderer=%s" % [checks, failures, version, revision, RenderingServer.get_current_rendering_method()])
 	quit(1 if failures > 0 else 0)
+
+## Additional equipment assertions supplement every pre-existing package assertion.
+func check_npc_cloth(visual: Node3D) -> void:
+	check(visual.clothing != null and not visual.clothing.parts.is_empty(), "Packed NPC owns pinned cloth")
+	if visual.clothing == null or visual.clothing.parts.is_empty():
+		return
+	var before: Transform3D = visual.transform
+	var identity: Dictionary = visual.get_meta("appearance").duplicate(true)
+	visual.reset_clothing()
+	var peak: float = 0.0
+	var bounded: bool = true
+	for tick: int in 24:
+		visual.position.x += 0.008 if tick < 12 else 0.0
+		visual.rotation.y += 0.02 if tick < 12 else 0.0
+		visual.step_clothing(1.0/60.0)
+		for part: Dictionary in visual.clothing.parts:
+			peak = maxf(peak, float(part.angle))
+			var limit: float = 0.10 if part.kind == "leather" else 0.24
+			var pose: Transform3D = part.node.transform
+			var rest: Transform3D = part.rest
+			bounded = bounded and is_finite(part.angle) and part.angle >= 0.0 and part.angle <= limit + 0.000001 and pose.origin.distance_to(rest.origin) <= 0.001 and pose.basis.get_scale().is_equal_approx(rest.basis.get_scale())
+	check(peak > 0.001 and bounded, "Packed NPC cloth advances without stretch or detached pins")
+	visual.transform = before
+	visual.reset_clothing()
+	var reset_ok: bool = true
+	for part: Dictionary in visual.clothing.parts:
+		reset_ok = reset_ok and part.node.transform == part.rest and part.angle == 0.0 and part.speed == 0.0
+	check(reset_ok and visual.get_meta("appearance") == identity, "Packed cloth reset restores rest and preserves identity")
+
+func check_hero_equipment(fighter: Node3D, hero: String) -> void:
+	var rig: Node3D = fighter.skeletal
+	var gear: Node3D = rig.gear
+	check(gear != null and not gear.materials.is_empty() and gear.serial >= 12, "Packed actual hero equipment runs: " + hero)
+	if gear == null:
+		return
+	var mask: RefCounted = gear.garment
+	check(mask.original_mesh != null and mask.selected_vertices > 0 and mask.protected_vertices > 0 and mask.selected_vertices + mask.protected_vertices == mask.total_vertices, "Packed clothing mask includes cloth and protects anatomy: " + hero)
+	var current: Mesh = rig.hero_mesh.mesh
+	var source: Mesh = mask.original_mesh
+	if source == null:
+		return
+	check(current != source and rig.hero_mesh.material_override.shader.resource_path == "res://shaders/hero_garment.gdshader", "Packed masked hero shader is active: " + hero)
+	var unchanged: bool = current.get_surface_count() == source.get_surface_count()
+	var lods_ok: bool = unchanged
+	var lod_count: int = 0
+	var selected: int = 0
+	var protected_count: int = 0
+	for surface: int in mini(current.get_surface_count(), source.get_surface_count()):
+		var original: Array = source.surface_get_arrays(surface)
+		var actual: Array = current.surface_get_arrays(surface)
+		for slot: int in [Mesh.ARRAY_VERTEX, Mesh.ARRAY_TEX_UV, Mesh.ARRAY_BONES, Mesh.ARRAY_WEIGHTS, Mesh.ARRAY_INDEX]:
+			unchanged = unchanged and original[slot] == actual[slot]
+		# Imported compressed normal/tangent decode-reencode has bounded rounding.
+		for slot: int in [Mesh.ARRAY_NORMAL, Mesh.ARRAY_TANGENT]:
+			unchanged = unchanged and original[slot].size() == actual[slot].size()
+			for item: int in mini(original[slot].size(), actual[slot].size()):
+				if slot == Mesh.ARRAY_NORMAL:
+					var difference: Vector3 = (original[slot][item] - actual[slot][item]).abs()
+					unchanged = unchanged and maxf(difference.x, maxf(difference.y, difference.z)) <= 0.0002
+				else:
+					unchanged = unchanged and absf(original[slot][item] - actual[slot][item]) <= 0.0002
+		for color: Color in actual[Mesh.ARRAY_COLOR]:
+			selected += 1 if color.g == 1.0 else 0
+			protected_count += 1 if color.g == 0.0 else 0
+		var old_lods: Array = RenderingServer.mesh_get_surface(source.get_rid(), surface).get("lods", [])
+		var new_lods: Array = RenderingServer.mesh_get_surface(current.get_rid(), surface).get("lods", [])
+		lod_count += old_lods.size()
+		lods_ok = lods_ok and old_lods == new_lods
+	check(unchanged and selected == mask.selected_vertices and protected_count == mask.protected_vertices, "Packed mask preserves actual geometry, UV and skin weights: " + hero)
+	check(lods_ok and lod_count == 3, "Packed hero retains all three imported LODs: " + hero)
+	var tails_ok: bool = gear._tails.size() == 2
+	for tail: Dictionary in gear._tails:
+		tails_ok = tails_ok and not tail.skin.is_empty() and tail.anchor.global_basis.determinant() > 0.0 and tail.segments.size() == 3 and tail.anchor.global_position.distance_to(gear.pin_transform(tail).origin) <= 0.001
+	check(tails_ok, "Packed cloth tails have three segments and actual skin pins: " + hero)
+	if hero != "choko":
+		check(rig.sword == null, "Packed Skea has no Choko sword")
+		var sigils: Array[Node] = gear.find_children("GrimoireEightSigil", "MeshInstance3D", true, false)
+		check(sigils.size() == 1, "Packed Skea has one continuous grimoire infinity emblem")
+		if sigils.size() == 1:
+			var sigil: MeshInstance3D = sigils[0]
+			var bounds: AABB = sigil.mesh.get_aabb()
+			check(sigil.mesh is ArrayMesh and bounds.size.x > bounds.size.y and bounds.size.y > 0.05 and sigil.mesh.surface_get_arrays(0)[Mesh.ARRAY_TEX_UV].size() > 0, "Packed infinity emblem has horizontal UV-mapped ribbon geometry")
+			var material: ShaderMaterial = sigil.material_override
+			check(material != null and material.shader.resource_path == "res://shaders/grimoire_sigil.gdshader" and material.get_shader_parameter("albedo") == Color("9e4cf2") and material in gear.materials and material in fighter.animator.materials, "Packed infinity uses registered canonical purple sigil material")
+			var uniforms: Dictionary = {}
+			if material != null:
+				for uniform: Dictionary in material.shader.get_shader_uniform_list():
+					uniforms[uniform.name] = true
+			check(uniforms.has("hit_flash") and uniforms.has("desat") and uniforms.has("camera_visibility"), "Packed sigil supports combat and camera material controls")
+		return
+	var sword: Node3D = rig.sword
+	check(sword != null and sword._blade_forms.size() == 3, "Packed Choko builds three sword forms")
+	if sword == null:
+		return
+	var thin_uv: bool = true
+	for form: Mesh in sword._blade_forms:
+		var bounds: AABB = form.get_aabb()
+		var arrays: Array = form.surface_get_arrays(0)
+		var uv: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+		thin_uv = thin_uv and bounds.size.x > 0.05 and bounds.size.x <= 0.145 and bounds.size.z <= 0.025 and bounds.end.y > 0.9 and uv.size() == arrays[Mesh.ARRAY_VERTEX].size()
+		var distinct: Dictionary = {}
+		for point: Vector2 in uv:
+			thin_uv = thin_uv and point.is_finite()
+			distinct[point] = true
+		thin_uv = thin_uv and distinct.size() >= 4
+	check(thin_uv, "Packed sword blades are thin and have nondegenerate UVs")
+	var drawn: bool = fighter.sword_drawn
+	fighter.sword_drawn = false
+	sword.reset_pose_state()
+	var tip: Vector3 = sword.blade.global_transform * Vector3(0, sword.blade.mesh.get_aabb().end.y, 0)
+	check(sword.global_transform.is_equal_approx(sword.back_grip()) and tip.y < sword.global_position.y - 0.5, "Packed carried sword uses actual torso socket with tip down")
+	fighter.sword_drawn = drawn
+	sword.reset_pose_state()
+
+func check_camera_isolation(fighter: Node3D, camera: Camera3D, stage: Node3D) -> void:
+	var shared: ShaderMaterial
+	for part: MeshInstance3D in meshes(stage):
+		if part.material_override is ShaderMaterial and part.material_override.shader.resource_path == "res://shaders/gear_surface.gdshader" and not fighter.is_ancestor_of(part):
+			shared = part.material_override
+			break
+	check(shared != null, "Packed NPC garment supplies shared-material isolation fixture")
+	if shared == null or fighter.skeletal.gear == null:
+		return
+	var original_visibility: Variant = shared.get_shader_parameter("camera_visibility")
+	var late := MeshInstance3D.new()
+	late.mesh = BoxMesh.new()
+	late.material_override = shared
+	var proximity: RefCounted = load("res://scripts/world/CityCameraProximity.gd").new()
+	proximity.setup(fighter)
+	fighter.skeletal.gear.add_child(late)
+	var camera_pose: Transform3D = camera.global_transform
+	camera.global_position = fighter.global_position + Vector3.UP * 1.2
+	proximity.update(camera, 0.5)
+	check(late.material_override != shared and float(late.material_override.get_shader_parameter("camera_visibility")) < 0.01 and shared.get_shader_parameter("camera_visibility") == original_visibility, "Packed camera fades late hero gear without fading shared NPC material")
+	proximity.reset()
+	check(late.material_override == shared and shared.get_shader_parameter("camera_visibility") == original_visibility, "Packed camera reset restores exact shared material pointer")
+	camera.global_transform = camera_pose
+	late.free()

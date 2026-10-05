@@ -101,7 +101,18 @@ func setup(f: Fighter) -> void:
 	tip_mesh.bottom_radius = 0.09
 	tip_mesh.height = 0.32
 	_tip.mesh = tip_mesh
-	_tip.material_override = mat
+	_tip.material_override = GearSurface.make("metal",Color("81959a"),f.data.accent_color)
+	tip_mesh.radial_segments = 6
+	var collar := MeshInstance3D.new()
+	var collar_shape := TorusMesh.new()
+	collar_shape.inner_radius = 0.062
+	collar_shape.outer_radius = 0.075
+	collar_shape.rings = 12
+	collar_shape.ring_segments = 4
+	collar.mesh = collar_shape
+	collar.material_override = GearSurface.make("leather",Color("2d3036"),f.data.accent_color)
+	collar.position.y = -0.115
+	_tip.add_child(collar)
 	_tip.top_level = true
 	_tip.visible = false
 	add_child(_tip)

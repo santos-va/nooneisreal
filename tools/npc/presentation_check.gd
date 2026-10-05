@@ -31,8 +31,8 @@ func run() -> void:
 		var parts := meshes(visual)
 		var triangles := 0
 		for part in parts:
-			var arrays := part.mesh.surface_get_arrays(0)
-			triangles += (arrays[Mesh.ARRAY_INDEX].size() if arrays[Mesh.ARRAY_INDEX] != null and arrays[Mesh.ARRAY_INDEX].size() > 0 else arrays[Mesh.ARRAY_VERTEX].size()) / 3
+			# Tailoring can use a second surface for seams; include every surface.
+			triangles += part.mesh.get_faces().size() / 3
 		max_parts = maxi(max_parts, parts.size())
 		max_triangles = maxi(max_triangles, triangles)
 		check(parts.size() <= 48 and triangles <= 8000, "NPC geometry budget")

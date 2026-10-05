@@ -5,6 +5,9 @@ const VERSION := 1
 const PALETTE := ["647b70", "8b6554", "646980", "a68155", "725e79", "8f7474"]
 const SKIN := ["e0b396", "b98164", "8c5c48", "633f36", "cf9879"]
 const TOON = preload("res://shaders/toon.gdshader")
+const Gear = preload("res://scripts/core/GearSurface.gd")
+const ClothMotion = preload("res://scripts/npc/NpcClothMotion.gd")
+var clothing = ClothMotion.new()
 var _arms: Array[Node3D] = []
 var _legs: Array[Node3D] = []
 static var _materials: Dictionary = {}
@@ -55,6 +58,73 @@ static func _material(color: Color, texture_path: String = "") -> ShaderMaterial
 	_materials[key] = mat
 	return mat
 
+static func _garment(kind: String, color: Color, accent: Color = Color("c7b597")) -> ShaderMaterial:
+	var key: String = "garment:"+kind+":"+color.to_html()+":"+accent.to_html()
+	if not _materials.has(key):
+		_materials[key] = Gear.make(kind,color,accent)
+	return _materials[key]
+
+func step_clothing(delta: float) -> void:
+	clothing.step(self,delta)
+
+func reset_clothing() -> void:
+	clothing.reset()
+
+## A low-poly, double-sided tailored panel, with material-space coordinates.
+## The waist section is fixed; only the lower hem rotates about its top edge.
+func _panel(parent: Node3D, label: String, at: Vector3, width: float, length: float, material: Material, outward: float = 1.0, kind: String = "cloth") -> void:
+	var mount := Node3D.new()
+	mount.name = label
+	mount.position = at
+	parent.add_child(mount)
+	var fixed: float = length*0.32
+	if not label.begins_with("Coat"):
+		_panel_mesh(mount,label+"Yoke",width,width*1.035,fixed,material,false)
+	var hinge := Node3D.new()
+	hinge.name = label+"HemPivot"
+	hinge.position.y = -fixed
+	mount.add_child(hinge)
+	_panel_mesh(hinge,label+"Fabric",width*1.035,width*(1.12 if label.begins_with("Coat") else .95),length-fixed,material,true,(-.055 if label.begins_with("Coat") else -.02 if label.ends_with("Apron") else 0.0)*outward)
+	clothing.add(hinge,kind,outward)
+	mount.set_meta("cloth_anchor",true)
+
+func _panel_mesh(parent: Node3D, label: String, top: float, bottom: float, length: float, material: Material, hemmed: bool, flare: float = 0.0) -> void:
+	var key: String = "panel:%.4f:%.4f:%.4f:%s:%.4f" % [top,bottom,length,hemmed,flare]
+	if not _meshes.has(key):
+		var surface := SurfaceTool.new()
+		surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var cut: float = minf(.018,bottom*.10) if hemmed else 0.0
+		var fold: float = 1.0 if flare > 0.0 else -1.0
+		var points: Array[Vector3] = [Vector3(-top/2,0,0),Vector3(0,0,.007*fold),Vector3(top/2,0,0),Vector3(-bottom/2,-length+cut,flare),Vector3(0,-length,flare+.012*fold),Vector3(bottom/2,-length+cut,flare),Vector3(-bottom/2+cut,-length,flare),Vector3(bottom/2-cut,-length,flare)]
+		for face: Array in [[0,1,3],[1,4,3],[1,2,4],[2,5,4],[3,4,6],[4,5,7]]:
+			for index: int in face:
+				var v: Vector3 = points[index]
+				surface.set_uv(Vector2(v.x/maxf(top,bottom)+.5,-v.y/length))
+				surface.add_vertex(v)
+		surface.generate_normals()
+		var array: ArrayMesh = surface.commit()
+		var hem := SurfaceTool.new()
+		hem.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for z: float in [-.014,.003]:
+			if hemmed:
+				var corners: Array[Vector3] = [Vector3(-bottom/2+cut,-length,flare+z),Vector3(bottom/2-cut,-length,flare+z),Vector3(-bottom/2+cut,-length+.012,flare+z),Vector3(bottom/2-cut,-length+.012,flare+z)]
+				for index: int in [0,1,2,1,3,2]: hem.add_vertex(corners[index])
+			# Tailored side seams follow the taper; no crosswise line at the hinge.
+			for side: float in [-1.0,1.0]:
+				var top_x: float = side*(top/2-.018)
+				var bottom_x: float = side*(bottom/2-.018)
+				var seam: Array[Vector3] = [Vector3(top_x-.003,0,z),Vector3(top_x+.003,0,z),Vector3(bottom_x-.003,-length+cut,flare+z),Vector3(bottom_x+.003,-length+cut,flare+z)]
+				for index: int in [0,1,2,1,3,2]: hem.add_vertex(seam[index])
+		hem.generate_normals()
+		hem.commit(array)
+		_meshes[key] = array
+	var mesh := MeshInstance3D.new()
+	mesh.name = label
+	mesh.mesh = _meshes[key]
+	mesh.set_surface_override_material(0,material)
+	mesh.set_surface_override_material(1,_garment("cloth",Color("bca98d"),Color("50424a")))
+	parent.add_child(mesh)
+
 func _shape(parent: Node3D, label: String, at: Vector3, size: Vector3, material: Material, form: String = "round") -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	node.name = label
@@ -86,8 +156,10 @@ func _assemble(d: Dictionary) -> void:
 	var skin_color := Color(SKIN[d.skin]) if d.phenotype == "fox" else Color("bbb7b0" if d.phenotype == "moth" else "8d9d9b")
 	var skin := _material(skin_color, "res://assets/characters/npc/skin_marks.svg")
 	var ink := _material(Color("2b2230"))
+	# Preserve authored macro seams/knit on the existing UV-mapped clothing.
 	var cloth := _material(Color(PALETTE[d.color]), "res://assets/characters/npc/knit_stripes.svg" if d.outfit == 1 else "res://assets/characters/npc/workwear_seams.svg")
-	var pants := _material(Color("464353"))
+	var panel_cloth := _garment("cloth",Color(PALETTE[d.color]))
+	var pants := _garment("cloth",Color("464353"),Color("85777f"))
 	var hair := _material(Color(["342a30", "674738", "ae8460", "aaa09e"][d.hair_color]))
 	_shape(self, "Hips", Vector3(0, 0.86, 0), Vector3(0.4, 0.3, 0.28), pants)
 	_shape(self, "Torso", Vector3(0, 1.17, 0), Vector3(0.48, 0.6, 0.3), cloth)
@@ -111,7 +183,7 @@ func _assemble(d: Dictionary) -> void:
 		add_child(leg)
 		_legs.append(leg)
 		_shape(leg, "Trouser", Vector3(0, -0.36, 0), Vector3(0.18, 0.74, 0.2), pants)
-		_shape(leg, "Boot", Vector3(0, -0.78, -0.07), Vector3(0.22, 0.2, 0.36), ink)
+		_shape(leg, "Boot", Vector3(0, -0.78, -0.07), Vector3(0.22, 0.2, 0.36), _garment("leather",Color("392e35")))
 	_shape(self, "Mouth", Vector3(0, 1.585, -0.135), Vector3(0.08, 0.013, 0.016), ink)
 	if d.hair != 0:
 		_shape(self, "HairCap", Vector3(0, 1.83, 0.015), Vector3(0.35, 0.19, 0.32), hair)
@@ -122,13 +194,14 @@ func _assemble(d: Dictionary) -> void:
 	if d.face == 1:
 		_shape(self, "Moustache", Vector3(0, 1.61, -0.154), Vector3(0.13, 0.028, 0.024), hair)
 	if d.outfit == 0:
-		_shape(self, "CoatSkirt", Vector3(0, 0.88, 0.02), Vector3(0.54, 0.44, 0.36), cloth)
+		_panel(self,"CoatFront",Vector3(0,1.0,-.18),.48,.40,panel_cloth)
+		_panel(self,"CoatBack",Vector3(0,1.0,.18),.48,.40,panel_cloth,-1.0)
 	elif d.outfit == 2:
-		_shape(self, "Apron", Vector3(0, 0.98, -0.148), Vector3(0.35, 0.65, 0.055), _material(Color("c7b597"), "res://assets/characters/npc/workwear_seams.svg"))
+		_panel(self,"Apron",Vector3(0,1.30,-.19),.34,.64,_garment("cloth",Color("c7b597")))
 	elif d.outfit == 3:
-		var scarf := _material(Color("ba775d"))
+		var scarf := _garment("cloth",Color("ba775d"))
 		_shape(self, "Scarf", Vector3(0, 1.44, 0), Vector3(0.31, 0.14, 0.33), scarf)
-		_shape(self, "ScarfTail", Vector3(0.11, 1.2, -0.18), Vector3(0.1, 0.43, 0.05), scarf)
+		_panel(self,"ScarfTail",Vector3(.11,1.42,-.20),.10,.46,scarf)
 
 	_fantasy_details(d, skin, cloth, ink)
 	_head = Node3D.new()
@@ -144,11 +217,11 @@ func _assemble(d: Dictionary) -> void:
 
 func _fantasy_details(d: Dictionary, skin: Material, cloth: Material, ink: Material) -> void:
 	var cream := _material(Color("dbc6a0"))
-	var leather := _material(Color("775541"))
+	var leather := _garment("leather",Color("775541"))
 	# Shared tailoring language: front placket, belt and buckle.
 	_shape(self, "CoatPlacket", Vector3(0, 1.18, -0.151), Vector3(0.032, 0.46, 0.026), cream, "box")
 	_shape(self, "Belt", Vector3(0, 0.91, 0), Vector3(0.43, 0.06, 0.31), leather, "box")
-	_shape(self, "Buckle", Vector3(0, 0.92, -0.17), Vector3(0.065, 0.07, 0.025), cream, "box")
+	_shape(self, "Buckle", Vector3(0, 0.92, -0.17), Vector3(0.065, 0.07, 0.025), _garment("metal",Color("a18d60")), "box")
 	if d.phenotype == "fox":
 		for side in [-1.0, 1.0]:
 			_shape(self, "CrownEar", Vector3(side*0.125, 1.96, 0), Vector3(0.17, 0.37, 0.12), skin, "wedge").rotation.z = -side*0.16
@@ -157,7 +230,12 @@ func _fantasy_details(d: Dictionary, skin: Material, cloth: Material, ink: Mater
 		_shape(self, "MuzzleTip", Vector3(0, 1.67, -0.29), Vector3(0.075, 0.055, 0.055), ink)
 		_shape(self, "Tail", Vector3(0.15, 0.69, 0.30), Vector3(0.20, 0.59, 0.24), skin).rotation.x = -0.65
 		_shape(self, "TailTip", Vector3(0.15, 0.49, 0.47), Vector3(0.18, 0.23, 0.20), cream).rotation.x = -0.65
-		_shape(self, "Satchel", Vector3(-0.25, 0.85, 0.035), Vector3(0.17, 0.27, 0.27), leather, "box")
+		var bag_anchor := Node3D.new()
+		bag_anchor.name = "SatchelAnchor"
+		bag_anchor.position = Vector3(-.29,1.01,.035)
+		add_child(bag_anchor)
+		_shape(bag_anchor, "Satchel", Vector3(0,-.16,0), Vector3(.17,.27,.27), leather, "box")
+		clothing.add(bag_anchor,"leather")
 	elif d.phenotype == "moth":
 		for side in [-1.0, 1.0]:
 			_shape(self, "AntennaStem", Vector3(side*0.105, 1.97, 0), Vector3(0.035, 0.26, 0.04), ink).rotation.z = -side*0.35
@@ -170,9 +248,10 @@ func _fantasy_details(d: Dictionary, skin: Material, cloth: Material, ink: Mater
 			_shape(self, "CrownFacet", Vector3(side*0.125, 1.76, 0.025), Vector3(0.17, 0.27, 0.27), skin, "wedge")
 			_shape(self, "ShoulderPlate", Vector3(side*0.23, 1.39, 0), Vector3(0.26, 0.17, 0.29), skin, "wedge")
 			_shape(_arms[0 if side < 0 else 1], "Cuff", Vector3(side*0.025, -0.39, -0.025), Vector3(0.16, 0.12, 0.16), leather, "box")
-		_shape(self, "SmithApron", Vector3(0, 0.98, -0.185), Vector3(0.37, 0.62, 0.04), _material(Color("775541"), "res://assets/characters/npc/workwear_seams.svg"), "box")
-		_shape(self, "ApronPocket", Vector3(.06, .94, -.212), Vector3(.18,.17,.012), _material(Color("a38165")), "box")
-		_shape(self, "ApronPocketSeam", Vector3(.06, 1.02, -.22), Vector3(.18,.012,.012), cream, "box")
+		_panel(self,"SmithApron",Vector3(0,1.29,-.21),.37,.62,leather,1.0,"leather")
+		var apron_hem: Node3D = get_node("SmithApron/SmithApronHemPivot")
+		_shape(apron_hem, "ApronPocket", Vector3(.06, -.15, -.023), Vector3(.18,.17,.012), _garment("leather",Color("a38165")), "box")
+		_shape(apron_hem, "ApronPocketSeam", Vector3(.06, -.07, -.030), Vector3(.18,.012,.012), cream, "box")
 		for side in [-1.0, 1.0]:
 			_shape(self, "CrownCheek", Vector3(side*.13,1.62,-.11), Vector3(.10,.09,.12), _material(Color("687e7d")), "wedge")
 
@@ -225,16 +304,16 @@ func set_work(kind: String, time: float) -> void:
 		_work_prop.position = Vector3(0, -0.53, -0.07)
 		_arms[0].add_child(_work_prop)
 		var cream := _material(Color("dbc6a0"))
-		var leather := _material(Color("775541"))
+		var leather := _garment("leather",Color("775541"))
 		if kind == "grocer":
 			_shape(_work_prop, "Parcel", Vector3.ZERO, Vector3(.24,.15,.18), cream, "box")
 			_shape(_work_prop, "ParcelString", Vector3(0,0,-.095), Vector3(.018,.16,.01), leather, "box")
 		elif kind == "tailor":
-			_shape(_work_prop, "FoldedCloth", Vector3.ZERO, Vector3(.24,.06,.20), _material(Color("ba775d")), "box")
+			_shape(_work_prop, "FoldedCloth", Vector3.ZERO, Vector3(.24,.06,.20), _garment("cloth",Color("ba775d")), "box")
 			_shape(_work_prop, "ClothHem", Vector3(0,-.02,-.10), Vector3(.24,.02,.01), cream, "box")
 		else:
 			_shape(_work_prop, "ToolHandle", Vector3.ZERO, Vector3(.045,.25,.045), leather, "box")
-			_shape(_work_prop, "ToolHead", Vector3(0,-.12,0), Vector3(.18,.09,.09), _material(Color("8d9d9b")), "box")
+			_shape(_work_prop, "ToolHead", Vector3(0,-.12,0), Vector3(.18,.09,.09), _garment("metal",Color("8d9d9b")), "box")
 	_work_prop.show()
 	var beat: float = sin(time * (3.5 if kind == "workshop" else 1.7))
 	_arms[0].rotation = Vector3(0.65 + beat * (0.38 if kind == "workshop" else 0.12), 0, 0.15 + (0.1 * beat if kind == "tailor" else 0.0))

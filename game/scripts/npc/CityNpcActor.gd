@@ -69,6 +69,8 @@ func restore_motion(state: Dictionary) -> void:
 	waypoint = state.waypoint
 	clock = state.clock
 	pause_left = state.pause
+	if visual != null and visual.has_method("reset_clothing"):
+		visual.call("reset_clothing")
 
 func _physics_process(delta: float) -> void:
 	clock += delta
@@ -92,6 +94,8 @@ func _physics_process(delta: float) -> void:
 		visual.call("set_motion", speed, clock)
 		if not conversing and not work_kind.is_empty() and visual.has_method("set_work"):
 			visual.call("set_work", work_kind, clock)
+		if visual.has_method("step_clothing"):
+			visual.call("step_clothing", delta)
 
 func interaction_radius() -> float:
 	return float(visual.call("interaction_radius")) if visual != null and visual.has_method("interaction_radius") else 0.3

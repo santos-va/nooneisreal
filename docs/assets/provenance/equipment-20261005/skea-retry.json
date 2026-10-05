@@ -1,0 +1,32 @@
+{
+  "reason": "Original index3 terminal failed without result; exact paid balance after first batch4523.5 (45creditdelta). One authorized retry9credits.",
+  "params": {
+    "model": "gpt_image_2_5",
+    "variant": "flare",
+    "quality": "max",
+    "resolution": "2k",
+    "aspect_ratio": "1:1",
+    "count": 1,
+    "use_unlim": false,
+    "background": "opaque",
+    "prompt": "Create a production-ready flat 2D game material texture, NOT a product render or concept sheet. Fill every pixel edge-to-edge with the specified material. Orthographic surface only, zero perspective, no folds, no cast shadows, no lighting gradient, no glossy highlight, no ambient occlusion, no background, no labels, no text, no watermark. Original restrained hand-inked Sketch-Cel game art: flat local colors, refined quiet craftsmanship, subtly irregular graphite detail, never photorealistic noise. Seamlessly tileable in both axes neutral light-grey dense soft hoodie knit, intended to modulate an existing violet hoodie color. Small restrained interlocking fiber loops with broad soft graphite strokes, visibly distinct from diagonal canvas, tonal contrast under ten percent. Smooth, comfortable dense cloth. Uniform distribution, no directional illumination, no seams, no sigils, no letters, no logos, no patches. Matte flat knit albedo map, not a knitted garment render."
+  },
+  "result": {
+    "results": [
+      {
+        "id": "30db9a22-4f6a-42c3-8e48-516e929360c6",
+        "type": "image",
+        "status": "pending",
+        "model": "gpt_image_2_5",
+        "params": {
+          "prompt": "Create a production-ready flat 2D game material texture, NOT a product render or concept sheet. Fill every pixel edge-to-edge with the specified material. Orthographic surface only, zero perspective, no folds, no cast shadows, no lighting gradient, no glossy highlight, no ambient occlusion, no background, no labels, no text, no watermark. Original restrained hand-inked Sketch-Cel game art: flat local colors, refined quiet craftsmanship, subtly irregular graphite detail, never photorealistic noise. Seamlessly tileable in both axes neutral light-grey dense soft hoodie knit, intended to modulate an existing violet hoodie color. Small restrained interlocking fiber loops with broad soft graphite strokes, visibly distinct from diagonal canvas, tonal contrast under ten percent. Smooth, comfortable dense cloth. Uniform distribution, no directional illumination, no seams, no sigils, no letters, no logos, no patches. Matte flat knit albedo map, not a knitted garment render.",
+          "aspect_ratio": "1:1",
+          "variant": "flare",
+          "quality": "max",
+          "resolution": "2k",
+          "background": "opaque"
+        }
+      }
+    ]
+  }
+}

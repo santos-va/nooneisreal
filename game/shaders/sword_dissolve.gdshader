@@ -16,6 +16,13 @@ uniform float hit_flash : hint_range(0.0, 1.0) = 0.0;
 uniform float desat : hint_range(0.0, 1.0) = 0.0;   // TIME STOP: grey-blue frozen look
 
 // PLACEHOLDER art grain. Object coordinates freeze with hitstop; no TIME or random state.
+uniform int surface_kind = 0; // 1 blade UV inlay, 2 etched brass, 3 cross-wrapped leather.
+uniform int blade_form = 0;
+uniform sampler2D inlay_tex : source_color, hint_default_white, filter_linear_mipmap;
+uniform bool use_inlay_map = false;
+uniform float gold_variant : hint_range(0.0, 1.0) = 0.0;
+uniform vec4 ornament_color : source_color = vec4(0.604, 0.537, 0.376, 1.0);
+
 uniform float dissolve : hint_range(0.0, 1.0) = 0.0;
 varying vec3 local_point;
 void vertex() {
@@ -29,6 +36,41 @@ void fragment() {
 
 	vec4 tex = texture(albedo_tex, UV);
 	vec3 base = albedo.rgb * tex.rgb;
+	// Original deterministic material texture. Pixel derivatives soften subpixel
+	// etching at play distance; no TIME-driven shimmer or shared random state.
+	float ink = 0.0;
+	if (surface_kind == 1) {
+		float u = UV.x - 0.5;
+		float v = UV.y;
+		if (use_inlay_map) {
+			// Image origin is top-left; the painted lower diamond belongs at the guard.
+			vec3 inlay = texture(inlay_tex, vec2(UV.x, 1.0 - UV.y)).rgb;
+			float value = dot(inlay, vec3(0.3, 0.59, 0.11));
+			base = mix(inlay, albedo.rgb * clamp(0.5 + value, 0.5, 1.1), gold_variant);
+		}
+		float aa = max(fwidth(u), 0.0015);
+		float centre = 1.0 - smoothstep(0.007, 0.007 + aa, abs(u));
+		float diamond = 1.0 - smoothstep(0.009, 0.009 + aa, abs(abs(u) + abs(v - 0.115) * 0.6 - 0.037));
+		ink = max(centre * smoothstep(0.015, 0.07, v), diamond);
+		if (blade_form == 1) {
+			float grooves = 1.0 - smoothstep(0.005, 0.005 + aa, abs(abs(u) - 0.04));
+			float ticks = (1.0 - smoothstep(0.02, 0.045, abs(fract(v * 8.0) - 0.5))) * (1.0 - smoothstep(0.065, 0.08, abs(u)));
+			ink = max(grooves * step(0.12, v) * step(v, 0.75), ticks * step(0.18, v) * step(v, 0.65));
+		} else if (blade_form == 2) {
+			float chevron = min(abs(v - 0.09 - abs(u) * 0.65), abs(v - 0.17 - abs(u) * 0.65));
+			ink = max(centre * 0.5, (1.0 - smoothstep(0.005, 0.005 + aa, chevron)) * step(v, 0.3));
+		}
+		base *= mix(0.86, 1.06, smoothstep(0.0, 0.35, abs(u)));
+		// Do not stamp a duplicate procedural centre-line/diamond onto a painted map.
+		if (!use_inlay_map) { base = mix(base, ornament_color.rgb * 0.82, ink * 0.82); }
+	} else if (surface_kind == 2) {
+		float etch = abs(fract(UV.x * 7.0 + UV.y * 3.0) - 0.5);
+		base *= mix(0.78, 1.0, smoothstep(0.015, max(0.03, fwidth(etch) * 1.3), etch));
+	} else if (surface_kind == 3) {
+		vec2 weave = abs(fract(vec2(UV.x * 5.0 + UV.y * 8.0, UV.x * 5.0 - UV.y * 8.0)) - 0.5);
+		float seam = min(weave.x, weave.y);
+		base *= mix(0.42, 1.10, smoothstep(0.02, max(0.045, fwidth(seam) * 1.4), seam));
+	}
 	float g = dot(base, vec3(0.3, 0.59, 0.11));
 	base = mix(base, vec3(g) * vec3(0.72, 0.84, 1.08), desat);
 	ALBEDO = mix(base, vec3(1.0), hit_flash);

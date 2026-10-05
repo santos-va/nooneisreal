@@ -1,0 +1,58 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Credits: 4505.5 | Plan: ultra\nFree generations: Higgsfield Genjutsu (ai_influencer_motion_control, ai_influencer_replace_object, hf_mult_motion_control, hf_mult_replace_object): 3 left — resolution: 480p, 720p; up to 30s\nFree generations: AI Influencer Builder (ai_influencer_sheet): 5 left\nFree generations: (ads_studio_creative): 12 left"
+    }
+  ],
+  "structuredContent": {
+    "credits": 4505.5,
+    "subscription_plan_type": "ultra",
+    "free_trial": {
+      "status": null,
+      "eligible": false,
+      "offered_kind": null,
+      "kind": null,
+      "trial_credits": null,
+      "ends_at": null,
+      "unlim_available": false,
+      "unlim_remaining": null,
+      "unlim_expires_at": null
+    },
+    "free_gens": [
+      {
+        "job_set_types": [
+          "ai_influencer_motion_control",
+          "ai_influencer_replace_object",
+          "hf_mult_motion_control",
+          "hf_mult_replace_object"
+        ],
+        "remaining": 3,
+        "parameters": {
+          "resolution": [
+            "480p",
+            "720p"
+          ]
+        },
+        "max_duration": 30
+      },
+      {
+        "job_set_types": [
+          "ai_influencer_sheet"
+        ],
+        "remaining": 5,
+        "parameters": {},
+        "max_duration": null
+      },
+      {
+        "job_set_types": [
+          "ads_studio_creative"
+        ],
+        "remaining": 12,
+        "parameters": {},
+        "max_duration": null
+      }
+    ]
+  },
+  "isError": false
+}

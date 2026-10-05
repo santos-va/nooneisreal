@@ -15,7 +15,7 @@ var _ticks: int = 0
 var _kunai: Array = []
 var _tick_move: MoveData
 var _ring_mat: StandardMaterial3D
-var _steel: StandardMaterial3D
+var _steel: ShaderMaterial
 var _glow: StandardMaterial3D
 var _rng := RandomNumberGenerator.new()
 
@@ -46,9 +46,7 @@ func _ready() -> void:
 	var ring := Fx.mesh(tm, _ring_mat)
 	ring.position = Vector3(0, 0.03, 0)
 	add_child(ring)
-	_steel = StandardMaterial3D.new()
-	_steel.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_steel.albedo_color = Color(0.16, 0.15, 0.2)
+	_steel = GearSurface.make("metal",Color("78818e"),Color("c7b8d4"))
 	_glow = Fx.mat(Color(owner_f.data.vfx_primary, 0.8), true)
 	Sfx.play("whoosh", -4)
 

@@ -16,6 +16,7 @@ extends Node3D
 ## bone first gets a rest alignment (its rest direction turned onto the mannequin's), then the mannequin's rotation
 ## from rest. Bone lengths stay the hero's; only the hips move, scaled by the hip-height ratio.
 
+const HeroGear = preload("res://scripts/fighter/HeroGearPresentation.gd")
 const BodyMotion = preload("res://scripts/fighter/HeroBodyMotion.gd")
 const GroundContact = preload("res://scripts/fighter/HeroGroundContact.gd")
 const MotionSignals = preload("res://scripts/fighter/FighterMotionSignals.gd")
@@ -109,6 +110,7 @@ var authored_hook = HookSource.new()
 var body_motion = BodyMotion.new()
 var ground_contact = GroundContact.new()
 var motion_signals = MotionSignals.new()
+var gear: Node3D
 
 
 func setup(f: Fighter) -> void:
@@ -138,6 +140,11 @@ func setup(f: Fighter) -> void:
 		sword.name = "SwordPresentation"
 		add_child(sword)
 		sword.setup(f, self)
+	if hero_skeleton != null:
+		gear = HeroGear.new()
+		gear.name = "HeroGear"
+		add_child(gear)
+		gear.setup(f,self)
 
 
 ## Loads the hero GLB beside the mannequin, hides the mannequin's mesh and precomputes the retarget.
@@ -363,6 +370,8 @@ func _physics_process(delta: float) -> void:
 	if get_tree().paused or _fighter.frozen_frames > 0 or _fighter.hitstop_frames > 0:
 		return   # time stop / hitstop: hold the drawing
 	motion_signals.update(_fighter, delta)
+	if gear != null:
+		gear.advance(delta)
 	if motion_signals.discontinuous:
 		body_motion.restore_source(skeleton)
 		_restore_attack_return_base()
@@ -525,6 +534,8 @@ func _on_mannequin_updated() -> void:
 	if sword != null:
 		SwordMotion.apply_transfer(hero_skeleton, _fighter)
 		sword.update_pose()
+	if gear != null:
+		gear.update_pose()
 
 
 ## Aligned hand rest used to calibrate a prop; leaf hand rests differ between the two Meshy arms.
