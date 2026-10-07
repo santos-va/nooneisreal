@@ -198,3 +198,4 @@ Production-код, Godot і генерації в цій T6-смузі не за
 - [[state]] · [[Style-Guide]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[Cel-Shading]]
 - [[2026-10-05-Traversal-And-Surface-Review]] · [[2026-10-05-Parkour-Tricks-And-Quality]] · [[2026-10-05-Tricks-And-Quality-Review]]
 - [[2026-10-05-Camera-Proximity]] · [[ADR-019-Audit-And-Many-Views-Before-Decision]] · [[Choko]] · [[Skea]]
+- Приймання після виправлення: [[2026-10-07-Tight-Station-Fix-Review]]
