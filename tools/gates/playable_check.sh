@@ -86,6 +86,9 @@ cases = [
     ('combat-control', 'tools/combat/control_check.gd', r'COMBAT_CONTROL_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('combat-intent', 'tools/combat/intent_check.gd', r'COMBAT_INTENT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('traversal', 'tools/grapple/traversal_check.gd', r'TRAVERSAL_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    # Aim-free rope (plan 2026-10-07-Aim-Free-Rope, T8 variant Г): the selection, the refusal and the district coverage.
+    ('auto-hook', 'tools/grapple/auto_hook_check.gd', r'AUTO_HOOK_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('anchor-coverage', 'tools/world/anchor_coverage.gd', r'ANCHOR_COVERAGE_COMPLETE checks=[1-9][0-9]* failures=0 anchors=[1-9][0-9]* t8=[0-9]+/[0-9]+ real=[0-9]+/[0-9]+ roofs=([0-9]+)/\1 supports=([0-9]+)/\2', [], 0),
     ('city-parkour', 'tools/parkour/city_parkour_check.gd', r'CITY_PARKOUR_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-tricks', 'tools/parkour/city_tricks_check.gd', r'CITY_TRICKS_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('tricks-independent', 'tools/parkour/tricks_independent_check.gd', r'T4_TRICKS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
@@ -159,6 +162,12 @@ for mutation in ('cfg', 'combat_key', 'migrate', 'headless_controller', 'upscale
     cases.append(('display-auto-negative-' + mutation, 'tools/settings/display_auto_check.gd',
                   rf'DISPLAY_AUTO_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
+# Aim-free rope (N10): the base selection, a press that fires into empty air, a launch without the re-check and no
+# 0.25 s switch delay must each go red.
+for mutation in ('base', 'empty_shot', 'no_recheck', 'lock'):
+    cases.append(('auto-hook-negative-' + mutation, 'tools/grapple/auto_hook_check.gd',
+                  rf'AUTO_HOOK_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
 # City step 0: no sealed-skill hint, no throttle, no modal from the city pause, no return to the pause must go red.
 for mutation in ('signal', 'interval', 'comfort', 'focus'):
     cases.append(('city-controls-negative-' + mutation, 'tools/ui/city_controls_check.gd',
@@ -229,6 +238,7 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('tricks-independent-negative-', 'ERROR: T4_TRICKS: '),
                           ('tight-station-negative-', 'ERROR: TIGHT_STATION: '),
                           ('city-controls-negative-', 'ERROR: CITY_CONTROLS: '),
+                          ('auto-hook-negative-', 'ERROR: AUTO_HOOK: '),
                           ('display-auto-negative-', 'ERROR: DISPLAY_AUTO: '),
                           ('lethal-fight-negative-', 'ERROR: LETHAL_FIGHT: '),
                           ('blood-content-negative-', 'ERROR: BLOOD_CONTENT: '),

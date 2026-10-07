@@ -629,6 +629,9 @@ func _update_aim_cues() -> void:
 		var point: Vector3 = intent.point
 		if camera.is_position_behind(point) or (intent.target_id.is_empty() and not intent.manual):
 			continue
+		# T8 Г: a traversal press without a target is no shot, so the parkour row never marks a camera ray point.
+		if mode == 1 and intent.get("assist", false) and intent.target_id.is_empty():
+			continue
 		var screen := camera.unproject_position(point)
 		if not get_viewport().get_visible_rect().has_point(screen):
 			continue

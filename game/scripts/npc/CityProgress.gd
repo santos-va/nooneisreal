@@ -96,7 +96,11 @@ static func _event_id_valid(kind: String, id: String) -> bool:
 	if kind == "deliver":
 		return id == "thread_parcel"
 	if kind == "rope":
-		return id in ["anchor_0", "anchor_1", "anchor_2", "anchor_3"]
+		# Every district rope anchor counts (plan 2026-10-07-Aim-Free-Rope step 2 appends anchors; indices are stable,
+		# so saves naming anchor_0…anchor_3 stay valid). The exact spelling keeps "anchor_01" from doubling anchor_1.
+		var suffix := id.trim_prefix("anchor_")
+		return id.begins_with("anchor_") and suffix.is_valid_int() and id == "anchor_%d" % int(suffix) \
+			and int(suffix) >= 0 and int(suffix) < CityLayout.anchors().size()
 	if kind == "palette":
 		return id in ["original", "mint", "amber", "plum"]
 	return false

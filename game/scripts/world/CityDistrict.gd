@@ -127,18 +127,44 @@ func _street_details() -> void:
 		_box("StreetSeam" + str(x), Vector3(x, 0.004, 0), Vector3(0.08, 0.008, 62), "ink")
 	for z: float in [-5.0, 5.0]:
 		_box("CrossStreetSeam" + str(z), Vector3(0, 0.006, z), Vector3(62, 0.008, 0.08), "ink")
-	for index: int in range(Layout.anchors().size()):
-		var point: Vector3 = Layout.anchors()[index]
-		var pole_x: float = point.x + signf(point.x)
-		_box("AnchorPost%d" % index, Vector3(pole_x, 3.4, point.z), Vector3(0.18, 6.8, 0.18), "ink", 9)
-		_box("AnchorArm%d" % index, Vector3((pole_x + point.x) * 0.5, 6.8, point.z), Vector3(1.35, 0.15, 0.18), "brass")
-		_box("AnchorCeramic%d" % index, point + Vector3(0, 0.25, 0), Vector3(0.35, 0.15, 0.3), "marker")
+	var supports: Array[Dictionary] = Layout.anchor_supports()
+	for index: int in range(supports.size()):
+		_anchor_support(index, supports[index])
 		var anchor: Marker3D = Marker3D.new()
 		anchor.name = "StreetAnchor%d" % index
-		anchor.position = point
+		anchor.position = supports[index].point
 		anchor.set_meta("lamp", false)
 		anchor.add_to_group("grapple_anchor")
 		add_child(anchor)
+
+## Visible support of one rope anchor (CityLayout.anchor_supports): the anchor sits 0.25 m under its ceramic cap, the cap
+## under an arm, the arm on a post or fixed into the wall / slab at `mount`. PLACEHOLDER sizes; look and colour are T6's.
+func _anchor_support(index: int, spec: Dictionary) -> void:
+	var point: Vector3 = spec.point
+	var mount: Vector3 = spec.mount
+	var kind: String = spec.kind
+	if kind == "hanger":
+		var top: float = mount.y
+		_box("AnchorBracket%d" % index, Vector3(point.x, (top + point.y + 0.25) * 0.5, point.z), Vector3(0.08, top - point.y - 0.25, 0.08), "iron")
+		_box("AnchorPlate%d" % index, Vector3(point.x, top - 0.03, point.z), Vector3(0.36, 0.06, 0.36), "iron")
+		_box("AnchorCeramic%d" % index, point + Vector3(0, 0.25, 0), Vector3(0.35, 0.15, 0.3), "marker")
+		return
+	var arm_y: float = point.y + 0.3 if kind == "post" else mount.y
+	var flat: Vector3 = Vector3(point.x - mount.x, 0, point.z - mount.z)
+	var yaw: float = 0.0 if absf(flat.z) < 0.000001 else atan2(-flat.z, flat.x)
+	if kind == "post":
+		_box("AnchorPost%d" % index, Vector3(mount.x, (mount.y + arm_y) * 0.5, mount.z), Vector3(0.18, arm_y - mount.y, 0.18), "ink", 9)
+	var arm: Node3D = _box("AnchorArm%d" % index, Vector3((mount.x + point.x) * 0.5, arm_y, (mount.z + point.z) * 0.5), Vector3(flat.length() + 0.35, 0.15, 0.18), "brass")
+	arm.rotation.y = yaw
+	if kind == "bracket":
+		# Wall plate at the fixing and a strut from 0.9 m below it to the arm's middle.
+		var plate: Node3D = _box("AnchorPlate%d" % index, mount + Vector3(0, -0.3, 0), Vector3(0.12, 0.9, 0.36), "iron")
+		plate.rotation.y = yaw
+		var low: Vector3 = mount + Vector3(0, -0.75, 0)
+		var high: Vector3 = Vector3((mount.x + point.x) * 0.5, arm_y - 0.05, (mount.z + point.z) * 0.5)
+		var strut: Node3D = _box("AnchorStrut%d" % index, (low + high) * 0.5, Vector3(0.08, 0.08, low.distance_to(high)), "iron")
+		strut.basis = Basis.looking_at((high - low).normalized(), Vector3.UP if absf((high - low).normalized().y) < 0.99 else Vector3.FORWARD)
+	_box("AnchorCeramic%d" % index, point + Vector3(0, 0.25, 0), Vector3(0.35, 0.15, 0.3), "marker")
 
 func _markers() -> void:
 	var spawn: Marker3D = Marker3D.new()

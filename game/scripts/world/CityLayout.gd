@@ -40,9 +40,53 @@ static func ramps() -> Array[Dictionary]:
 		{"id": "WestRamp", "x": -29.0, "width": 3.0, "start_z": 8.0, "end_z": -10.0, "height": 4.0},
 	]
 
+## Rope anchors with their visible supports (plan 2026-10-07-Aim-Free-Rope step 2). `mount` is where the support meets
+## the existing world geometry, so no anchor hangs in the air. Indices are stable: the rope quest and its saves name
+## "anchor_<index>", so new anchors are only ever appended. PLACEHOLDER metres; range 14 m and the swing rules are T5's.
+##   post    — a lamp post standing at `mount`, its arm over the point (the four original street lamps);
+##   bracket — an iron arm fixed into a wall or a cornice at `mount` (arm height), with a strut below it;
+##   hanger  — an eye-bolt hanging from a slab underside at `mount`.
+static func anchor_supports() -> Array[Dictionary]:
+	return [
+		{"point": Vector3(-8, 6.5, -8), "mount": Vector3(-9, 0, -8), "kind": "post"},
+		{"point": Vector3(8, 6.5, -8), "mount": Vector3(9, 0, -8), "kind": "post"},
+		{"point": Vector3(-8, 6.5, 8), "mount": Vector3(-9, 0, 8), "kind": "post"},
+		{"point": Vector3(8, 6.5, 8), "mount": Vector3(9, 0, 8), "kind": "post"},
+		# Market street: brackets under the cornice of the southeast wing and the southwest block, at bay centres.
+		{"point": Vector3(8.6, 6.7, 17.4), "mount": Vector3(10.05, 7.0, 17.4), "kind": "bracket"},
+		{"point": Vector3(8.6, 6.7, 24.6), "mount": Vector3(10.05, 7.0, 24.6), "kind": "bracket"},
+		{"point": Vector3(-8.6, 6.7, 17.4), "mount": Vector3(-10.05, 7.0, 17.4), "kind": "bracket"},
+		{"point": Vector3(-8.6, 6.7, 24.6), "mount": Vector3(-10.05, 7.0, 24.6), "kind": "bracket"},
+		# Southeast passage (a dead end): one bracket on the plain east-wing wall, which has no facade trim.
+		{"point": Vector3(20.4, 7.0, 22.0), "mount": Vector3(22.05, 7.3, 22.0), "kind": "bracket"},
+		# East street: north faces of both southeast wings, between window rows.
+		{"point": Vector3(28, 8.6, 10.6), "mount": Vector3(28, 8.9, 12.05), "kind": "bracket"},
+		{"point": Vector3(16, 6.7, 10.6), "mount": Vector3(16, 7.0, 12.05), "kind": "bracket"},
+		# Lamp posts on the terrace edges, arms over the street below: they serve the terrace and the street.
+		{"point": Vector3(15, 8.0, -9.6), "mount": Vector3(15, 4.0, -11.0), "kind": "post"},
+		{"point": Vector3(26, 8.0, -9.6), "mount": Vector3(26, 4.0, -11.0), "kind": "post"},
+		{"point": Vector3(-18, 8.0, -9.6), "mount": Vector3(-18, 4.0, -11.0), "kind": "post"},
+		{"point": Vector3(-9.6, 8.0, -24), "mount": Vector3(-11.0, 4.0, -24), "kind": "post"},
+		{"point": Vector3(9.6, 8.0, -24), "mount": Vector3(11.0, 4.0, -24), "kind": "post"},
+		# West street: the southwest block's north face over the shop fronts, and one street lamp by the west ramp.
+		{"point": Vector3(-24, 6.8, 10.6), "mount": Vector3(-24, 7.1, 12.05), "kind": "bracket"},
+		{"point": Vector3(-16, 6.8, 10.6), "mount": Vector3(-16, 7.1, 12.05), "kind": "bracket"},
+		{"point": Vector3(-26, 6.5, -4), "mount": Vector3(-27, 0, -4), "kind": "post"},
+		# Northwest terrace: the clock tower (east and south faces, under the cornice) and the plaster house.
+		{"point": Vector3(-18.6, 10.2, -25), "mount": Vector3(-20.05, 10.5, -25), "kind": "bracket"},
+		{"point": Vector3(-24, 10.2, -19.6), "mount": Vector3(-24, 10.5, -21.05), "kind": "bracket"},
+		{"point": Vector3(-29.4, 10.2, -25), "mount": Vector3(-27.95, 10.5, -25), "kind": "bracket"},
+		{"point": Vector3(-12, 9.3, -24.6), "mount": Vector3(-12, 9.6, -26.05), "kind": "bracket"},
+		# Northeast terrace: the tall house's south face, between the first balconies and the second string course.
+		{"point": Vector3(16, 9.3, -24.6), "mount": Vector3(16, 9.6, -26.05), "kind": "bracket"},
+		{"point": Vector3(24, 9.3, -24.6), "mount": Vector3(24, 9.6, -26.05), "kind": "bracket"},
+	]
+
 static func anchors() -> Array[Vector3]:
-	return [Vector3(-8, 6.5, -8), Vector3(8, 6.5, -8),
-		Vector3(-8, 6.5, 8), Vector3(8, 6.5, 8)]
+	var points: Array[Vector3] = []
+	for spec: Dictionary in anchor_supports():
+		points.append(spec.point)
+	return points
 
 static func blocks() -> Array[Dictionary]:
 	return [
