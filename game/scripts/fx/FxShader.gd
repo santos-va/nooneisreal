@@ -21,15 +21,16 @@ static func rng() -> RandomNumberGenerator:
 
 
 ## A torn, step-dissolving stroke. additive → glow (light), else ink (dark, alpha blend).
-## rim 1.0 = fresnel ghost for afterimage capsules; tear 0 = clean edges.
-static func stroke(color: Color, alpha: float, additive: bool = true, tear: float = 0.6, rim: float = 0.0) -> ShaderMaterial:
+## rim 1.0 = fresnel ghost for afterimage capsules; tear 0 = clean edges. `seed_rng` (optional) draws the shader seed
+## instead of the shared rng() — an effect with its own RNG (lethal blood, ADR-024 п. 4) leaves rng() where it was.
+static func stroke(color: Color, alpha: float, additive: bool = true, tear: float = 0.6, rim: float = 0.0, seed_rng: RandomNumberGenerator = null) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = GLOW if additive else INK
 	m.set_shader_parameter("tint", Color(color.r, color.g, color.b, 1.0))
 	m.set_shader_parameter("alpha", alpha)
 	m.set_shader_parameter("tear", tear)
 	m.set_shader_parameter("rim", rim)
-	m.set_shader_parameter("seed", rng().randf() * 100.0)
+	m.set_shader_parameter("seed", (seed_rng if seed_rng != null else rng()).randf() * 100.0)
 	return m
 
 

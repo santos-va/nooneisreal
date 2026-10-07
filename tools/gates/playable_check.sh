@@ -47,7 +47,8 @@ cases = [
     ('contact', 'tools/fx/water_contact_check.gd', r'WATER CONTACT CHECK: 0 failures', [], 0),
     ('camera', 'tools/camera/framing_check.gd', r'CAMERA_FRAMING: [1-9][0-9]* checks, 0 failures', [], 0),
     ('city-camera', 'tools/camera/city_camera_check.gd', r'CITY_CAMERA_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
-    ('tight-station', 'tools/camera/tight_station_probe.gd', r'TIGHT_STATION_COMPLETE checks=[1-9][0-9]* failures=0 mode=none', ['--', '--check'], 0),
+    # Headless has no pixels: the run must say S5 was not measured, right before its sentinel (T4 audit 2026-10-07).
+    ('tight-station', 'tools/camera/tight_station_probe.gd', r'TIGHT_STATION S5=NOT MEASURED \(headless\)\nTIGHT_STATION_COMPLETE checks=[1-9][0-9]* failures=0 mode=none', ['--', '--check'], 0),
     ('conversation-camera', 'tools/camera/conversation_camera_check.gd', r'CONVERSATION_CAMERA_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('impact', 'tools/camera/impact_check.gd', r'impact-check: OK \([1-9][0-9]* checks, 0 failures\)', [], 0),
     ('foot', 'tools/animation/foot_contact_check.gd', r'FOOT CONTACT: [1-9][0-9]* checks, 0 failures', [], 0),
@@ -136,15 +137,17 @@ for mutation in ('damping', 'recovery50', 'floor', 'station', 'mask', 'restore',
                   ['--', '--check', '--break=' + mutation], 1))
 # Lethal pocket (ADR-024): sparring turned lethal, HP that does not carry (full / none / into a retry), an enemy that
 # never dies or dies at the first KO, a lethal clock, residents that stay or never return, skills sealed in the pocket
-# or open outside it, a city camera left off and a CPU that backs into the wall must each go red.
-for mutation in ('sparring', 'carry', 'carry_none', 'retry_carry', 'death', 'early_death', 'clock', 'npc', 'npc_return', 'skills', 'outside', 'exit', 'edge'):
+# (all three, or only skill2 and the ultimate after an open skill1) or open outside it, a city camera left off and a
+# CPU that backs into the wall must each go red.
+for mutation in ('sparring', 'carry', 'carry_none', 'retry_carry', 'death', 'early_death', 'clock', 'npc', 'npc_return', 'skills', 'skills_late', 'outside', 'exit', 'edge'):
     cases.append(('lethal-fight-negative-' + mutation, 'tools/match/lethal_fight_check.gd',
                   rf'LETHAL_FIGHT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
 # Blood and content (ADR-024 п. 4, п. 7): blood in a sparring, a damaged content.cfg saved over, a Reduced hit flash at
 # full strength, a card that is not remembered, a step back from the card that counts as seen, blood on a block, Off
-# that still bleeds, Ink that still drops and blood that changes the fight must each go red.
-for mutation in ('sparring', 'cfg', 'flash', 'notice', 'back', 'block', 'mode', 'ink', 'state'):
+# that still bleeds, Ink that still drops, blood drawing the shared presentation RNG, a puddle from a late blow after
+# the round is decided, blood that changes the fight and blood that moves a fighter's RNG must each go red.
+for mutation in ('sparring', 'cfg', 'flash', 'notice', 'back', 'block', 'mode', 'ink', 'rng', 'late', 'state', 'rng_state'):
     cases.append(('blood-content-negative-' + mutation, 'tools/fx/blood_content_check.gd',
                   rf'BLOOD_CONTENT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))

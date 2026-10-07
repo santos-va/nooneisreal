@@ -12,7 +12,7 @@ extends SceneTree
 ## Thresholds are literals of GDD 02 / GDD 03 / the plan, never read from the code under test.
 ## --break=<m> is a negative control (see MUTATIONS); sentinel LETHAL_FIGHT_COMPLETE checks=N failures=M mutation=<m>;
 ## failures print "LETHAL_FIGHT: ...".
-const MUTATIONS := ["sparring", "carry", "carry_none", "retry_carry", "death", "early_death", "clock", "npc", "npc_return", "skills", "outside", "exit", "edge"]
+const MUTATIONS := ["sparring", "carry", "carry_none", "retry_carry", "death", "early_death", "clock", "npc", "npc_return", "skills", "skills_late", "outside", "exit", "edge"]
 const CHOKO_MAX := 1050.0
 const SKEA_MAX := 900.0
 const ENEMY_MAX := 1000.0
@@ -377,19 +377,43 @@ func _skill_press_outside(world: Node, when: String) -> void:
 	_check(sealed.has("skill1") and hero.current_slot != "skill1", "%s: skill1 outside the pocket is sealed (sealed %s, slot '%s')" % [when, sealed, hero.current_slot])
 
 
+## ADR-024 п. 6: skill1, skill2 and the ultimate all open in the pocket — each by its real SOLO key (U, I, O), each must
+## start its own move and never be reported as sealed. The ultimate needs a full gauge (a precondition, not the
+## subject). For I and O the pair stands 10 m apart: TIME STOP reaches 4.2 m and Sword Storm 6.8 m (choko.tres,
+## SwordStormFx.REACH), so the presses change no HP and no state the CPU part below reads.
 func _skills_in_pocket(world: Node, hero: Node, enemy: Node) -> void:
 	enemy._brain.process_mode = Node.PROCESS_MODE_DISABLED
 	router.v_clear(2)
 	enemy.global_position = Vector3(0, 0, -4)
-	await _until(func() -> bool: return hero.is_actionable(), 120)
 	if mutation == "skills":
 		hero.lethal_pocket = false
-	sealed.clear()
-	hero.current_slot = ""
-	await _tap_key(KEY_U)
-	await _ticks(1)
-	_check(hero.current_slot == "skill1" and not sealed.has("skill1"), "skill1 opens in the pocket (slot '%s', sealed %s)" % [hero.current_slot, sealed])
+	for press: Array in [[KEY_U, "skill1"], [KEY_I, "skill2"], [KEY_O, "ultimate"]]:
+		var slot: String = press[1]
+		await _until(func() -> bool: return hero.is_actionable(), 240)
+		if slot != "skill1":
+			hero.global_position = Vector3(-5, 0.02, 0)
+			enemy.global_position = Vector3(5, 0.02, 0)
+			hero.velocity = Vector3.ZERO
+			await _ticks(2)
+			if mutation == "skills_late":
+				hero.lethal_pocket = false   # skill1 stayed open; only the later presses meet a sealed pocket (P15's shape)
+		if slot == "ultimate":
+			hero.meter = F.MAX_METER
+		sealed.clear()
+		hero.current_slot = ""
+		await _tap_key(press[0])
+		await _ticks(1)
+		_check(hero.current_slot == slot and not sealed.has(slot), "%s opens in the pocket (slot '%s', sealed %s)" % [slot, hero.current_slot, sealed])
+		if slot == "skill1":
+			# Choko's RECORD rewinds by itself after 4 s (RecordMarker.LIFE) and cancels whatever move runs then; the
+			# second U press rewinds now, so no timer is left over the ultimate or the CPU part below.
+			await _until(func() -> bool: return hero.is_actionable(), 240)
+			await _tap_key(KEY_U)
+			await _ticks(2)
 	hero.lethal_pocket = true
+	await _until(func() -> bool: return hero.is_actionable(), 240)   # Sword Storm runs 92 frames: the enemy stays 10 m off
+	_check(is_equal_approx(enemy.hp, ENEMY_MAX) and enemy.state != F.State.HITSTUN and enemy.state != F.State.LAUNCHED, "the skill presses leave the enemy untouched (hp %.1f, state %d)" % [enemy.hp, enemy.state])
+	enemy.global_position = Vector3(0, 0, -4)
 	await _until(func() -> bool: return hero.is_actionable(), 240)
 	sealed.clear()
 	await _tap_key(KEY_Q)   # SOLO enemy hook

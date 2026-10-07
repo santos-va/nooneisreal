@@ -2,26 +2,30 @@ class_name SmearShards
 extends Node3D
 ## "Torn pieces of drawn motion": ink shards and paper-thin streaks left along a fast move,
 ## in the character's palette. They drift back against the motion, spin and shrink in steps.
+## Seeds: by default from the shared presentation RNG (FxShader.rng()), as every caller always did. A caller with its
+## own RNG passes it as `rng` (BloodFx in Ink mode): the burst then seeds from it and every stroke draws from the
+## burst's own RNG, so FxShader.rng() does not move at all.
 
 var _items: Array = []   # {node, mat, vel, spin, life, left, alpha}
 var _rng := RandomNumberGenerator.new()
 
 
-static func burst(parent: Node, from: Vector3, to: Vector3, colors: Array, count: int = 14, streaks: int = 4) -> SmearShards:
+static func burst(parent: Node, from: Vector3, to: Vector3, colors: Array, count: int = 14, streaks: int = 4, rng: RandomNumberGenerator = null) -> SmearShards:
 	var s := SmearShards.new()
 	parent.add_child(s)
-	s._emit(from, to, colors, count, streaks)
+	s._emit(from, to, colors, count, streaks, rng)
 	return s
 
 
-func _emit(from: Vector3, to: Vector3, colors: Array, count: int, streaks: int) -> void:
-	_rng.seed = FxShader.rng().randi()
+func _emit(from: Vector3, to: Vector3, colors: Array, count: int, streaks: int, rng: RandomNumberGenerator = null) -> void:
+	_rng.seed = (rng if rng != null else FxShader.rng()).randi()
+	var stroke_rng: RandomNumberGenerator = _rng if rng != null else null   # null: strokes keep drawing FxShader.rng()
 	var dir := to - from
 	var back := -dir.normalized() if dir.length() > 0.01 else Vector3.ZERO
 	for i in count:
 		var c: Color = colors[_rng.randi() % colors.size()]
 		var ink := _rng.randf() < 0.45
-		var m := FxShader.stroke(c, 0.9, not ink, 0.7)
+		var m := FxShader.stroke(c, 0.9, not ink, 0.7, 0.0, stroke_rng)
 		var q := QuadMesh.new()
 		q.size = Vector2(_rng.randf_range(0.12, 0.42), _rng.randf_range(0.04, 0.16))
 		var mi := Fx.mesh(q, m)
@@ -33,7 +37,7 @@ func _emit(from: Vector3, to: Vector3, colors: Array, count: int, streaks: int) 
 			"spin": _rng.randf_range(-12.0, 12.0), "life": life, "left": life, "alpha": 0.9})
 	for i in streaks:
 		var c2: Color = colors[i % colors.size()]
-		var m2 := FxShader.stroke(c2, 0.75, true, 0.35)
+		var m2 := FxShader.stroke(c2, 0.75, true, 0.35, 0.0, stroke_rng)
 		var q2 := QuadMesh.new()
 		q2.size = Vector2(maxf(dir.length() * _rng.randf_range(0.5, 0.95), 0.4), _rng.randf_range(0.02, 0.06))
 		var mi2 := Fx.mesh(q2, m2)

@@ -33,7 +33,9 @@ extends SceneTree
 ##   S4 tight kick: hero ink chain is body -> depth mask -> near hull exactly while fill < 1, and the
 ##      exact original opaque hull at fill 1 (render at full visibility as before iteration 2);
 ##   S5 tight kick, native pixels only (check mode turns --ink-sentinel on): ink <= 10 % of the frame
-##      on every sampled tick and the ring is counted at full fill; headless has no pixels and skips S5;
+##      on every sampled tick and the ring is counted at full fill; headless has no pixels and skips S5,
+##      saying so in its own line before the sentinel: "TIGHT_STATION S5=NOT MEASURED (headless)" (T4 audit
+##      2026-10-07: a skip must be visible in the output, not only here); a native run prints the routes measured;
 ##   S6 fixture after choko practice hang: a resident 0.6 m from the lens is drawn at <= 25 % fill,
 ##      its node stays visible, shared NPC materials are untouched, exact slots return away from it;
 ##   S7 practice kick: no resident closer to the lens than the hero and taller in frame for > 30 ticks.
@@ -84,6 +86,7 @@ var break_mode: String = "none"
 var out_given: bool = false
 var checks: int = 0
 var check_failures: int = 0
+var s5_routes: int = 0 # tight-kick routes whose S5 ink was really sampled (0 headless)
 var after_process: Node
 var check_routes: Array[Array] = []
 var transitions: Array[String] = ["hang", "drop", "kick"]
@@ -212,6 +215,7 @@ func run() -> void:
 	}
 	if check_mode:
 		_evaluate()
+		receipt["s5"] = _s5_status()
 		receipt["checks"] = checks
 		receipt["check_failures"] = check_failures
 		receipt["break"] = break_mode
@@ -246,6 +250,7 @@ func run() -> void:
 		if failures > 0:
 			check_failures += failures
 			push_error("TIGHT_STATION: harness incomplete (%d)" % failures)
+		print("TIGHT_STATION " + _s5_status())
 		print("TIGHT_STATION_COMPLETE checks=%d failures=%d mode=%s" % [checks, check_failures, break_mode])
 		quit(1 if check_failures else 0)
 		return
@@ -518,6 +523,14 @@ func _station_point(world: Node3D, station_id: String) -> Vector3:
 			return Vector3(ledge.global_position.x, 0, face + STATION_GAP)
 	return OPEN_STATION
 
+## S5 needs pixels: headless never measures it, and a native run without ink samples did not measure it either.
+func _s5_status() -> String:
+	if not native:
+		return "S5=NOT MEASURED (headless)"
+	if s5_routes == 0:
+		return "S5=NOT MEASURED (no ink samples)"
+	return "S5=MEASURED (%d routes)" % s5_routes
+
 func _check(ok: bool, label: String) -> void:
 	checks += 1
 	if not ok:
@@ -580,6 +593,7 @@ func _evaluate() -> void:
 				if row.has("ink_px_frac"):
 					sampled.append(row)
 			if not sampled.is_empty():
+				s5_routes += 1
 				var top: Dictionary = sampled[0]
 				var ring: int = 0
 				for row: Dictionary in sampled:
