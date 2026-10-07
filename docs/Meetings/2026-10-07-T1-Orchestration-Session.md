@@ -14,15 +14,26 @@
 - Перша хвиля завдань: T2 — Godot 4.7, базова батарея й зонд тісної станції; T3 — бриф технік камери; T4 — аудит дрейфу після merge; T6 — художні мірила тісного кадру й стан RED #33/#38; T8 — чек-лист приймання на M3; T5 — варіанти першого бою в місті.
 - Бриф T5 записано як [[2026-10-07-City-Encounter-Options]] (`draft`, рекомендація — двір-кишеня, рішення за Santos).
 
+- Santos: «треба перший ворог … з ворогом прямо до смерті будуть раунди, щоб прямо було видно кров, серйозність» — записано в [[2026-10-07-City-Encounter-Options]]; друга хвиля (T3/T5/T6/T7/T8) зведена в [[2026-10-07-First-Enemy-Lethal-Fight]] з 5 питаннями до Santos.
+- Діагностика T2: стискання камери давнє (`abce638` біт у біт), kick додає перескок арма через межову стіну — [[2026-10-07-Tight-Station-Camera-Baseline]]; T1 обрав демпфування + перенесення опори + контур героя ([[2026-10-07-Tight-Support-Camera]], `approved`, Yellow).
+- Чесний гейт виконано T2 в окремому worktree і перенесено як `adaba87`: без Godot `make gates` червоний, `make gates-docs` — «ДОКИ ЗЕЛЕНІ; КОД НЕ ВИМІРЯНО». Кліо перевела документальні перевірки в ролях і скілах на `make gates-docs`.
+- Записано брифи: [[2026-10-07-Post-Merge-Drift]] (T4, RED клас «зелено без виміру»), [[2026-10-07-Tight-Support-Camera-Research]], [[2026-10-07-Blood-And-Lethal-Rating]] (T3), [[2026-10-07-Tight-Station-Readability-Criteria]], [[2026-10-07-Blood-Visual-Language]] (T6), [[2026-10-07-M3-Acceptance-Checklist]] (T8), [[PROPOSAL-First-Enemy]] (T7).
+
 ## Що відклали / відкриті питання
-- Вибір корекції камери — після чисел T2 і брифу T3 (Yellow: зміна видимої поведінки).
-- П'ять розвилок першого міського бою — Santos.
+- П'ять питань першого ворога — Santos ([[2026-10-07-First-Enemy-Lethal-Fight]]).
+- Кредити на концепт і 3D ворога (≈ 46 за цінами 2026-10-03, не перевірено) — лише зі словом Santos і `get_cost`.
+- Шлейф ∞8 «неон» проти Style-Guide і «C» на п'ятах Choko — Santos (T6).
+- Автопублікація prerelease при merge (Red «публікація збірок») — Santos.
+- Класи 12/13 у реєстр — T4 у сесії з правом запису.
 - Апаратне приймання M3 і frame-time — після камерної хвилі.
 
 ## Дії
-- [ ] T2 · базова батарея й зонд · `docs/Fix/`, raw у scratchpad
-- [ ] T1 · дописати варіанти й вибір у [[2026-10-07-Tight-Support-Camera]] · `make gates` → rc0
-- [ ] T1 · оновити «▶ Хвиля» в [[state]] після звіту T2
+- [x] T2 · базова батарея й зонд · [[2026-10-07-Tight-Station-Camera-Baseline]]
+- [x] T1 · варіанти й вибір у [[2026-10-07-Tight-Support-Camera]]
+- [x] T1 · «▶ Хвиля» в [[state]]
+- [x] T2 · чесний гейт · `adaba87`
+- [ ] T2 · камерні кроки 1–4 · `make check`, `make gates`, `make check-playable` → rc0
+- [ ] T6 / T4 · приймання кадрів і аудит після T2
 
 ## Related
 - [[state]] · [[constitution]] · [[2026-10-07-Tight-Support-Camera]] · [[2026-10-07-City-Encounter-Options]] · [[2026-10-05-Parkour-Tricks-And-Quality]]

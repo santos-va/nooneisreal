@@ -78,7 +78,7 @@
 6. **Генерація** — `generate_image_batch` для незалежних, `count` 2–4 лише для варіантів одного промпта; `jobs_wait`; `show_generation_by_ids`.
 7. **Відбір** — 1 результат на слот; Santos підтверджує канон.
 8. **В репо** — `game/assets/<розділ>/<id>.<ext>` (на Mac через `tools/fetch_assets.sh`, бо CDN закритий для хмари) + рядок у [[Textures-Registry]] з job-id і промптом.
-9. **Журнал** — запис у `docs/Meetings/` або `docs/Fix/`; `make gates` зелений.
+9. **Журнал** — запис у `docs/Meetings/` або `docs/Fix/`; `make gates-docs` зелений.
 
 Пропозиція організації в Higgsfield (створити лише зі слова Santos): проєкт «No One Is Real», папки `choko/`,
 `skea/`, `stage-river/`, `ui/`, `vfx/`, `archive-anime/`.
