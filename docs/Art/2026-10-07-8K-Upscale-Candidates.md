@@ -165,5 +165,22 @@ print("flat-area HF ratio (upscale/lanczos)", round(float(hf(u)[flat].mean() / m
   ±30 од., не кадр. Бінаря Godot у контейнері немає.
 - Чи зберігає `topaz_image` альфу — не перевірено (важливо для В6).
 
+## Результат запуску (T1, головна сесія, 2026-10-07)
+
+- `balance` перед запуском → 3832. `get_cost` для `topaz_image` сервер не підтримує: `422 … job_type 'topaz_image' does not support alpha v2 cost estimation`. Тому ціну виміряно першим викликом: `transactions` → «Topaz Image −3», 18:35:00 UTC.
+- Вхід: `media_import_url` з CDN-оригіналу `hf_20261003_005204_73ee9806-ca24-4dcc-965f-848941e01fe7.png`, sha256 `0be4f96c…` = файл у репо. Прямий upload на `upload.higgsfield.ai` проксі відхилив (403).
+- Виклики: `topaz_image`, 7680×3296, `sharpen 0`, `denoise 0`, `face_enhancement false`. Поле `prompt` обов'язкове: «Upscale 2x without adding detail; keep line art, grain and palette exactly as in the source.»
+
+| варіант | job | палітра mean\|Δ\| | p99,9 | PSNR | блок 16 | пласкі HF | лінія HF | вердикт |
+|---|---|---|---|---|---|---|---|---|
+| CGI | `d3578285-cd28-4591-ac27-3e808f447357` | 2,6 / 2,0 / 2,2 | 27 | 36,39 | 9,0 | **6,69** | 1,38 | ✗ |
+| High Fidelity V2 | `105c4acc-7b33-4de3-87ad-7362d667b3bc` | 2,75 / 2,08 / 2,21 | 30 | 35,66 | 4,6 | **9,51** | 1,41 | ✗ |
+
+Пороги взято з таблиці вище (`upcheck.py`, задані до генерації). Обидва варіанти падають на палітрі, PSNR, p99,9 і найсильніше на «пласкі HF»: Topaz додає текстуру там, де її не було. Огляд очима на кропах 480×320 (Lanczos | CGI | HF V2; неба і щільної вулиці):
+- CGI робить лінію чорнішою й товстішою, а це суперечить «лінія графітова, не чорна»;
+- HF V2 ближчий до джерела, але домальовує дрібні значки, схожі на текст.
+
+**Рішення T1:** обидва відкинуто, у репо нічого не додано, рядка реєстру немає. Фон меню лишається 3840×1648 з mipmaps (крок 4 T2). Витрачено 6 кредитів, баланс після — 3826. Наступна спроба, якщо колись буде: `topaz_image` з іншим варіантом (`Standard V2`) або чесний Lanczos 2× без кредитів — це вирішує T6.
+
 ## Related
 - [[2026-10-07-Auto-Display-And-Quality]] · [[Textures-Registry]] · [[Style-Guide]] · [[Higgsfield-Pipeline]] · [[Menu-Skyline-Prompts]] · [[Arenas-360-Prompts]] · [[VFX-Direction]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-013-License-Check-At-Release]] · [[ADR-019-Audit-And-Many-Views-Before-Decision]] · [[06-UI-UX]] · [[state]]
