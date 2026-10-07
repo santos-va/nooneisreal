@@ -61,7 +61,7 @@
 
 ## Хендофи
 
-- T2: «Виконай кроки 1–4 з [[2026-10-07-Gate-Honesty]]; Godot 4.7 уже в scratchpad».
+- T2: «Виконай кроки 1–4 з [[Plans/2026-10-07-Gate-Honesty]]; Godot 4.7 уже в scratchpad».
 - T4 (нова сесія): «Внеси класи 12 і 13 з [[2026-10-07-Post-Merge-Drift]] у реєстр».
 
 ## Related
