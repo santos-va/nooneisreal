@@ -19,6 +19,10 @@ var target_root_offset: Vector3 = Vector3.ZERO
 var walk_phase: float = 0.0
 var idle_time: float = 0.0
 var flash_time: float = 0.0
+## The white body flash of a hit: FLASH_SECONDS fully white at Full; HIT FLASH Reduced (ContentSettings, T8) scales
+## both its time and its whiteness by ContentSettings.hit_flash_scale() (≤ 0.5).
+const FLASH_SECONDS := 0.09
+var flash_strength: float = 1.0
 var spin: float = 0.0
 var water_tilt: float = 0.0      # river stage sway (radians, rig-local), visual only
 var flinch_zone: String = "mid"  # high | mid | low — which part of the body the last hit snaps
@@ -203,7 +207,9 @@ func set_frozen_tint(v: float) -> void:
 
 
 func flash() -> void:
-	flash_time = 0.09
+	var k: float = ContentSettings.hit_flash_scale()
+	flash_time = FLASH_SECONDS * k
+	flash_strength = k
 
 
 ## Impulse into the flinch spring. dir.x = direction the hit travels (world), strength ~ damage.
@@ -277,7 +283,7 @@ func _water_sway(f: Fighter) -> void:
 func _update_flash(delta: float) -> void:
 	if flash_time > 0.0:
 		flash_time -= delta
-		var v := 1.0 if flash_time > 0.0 else 0.0
+		var v := flash_strength if flash_time > 0.0 else 0.0
 		for m in materials:
 			m.set_shader_parameter("hit_flash", v)
 

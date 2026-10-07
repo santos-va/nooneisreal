@@ -35,7 +35,8 @@ func setup(blocked: bool, color: Color, damage: float, crit: bool = false, sheet
 	add_child(_quad)
 	_light = OmniLight3D.new()
 	_light.light_color = c
-	_light.light_energy = 1.5 if blocked else 4.0
+	# HIT FLASH Reduced (ContentSettings, T8): the hit light at ≤ half strength.
+	_light.light_energy = (1.5 if blocked else 4.0) * ContentSettings.hit_flash_scale()
 	_light.omni_range = 4.0
 	add_child(_light)
 	rotation.z = FxShader.rng().randf_range(0.0, TAU)

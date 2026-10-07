@@ -302,7 +302,7 @@ func _update_lethal_entry() -> void:
 		return
 	hud.set_story_prompt(lethal.prompt_text(camera_rig.aim.last_gamepad))
 	if InputRouter.just_pressed(1, "interact"):
-		lethal.open()
+		lethal.request_open()
 
 func _reset_observation() -> void:
 	_last_position = player.global_position

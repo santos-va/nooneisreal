@@ -27,6 +27,9 @@ var flow: MatchFlow
 var camera: DuelCamera
 var hud: LethalHud
 var fx: FxDirector
+## ADR-024 п. 4 / п. 7: the fight's blood (watches only) and the blood card before the first lethal fight.
+var blood: BloodFx
+var notice: ContentNotice
 var ring: MeshInstance3D
 var marker: Node3D
 var active: bool = false
@@ -70,6 +73,22 @@ func can_enter() -> bool:
 
 func prompt_text(gamepad: bool) -> String:
 	return InputRouter.binding_label(1, "interact", gamepad) + " · FACE THE " + String(_enemy_data().display_name)
+
+
+## The entry from the city: the first lethal fight asks how blood should look (ContentNotice) before ROUND 1;
+## after that the fight opens at once. True when the fight opened now.
+func request_open() -> bool:
+	if not can_enter():
+		return false
+	if ContentSettings.notice_seen():
+		return open()
+	if notice == null:
+		notice = ContentNotice.new()
+		notice.name = "BloodNotice"
+		add_child(notice)
+		notice.confirmed.connect(func(_mode: String) -> void: open())
+	notice.open()
+	return false
 
 
 func _enemy_data() -> CharacterData:
@@ -129,6 +148,10 @@ func open() -> bool:
 	for f: Fighter in [player, enemy]:
 		f.hit_landed.connect(_on_hit)
 		f.knocked_out.connect(_on_ko)
+	blood = BloodFx.new()
+	blood.name = "LethalBlood"
+	world.add_child(blood)
+	blood.setup(player, enemy, flow)
 	_show_ring(center, radius)
 	marker.visible = false
 	opened.emit()
@@ -196,6 +219,8 @@ func retry() -> void:
 	if not active or flow == null:
 		return
 	hud.hide_defeat()
+	if is_instance_valid(blood):
+		blood.reset_match()
 	flow.rematch()
 
 
@@ -226,6 +251,9 @@ func close(reason: String) -> void:
 	if is_instance_valid(fx):
 		fx.queue_free()
 	fx = null
+	if is_instance_valid(blood):
+		blood.clear()   # steps out, then frees itself: no blood stays in the city
+	blood = null
 	if is_instance_valid(enemy):
 		enemy.process_mode = Node.PROCESS_MODE_DISABLED   # no tick of a half-removed fight this frame
 		enemy.opponent = null

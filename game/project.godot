@@ -27,6 +27,7 @@ UltMusic="*res://scripts/core/UltMusic.gd"
 Music="*res://scripts/core/Music.gd"
 ComfortSettings="*res://scripts/core/ComfortSettings.gd"
 GraphicsSettings="*res://scripts/core/GraphicsSettings.gd"
+ContentSettings="*res://scripts/core/ContentSettings.gd"
 
 [debug]
 

@@ -109,6 +109,9 @@ func _run() -> void:
 	state.training_mode = false
 	state.p1_character = "choko"
 	state.p2_character = "skea"
+	# The blood card before the first lethal fight belongs to tools/fx/blood_content_check.gd; here it is already seen
+	# (session only, nothing saved), so the interact key opens the fight directly.
+	root.get_node("ContentSettings").call("mark_notice_seen")
 	# A negative control runs only the part its subject lives in (the full run does all three).
 	if mutation in ["none", "sparring"]:
 		await _sparring()
