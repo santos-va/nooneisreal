@@ -88,7 +88,7 @@
 | 4 | T2 (за T8) | Autoload `ContentSettings` → `user://content.cfg` (`blood=full\|muted\|ink\|off`, `notice_seen`); пошкоджений файл → сесійно `ink`, без перезапису; картка перед першим смертельним боєм; HUD H2 (`ROUND 1 — TO THE DEATH`, статична рамка, `DEFEATED` / `RETRY FIGHT` / `RETURN TO SAFE POINT`); HIT FLASH Reduced | Нова секція autoload | `make check`; UI-фікстура з реальними клавіатурними/геймпад подіями |
 | 5 | T6 → T1 | Концепт ворога (лист поз, 3 T-пози) і 3D Meshy з ригом. **RED: потребує слова Santos і `get_cost` у головній сесії.** Оцінка T6 за цінами 2026-10-03: мінімум ≈ 46 кредитів (не перевірено сьогодні); баланс 4502.75 | Витрата без вибору | `balance` до і після; рядок у [[Textures-Registry]]; `texture_registry_check.py` → rc0 |
 | 6 | T4 | Незалежний аудит перед merge | — | `docs/Audit/` сторінка з командами |
-| 7 | T3 | Звірити рядки S рейтингового брифу з мережі з доступом до pegi.info / esrb.org / globalratings.com — до будь-якої публікації на консолях/мобільних | Рішення на сніпетах | Кожен рядок S → P або UNGROUNDED |
+| 7 | T3 | Звірити рядки S рейтингового брифу з мережі з доступом до pegi.info / esrb.org / globalratings.com — до будь-якої публікації на консолях/мобільних | Рішення на сніпетах | Кожен рядок S → P або UNGROUNDED. **2026-10-07:** Apple — P; PEGI/ESRB/IARC/Google — UNGROUNDED через 403 проксі ([[2026-10-07-Rating-Rows-Verification]]); звірка з мережі з доступом лишається відкритою |
 
 Кроку «запушити в main» немає.
 

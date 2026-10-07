@@ -106,4 +106,4 @@
 
 ## Related
 - [[state]] · [[constitution]] · [[Style-Guide]] · [[05-Platforms-Input]] · [[Export-Platforms]]
-- [[2026-10-07-City-Encounter-Options]] · [[Lore]]
+- [[2026-10-07-City-Encounter-Options]] · [[Lore]] · [[2026-10-07-Rating-Rows-Verification]] (звірка S-рядків, 2026-10-07)
