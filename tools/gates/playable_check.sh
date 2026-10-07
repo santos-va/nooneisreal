@@ -124,8 +124,8 @@ cases.append(('graphics-independent-negative-apply', 'tools/settings/graphics_in
 cases.append(('tricks-independent-negative-budget', 'tools/parkour/tricks_independent_check.gd',
               r'T4_TRICKS_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation=budget',
               ['--', '--break=budget'], 1))
-# Tight-support camera: pre-fix instant arm recovery, dither to nothing, and the old ledge site must go red.
-for mutation in ('damping', 'floor', 'station'):
+# Tight-support camera: pre-fix instant recovery, a drifted k=50, dither to nothing and the old ledge site must go red.
+for mutation in ('damping', 'recovery50', 'floor', 'station'):
     cases.append(('tight-station-negative-' + mutation, 'tools/camera/tight_station_probe.gd',
                   rf'TIGHT_STATION_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mode={mutation}',
                   ['--', '--check', '--break=' + mutation], 1))

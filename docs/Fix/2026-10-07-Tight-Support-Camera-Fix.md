@@ -115,6 +115,53 @@ Native — Compatibility/llvmpipe, High; «до» — `matrix-high-v2` на `f27
 - Native — Compatibility/llvmpipe, не M3 і не Forward+; FPS не міряли.
 
 
+## Після аудиту T4
+
+Підстава — [[2026-10-07-Camera-And-Gate-Review]], пп. 2в, 3 і пропозиція 2 (клас 14: поріг регресії виведено з реалізації). Змінено лише тести; `game/` — без змін (`git diff --stat HEAD -- game` → порожньо).
+
+- `tools/camera/tight_station_probe.gd`: пороги тепер беруться з літералів плану й мірил T6, а не з виробничих констант. Змінено три перевірки:
+  - S1 — ріст arm ≤ **0,86** м/тік (`PLAN_ARM_GROWTH_MAX`) і нова перевірка `max |Δarm| ≤ 3` м (`PLAN_ARM_JUMP_MAX`) на тісному kick;
+  - S3 — заливка ≥ **0,25** (`PLAN_FILL_FLOOR_MIN`);
+  - `production_rate` і `production_floor` лишилися в квитанції лише як довідка.
+
+  Новий негатив `--break=recovery50` (k = 50 ін'єкцією).
+- `tools/camera/city_camera_check.gd`: `FILL_FLOOR_MIN = 0.25` як літерал; заливка тіла й пізнього матеріалу ≥ межі. `tools/equipment/hero_gear_check.gd`: пізній слот ≥ 0,25.
+- `tools/gates/playable_check.sh`: `tight-station-negative-recovery50`, разом 98 сценаріїв.
+
+Предмет: для всіх тіків тісного kick обох героїв ріст arm ≤ 0,86 м/тік і |Δarm| ≤ 3 м; для всіх тісних тіків застосована заливка ≥ 0,25, контур = 1; для практичної станції — S2 без змін.
+
+**Мутації T4 у копії дерева** (`<scratchpad>/t2-mut-copy`, raw `evidence/t2/fix/probe-mutations/`; файл відновлювався після кожної). Стовпець «до» — таблиця T4, «після» — цей прогін:
+
+| мутація | `tight-station --check` до | після | інші фікстури після |
+|---|---|---|---|
+| без мутації | rc0, 20/0 | rc0, **22/0** | city-camera 434/0, hero-gear 7946/0 |
+| M1 — прибрано виклик `_limit_arm_recovery` | rc1 | rc1: ріст 5,702 > 0,86; стрибок 5,792 > 3 | — |
+| M2 — k = 0 | rc0 | rc0 | city-camera rc1: «retreat restores full body» ×2 |
+| M8 — k = 10⁶ | rc0 (ловив лише негатив) | **rc1**: 5,702 > 0,86; 5,792 > 3 | city-camera rc0 |
+| **R50 — k = 50** | **rc0, 20/0 (ніхто)** | **rc1**: ріст 3,224 > 0,86; стрибок 4,697 > 3 | city-camera rc0 |
+| **F1 — `fill_floor` = 0** | **rc0 (ніхто)** | **rc1**: заливка 0,000 < 0,25 (обидва герої) | city-camera rc1 (10 падінь), hero-gear rc1 (4) |
+| F2 — `keep_outline` = false | rc1 | rc1: контур 0,250 | — |
+| F4 — hero_outline без `#define` | rc0 | rc0 | city-camera rc1: «hero ink outline joins the policy…» |
+| L1 — опора назад на z 29 | rc1 | rc1: S2, 4 падіння | — |
+
+Кожну мутацію тепер ловить хоча б одна фікстура батареї. M2 і F4 зонд не бачить за задумом: k = 0 не порушує жодного з порогів S1, а підміну шейдера контуру видно лише в `city-camera`. Негативи в повній батареї — розділ «Перевірка після аудиту» нижче.
+
+**Перевірка після аудиту** (raw `<scratchpad>/evidence/t2/audit-fix/`, HEAD `486b2be` + робоче дерево):
+
+| команда | rc | вихід |
+|---|---|---|
+| `GODOT_BIN=<godot> make check` | 0 | GDS `перевірено: 119 · не парсяться: 0 · не виміряно: 0 · канарка: FAIL як треба`; `[smoke] ALL OK (164 checks) in 19847 frames` |
+| `GODOT_BIN=<godot> make gates` | 0 | 460 сторінок / 6628 лінків / 0 зламаних; 175/175; GDS 119/0/0, канарка; `БАТАРЕЯ ЗЕЛЕНА` |
+| `make check-playable` | 0 | `PLAYABLE CHECK: 98 scenarios, 0 failures`, 8 хв 57 с |
+
+`tight-station` → `checks=22 failures=0`. Негативи:
+- `damping` → 5,702 > 0,86 і 5,792 > 3;
+- `recovery50` → 3,224 > 0,86 і 4,697 > 3;
+- `floor` → заливка 0,000 і контур 0,000;
+- `station` → точки 0,00, visibility 0,00.
+
+Усі чотири дають rc1. `ERROR:` є лише в негативах і лише з дозволеними префіксами, `TIGHT_STATION` — 7. Позитивні сценарії помилок не мають, `leak|orphan` → 0.
+
 ## Related
 
 - [[state]] · [[2026-10-07-Tight-Support-Camera]] · [[2026-10-07-Tight-Station-Camera-Baseline]] · [[2026-10-07-Tight-Support-Camera-Research]] · [[2026-10-07-Tight-Station-Readability-Criteria]]

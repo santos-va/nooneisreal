@@ -6,6 +6,9 @@
 #       «ніхто не дивився» — не «ок». Лише доки без Godot — `make gates-docs`, і він так і каже.
 # Файл зараховано як виміряний, коли у виводі є банер «Godot Engine v…» і Godot завершився
 # rc=0, або rc=1 і кожен рядок SCRIPT ERROR|Parse Error — відомий autoload-шум нижче.
+# Справжній рядок помилки — FAIL за будь-якого rc: лаунчер, що ковтає код виходу (`"$G" "$@"; exit 0`),
+# не сховає Parse Error. Канарка: відомо битий .gd поза game/ мусить дати FAIL саме цим розбором,
+# інакше бінар не парсить (або підроблений банер) — rc=2, жоден файл не зараховано.
 # Проєкт має бути імпортований (game/.godot/ з реєстром class_name); `make check` імпортує першим.
 set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" || exit 2
@@ -43,6 +46,22 @@ show_tail() {
   if [ -n "$1" ]; then printf '%s\n' "$1" | tail -n 5 | sed 's/^/      /'; else echo "      (вивід порожній)"; fi
 }
 
+real_errors() { # stdin: Godot output → stdout: SCRIPT ERROR / Parse Error lines that are not autoload noise
+  grep -E 'SCRIPT ERROR|Parse Error' | grep -vE "$FILTER" || true
+}
+
+# Канарка: той самий виклик і той самий розбір, що й для game/**/*.gd, на файлі з навмисною помилкою.
+CANARY_DIR="$(mktemp -d "${TMPDIR:-/tmp}/nir-gds-canary.XXXXXX")" || { echo "   ВІДМОВА виміряти: mktemp для канарки не вдався"; exit 2; }
+trap 'rm -rf -- "$CANARY_DIR"' EXIT
+CANARY="$CANARY_DIR/gds_canary_broken.gd"
+printf 'extends Node\n\nfunc canary() -> void:\n\tvar broken: int = \n' > "$CANARY"
+COUT="$("$GODOT" --headless --path "$GAME" --check-only --script "$CANARY" 2>&1)"; CRC=$?
+if ! printf '%s\n' "$COUT" | grep -q '^Godot Engine v' || [ -z "$(printf '%s\n' "$COUT" | real_errors)" ]; then
+  echo "   ВІДМОВА виміряти: канарка з навмисною Parse Error не дала FAIL (rc=$CRC) — бінар не парсить .gd або ховає помилки; .gd НЕ перевірено."
+  show_tail "$COUT"
+  exit 2
+fi
+
 BAD=0; UNMEASURED=0; N=0
 while IFS= read -r f; do
   [ -n "$f" ] || continue
@@ -51,17 +70,18 @@ while IFS= read -r f; do
   OUT="$("$GODOT" --headless --path "$GAME" --check-only --script "$RES" 2>&1)"; RC=$?
   MARK="$(printf '%s\n' "$OUT" | grep -E 'SCRIPT ERROR|Parse Error' || true)"
   REAL=""
-  [ -z "$MARK" ] || REAL="$(printf '%s\n' "$MARK" | grep -vE "$FILTER" || true)"
+  [ -z "$MARK" ] || REAL="$(printf '%s\n' "$MARK" | real_errors)"
   if ! printf '%s\n' "$OUT" | grep -q '^Godot Engine v'; then
     UNMEASURED=$((UNMEASURED + 1))
     echo "   НЕ ВИМІРЯНО $f (rc=$RC): у виводі немає банера «Godot Engine v…» — Godot на цьому файлі не відпрацював"
     show_tail "$OUT"
-  elif [ "$RC" -eq 0 ]; then
-    :
   elif [ -n "$REAL" ]; then
+    # Перед перевіркою rc: справжній рядок помилки — FAIL навіть тоді, коли обгортка повернула 0.
     BAD=$((BAD + 1))
     echo "   FAIL $f (rc=$RC)"
     printf '%s\n' "$REAL" | head -n 10 | sed 's/^/      /'
+  elif [ "$RC" -eq 0 ]; then
+    :
   elif [ -z "$MARK" ]; then
     UNMEASURED=$((UNMEASURED + 1))
     echo "   НЕ ВИМІРЯНО $f (rc=$RC): Godot завершився з помилкою без жодного SCRIPT ERROR/Parse Error — збій бінаря, не перевірка"
@@ -75,7 +95,7 @@ done <<EOF_FILES
 $FILES
 EOF_FILES
 
-echo "   перевірено: $((N - UNMEASURED)) · не парсяться: $BAD · не виміряно: $UNMEASURED · бінар: $GODOT ($VER; autoload-ідентифікатори відфільтровано: ${AUTOLOADS:-немає})"
+echo "   перевірено: $((N - UNMEASURED)) · не парсяться: $BAD · не виміряно: $UNMEASURED · канарка: FAIL як треба · бінар: $GODOT ($VER; autoload-ідентифікатори відфільтровано: ${AUTOLOADS:-немає})"
 [ "$BAD" -eq 0 ] || exit 1
 [ "$UNMEASURED" -eq 0 ] || exit 2
 exit 0

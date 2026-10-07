@@ -1,6 +1,9 @@
 extends SceneTree
 ## Real district solids, close framing, camera-local materials and lifecycle counterexamples.
 var checks: int = 0
+# docs/Art/2026-10-07-Tight-Station-Readability-Criteria.md / tight-support plan step 3: the fill keeps
+# at least 25 %. A literal on purpose: a drifted CityCameraProximity.fill_floor must turn this red.
+const FILL_FLOOR_MIN: float = 0.25
 var failures: int = 0
 var city: Node3D
 func check(ok: bool, label: String) -> void:
@@ -52,7 +55,7 @@ func run() -> void:
 					check(rig.arm.get_hit_length() < 0.4 and rig.arm.position.y > 0.5, "existing collision is retained and close view lifts")
 					# Policy of docs/Plans/2026-10-07-Tight-Support-Camera.md step 3: the lens-distance factor
 					# still drops, but the fill stops at its floor and the ink line stays, so the hero never vanishes.
-					check(rig.proximity.visibility < 0.15 and is_equal_approx(rig.proximity.fill_visibility, rig.proximity.fill_floor) and is_equal_approx(rig.proximity.outline_visibility, 1.0), "lens at head/torso thins the fill to its floor and keeps the ink line")
+					check(rig.proximity.visibility < 0.15 and is_equal_approx(rig.proximity.fill_visibility, rig.proximity.fill_floor) and rig.proximity.fill_visibility >= FILL_FLOOR_MIN - 0.0001 and is_equal_approx(rig.proximity.outline_visibility, 1.0), "lens at head/torso thins the fill to its >= 25 % floor and keeps the ink line")
 		# Continuous near-wall entry and retreat: no opacity jump or stuck recovery.
 		city.player.position = Vector3(-26.6, 0, 17)
 		rig.reset_view()
@@ -71,7 +74,7 @@ func run() -> void:
 		rig.reset_view()
 		await ticks(36)
 		var body: ShaderMaterial = city.player.skeletal.hero_mesh.material_override
-		check(is_equal_approx(opacity(body), rig.proximity.fill_floor), "hero fill follows proximity down to its floor")
+		check(is_equal_approx(opacity(body), rig.proximity.fill_floor) and opacity(body) >= FILL_FLOOR_MIN - 0.0001, "hero fill follows proximity down to its >= 25 % floor")
 		check(body.next_pass is ShaderMaterial and body.next_pass in rig.proximity._outlines and is_equal_approx(ink(body.next_pass), 1.0), "hero ink outline joins the policy and is never dithered")
 		check(city.player.visible and city.player.skeletal.visible, "actor and rig visibility authority untouched")
 		var other := Camera3D.new()
@@ -88,7 +91,7 @@ func run() -> void:
 		late.set_shader_parameter("camera_visibility", 0.8)
 		city.player.animator.materials.append(late)
 		await ticks(2)
-		check(is_equal_approx(opacity(late), 0.8 * rig.proximity.fill_floor), "late weapon material joins policy with its own original scaled to the floor")
+		check(is_equal_approx(opacity(late), 0.8 * rig.proximity.fill_floor) and opacity(late) >= 0.8 * FILL_FLOOR_MIN - 0.0001, "late weapon material joins policy with its own original scaled to the floor")
 		var cloth = city.cosmetics
 		var original: Color = cloth.cloth.albedo_color
 		await ticks(2)

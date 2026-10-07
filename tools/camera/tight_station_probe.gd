@@ -21,13 +21,15 @@ extends SceneTree
 ##
 ## Stations: practice = the shipped PracticeLedge grip face (read from CityDistrict); tight = the
 ## pre-2026-10-07 ledge rebuilt as a probe-only fixture 1.8 m from SouthBoundary; open = control.
-## Regression (headless, tools/gates/playable_check.sh): --check [--break=damping|floor|station]
+## Regression (headless, tools/gates/playable_check.sh): --check [--break=damping|recovery50|floor|station]
 ##   Subject: for every route and tick of the declared set,
-##   S1 arm growth per tick <= follow * (1 - exp(-production rate * dt)) on the tight kick (damping law);
+##   S1 tight kick: arm growth per tick <= 0.86 m and no arm jump > 3 m in either direction;
 ##   S2 practice station: hang and post-landing ticks keep >= 4/6 key points and visibility >= 0.85;
-##   S3 tight kick: applied fill >= the proximity fill floor and the ink outline stays at 1.
+##   S3 tight kick: applied fill >= 0.25 and the ink outline stays at 1.
+##   Thresholds are literals of the plan and the T6 criteria, never read from production code, so a
+##   drifted constant in CityCamera/CityCameraProximity turns this red (T4 recurring class 14).
 ##   Sentinel: TIGHT_STATION_COMPLETE checks=N failures=M mode=<break or none>; failures print
-##   "TIGHT_STATION: ..." errors. PLACEHOLDER thresholds from docs/Plans/2026-10-07-Tight-Support-Camera.md.
+##   "TIGHT_STATION: ..." errors.
 
 const TIGHT_STATION := Vector3(4, 0, 31.4)
 const TIGHT_LEDGE_CENTER := Vector3(4, 1.4, 29) # CityDistrict.gd PracticeLedge at f27fd67
@@ -37,6 +39,12 @@ const STATION_GAP: float = 1.2 # start this far from the grip face, as the origi
 const MIN_KEYPOINTS: float = 4.0 / 6.0 # PLACEHOLDER (plan step 2)
 const MIN_VISIBILITY: float = 0.85 # PLACEHOLDER (plan step 2)
 const SETTLED_HANG_TICKS: int = 10
+# docs/Plans/2026-10-07-Tight-Support-Camera.md step 1 after e47be94: "0 jumps > 3 m and growth per tick by
+# 1 - e^(-k dt), k = 9.21 -> <= 0.86 m/tick". PLACEHOLDER values of the plan, deliberately not computed.
+const PLAN_ARM_GROWTH_MAX: float = 0.86
+const PLAN_ARM_JUMP_MAX: float = 3.0
+# docs/Art/2026-10-07-Tight-Station-Readability-Criteria.md / plan step 3: the fill thins to a 25 % floor.
+const PLAN_FILL_FLOOR_MIN: float = 0.25
 const KEYPOINTS: Array[String] = ["Head", "LeftHand", "RightHand", "Hips", "LeftFoot", "RightFoot"]
 const HERO_LAYER: int = 1 << 19
 const IDLE_TICKS: int = 30
@@ -273,6 +281,8 @@ func route(hero: String, station_id: String, transition: String) -> void:
 		rig.arm_recovery_rate = arm_recovery_override
 	if break_mode == "damping":
 		rig.arm_recovery_rate = 1.0e6 # Negative control: the pre-fix instant recovery.
+	elif break_mode == "recovery50":
+		rig.arm_recovery_rate = 50.0 # Negative control: a drifted but still damped constant (T ~ 0.09 s).
 	elif break_mode == "floor":
 		rig.proximity.fill_floor = 0.0 # Negative control: the pre-fix dither to nothing, line included.
 		rig.proximity.keep_outline = false
@@ -393,7 +403,7 @@ func route(hero: String, station_id: String, transition: String) -> void:
 func _declare_check_routes() -> void:
 	# Each negative control runs only the routes its broken property is measured on.
 	match break_mode:
-		"damping", "floor":
+		"damping", "recovery50", "floor":
 			check_routes.assign([["choko", "tight", "kick"]])
 		"station":
 			check_routes.assign([["choko", "tight", "kick"]])
@@ -442,16 +452,19 @@ func _evaluate() -> void:
 			continue
 		var station: String = route_record.station
 		var transition: String = route_record.transition
-		if station == "tight" and transition == "kick" and break_mode in ["none", "damping"]:
-			# S1: the outward growth law of CityCamera._limit_arm_recovery at its production rate.
-			var bound: float = float(route_record.follow) * (1.0 - exp(-float(route_record.production_rate) / 60.0)) + 0.005
+		if station == "tight" and transition == "kick" and break_mode in ["none", "damping", "recovery50"]:
+			# S1: plan literals, on the old geometry where the sweep clears the wall top.
 			var worst: float = 0.0
+			var jump: float = 0.0
 			for index: int in range(1, rows.size()):
-				worst = maxf(worst, float(rows[index].arm_hit) - float(rows[index - 1].arm_hit))
-			_check(worst <= bound, "%s arm outward growth %.3f m/tick <= %.3f" % [id, worst, bound])
+				var step: float = float(rows[index].arm_hit) - float(rows[index - 1].arm_hit)
+				worst = maxf(worst, step)
+				jump = maxf(jump, absf(step))
+			_check(worst <= PLAN_ARM_GROWTH_MAX, "%s arm outward growth %.3f m/tick <= %.2f" % [id, worst, PLAN_ARM_GROWTH_MAX])
+			_check(jump <= PLAN_ARM_JUMP_MAX, "%s arm jump %.3f m/tick <= %.1f" % [id, jump, PLAN_ARM_JUMP_MAX])
 		if station == "tight" and transition == "kick" and break_mode in ["none", "floor"]:
-			# S3: the fill never thins below its floor and the ink line stays on every tick.
-			var floor_value: float = float(route_record.production_floor)
+			# S3: the fill never thins below the criteria floor and the ink line stays on every tick.
+			var floor_value: float = PLAN_FILL_FLOOR_MIN
 			var low_fill: float = INF
 			var low_outline: float = INF
 			for row: Dictionary in rows:
