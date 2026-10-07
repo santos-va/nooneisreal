@@ -341,3 +341,4 @@ intros/endings now. Stages are the ones that already exist or are planned on [[C
 
 ## Related
 - [[Lore]] · [[Skea]] · [[Choko]] · [[Roster]] · [[Cronshift]] · [[2026-10-03-Skea-Curse-Lore-Answers]] · [[2026-10-03-Choko-Skea-Bond-and-Curse]] · [[03-Skills-Framework]] · [[01-Vision]] · [[index]]
+- [[PROPOSAL-First-Enemy]] — кандидати першого ворога (2026-10-07, пропозиція)
