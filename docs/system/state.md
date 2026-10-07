@@ -67,6 +67,7 @@ PR #184 і #185 змерджені (`main` = `e580497`). Гілка `claude/t1-o
    [[Plans/2026-10-07-Camera-Readability-Iteration-2]] крок 5.
 3. **Чесний гейт GDS — виконано** ([[Plans/2026-10-07-Gate-Honesty]], `adaba87`,
    канарка `f2e3e6e`).
+4. **Вікно гри — розгорнуте на старті** ([[2026-10-07-Auto-Window-Size]], слово Santos «виправ розширення екрану на автомат»): `window/size/mode=2` (Godot 4.7 `WINDOW_MODE_MAXIMIZED`). T2: `make check-playable` 131/0, `make gates` зелено, нативна перевірка 4/0; під xvfb 1280×720 вікно = 1280×720 (контроль `mode=0` → 1152×648). На Mac не бачено; перемикач DISPLAY і запуск усередині редактора (вбудовування лише у Windowed) — відкриті — [[2026-10-07-Auto-Window-Size-Fix]].
 
 Після цього — апаратне приймання M3 за [[2026-10-07-M3-Acceptance-Checklist]]
 (у грі немає оверлея FPS — GAP для T2).

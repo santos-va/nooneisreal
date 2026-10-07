@@ -1,6 +1,6 @@
 # План — розмір вікна гри автоматично під екран
 
-**Дата:** 2026-10-07 · **Роль:** T1 Дедал · **Статус:** `approved` (пряме слово Santos «виправ … на автомат»; Yellow, merge — Santos) ·
+**Дата:** 2026-10-07 · **Роль:** T1 Дедал · **Статус:** кроки 1–2 `done` ([[2026-10-07-Auto-Window-Size-Fix]]), крок 3 відкритий (пряме слово Santos «виправ … на автомат»; Yellow, merge — Santos) ·
 **Виріс з:** запуску свіжої версії Santos на Mac — [[2026-10-07-T1-Orchestration-Session]].
 
 ## Що хоче Santos (його словами)
@@ -47,7 +47,7 @@
 |---|---|---|---|---|
 | 1 | T2 | `game/project.godot`: `window/size/mode=2`; override 1152×648 лишається розміром після «відновити» | Нативна перевірка CI, UI-фікстури | `make check-playable` → 131+/0; `make gates` → БАТАРЕЯ ЗЕЛЕНА; нативна `city_camera_renderer_check.gd` під xvfb, якщо доступна, інакше «не перевірено» |
 | 2 | T2 | Рядок у `docs/Tech/Build-and-Run.md` і журнал `docs/Fix/` | — | `make gates-docs` rc0 |
-| 3 | T8 | GAP: DISPLAY AUTO / WINDOWED / FULLSCREEN у [[06-UI-UX]] | — | специфікація з числами |
+| 3 | T8 | GAP: DISPLAY AUTO / WINDOWED / FULLSCREEN у [[06-UI-UX]]; врахувати, що вбудований запуск у редакторі працює лише у Windowed (T2, `ProjectSettings.xml:1044`) | — | специфікація з числами |
 
 Кредитів план не витрачає. Push у `main` — ні.
 
