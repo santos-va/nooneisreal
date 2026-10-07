@@ -88,7 +88,7 @@ func route(hero: String, required: String) -> void:
 	world.progress.save_enabled = false
 	world.npc_director.save_enabled = false
 	var actor = world.player
-	var station: Vector3 = Vector3(4,0,31.4) if required == "wall_kick" else Vector3(0,3,20)
+	var station: Vector3 = Vector3(4,0,18.2) if required == "wall_kick" else Vector3(0,3,20)
 	if open_station and required == "wall_kick":
 		station = Vector3(12,0,-3.3) # Existing first roof-route step, open street behind camera.
 	input.v_clear(1)

@@ -55,8 +55,12 @@
 
 ```
 python3 tools/gates/wikilink_check.py     # кожен лінк → docs/**/<name>.md
-bash tools/gates/run_gates.sh             # повна батарея
+make gates-docs                           # для вікі-правок: усе, крім GDS → «ДОКИ ЗЕЛЕНІ; КОД НЕ ВИМІРЯНО»
+bash tools/gates/run_gates.sh             # повна батарея (= make gates), з GDS
 ```
+
+Повна батарея без Godot червона чесно: GDS повертає rc=2 «не змогли виміряти». Для
+правок лише в `docs/` і `roles/` міряй `make gates-docs`; повну лишай тим, хто чіпав код.
 
 Зламаний лінк — твій, навіть якщо його залишив хтось інший.
 

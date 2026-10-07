@@ -378,9 +378,11 @@ func run() -> void:
 		for i: int in 30:
 			proximity.update(camera,DT)
 		check(proximity.visibility < 0.01,"near-body camera fixture actually fades")
-		check(float((f.skeletal.hero_mesh.material_override.next_pass as ShaderMaterial).get_shader_parameter("camera_visibility")) < 0.01,"face-safe hero outline participates in camera proximity fade")
+		var hero_ink: ShaderMaterial = f.skeletal.hero_mesh.material_override.next_pass as ShaderMaterial
+		# 2026-10-07 policy: the face-safe outline is owned by the camera policy but keeps its ink line.
+		check(hero_ink in proximity._outlines and is_equal_approx(float(hero_ink.get_shader_parameter("camera_outline_visibility")),1.0),"face-safe hero outline joins camera proximity and keeps its line")
 		for item: MeshInstance3D in late:
-			check(item.get_surface_override_material(0) is ShaderMaterial and float(item.get_surface_override_material(0).get_shader_parameter("camera_visibility")) < 0.01,"late nested surface slot joins fade")
+			check(item.get_surface_override_material(0) is ShaderMaterial and is_equal_approx(float(item.get_surface_override_material(0).get_shader_parameter("camera_visibility")),proximity.fill_floor) and float(item.get_surface_override_material(0).get_shader_parameter("camera_visibility")) >= 0.25 - 0.0001,"late nested surface slot joins fade down to the >= 25 % fill floor (T6 criteria literal)")
 		check(shared.get_shader_parameter("camera_visibility") == null or is_equal_approx(float(shared.get_shader_parameter("camera_visibility")),1.0),"NPC shared shader receives no player fade")
 		check(npc.material_override == shared and simple.albedo_color == Color.CORAL,"source NPC/color resources never mutated")
 		var replacement: ShaderMaterial = load("res://scripts/core/GearSurface.gd").make("cloth",Color.TEAL,Color.WHITE)

@@ -36,8 +36,12 @@ func _ready() -> void:
 func _parkour_steps() -> void:
 	# PLACEHOLDER solid service terraces: broad landings with visible stone/brass lips.
 	# The existing street centre and east ramp remain open. Each rise is reachable by both heroes.
+	# PracticeLedge faces the spawn with ~15 m of open street behind its grip face (z 17.0), so the
+	# follow camera is not pinned between the ledge and SouthBoundary as at the old z 30.2 face.
+	# PLACEHOLDER layout: >= 3 m camera space per docs/Plans/2026-10-07-Tight-Support-Camera.md;
+	# 1.0 m clear of the nearest resident lane and 1.85 m of the east market stall.
 	var steps: Array[Dictionary] = [
-		{"name": "PracticeLedge", "center": Vector3(4, 1.4, 29), "size": Vector3(2.8, 2.8, 2.4)},
+		{"name": "PracticeLedge", "center": Vector3(4, 1.4, 15.8), "size": Vector3(2.8, 2.8, 2.4)},
 		{"name": "RoofApproachLow", "center": Vector3(12, 1.0, -5.8), "size": Vector3(3.0, 2.0, 2.8)},
 		{"name": "RoofApproachHigh", "center": Vector3(12, 2.0, -8.6), "size": Vector3(3.0, 4.0, 2.8)},
 	]

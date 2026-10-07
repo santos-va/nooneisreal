@@ -164,7 +164,7 @@ func run() -> void:
 	root.add_child(f)
 	f.set_physics_process(false)
 	input.v_clear(1)
-	f.restart_at(Vector3(4,0,31.4))
+	f.restart_at(Vector3(4,0,18.2))
 	for index: int in 12:
 		await physics_frame
 		f._physics_process(DT)
@@ -185,7 +185,7 @@ func run() -> void:
 	for index: int in 34:
 		await physics_frame
 		f._physics_process(DT)
-	check(f.position.y >= 2.8 and f.position.z < 30.2, "real input climbs shipped practice ledge")
+	check(f.position.y >= 2.8 and f.position.z < 17.0, "real input climbs shipped practice ledge")
 	for route: Dictionary in [
 		{"start":Vector3(12,0,-3.3),"top":2.0,"front":-4.4},
 		{"start":Vector3(12,2,-6.65),"top":4.0,"front":-7.2},

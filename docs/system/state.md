@@ -1,11 +1,11 @@
 # state — поточна правда
 
-**Оновлено:** 2026-10-05, T1 — хвиля [[2026-10-05-Parkour-Tricks-And-Quality]] переходить до draft review у `codex/parkour-tricks-visual-quality` на базі `abce638`. Наступний пріоритет — читабельність камери біля тісних опор; технічний статус і межі поточного кандидата наведено у звірці T2 та Audit нижче.
+**Оновлено:** 2026-10-07, T1 — PR #183 змерджений (`f27fd67`); у гілці `claude/t1-orchestration-2026-10-07` (PR #184) — план камери біля тісних опор (виконує T2), чесний гейт GDS і варіанти першого ворога, що чекають 5 відповідей Santos — [[2026-10-07-T1-Orchestration-Session]].
 **Фаза:** прохідний 3D-квартал Cronshift і локальний бій інтегровані; напрям розвитку — спільне місто, далі бої всередині нього. Чинний художній еталон — свіжі окремі текстури/вирізки Higgsfield; старі панорами — чернетки. Santos повідомив про приймання попереднього зрізу на M3; фінальний арт і вимірювання FPS залишаються окремими.
 
 ## Поточна реалізація T2: міські трюки та якість картинки, 2026-10-05
 
-**Статус доставки:** перевірена локальна гілка `codex/parkour-tricks-visual-quality` на базі `abce638` (merged PR #181/#182). Нові трюки, анімації та quality settings **ще не змерджені**; встановлення цього пакета на Mac не підтверджене. Попередні CI сюжетної/документальної бази не є CI цієї хвилі.
+**Статус доставки:** PR #183 змерджений у `main` 2026-10-05 13:28 UTC, merge commit `f27fd67` (GitHub MCP `merged_at`, `git log`). На `f27fd67` успішні [`ci` run 37317106289](https://github.com/santos-va/nooneisreal/actions/runs/37317106289) (docs gates, updater safety Ubuntu/macOS, Godot smoke/playable, native Compatibility) і [`macOS main app` run 37317106267](https://github.com/santos-va/nooneisreal/actions/runs/37317106267). Це hosted regression; встановлення на Santos M3 не підтверджене. T2 2026-10-07 повторив на `f27fd67` official Godot 4.7: `make check` 164/19847, `make gates` 119 GDS/0, `make check-playable` 93/0, усі rc0 — [[2026-10-07-Tight-Station-Camera-Baseline]].
 
 Обидва герої виконують wall kick біля реальної вертикальної стіни: відпустити jump, рух від стіни й нове натискання; один поштовх до опори, без підзарядки climbing effort. Crouch + напрям під час достатнього падіння запускають короткий landing roll на широкій майже плоскій опорі. Перекат лише зберігає й гальмує обмежену фактичну швидкість, без bonus speed або невразливості; collision, край, lock/UI/revision, rope і пріоритет звичайних дій перевірені. Дуельний мотор і бойові числа не змінені. Підказки використовують наявні кнопки — [[2026-10-05-City-Parkour-Tricks]].
 
@@ -15,7 +15,9 @@
 
 **Особисто перевірено T2:** фінальні raw/rc у `/workspace/nooneisreal-evidence/tricks-quality/final/` — `make check` smoke **164 / 19847 кадрів**, `make gates` **119 GDS / 0**, **175/175 assets**, `make check-playable` **93 сценарії / 0 failures**, усі rc0. Чинні case logs: motor **84/0**, legacy parkour **73/0**, незалежний tricks **54/0**, trick motion **3265277/0**, graphics **63/0**, незалежний graphics **62/0**, input UI **15/0**. Власний скан **95 engine raw logs** підтвердив **0 unexpected errors/warnings/leaks**; deliberate negative assertions відокремлені. Before/after review/playable та фактичні поточні **808 sources** тотожні, digest `c5b5d42190c355cb4b416914bed8f5941d1b57a9a7def29e8311734865b7f024`.
 
-**Native і межі:** справжні CityWorld/CityCamera/light/HUD дали **90 PNG / 249 ticks / 0**, відкриті kick supplements — по **19 PNG / 52 ticks / 0** для обох героїв, rc0; лише відоме llvmpipe VSync warning. T6 прийняв scoped open kick/roll і оглянуті High/Low кадри; Medium окремо художньо не приймався. На тісній станції `(4,0,31.4)` камера стискається й proximity dither приховує героя: цей кут **YELLOW, художньо не прийнятий**, supplement його не виправляє. Camera code незмінний і стискання є до jump, але старого executable baseline немає — причинність не встановлена. M3/Forward+ FPS/frame-time, фізичний контролер, звук і нове Mac-встановлення не виміряні; station captures не є суцільним ручним проходженням — [[2026-10-05-Traversal-And-Surface-Review]].
+**Native і межі:** справжні CityWorld/CityCamera/light/HUD дали **90 PNG / 249 ticks / 0**, відкриті kick supplements — по **19 PNG / 52 ticks / 0** для обох героїв, rc0; лише відоме llvmpipe VSync warning. T6 прийняв scoped open kick/roll і оглянуті High/Low кадри; Medium окремо художньо не приймався. На тісній станції `(4,0,31.4)` камера стискається й proximity dither приховує героя: цей кут **YELLOW, художньо не прийнятий**, supplement його не виправляє. Зонд T2 2026-10-07 показав, що стискання давнє: героя не видно вже стоячи (arm 0,45 з 6 м) і після звичайного drop біля стіни, а виконуваний baseline `abce638` дав для idle/hang/drop ті самі числа біт у біт. Kick додає тіло в лінзі, перескок spring arm через межову стіну й повне зникнення після приземлення; ручний yaw ±90° це прибирає, ±45° — ні — [[2026-10-07-Tight-Station-Camera-Baseline]]. M3/Forward+ FPS/frame-time, фізичний контролер, звук і нове Mac-встановлення не виміряні; station captures не є суцільним ручним проходженням — [[2026-10-05-Traversal-And-Surface-Review]].
+
+**Корекція тісної опори (T2, 2026-10-07, у гілці PR #184: `b5f10d2`, після аудиту `f2e3e6e`):** виконано кроки 1–4 [[2026-10-07-Tight-Support-Camera]]. `PracticeLedge` перенесено на `(4,1.4,15.8)`: грань хвату дивиться на spawn, за нею ~15 м вулиці. На новій станції arm тримає 6,00 м, visibility 1,00, ключових точок ≥ 4/6 у стоянні, hang, drop і kick обох героїв. Камера стискає арм миттєво, а відновлює плавно (0,5 с). Proximity залишає ≥ 25 % заливки, ink-контур не відкидається. Регресія `tight-station` має пороги з літералів плану й мірил T6: ріст ≤ 0,86 м/тік, |Δarm| ≤ 3 м, заливка ≥ 0,25. Вона має 4 негативи (damping, recovery50, floor, station); `make check-playable` → 98/0. Гейт GDS перевіряє себе канаркою з навмисною Parse Error. Вердикти: T6 — YELLOW ([[2026-10-07-Tight-Station-Fix-Review]]), T4 — YELLOW без RED ([[2026-10-07-Camera-And-Gate-Review]]) — [[2026-10-07-Tight-Support-Camera-Fix]].
 
 ## Збережена змерджена основа — звірка T2, 2026-10-05
 
@@ -41,19 +43,25 @@
 
 ## ▶ Хвиля — поточний маршрут
 
-[[2026-10-05-Parkour-Tricks-And-Quality]] передається на draft review у гілці
-`codex/parkour-tricks-visual-quality`; merge належить Santos. Результати
-реалізації — у звірці T2, незалежний висновок —
-[[2026-10-05-Tricks-And-Quality-Review]], художні межі —
-[[2026-10-05-Traversal-And-Surface-Review]].
+Хвиля трюків і якості ([[2026-10-05-Parkour-Tricks-And-Quality]]) змерджена в
+`main` як `f27fd67`. Поточна робота — гілка `claude/t1-orchestration-2026-10-07`
+(draft PR #184), три смуги:
 
-Наступний обмежений напрям: camera readability біля тісних опор. На station
-`[4,0,31.4]` proximity dither майже приховує героя; відкритий ракурс цього
-не виправляє. Порівняти hang, звичайний відхід та kick перед вибором зміни.
-Після цього — апаратне приймання M3 і вимір frame-time; нові vault/акробатика
-потребують окремого плану. Ця хвиля не продовжує підземний сюжетний маршрут.
-Міські бої, онлайн і наступний крок після «Нижньої позначки» лишаються
-окремими напрямами.
+1. **Камера біля тісних опор — ітерація 1 виконана** ([[2026-10-07-Tight-Support-Camera]],
+   `b5f10d2` + `f2e3e6e`; T6 і T4 — YELLOW без RED). Ітерація 2 —
+   [[2026-10-07-Camera-Readability-Iteration-2]]: «темна фігура» від ink-hull,
+   мешканець біля лінзи, Low/Medium, вузька станція Skea `(14,0,31.25)`; спершу
+   T3 перевіряє stencil у 4.7.
+2. **Чесний гейт GDS — виконано** ([[Plans/2026-10-07-Gate-Honesty]], `adaba87`
+   + канарка `f2e3e6e`): без Godot батарея червона, job gates у CI пише «ДОКИ
+   ЗЕЛЕНІ; КОД НЕ ВИМІРЯНО» (лог job 112678534748 прочитано T1).
+3. **Перший ворог і смертельний бій — чекає Santos.** Напрям обрав Santos;
+   варіанти й 5 питань — [[2026-10-07-First-Enemy-Lethal-Fight]]. До відповіді
+   виконується лише крок 0 (підказка про скіли в місті, COMFORT у паузі міста).
+
+Після цього — апаратне приймання M3 за [[2026-10-07-M3-Acceptance-Checklist]]
+і вимір frame-time (у грі немає оверлея FPS — GAP для T2). Генерація ворога
+(≈ 46 кредитів за цінами 2026-10-03, не перевірено) — лише зі словом Santos.
 
 ## Ще не завершено
 
@@ -62,6 +70,8 @@
 - Залишковий арт Skea та Choko — [#33](https://github.com/santos-va/nooneisreal/issues/33), [#38](https://github.com/santos-va/nooneisreal/issues/38). Поведінкова анімація, повноцінний рух одягу та профілі якості з апаратним бюджетом — [#42](https://github.com/santos-va/nooneisreal/issues/42). Вже реалізовані локальні корекції не означають остаточного художнього приймання.
 - Справжній нижній маршрут, міські сюжетні бої, повна кампанія та її збереження, нові сюжетні NPC, портали, нові світи, кілька ворогів і онлайн. Перший сюжет і NPC saves уже є; їх не ставимо знову в чергу як відсутні. Подальше життя оточення й остаточні анімації/баланс також лишаються розвитком.
 - Приймання нового пакета на M3, FPS/frame-time, Retina, фізичний контролер і звук; місцеві facial/material обмеження та недоступні реальні музичні джерела описані вище.
+- Старі відкриті знахідки, що випали з поточної правди ([[2026-10-07-Post-Merge-Drift]] п. 4): статичний side-framing **14,8348 % проти 15 %** GDD (`tools/camera/framing_check.gd:86-88`) — Арес/Гермес вирішують «код чи число», правка T2; ADR-017 7.1b не впроваджено — позиція після регдолу досі з таза (`Fighter.gd:1659-1664`).
+- Класи 12 («батарея зелена без виміру») і 13 («документ гілки не оновлений після merge») запропоновані T4 у [[2026-10-07-Post-Merge-Drift]]; внести в реєстр може лише T4 у сесії з правом запису.
 - [[Plans/2026-10-04-Codex-Coworker]] та [[ADR-021-Codex-Coworker-Adapter]] — інтеграційна пропозиція, не встановлений адаптер; ручний boot з AGENTS.md чинний.
 
 ## Історія й відтворення
@@ -70,5 +80,5 @@
 
 ## Related
 
-- [[index]] · [[constitution]] · [[Handoff/2026-10-04-Start-Here]] · [[Handoff/2026-10-04-Remaining-Work]]
+- [[index]] · [[constitution]] · [[Handoff/2026-10-04-Start-Here]] · [[Handoff/2026-10-04-Remaining-Work]] (датований архів, не поточна черга)
 - [[Plans/2026-10-04-City-Style-Match]] · [[ADR-022-Combat-Control-And-Match-Resources]] · [[ADR-023-City-First-Exploration]] · [[Meetings/2026-10-04-Current-State-Cleanup]]

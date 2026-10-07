@@ -322,6 +322,73 @@ Santos: V-1 «не ті» — форма має бути P-6000 з його фо
 2. **T-пози front і ¾** (замість X-0, X-3) — після вибору картки; референси: спина Z-1 `50734236`, переможець картки, X-0 `b529a3bd`
    (лише обличчя й пропорції). Шаблон § 15a з IDENTITY v5.2 без меча.
 
+### 15d. Лист поз Choko v5 — `choko-sheet-v5` (план v5 крок 5, #38; T6 2026-10-07)
+
+**RED: потребує слова Santos і get_cost у головній сесії.** Нічого не згенеровано. Sub-агент T6 генерувати не може.
+
+- **Кількість:** ×2. **Формат:** 16:9, `gpt_image_2_5`, `quality: high`, `resolution: 2k`, як у запусках 2026-10-03.
+- **Модель зараз:** `models_explore get gpt_image_2_5` (2026-10-07) показує ще `variant` (flare / sunburst,
+  типово flare) і рівні якості low…max. Чи збігається стара ціна з поточними параметрами — **не перевірено**.
+- **Оцінка:** ≈ 5.5 кр. (2 × 2.75 за `get_cost` 2026-10-03, [[2026-10-03-Choko-Outfit-v5]] § Хто що). Перед
+  запуском — `balance` і `get_cost`.
+- **Призначення:** манера й ідентичність v5, **не для 3D** ([[Asset-Manifest]] § E). Набір для 3D уже повний:
+  F-0, G-0, Z-1.
+
+**Референси, у цьому порядку** (повні job-id і CDN — [[Menu-Skyline-Prompts]] § Choko v5.2 і § ¾ T-поза):
+
+1. F-0 `600fa251-4ff7-4105-bcc4-3cda8dae5195` — обличчя, пропорції, перед куртки.
+2. G-0 `73639409-a0e9-4718-9391-7366c426b783` — вид ¾.
+3. Z-1 `50734236-25b0-4062-8ea5-515483926f17` — **лише гладка спина куртки**. Z-1 малювався з кросівками V-1,
+   тож п'яти з нього не беремо.
+4. K-0 `face408d-13b4-4255-91d1-a379df09049d` — **лише кросівки** з «C»; це картка предмета, не персонаж.
+
+F-0, G-0 і Z-1 — T-пози **без меча** (канон Santos для 3D). У листі меч є, і його задає текст IDENTITY. П'ятий
+референс — картка меча `07225208` (Menu-Skyline-Prompts № 16): чи модель бере 5 референсів, **не перевірено**;
+4 референси працювали в запуску 2026-10-03 (#33 S3).
+
+**8 поз** із таблиці [[02-Combat-System]] § Choko — мечник-акробат (рядки 709-721). Рядків 11, обрано 8:
+
+| поза | рух · кліп |
+|---|---|
+| 1 | стійка · `Sword_Idle`; плюс ліве зап'ястя з годинником до глядача (замість окремого `record`/`time_stop`, бо це RigA поверх `Sword_Idle`) |
+| 2 | `light` Shuka Jab · `Sword_Light_A` |
+| 3 | `heavy` Emerald Arc · `Sword_Heavy_C` |
+| 4 | `crouch_light` Low Cut · `Crouch_Idle_Loop` + `Sword_Light_A`; вид збоку, видно «C» на зовнішньому боці |
+| 5 | `air_light` Dive Cut · `Sword_Aerial_A` |
+| 6 | `sword_storm` · `Sword_Heavy_D`; **вид зі спини** — перевірка гладкої спини #38 |
+| 7 | DASH · `Roll` |
+| 8 | сальто · `BackFlip` (рядок «лист v5») |
+
+Відкинуто: `light2` (той самий силует, що в jab), `hook_pull` (мотузка, не меч і не акробатика). Оригінальний
+список Ареса з коміту `a8fa3c3` локально недоступний (shallow-репо), тож добір зробив T6 за чинною таблицею.
+Арес або Santos можуть замінити позу до запуску.
+
+**`{NEG_C}`** — `{NEG}` цього листа, де «no logos» замінено так само, як у T-позах v5.2 ([[Menu-Skyline-Prompts]]
+§ Choko v5.2):
+```
+No anime style, no glossy eyes, no 3D render look, no gradients, no realistic skin texture, no text except the sheet title, no brand logos except the cursive C on the sneakers, no watermark, no infinity symbol unless specified, hands only as fists or gripping objects with five clearly separated fingers.
+```
+
+**Рядок про «C».** `{NEG_CHOKO}` уже закінчується реченням «no brand logos on the shoes — the cursive C is the
+only mark» (§ 15). Сам блок не змінюю, бо він уже використаний у журнальних запусках. Уточнення з плану v5
+§ Монограма п. 3 іде окремим хвостом `{C_LINE}`:
+```
+The only mark on the sneakers is a hand-lettered cursive capital C with a curled tail on the outer side panel of each sneaker, in muted dusty orange; no other letters or symbols on the shoes.
+```
+
+**Промпт.** `{IDENTITY_CHOKO_V5_2}` — блок IDENTITY Choko з § 1 повністю, **з мечем**:
+```
+{STYLE} Character pose sheet on a flat muted mint-sage background (#B8CBB1), eight full-body poses of the same original character in two rows of four, evenly spaced, no frames, same scale, grounded poses share one ground line, airborne poses float above it. He is a fast acrobatic swordsman with one emerald-green pike-style sword held in his right hand in every pose, the same sword each time: 1) balanced guard stance, knees bent, sword low and forward, left forearm raised so the large analog wristwatch on the left wrist faces the viewer, 2) lightning-fast straight thrust, front leg in a deep lunge, sword arm fully extended, blade level, 3) big sweeping diagonal slash from high to low with the torso twisted and one curved ink motion arc following the blade, 4) deep crouch seen from the side, one knee near the ground, a quick low horizontal cut at ankle height, the outer side of the near sneaker turned to the viewer, 5) diving down through the air with legs tucked, sword swung downward in a vertical cut, 6) seen from behind in a wide planted stance with the sword raised high overhead in both hands, head turned to look over the shoulder, the whole back of the jacket visible as one smooth plain dusty-orange cloth panel with no stripe, no seam and no metal, 7) mid forward roll, body tucked into a ball, sword held flat along the forearm away from the body, 8) mid backflip at the peak, upside down, body arched, sword held out to the side. Take the face, hair, body proportions and jacket front from the first reference image, the three-quarter look from the second, only the smooth back of the jacket from the third (not its shoes), and only the sneakers with the cursive C from the fourth (it is an item card, not a person). Both hands visible in every pose, five fingers or a clear grip on the sword hilt; no magic effects, no glow. Identity: {IDENTITY_CHOKO_V5_2}. Small title "CHOKO" in the top-left corner in hand-lettered marker. {NEG_C} {NEG_CHOKO} {C_LINE}
+```
+
+**Відбір (Santos):** спина в позі 6 гладка, без смуги й металу; «C» видно на зовнішньому боці в позі 4. Меч один і
+той самий; дві кисті в кожній позі.
+- Питання до Santos: канон [[Choko]] ставить «C» лише на зовнішній бік. Asset-Manifest § E (#38 C4v2) згадує
+  «C» «зокрема на п'ятах», а сам Santos про Z-1 сказав «ззаду не видно літер "C"». У промпті лише зовнішній
+  бік; п'яти — його рішення.
+- Після генерації: журнал у [[Menu-Skyline-Prompts]], рядок у [[Asset-Manifest]] § E, коментар у #38. Файл
+  потрапляє в `game/assets/` лише разом із рядком [[Textures-Registry]].
+
 ## 16. Пристрій-принтер Choko — `choko-item-printer-v1` (канон H13, [[Lore]] § Портрет, пристрій і помічник)
 
 gpt_image_2_5 high 2k 16:9, `count: 2`, референс — картка годинника Choko `cecf569d` (латунь і зелене світло: ШІ живе в годиннику,

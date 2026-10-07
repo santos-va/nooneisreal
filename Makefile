@@ -10,15 +10,20 @@ GAME  := game
 # Чесний run: відмова при другому Godot на ту саму теку + імпорт, коли HEAD змінився (tools/run/godot_guard.sh).
 GUARD := bash tools/run/godot_guard.sh
 
-.PHONY: roles gates check check-playable import run run-plane run-rig editor update fetch-assets hooks-check
+.PHONY: roles gates gates-docs check check-playable import run run-plane run-rig editor update fetch-assets hooks-check
 
 # Таблиця ролей із tools/hooks/roles.map: аляс · тіло · Claude skill · мітка.
 roles:
 	@python3 -c 'import sys; rows=[[c.strip() for c in l.split("|")] for l in open("tools/hooks/roles.map", encoding="utf-8") if l.strip() and not l.lstrip().startswith("#")]; rows=[[r[0], r[1], r[2], r[5]] for r in rows]; w=[max(len(r[i]) for r in rows) for i in range(4)]; print("\n".join("  " + "  ".join(c.ljust(w[i]) for i, c in enumerate(r)) for r in rows))'
 
-# Батарея гейтів: rc = кількість гейтів, що впали; rc=2 всередині блокує теж.
+# Повна батарея гейтів: rc = кількість гейтів, що впали; rc=2 всередині блокує теж.
+# GDS парсить кожен .gd через Godot: без бінаря — ВІДМОВА (rc≠0), не «зелено»; спершу make check (імпорт).
 gates:
 	bash tools/gates/run_gates.sh
+
+# Лише доки й контракти, без GDS. НЕ замінює make gates: останній рядок — «ДОКИ ЗЕЛЕНІ; КОД НЕ ВИМІРЯНО».
+gates-docs:
+	bash tools/gates/run_gates.sh --docs-only
 
 # Headless-імпорт проєкту + парсинг кожного .gd + smoke. Без бінаря — інструкція, не мовчазний пропуск.
 # Smoke іде з --fixed-fps 60: одна ітерація = один фізкадр, тож --quit-after 40000 — це 40000 кадрів на будь-якій

@@ -6,9 +6,18 @@ const FULLY_CLEAR_DISTANCE: float = 0.85
 const INSIDE_DISTANCE: float = 0.35
 const CLOTH_SHADER = preload("res://shaders/camera_cloth.gdshader")
 const RESPONSE: float = 18.0
+## Sketch-Cel rule (docs/Art/2026-10-07-Tight-Station-Readability-Criteria.md): the ink line stays,
+## the fill thins. PLACEHOLDER floor pending T6 frame acceptance; tests may lower it to prove the old policy.
+var fill_floor: float = 0.25
+var keep_outline: bool = true
+## Raw lens-to-body factor (0 at the head/torso, 1 when clear); the applied values follow below.
 var visibility: float = 1.0
+var fill_visibility: float = 1.0
+var outline_visibility: float = 1.0
 var _materials: Array[ShaderMaterial] = []
 var _original: Array[Variant] = []
+var _outlines: Array[ShaderMaterial] = []
+var _outline_original: Array[Variant] = []
 var _clothing: Array[Dictionary] = []
 var _gear: Array[Dictionary] = []
 var _player: Fighter
@@ -20,21 +29,27 @@ func setup(player: Fighter) -> void:
 		_collect(material)
 
 func _collect(material: Material) -> void:
-	if not material is ShaderMaterial or material in _materials:
+	if not material is ShaderMaterial or material in _materials or material in _outlines:
 		return
 	var shader_material := material as ShaderMaterial
-	var value: Variant = shader_material.get_shader_parameter("camera_visibility")
-	var supported: bool = value != null
-	if not supported and shader_material.shader != null:
-		for uniform: Dictionary in shader_material.shader.get_shader_uniform_list():
-			if uniform.name == "camera_visibility":
-				supported = true
-				break
-	if supported:
+	if _supports(shader_material, "camera_visibility"):
 		_materials.append(shader_material)
-		_original.append(value)
+		_original.append(shader_material.get_shader_parameter("camera_visibility"))
+	elif _supports(shader_material, "camera_outline_visibility"):
+		_outlines.append(shader_material)
+		_outline_original.append(shader_material.get_shader_parameter("camera_outline_visibility"))
 	if material.next_pass != null:
 		_collect(material.next_pass)
+
+static func _supports(material: ShaderMaterial, uniform_name: String) -> bool:
+	if material.get_shader_parameter(uniform_name) != null:
+		return true
+	if material.shader == null:
+		return false
+	for uniform: Dictionary in material.shader.get_shader_uniform_list():
+		if uniform.name == uniform_name:
+			return true
+	return false
 
 func update(camera: Camera3D, delta: float) -> void:
 	if not is_instance_valid(_player) or camera == null:
@@ -56,18 +71,24 @@ func update(camera: Camera3D, delta: float) -> void:
 	visibility = lerpf(visibility, desired, 1.0 - exp(-RESPONSE * maxf(delta, 0.0)))
 	if absf(visibility - desired) < 0.002:
 		visibility = desired
+	# The fill never thins below its floor and the ink line stays, so the hero never vanishes.
+	fill_visibility = maxf(visibility, fill_floor)
+	outline_visibility = 1.0 if keep_outline else fill_visibility
 	for index: int in _materials.size():
-		_materials[index].set_shader_parameter("camera_visibility", (1.0 if _original[index] == null else float(_original[index])) * visibility)
+		_materials[index].set_shader_parameter("camera_visibility", (1.0 if _original[index] == null else float(_original[index])) * fill_visibility)
+	for index: int in _outlines.size():
+		_outlines[index].set_shader_parameter("camera_outline_visibility", (1.0 if _outline_original[index] == null else float(_outline_original[index])) * outline_visibility)
+	var faded: bool = fill_visibility < 0.999 or outline_visibility < 0.999
 	for entry: Dictionary in _clothing:
 		var mesh: MeshInstance3D = entry.mesh.get_ref()
 		if not is_instance_valid(mesh):
 			continue
-		if visibility < 0.999:
+		if faded:
 			entry.local.set_shader_parameter("albedo", entry.original.albedo_color)
 			entry.local.set_shader_parameter("roughness", entry.original.roughness)
 			entry.local.set_shader_parameter("albedo_tex", entry.original.albedo_texture)
 			entry.local.set_shader_parameter("uv_scale", entry.original.uv1_scale)
-			entry.local.set_shader_parameter("camera_visibility", visibility)
+			entry.local.set_shader_parameter("camera_visibility", fill_visibility)
 			mesh.material_override = entry.local
 		elif mesh.material_override == entry.local:
 			mesh.material_override = entry.original
@@ -76,15 +97,15 @@ func update(camera: Camera3D, delta: float) -> void:
 		var mesh: MeshInstance3D = entry.mesh.get_ref()
 		if not is_instance_valid(mesh):
 			continue
-		if visibility < 0.999:
+		if faded:
 			if entry.source is StandardMaterial3D:
 				entry.local.set_shader_parameter("albedo",entry.source.albedo_color)
 				entry.local.set_shader_parameter("roughness",entry.source.roughness)
 				entry.local.set_shader_parameter("albedo_tex",entry.source.albedo_texture)
 				entry.local.set_shader_parameter("uv_scale",entry.source.uv1_scale)
-				entry.local.set_shader_parameter("camera_visibility",visibility)
+				entry.local.set_shader_parameter("camera_visibility",fill_visibility)
 			else:
-				_copy_shader(entry.local,entry.source,visibility)
+				_copy_shader(entry.local,entry.source,fill_visibility,outline_visibility)
 			_set_slot(mesh,entry.slot,entry.local)
 		elif _get_slot(mesh,entry.slot) == entry.local:
 			_set_slot(mesh,entry.slot,entry.original)
@@ -132,12 +153,16 @@ static func _duplicate_chain(source: Material) -> Material:
 		local.next_pass = _duplicate_chain(source.next_pass)
 	return local
 
-static func _copy_shader(local: ShaderMaterial, source: ShaderMaterial, fade: float) -> void:
+static func _copy_shader(local: ShaderMaterial, source: ShaderMaterial, fade: float, outline_fade: float) -> void:
 	for uniform: Dictionary in source.shader.get_shader_uniform_list():
 		var value: Variant = source.get_shader_parameter(uniform.name)
-		local.set_shader_parameter(uniform.name,(1.0 if value == null else float(value))*fade if uniform.name == "camera_visibility" else value)
+		if uniform.name == "camera_visibility":
+			value = (1.0 if value == null else float(value))*fade
+		elif uniform.name == "camera_outline_visibility":
+			value = (1.0 if value == null else float(value))*outline_fade
+		local.set_shader_parameter(uniform.name,value)
 	if local.next_pass is ShaderMaterial and source.next_pass is ShaderMaterial:
-		_copy_shader(local.next_pass,source.next_pass,fade)
+		_copy_shader(local.next_pass,source.next_pass,fade,outline_fade)
 
 func _collect_gear() -> void:
 	var roots: Array[Node] = []
@@ -214,8 +239,12 @@ func _collect_clothing() -> void:
 
 func reset() -> void:
 	visibility = 1.0
+	fill_visibility = 1.0
+	outline_visibility = 1.0
 	for index: int in _materials.size():
 		_materials[index].set_shader_parameter("camera_visibility", _original[index])
+	for index: int in _outlines.size():
+		_outlines[index].set_shader_parameter("camera_outline_visibility", _outline_original[index])
 	for entry: Dictionary in _clothing:
 		var mesh: MeshInstance3D = entry.mesh.get_ref()
 		if is_instance_valid(mesh) and mesh.material_override == entry.local:
@@ -230,6 +259,8 @@ func restore() -> void:
 	reset()
 	_materials.clear()
 	_original.clear()
+	_outlines.clear()
+	_outline_original.clear()
 	_clothing.clear()
 	_gear.clear()
 	_player = null

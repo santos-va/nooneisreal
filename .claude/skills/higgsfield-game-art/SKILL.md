@@ -47,7 +47,7 @@ lighting, no perspective, no objects»; перевірка швів — `pipelin
 
 ## Після генерації
 1 результат на слот → `game/assets/<розділ>/<snake_name>.<ext>` → рядок у `docs/Art/Textures-Registry.md`
-(id, шлях, URL, модель, промпт-лінк, ліцензія, використання) → промпт у `docs/Art/Prompts/` → `make gates`.
+(id, шлях, URL, модель, промпт-лінк, ліцензія, використання) → промпт у `docs/Art/Prompts/` → `make gates-docs`.
 
 **Флипбуки (VFX, спрайт-шити):** модель малює сітку на око → кожен аркуш через
 `python3 tools/art/repack_flipbook.py in.png out.png` (рівні клітинки 512 px, один масштаб; `FAIL` → перегенерувати).

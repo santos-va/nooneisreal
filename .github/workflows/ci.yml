@@ -14,8 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run gates (wikilinks, asset registry, role parity)
-        run: bash tools/gates/run_gates.sh
+      # Docs-only by design: no Godot here, so GDScript is measured in the godot job (make check-playable).
+      - name: Docs-only gates (wikilinks, asset registry, role parity, state anchors, plan sections; code not measured)
+        run: make gates-docs
   distribution:
     name: macOS updater safety (${{ matrix.os }})
     strategy:
