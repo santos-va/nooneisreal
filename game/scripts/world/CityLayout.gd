@@ -15,6 +15,18 @@ static func combat_pockets() -> Array[Dictionary]:
 		{"id": "east_terrace", "title": "East terrace", "center": Vector3(20, 4, -20), "radius": 5.0},
 	]
 
+## ADR-024, the first lethal fight: its pocket (one of combat_pockets), the enemy and the safe point in front of the
+## pocket on the street from the spawn. The safe point is also the entry: an explicit interaction there opens the
+## fight; RETURN TO SAFE POINT puts the hero back on it. PLACEHOLDER metres (2.5 m outside the pocket's edge).
+static func lethal_encounter() -> Dictionary:
+	return {"pocket": "central_court", "enemy": "res://data/characters/lamplighter.tres", "safe_point": Vector3(0, 0, 9.5)}
+
+static func pocket(id: String) -> Dictionary:
+	for entry: Dictionary in combat_pockets():
+		if entry.id == id:
+			return entry
+	return {}
+
 static func route_points() -> Array[Vector3]:
 	return [spawn_position(), Vector3.ZERO, Vector3(18, 0, 10), Vector3(18, 0, 8),
 		Vector3(18, 4, -10), Vector3(20, 4, -20), Vector3(0, 4, -20),

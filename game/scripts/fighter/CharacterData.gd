@@ -88,6 +88,14 @@ extends Resource
 @export var passive_id: String = ""
 @export_multiline var passive_description: String = ""
 
+@export_group("CPU-only enemy (ADR-024)")
+## ADR-024 п. 9: an enemy driven only by the CPU, never a playable fighter. ADR-006's full kit (skill2, ultimate,
+## throw, passive, grapple) does not apply to it, so the smoke's slot contract skips those slots for it alone.
+@export var cpu_only: bool = false
+## CpuBrain decision weight (block / punish odds). The default is the old CpuBrain constant, so the heroes' sparring
+## CPU is unchanged; an enemy sets its own — T5 Арес owns the value (docs/GDD/03-Skills-Framework.md § Мінімум CPU).
+@export_range(0.0, 1.0) var cpu_difficulty: float = 0.6
+
 
 func moves() -> Dictionary:
 	return {

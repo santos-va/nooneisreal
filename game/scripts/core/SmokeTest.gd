@@ -45,6 +45,8 @@ const GDD_WALL_SPLAT_FRAMES := 10
 const GDD_YAW_ACCEL_DEG := 0.25        # 02 § Камера за спиною і плавність (launch 6)
 ## slot → [tracking_deg, backhit_hitstun_bonus]; skills follow 03 § Як у 3D and are not in this table
 const GDD_MOVES := {"light": [30.0, 2], "crouch_light": [20.0, 3], "heavy": [15.0, 3], "air_light": [10.0, 2], "ultimate": [45.0, 6], "throw": [0.0, 0]}
+## ADR-024 п. 9 (docs/GDD/03-Skills-Framework.md § Перший ворог): slots a CPU-only enemy has no move for.
+const GDD_CPU_ONLY_OPTIONAL := ["ultimate", "throw"]
 var _duel_trace: Array = []
 var _duel_first_trace: Array = []
 var _zdiff: float = 0.0
@@ -1515,20 +1517,57 @@ func _river_script(t: int) -> void:
 func _gdd_mismatch() -> String:
 	var got := {"Fighter.ARENA_RADIUS": [Fighter.ARENA_RADIUS, GDD_ARENA_RADIUS], "DuelCamera.YAW_CLAMP_DEG": [DuelCamera.YAW_CLAMP_DEG, GDD_YAW_CLAMP_DEG], "DuelCamera.PULLBACK_LAG_DEG": [DuelCamera.PULLBACK_LAG_DEG, GDD_PULLBACK_LAG_DEG], "DuelCamera.PULLBACK_MAX": [DuelCamera.PULLBACK_MAX, GDD_PULLBACK_MAX], "DuelCamera.YAW_ACCEL_DEG": [DuelCamera.YAW_ACCEL_DEG, GDD_YAW_ACCEL_DEG], "DuelCamera.BEHIND_DIST": [DuelCamera.BEHIND_DIST, 5.0], "DuelCamera.BEHIND_DIST_PER_M": [DuelCamera.BEHIND_DIST_PER_M, 0.35], "DuelCamera.BEHIND_DIST_MAX": [DuelCamera.BEHIND_DIST_MAX, 9.0], "DuelCamera.BEHIND_HEIGHT_NEAR": [DuelCamera.BEHIND_HEIGHT_NEAR, 3.8], "DuelCamera.BEHIND_HEIGHT_FAR": [DuelCamera.BEHIND_HEIGHT_FAR, 3.0], "DuelCamera.BEHIND_SHOULDER": [DuelCamera.BEHIND_SHOULDER, 1.0], "DuelCamera.BEHIND_FOCUS": [DuelCamera.BEHIND_FOCUS, 0.5], "DuelCamera.SIDE_DIST": [DuelCamera.SIDE_DIST, 6.0], "DuelCamera.SIDE_DIST_PER_M": [DuelCamera.SIDE_DIST_PER_M, 0.68], "DuelCamera.PULLBACK_CAP_M": [DuelCamera.PULLBACK_CAP_M, 12.47], "DuelCamera.SIDE_DIST_MIN": [DuelCamera.SIDE_DIST_MIN, 8.0], "DuelCamera.SIDE_DIST_MAX": [DuelCamera.SIDE_DIST_MAX, 24.0], "DuelCamera.FOV_DEG": [DuelCamera.FOV_DEG, 60.0], "camera fov": [arena.duel_camera.cam.fov if arena.duel_camera else 60.0, 60.0], "Fighter.WALL_SPLAT_FRAMES": [float(Fighter.WALL_SPLAT_FRAMES), float(GDD_WALL_SPLAT_FRAMES)]}
 	for f: Fighter in [p1, p2]:
-		var d := f.data
-		got["%s.block_arc_deg" % d.id] = [d.block_arc_deg, GDD_BLOCK_ARC_DEG]
-		got["%s.circle_speed_mult" % d.id] = [d.circle_speed_mult, GDD_CIRCLE_SPEED_MULT]
-		got["%s.grapple_cone_deg" % d.id] = [d.grapple_cone_deg, GDD_GRAPPLE_CONE_DEG]
-		var mv := d.moves()
-		for slot in GDD_MOVES:
-			var m: MoveData = mv.get(slot)
-			if m == null:
-				return "%s has no move in slot %s" % [d.id, slot]
-			got["%s.%s.tracking_deg" % [d.id, slot]] = [m.tracking_deg, float(GDD_MOVES[slot][0])]
-			got["%s.%s.backhit_hitstun_bonus" % [d.id, slot]] = [float(m.backhit_hitstun_bonus), float(GDD_MOVES[slot][1])]
+		var miss := _gdd_slots(f.data, got)
+		if miss != "":
+			return miss
+	return _gdd_compare(got)
+
+
+## One character's GDD class literals into `got`; "" or the first empty slot. A hero fills every GDD_MOVES slot, as
+## before. ADR-024 п. 9: a CPU-only enemy (CharacterData.cpu_only) may leave exactly the GDD_CPU_ONLY_OPTIONAL slots
+## empty; every slot it does fill keeps the class literals.
+static func _gdd_slots(d: CharacterData, got: Dictionary) -> String:
+	got["%s.block_arc_deg" % d.id] = [d.block_arc_deg, GDD_BLOCK_ARC_DEG]
+	got["%s.circle_speed_mult" % d.id] = [d.circle_speed_mult, GDD_CIRCLE_SPEED_MULT]
+	got["%s.grapple_cone_deg" % d.id] = [d.grapple_cone_deg, GDD_GRAPPLE_CONE_DEG]
+	var mv := d.moves()
+	for slot in GDD_MOVES:
+		var m: MoveData = mv.get(slot)
+		if m == null:
+			if d.cpu_only and slot in GDD_CPU_ONLY_OPTIONAL:
+				continue
+			return "%s has no move in slot %s" % [d.id, slot]
+		got["%s.%s.tracking_deg" % [d.id, slot]] = [m.tracking_deg, float(GDD_MOVES[slot][0])]
+		got["%s.%s.backhit_hitstun_bonus" % [d.id, slot]] = [float(m.backhit_hitstun_bonus), float(GDD_MOVES[slot][1])]
+	return ""
+
+
+static func _gdd_compare(got: Dictionary) -> String:
 	for k in got:
 		if absf(float(got[k][0]) - float(got[k][1])) > 0.0001:
 			return "%s = %s, GDD says %s" % [k, got[k][0], got[k][1]]
+	return ""
+
+
+## ADR-024 п. 9 on the real data: the CPU-only enemy passes without ultimate/throw, and three breaks from the same
+## rule still fail — a hero without an ultimate, the enemy marked playable (cpu_only off), the enemy without a light.
+func _cpu_only_slot_contract() -> String:
+	var enemy := load("res://data/characters/lamplighter.tres") as CharacterData
+	if enemy == null or not enemy.cpu_only:
+		return "lamplighter.tres missing or not cpu_only"
+	var hero := (p1.data as CharacterData).duplicate() as CharacterData
+	hero.ultimate = null
+	var playable := enemy.duplicate() as CharacterData
+	playable.cpu_only = false
+	var no_light := enemy.duplicate() as CharacterData
+	no_light.light = null
+	for case: Array in [["lamplighter", enemy, true], ["hero without ultimate", hero, false], ["enemy marked playable", playable, false], ["enemy without light", no_light, false]]:
+		var got := {}
+		var miss := _gdd_slots(case[1], got)
+		if miss == "":
+			miss = _gdd_compare(got)
+		if (miss == "") != bool(case[2]):
+			return "%s: %s" % [case[0], miss if miss != "" else "passed, must fail"]
 	return ""
 
 
@@ -2102,6 +2141,11 @@ func _physics_process(_delta: float) -> void:
 					_fail("design numbers drifted from docs/GDD/02: " + gdd)
 					return
 				_ok("design numbers = GDD 02 literals: radius 20, camera K-1 (fov 60, behind 5/3.8→3.0/1.0, side 6+0.68·sep ∈ [8, 24], pull-back cap 12.47 m), yaw clamp 3°, pull-back 15°/30 %, block arc 70°, circling 0.8, cone 30°, wall splat 10 f, tracking and back-hit per move class")
+				var slots := _cpu_only_slot_contract()
+				if slots != "":
+					_fail("ADR-024 п. 9 slot contract: " + slots)
+					return
+				_ok("ADR-024 п. 9: CPU-only lamplighter passes without ultimate/throw, its normals at the GDD class literals; a hero without an ultimate, the enemy marked playable and the enemy without a light still fail")
 				_ang0 = _bearing(p1, p2)
 				_d0 = _flat(p1.global_position - p2.global_position).length()
 				_swept = 0.0

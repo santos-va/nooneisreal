@@ -134,7 +134,8 @@ func _build() -> void:
 	_timer = _label("99", FONT_BIG - 10, HORIZONTAL_ALIGNMENT_CENTER)
 	_timer.add_theme_color_override("font_color", Color(1.0, 0.92, 0.75))
 	center.add_child(_timer)
-	_round_label = _label("FIRST TO %d" % GameState.rounds_to_win, FONT_SMALL, HORIZONTAL_ALIGNMENT_CENTER)
+	# The match frame line (HUD H2, plan 2026-10-07-First-Enemy-Lethal-Fight step 4): the duel says it is a sparring.
+	_round_label = _label(flow.round_title(), FONT_SMALL, HORIZONTAL_ALIGNMENT_CENTER)
 	center.add_child(_round_label)
 	top.add_child(center)
 	top.add_child(_player_panel(p2, true))
@@ -558,11 +559,11 @@ func _on_match_over(winner: int, n1: String, n2: String) -> void:
 		first.grab_focus()
 
 
-func _on_round_started(n: int) -> void:
+func _on_round_started(_n: int) -> void:
 	_result.hide()
 	InputRouter.release_ui(_result)
 	_on_round_won(0, flow.wins[1], flow.wins[2])
-	_round_label.text = "ROUND %d · FIRST TO %d" % [n, GameState.rounds_to_win]
+	_round_label.text = flow.round_title()
 	var camera := get_viewport().get_camera_3d()
 	if camera != null and camera.has_meta("harpoon_aim"):
 		camera.get_meta("harpoon_aim").reset()

@@ -43,6 +43,7 @@ fetch "$CDN/hf_20261002_110646_b776f4f8-c0a8-46b1-8987-242907591958.png" "$CARDS
 CDN3D="https://d8j0ntlcm91z4.cloudfront.net/user_3K9iQemvOo6IqNE4zXhvuukTwKO"
 fetch "$CDN3D/hf_20261003_034701_2488e146-f049-4469-9aad-4a512a810022.glb" "$MODELS/choko_m0.glb"
 fetch "$CDN3D/hf_20261003_034702_f7f95324-7686-48af-8d0c-3f4d5010502c.glb" "$MODELS/skea_m1.glb"
+fetch "$CDN3D/hf_20261007_125326_923bec73-9d1f-452e-b731-2d2c1c5cac91.glb" "$MODELS/lamplighter_m0.glb"
 
 # Sprint lane C (T6, 2026-10-03): Sketch-Cel art already generated and picked by Santos in wave 2, never downloaded.
 # 0 credits — docs/Art/Prompts/Arenas-360-Prompts.md, docs/Art/Prompts/Menu-Skyline-Prompts.md rows 24, 25, 38 and 1b.

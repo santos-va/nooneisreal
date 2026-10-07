@@ -15,6 +15,13 @@ var _settings: Node
 var _graphics: Node
 var quality_choice: OptionButton
 var _graphics_save_error: int = OK
+## ADR-024 п. 7 (T8): blood in lethal fights and the hit flash, stored by ContentSettings. No new input actions.
+var blood_choice: OptionButton
+var hit_flash_choice: OptionButton
+var _content: Node
+var _content_save_error: int = OK   # like graphics: content.cfg is written only when a content choice changes
+const BLOOD_LABELS: Array[String] = ["Full — splashes and stains", "Muted — darker, shorter, no pools", "Ink — ink strokes instead of blood", "Off — only hit sparks"]
+const HIT_FLASH_LABELS: Array[String] = ["Full", "Reduced — half as bright and short"]
 var _syncing := true
 
 func _ready() -> void:
@@ -23,6 +30,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_settings = get_node("/root/ComfortSettings")
 	_graphics = get_node("/root/GraphicsSettings")
+	_content = get_node("/root/ContentSettings")
 	var dim := ColorRect.new()
 	dim.color = Color(0.025, 0.02, 0.035, 0.94)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -87,6 +95,26 @@ func _ready() -> void:
 				_settings.call("set_value", key, value / 100.0)
 				_save())
 		slider.value_changed.emit(slider.value)
+	# Between CAMERA SHAKE and RESTORE: the established MASTER ↔ GRAPHICS and RESTORE → help steps stay as they were.
+	content.add_child(_label("BLOOD · LETHAL FIGHTS ONLY", 32))
+	blood_choice = _choice("BloodMode", BLOOD_LABELS)
+	content.add_child(blood_choice)
+	_focus_order.append(blood_choice)
+	blood_choice.item_selected.connect(func(index: int):
+		if not _syncing and _content.call("set_blood_mode", _content.BLOOD_MODES[index]):
+			_content_save_error = _content.call("save_settings")
+			_save())
+	var blood_help := _label("Sparring between Choko and Skea never shows blood.", 24)
+	blood_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(blood_help)
+	content.add_child(_label("HIT FLASH", 32))
+	hit_flash_choice = _choice("HitFlash", HIT_FLASH_LABELS)
+	content.add_child(hit_flash_choice)
+	_focus_order.append(hit_flash_choice)
+	hit_flash_choice.item_selected.connect(func(index: int):
+		if not _syncing and _content.call("set_hit_flash", _content.HIT_FLASH_MODES[index]):
+			_content_save_error = _content.call("save_settings")
+			_save())
 	restore_button = _button("RESTORE SOUND & SHAKE DEFAULTS", func():
 		_settings.call("reset_defaults")
 		_sync_values()
@@ -143,7 +171,8 @@ func show_panel(invoker: Control, controls: String) -> void:
 
 func close_panel() -> void:
 	_save()
-	quality_choice.get_popup().hide()
+	for choice: OptionButton in [quality_choice, blood_choice, hit_flash_choice]:
+		choice.get_popup().hide()
 	hide()
 	InputRouter.release_ui(self)
 	if is_instance_valid(_invoker) and _invoker.is_visible_in_tree():
@@ -153,6 +182,8 @@ func close_panel() -> void:
 func _sync_values() -> void:
 	_syncing = true
 	quality_choice.select(QualityProfile.ids().find(_graphics.call("get_profile")))
+	blood_choice.select(_content.BLOOD_MODES.find(_content.call("blood_mode")))
+	hit_flash_choice.select(_content.HIT_FLASH_MODES.find(_content.call("hit_flash")))
 	for key: String in sliders:
 		(sliders[key] as HSlider).value = float(_settings.call("get_value", key)) * 100
 	_syncing = false
@@ -161,15 +192,16 @@ func _save() -> void:
 	if _status == null:
 		return
 	var result: int = _settings.call("save_settings")
-	_status.text = "Could not save preferences; changes apply for this session." if result != OK or _graphics_save_error != OK else ""
+	_status.text = "Could not save preferences; changes apply for this session." if result != OK or _graphics_save_error != OK or _content_save_error != OK else ""
 
 func _keep_focus(control: Control) -> void:
 	if visible and control != null and not is_ancestor_of(control):
 		back_button.grab_focus.call_deferred()
 
 func _input(event: InputEvent) -> void:
-	if quality_choice != null and quality_choice.get_popup().visible:
-		return
+	for choice: OptionButton in [quality_choice, blood_choice, hit_flash_choice]:
+		if choice != null and choice.get_popup().visible:
+			return
 	if visible and not event.is_echo() and (event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_pause")):
 		get_viewport().set_input_as_handled()
 		close_panel()
@@ -180,6 +212,16 @@ func _label(text: String, font_size: int) -> Label:
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", Color(0.97, 0.94, 0.86))
 	return label
+
+func _choice(node_name: String, labels: Array[String]) -> OptionButton:
+	var choice := OptionButton.new()
+	choice.name = node_name
+	choice.custom_minimum_size.y = 48
+	choice.add_theme_font_size_override("font_size", 32)
+	choice.get_popup().add_theme_font_size_override("font_size", 32)
+	for label: String in labels:
+		choice.add_item(label)
+	return choice
 
 func _button(text: String, action: Callable) -> Button:
 	var button := Button.new()

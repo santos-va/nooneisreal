@@ -2,8 +2,11 @@ class_name CpuBrain
 extends Node
 ## Minimal sparring AI so one person can test alone. Drives the fighter through InputRouter's
 ## virtual-input layer — the same path a human uses. Seeded RNG = reproducible behaviour in tests.
+## A CPU-only enemy (CharacterData.cpu_only, ADR-024) runs _enemy_tick instead of the sparring choice: pocket edge,
+## authored series, recovery punish, SNUFF only in its band, low hooks. The heroes' sparring path is untouched.
 
 var fighter: Fighter
+## Decision weight; CharacterData.cpu_difficulty (default 0.6 = the old constant, so the heroes are unchanged).
 var difficulty: float = 0.6
 var _timer: int = 0
 var _hold_block: int = 0
@@ -18,8 +21,37 @@ const PUNISH_SIDESTEP_CHANCE := 0.6  # × difficulty: strike when the opponent c
 var _rng := RandomNumberGenerator.new()
 
 
+# CPU-only enemy tactics (docs/GDD/03-Skills-Framework.md § Мінімум CPU для цього кіта). All odds, bands and
+# frame counts are PLACEHOLDER AI tuning, not combat numbers; T5 Арес may retune them.
+## Authored series from the enemy's own slots, chained through the existing cancel rules (light → light → heavy,
+## low hook → heavy, heavy → SNUFF). A step is pressed only after the previous one connected (hit or block).
+const ENEMY_SERIES: Array = [["light", "light", "heavy"], ["crouch_light", "heavy"], ["heavy", "skill1"]]
+const ENEMY_SNUFF_RANGE := Vector2(2.0, 3.6)   # GDD 03 § Мінімум CPU: SNUFF only when the foe is 2.0–3.6 m away
+const ENEMY_STRIKE_RANGE := 2.3                # the pole jab's reach (GDD 03 § Кадри): start a series inside it
+const ENEMY_CLOSE := 1.6                       # closer than this the zoner may step back to pole range
+const ENEMY_EDGE_MARGIN := 1.5                 # m inside the pocket wall: no backing off outward past it
+const ENEMY_PUNISH_REACT := 3                  # frames of the foe's whiffed recovery seen before the punish
+const ENEMY_PAUSE := Vector2i(18, 30)          # breath after a series (or block instead)
+const ENEMY_SNUFF_CHANCE := 0.35
+const ENEMY_BACKOFF_CHANCE := 0.35
+var series: Array = []          # the series in progress (fixtures read it)
+var series_step: int = 0
+var _series_pressed: int = -1   # step index already pressed for the current move
+var series_done: int = 0        # completed series (every step pressed)
+var punishes: int = 0
+var snuffs: int = 0
+var low_hooks: int = 0
+var edge_holds: int = 0         # decisions where backing off was refused at the pocket wall
+var _punish_seen: Object = null # the foe's move in the swing being watched
+var _punish_move_frame: int = -1
+var _punish_judged: bool = false # this swing already had its one roll
+var _press_frame: int = -1      # InputRouter frame of the last series press (the move starts a tick later)
+
+
 func _ready() -> void:
 	_rng.seed = 1337 + (fighter.player_index if fighter else 0)
+	if fighter != null and fighter.data != null:
+		difficulty = fighter.data.cpu_difficulty
 
 
 func _in_smoke() -> bool:
@@ -49,6 +81,9 @@ func _physics_process(_delta: float) -> void:
 		_hold_side -= 1
 		if _hold_side == 0:
 			InputRouter.v_release(p, _side_key)
+	if fighter.data.cpu_only:
+		_enemy_tick(p, o)
+		return
 	_timer -= 1
 	if _timer > 0:
 		return
@@ -129,3 +164,192 @@ func _free_move_choice(p: int, o: Fighter, dist: float) -> bool:
 		sidesteps += 1
 		return true
 	return false
+
+
+# --- CPU-only enemy (ADR-024) ------------------------------------------------------------------------
+func _enemy_tick(p: int, o: Fighter) -> void:
+	var d := Vector3(o.global_position.x - fighter.global_position.x, 0.0, o.global_position.z - fighter.global_position.z)
+	var dist := d.length()
+	var dx := d.dot(GameState.duel.right) if GameState.free_move else d.x
+	var toward := "right" if dx > 0.0 else "left"
+	var away := "left" if dx > 0.0 else "right"
+	if _series_continue(p, dist):
+		return
+	if _punish(p, o, dist):
+		return
+	_timer -= 1
+	if _timer > 0:
+		return
+	_timer = _rng.randi_range(6, 16)
+	InputRouter.v_release(p, "left")
+	InputRouter.v_release(p, "right")
+	InputRouter.v_release(p, "crouch")
+	InputRouter.v_release(p, "up")
+	InputRouter.v_release(p, "down")
+	if not fighter.is_actionable():
+		return
+	if (o.veil_frames > 0 and o.revealed_frames <= 0) or _in_smoke():
+		InputRouter.v_set(p, _safe_back(toward, away), true)
+		return
+	if o.state == Fighter.State.ATTACK and dist < 2.8 and _rng.randf() < 0.5 * difficulty:
+		InputRouter.v_press(p, "block")
+		_hold_block = 20
+		return
+	if dist > ENEMY_SNUFF_RANGE.y:
+		InputRouter.v_set(p, toward, true)
+		if _rng.randf() < 0.12:
+			InputRouter.v_press(p, "dash")
+		return
+	if dist > ENEMY_STRIKE_RANGE:
+		if snuff_allowed(dist) and _rng.randf() < ENEMY_SNUFF_CHANCE:
+			InputRouter.v_press(p, "skill1")
+			snuffs += 1
+		else:
+			InputRouter.v_set(p, toward, true)
+		return
+	if dist < ENEMY_CLOSE and _rng.randf() < ENEMY_BACKOFF_CHANCE:
+		InputRouter.v_set(p, _safe_back(toward, away), true)
+		return
+	_start_series(p, dist)
+
+
+## SNUFF needs its band (GDD 03 § Мінімум CPU) and a ready cooldown; the telegraph itself is never cut.
+func snuff_allowed(dist: float) -> bool:
+	return dist >= ENEMY_SNUFF_RANGE.x and dist <= ENEMY_SNUFF_RANGE.y and fighter._skill_ready("skill1")
+
+
+func _start_series(p: int, dist: float) -> void:
+	var options: Array = []
+	for candidate: Array in ENEMY_SERIES:
+		if candidate.has("skill1") and not fighter._skill_ready("skill1"):
+			continue
+		options.append(candidate)
+	series = options[_rng.randi_range(0, options.size() - 1)]
+	series_step = 0
+	_series_pressed = -1
+	_press_step(p, dist)
+
+
+## Presses the current step; false when the step cannot be taken (the series then ends).
+func _press_step(p: int, dist: float) -> bool:
+	var action: String = series[series_step]
+	if action == "skill1" and not snuff_allowed(dist):
+		return false
+	if action == "crouch_light":
+		InputRouter.v_set(p, "crouch", true)
+		InputRouter.v_press(p, "light")
+		low_hooks += 1
+	else:
+		InputRouter.v_release(p, "crouch")
+		InputRouter.v_press(p, action)
+		if action == "skill1":
+			snuffs += 1
+	_series_pressed = series_step
+	_press_frame = InputRouter.frame()
+	return true
+
+
+## Keeps a series going: the next step is pressed in the cancel window of a move that connected. A whiff, a stun or
+## the last step ends it with a breath (pause) or a guard. True while the series owns this tick.
+func _series_continue(p: int, dist: float) -> bool:
+	if series.is_empty():
+		return false
+	var m := fighter.current_move
+	if fighter.state == Fighter.State.ATTACK and m != null:
+		if fighter.has_hit and fighter.move_frame >= m.startup + m.active and _series_pressed == series_step:
+			if series_step + 1 >= series.size():
+				series_done += 1
+				_end_series(p)
+				return false
+			series_step += 1
+			if not _press_step(p, dist):
+				_end_series(p)
+				return false
+		return true
+	if InputRouter.frame() - _press_frame <= InputRouter.BUFFER_FRAMES:
+		return true      # pressed; the move has not started yet
+	_end_series(p)       # the move ended (whiff, stun, recovery) without the next step
+	return false
+
+
+func _end_series(p: int) -> void:
+	series = []
+	series_step = 0
+	_series_pressed = -1
+	InputRouter.v_release(p, "crouch")
+	# The breath starts after the last move's own recovery, never inside it.
+	var left := 0
+	if fighter.state == Fighter.State.ATTACK and fighter.current_move != null:
+		left = maxi(0, fighter.move_end_frame(fighter.current_move) - fighter.move_frame)
+	if _rng.randf() < 0.5 * difficulty:
+		InputRouter.v_press(p, "block")
+		_hold_block = left + 16
+		_timer = _hold_block
+	else:
+		_timer = left + _rng.randi_range(ENEMY_PAUSE.x, ENEMY_PAUSE.y)
+
+
+## The foe whiffed and is still recovering inside the pole's reach: answer with the strike that fits the frames left.
+## One roll per foe move, weighted by difficulty.
+func _punish(p: int, o: Fighter, dist: float) -> bool:
+	var m := o.current_move
+	if o.state != Fighter.State.ATTACK or m == null:
+		_punish_seen = null
+		return false
+	if m != _punish_seen or o.move_frame < _punish_move_frame:
+		_punish_seen = m          # a new swing (another move, or the same move started again)
+		_punish_judged = false
+	_punish_move_frame = o.move_frame
+	if _punish_judged or not fighter.is_actionable() or o.has_hit:
+		return false
+	if o.move_frame < m.startup + m.active + ENEMY_PUNISH_REACT:
+		return false
+	_punish_judged = true
+	if _rng.randf() >= difficulty:
+		return false
+	var left := o.move_end_frame(m) - o.move_frame
+	for slot: String in ["heavy", "light"]:
+		var answer: MoveData = fighter.data.heavy if slot == "heavy" else fighter.data.light
+		if answer != null and dist <= reach(answer) and left > answer.startup:
+			InputRouter.v_release(p, "left")
+			InputRouter.v_release(p, "right")
+			InputRouter.v_release(p, "crouch")
+			InputRouter.v_press(p, slot)
+			punishes += 1
+			_timer = answer.startup + answer.active
+			return true
+	return false
+
+
+## Forward reach of a move, as the GDD tables count it: hitbox_offset.x + hitbox_size.x / 2.
+static func reach(m: MoveData) -> float:
+	return m.hitbox_offset.x + m.hitbox_size.x * 0.5
+
+
+## World direction of a CPU movement key (DuelFrame.to_world for a player without the behind camera).
+static func key_world(key: String) -> Vector3:
+	match key:
+		"right":
+			return GameState.duel.right
+		"left":
+			return -GameState.duel.right
+		"up":
+			return GameState.duel.depth()
+	return -GameState.duel.depth()
+
+
+## Backing off near the pocket wall would walk into it: inside ENEMY_EDGE_MARGIN of the wall, an outward retreat
+## becomes a sidestep toward the centre (GDD 03: remember the pocket's edge, do not back into the wall).
+func _safe_back(toward: String, away: String) -> String:
+	var off := Fighter._flat(fighter.global_position - fighter.arena_center)
+	if off.length() < fighter.arena_radius - ENEMY_EDGE_MARGIN:
+		return away
+	var n := off.normalized()
+	if key_world(away).dot(n) <= 0.3:
+		return away
+	edge_holds += 1
+	if key_world("up").dot(n) < 0.0:
+		return "up"
+	if key_world("down").dot(n) < 0.0:
+		return "down"
+	return toward

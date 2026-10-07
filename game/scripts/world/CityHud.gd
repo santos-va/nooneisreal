@@ -44,6 +44,22 @@ var _quest_director: Node
 var _guide_elapsed := 0.0
 var _journey: Node
 var resume_location_label: Label
+## Plan 2026-10-07-First-Enemy-Lethal-Fight step 0 (T8 spec): a sealed skill press is answered in the
+## bottom hint line. PLACEHOLDER seconds pending T8/T6 review.
+const SEALED_HINT := "SKILLS SEALED IN THE CITY · Skills, ultimate and enemy hook work in fights only"
+const SEALED_HINT_SECONDS: float = 2.0
+const SEALED_HINT_INTERVAL: float = 6.0
+var _sealed_left: float = 0.0
+var _sealed_since: float = INF
+## The shared COMFORT & CONTROLS modal. CityHud stays the only pause owner; the modal only adds its
+## own input token, exactly as in the duel pause.
+var comfort_button: Button
+var comfort: ComfortPanel
+## ADR-024: while a lethal pocket fight runs, its HUD (LethalHud) owns the top of the screen, so the exploration
+## cards, the quest guide and the hook cue step aside. The pause stays here: CityHud is the only pause owner. Skills
+## are open in the pocket, so only the enemy hook is still answered — with the pocket's own line.
+var fight_mode: bool = false
+const POCKET_SEALED_HINT := "ENEMY HOOK SEALED IN THIS FIGHT"
 
 
 func setup(model: CityOnboarding) -> void:
@@ -144,7 +160,7 @@ func _build_pause() -> void:
 	var journal_scroll := ScrollContainer.new()
 	_journal_scroll = journal_scroll
 	journal_scroll.follow_focus = true
-	journal_scroll.custom_minimum_size.y = 130
+	journal_scroll.custom_minimum_size.y = 110 # was 130; the sealed-skills help line keeps the pause inside 900 px
 	journal_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(journal_scroll)
 	_journal = _label("Meet residents to discover district tasks.", 22)
@@ -166,14 +182,39 @@ func _build_pause() -> void:
 	_journal_list.add_child(untrack_button)
 	untrack_button.focus_entered.connect(func(): _journal_scroll.ensure_control_visible(untrack_button))
 	resume_button = _button("RESUME", func(): set_paused(false))
+	comfort_button = _button("COMFORT & CONTROLS", _open_comfort)
 	skip_button = _button("SKIP GUIDANCE · EXPLORE FREELY", _skip)
 	restart_button = _button("RESTART WALK & GUIDANCE · KEEP PROGRESS", _restart)
 	exit_button = _button("RETURN TO MAIN MENU", _exit)
-	var buttons: Array[Control] = [resume_button, skip_button, restart_button, exit_button]
+	# RESUME and COMFORT & CONTROLS share the first row, so the pause still fits a 16:9 900 px canvas.
+	var first_row := HBoxContainer.new()
+	first_row.add_theme_constant_override("separation", 8)
+	column.add_child(first_row)
+	for button: Button in [resume_button, comfort_button]:
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		first_row.add_child(button)
+	var buttons: Array[Control] = [skip_button, restart_button, exit_button]
 	for button: Control in buttons:
 		column.add_child(button)
 	_rebuild_pause_focus()
 	pause_panel.hide()
+	comfort = ComfortPanel.new()
+	_root.add_child(comfort)
+	comfort.closed.connect(_on_comfort_closed)
+
+
+func _open_comfort() -> void:
+	if not paused_ui:
+		return
+	pause_panel.hide()
+	comfort.show_panel(comfort_button, exploration_help())
+
+
+func _on_comfort_closed() -> void:
+	# Closing the modal returns to the same pause; leaving the pause closes the modal first.
+	if paused_ui:
+		pause_panel.show()
+		comfort_button.grab_focus()
 
 
 func _panel_style() -> StyleBoxFlat:
@@ -276,7 +317,7 @@ func _refresh_progress() -> void:
 		_quest_totals.text += " · Сюжет не збережено"
 	if is_instance_valid(_lower_story) and not _lower_story.save_ok:
 		_quest_totals.text += " · Продовження не збережено"
-	_quest_card.show()
+	_quest_card.visible = not fight_mode
 	_refresh_journal()
 	_refresh_quest_guide()
 
@@ -350,7 +391,7 @@ func _track_quest(id: String) -> void:
 func _rebuild_pause_focus() -> void:
 	if resume_button == null:
 		return
-	var controls: Array[Control] = [resume_button]
+	var controls: Array[Control] = [resume_button, comfort_button]
 	for button: Button in [skip_button, restart_button, exit_button]:
 		if not button.disabled:
 			controls.append(button)
@@ -365,6 +406,18 @@ func _rebuild_pause_focus() -> void:
 		controls[i].focus_neighbor_bottom = controls[i].get_path_to(controls[(i + 1) % controls.size()])
 		controls[i].focus_previous = controls[i].focus_neighbor_top
 		controls[i].focus_next = controls[i].focus_neighbor_bottom
+	# Tab order stays resume -> comfort -> rest; up/down treat the shared first row as one row.
+	var below: Control = controls[2 % controls.size()]
+	var above: Control = controls[controls.size() - 1]
+	for button: Button in [resume_button, comfort_button]:
+		button.focus_neighbor_top = button.get_path_to(above)
+		button.focus_neighbor_bottom = button.get_path_to(below)
+	below.focus_neighbor_top = below.get_path_to(resume_button)
+	above.focus_neighbor_bottom = above.get_path_to(resume_button)
+	resume_button.focus_neighbor_right = resume_button.get_path_to(comfort_button)
+	resume_button.focus_neighbor_left = resume_button.get_path_to(comfort_button)
+	comfort_button.focus_neighbor_left = comfort_button.get_path_to(resume_button)
+	comfort_button.focus_neighbor_right = comfort_button.get_path_to(resume_button)
 
 
 func bind_journey(model: Node) -> void:
@@ -393,7 +446,7 @@ func _refresh_quest_guide() -> void:
 	if _quest_guide == null:
 		return
 	_quest_guide.hide()
-	if paused_ui or InputRouter.ui_suppressed() or not is_instance_valid(_player) or not is_instance_valid(_progress):
+	if fight_mode or paused_ui or InputRouter.ui_suppressed() or not is_instance_valid(_player) or not is_instance_valid(_progress):
 		return
 	if not _progress is CityProgress:
 		return
@@ -414,7 +467,8 @@ func exploration_help() -> String:
 	text += "Landing roll: hold %s / %s + move into a flat landing after a long drop.\n" % [InputRouter.binding_label(1, "crouch", false), InputRouter.binding_label(1, "crouch", true)]
 	text += "Detach: %s / B · Dodge: %s / X · Dash skill: %s / Y + X\n" % [InputRouter.binding_label(1, "grapple_detach", false), InputRouter.binding_label(1, "dodge", false), InputRouter.binding_label(1, "dash", false)]
 	text += "Strikes: %s; %s; %s; %s\n" % [InputRouter.binding_label(1, "left_hand", false), InputRouter.binding_label(1, "right_hand", false), InputRouter.binding_label(1, "left_leg", false), InputRouter.binding_label(1, "right_leg", false)]
-	text += "Sword: %s / R3 · Talk for tasks: %s / Y + D-pad Down" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
+	text += "Sword: %s / R3 · Talk for tasks: %s / Y + D-pad Down\n" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
+	text += "Sealed in the city, fights only: skills %s, %s · ultimate %s · enemy hook %s" % [InputRouter.binding_label(1, "skill1", false), InputRouter.binding_label(1, "skill2", false), InputRouter.binding_label(1, "ultimate", false), InputRouter.binding_label(1, "grapple_enemy", false)]
 	return text
 
 
@@ -435,6 +489,8 @@ func set_paused(value: bool) -> void:
 		pause_button.disabled = true
 		resume_button.grab_focus()
 	else:
+		if comfort != null and comfort.visible:
+			comfort.close_panel()
 		pause_panel.hide()
 		pause_button.disabled = false
 		get_tree().paused = false
@@ -443,8 +499,8 @@ func set_paused(value: bool) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event.is_echo():
-		return
+	if event.is_echo() or (comfort != null and comfort.visible):
+		return # The open modal owns Esc / B and returns to this pause itself.
 	if event.is_action_pressed("ui_pause") or (paused_ui and event.is_action_pressed("ui_cancel")):
 		if not paused_ui and InputRouter.ui_suppressed():
 			return
@@ -488,6 +544,8 @@ func _refresh() -> void:
 
 func bind_player(player: Fighter) -> void:
 	_player = player
+	if player.has_signal("sealed_action"):
+		player.sealed_action.connect(_on_sealed_action)
 	player.dodge_stamina_changed.connect(_on_stamina)
 	_on_stamina(player.dodge_stamina, player.dodge_stamina_max())
 	player.grapple_changed.connect(_on_rope)
@@ -522,7 +580,37 @@ func _on_stamina(value: float, maximum: float) -> void:
 	_refresh_resources()
 
 
+## Enter / leave the lethal pocket's HUD arrangement (CityLethalFight). Leaving shows the journal card again.
+func set_fight_mode(value: bool) -> void:
+	fight_mode = value
+	_sealed_left = 0.0
+	_sealed_since = INF
+	if _status_card != null:
+		_status_card.visible = not value
+	if _quest_guide != null:
+		_quest_guide.hide()
+	if _aim_cue != null:
+		_aim_cue.hide()
+	if _quest_card != null:
+		if value:
+			_quest_card.hide()
+		else:
+			_refresh_progress()
+	_refresh_traversal_hint()
+
+
+func _on_sealed_action(_action: String) -> void:
+	if paused_ui or InputRouter.ui_suppressed() or _sealed_since < SEALED_HINT_INTERVAL:
+		return
+	_sealed_left = SEALED_HINT_SECONDS
+	_sealed_since = 0.0
+	_refresh_traversal_hint()
+
+
 func _process(_delta: float) -> void:
+	if not paused_ui and not InputRouter.ui_suppressed():
+		_sealed_left = maxf(0.0, _sealed_left - _delta)
+		_sealed_since += _delta
 	_refresh_traversal_hint()
 	_guide_elapsed += _delta
 	if paused_ui or InputRouter.ui_suppressed():
@@ -534,7 +622,7 @@ func _process(_delta: float) -> void:
 	if _aim_cue == null:
 		return
 	_aim_cue.hide()
-	if not is_instance_valid(_player) or paused_ui or InputRouter.ui_suppressed():
+	if fight_mode or not is_instance_valid(_player) or paused_ui or InputRouter.ui_suppressed():
 		return
 	var camera := get_viewport().get_camera_3d()
 	if camera == null or not camera.has_meta("harpoon_aim"):
@@ -573,6 +661,10 @@ func _refresh_traversal_hint() -> void:
 		return
 	hint_label.hide()
 	if not is_instance_valid(_player) or paused_ui or InputRouter.ui_suppressed():
+		return
+	if _sealed_left > 0.0:
+		hint_label.text = POCKET_SEALED_HINT if fight_mode else SEALED_HINT
+		hint_label.show()
 		return
 	if not _story_prompt.is_empty():
 		hint_label.text = _story_prompt

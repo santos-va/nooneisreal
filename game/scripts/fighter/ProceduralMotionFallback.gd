@@ -6,6 +6,9 @@ const LimbMotion = preload("res://scripts/fighter/LimbMotion.gd")
 const MOVES := {
 	"choko": ["crouch_light", "record", "time_stop"],
 	"skea": ["low_kick", "shadow_veil", "cursed_grimoire", "cursed_grimoire_veil"],
+	# ADR-024 enemy: its five moves use the existing capsule poses (light / slash / crouch_light / air_light / slam,
+	# docs/GDD/03-Skills-Framework.md § Перший ворог); without this bridge the skeleton would hold its stance.
+	"lamplighter": ["pole_jab", "hook_sweep", "low_hook", "pole_drop", "snuff"],
 }
 ## UAL bone -> [capsule pivot, UAL direction child]. Parents are visited in skeleton order.
 const PARTS := {

@@ -36,6 +36,7 @@ cases = [
     ('quest-journal', 'tools/ui/quest_journal_check.gd', r'QUEST_JOURNAL_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('ui', 'tools/ui/layout_check.gd', r'UI_LAYOUT PASS \(0 failures; mutation=\)', [], 0),
     ('district-ui', 'tools/ui/district_ui_check.gd', r'DISTRICT_UI_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('city-controls', 'tools/ui/city_controls_check.gd', r'CITY_CONTROLS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('locomotion-states', 'tools/animation/locomotion_states_check.gd', r'LOCOMOTION_STATES_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('authored-evasion', 'tools/animation/authored_evasion_check.gd', r'AUTHORED_EVASION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('authored-combat', 'tools/animation/authored_combat_check.gd', r'AUTHORED_COMBAT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
@@ -74,6 +75,8 @@ cases = [
     ('gait', 'tools/animation/gait_check.gd', r'GAIT_CHECK_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('comfort-ui', 'tools/ui/comfort_ui_check.gd', r'COMFORT_UI PASS \(0 failures; mutation=\)', [], 0),
     ('match-lifecycle', 'tools/match/match_lifecycle_check.gd', r'MATCH_LIFECYCLE PASS \([1-9][0-9]* checks, 0 failures; mutation=\)', [], 0),
+    ('lethal-fight', 'tools/match/lethal_fight_check.gd', r'LETHAL_FIGHT_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('blood-content', 'tools/fx/blood_content_check.gd', r'BLOOD_CONTENT_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('weighted-swing', 'tools/grapple/weighted_swing_check.gd', r'WEIGHTED_SWING_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('ultimate-wave', 'tools/skills/ultimate_wave_check.gd', r'ULTIMATE_WAVE_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('combat-identity', 'tools/animation/combat_identity_check.gd', r'COMBAT_IDENTITY checks=[1-9][0-9]* failures=0', [], 0),
@@ -125,10 +128,31 @@ cases.append(('tricks-independent-negative-budget', 'tools/parkour/tricks_indepe
               r'T4_TRICKS_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation=budget',
               ['--', '--break=budget'], 1))
 # Tight-support camera: pre-fix instant recovery, a drifted k=50, dither to nothing and the old ledge site must go red.
-for mutation in ('damping', 'recovery50', 'floor', 'station'):
+# Iteration 2: opaque hull in the dither holes, a non-exact hull back at full fill, residents unfaded at the
+# lens and resident 7 on its old lane across the practice landing must go red too.
+for mutation in ('damping', 'recovery50', 'floor', 'station', 'mask', 'restore', 'resident', 'lane'):
     cases.append(('tight-station-negative-' + mutation, 'tools/camera/tight_station_probe.gd',
                   rf'TIGHT_STATION_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mode={mutation}',
                   ['--', '--check', '--break=' + mutation], 1))
+# Lethal pocket (ADR-024): sparring turned lethal, HP that does not carry (full / none / into a retry), an enemy that
+# never dies or dies at the first KO, a lethal clock, residents that stay or never return, skills sealed in the pocket
+# or open outside it, a city camera left off and a CPU that backs into the wall must each go red.
+for mutation in ('sparring', 'carry', 'carry_none', 'retry_carry', 'death', 'early_death', 'clock', 'npc', 'npc_return', 'skills', 'outside', 'exit', 'edge'):
+    cases.append(('lethal-fight-negative-' + mutation, 'tools/match/lethal_fight_check.gd',
+                  rf'LETHAL_FIGHT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# Blood and content (ADR-024 п. 4, п. 7): blood in a sparring, a damaged content.cfg saved over, a Reduced hit flash at
+# full strength, a card that is not remembered, a step back from the card that counts as seen, blood on a block, Off
+# that still bleeds, Ink that still drops and blood that changes the fight must each go red.
+for mutation in ('sparring', 'cfg', 'flash', 'notice', 'back', 'block', 'mode', 'ink', 'state'):
+    cases.append(('blood-content-negative-' + mutation, 'tools/fx/blood_content_check.gd',
+                  rf'BLOOD_CONTENT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# City step 0: no sealed-skill hint, no throttle, no modal from the city pause, no return to the pause must go red.
+for mutation in ('signal', 'interval', 'comfort', 'focus'):
+    cases.append(('city-controls-negative-' + mutation, 'tools/ui/city_controls_check.gd',
+                  rf'CITY_CONTROLS_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
 @contextmanager
 def isolated_profile():
     # Linux has an OS-supported data root override. macOS does not: use Godot's
@@ -193,6 +217,9 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('graphics-independent-negative-', 'ERROR: T4_GRAPHICS: '),
                           ('tricks-independent-negative-', 'ERROR: T4_TRICKS: '),
                           ('tight-station-negative-', 'ERROR: TIGHT_STATION: '),
+                          ('city-controls-negative-', 'ERROR: CITY_CONTROLS: '),
+                          ('lethal-fight-negative-', 'ERROR: LETHAL_FIGHT: '),
+                          ('blood-content-negative-', 'ERROR: BLOOD_CONTENT: '),
                           ('match-lifecycle-negative-', 'ERROR: MATCH_LIFECYCLE: ')):
         if name.startswith(scope):
             assertion_prefix = prefix

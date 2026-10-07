@@ -3,6 +3,15 @@ extends Fighter
 ## Exploration adapter. The duel controller, animations and parkour remain authoritative.
 ## Only city support/flash bounds and unavailable combat systems differ from Fighter.
 
+## Arena-dependent actions stay sealed in the city (ADR-023). A fresh press is consumed, never acted
+## on, and reported once so the HUD can say why nothing happened. No new input action is involved.
+signal sealed_action(action: String)
+const SEALED_ACTIONS: Array[String] = ["skill1", "skill2", "ultimate", "grapple_enemy"]
+## ADR-024 п. 6: for the length of a lethal pocket fight skill1, skill2 and the ultimate open; the enemy hook and
+## the Printer stay off. Set only by CityLethalFight, together with the pocket's circle (arena_center/radius).
+const POCKET_SEALED_ACTIONS: Array[String] = ["grapple_enemy"]
+var lethal_pocket: bool = false
+
 @export var support_probe_depth: float = 64.0 # PLACEHOLDER district safety depth.
 const ParkourMotor = preload("res://scripts/world/CityParkourMotor.gd")
 @export var parkour_profile: Resource = preload("res://data/world/city_parkour.tres")
@@ -25,6 +34,14 @@ func _physics_process(delta: float) -> void:
 	# Walking off a roof must use airborne controls/gravity, never a grounded jump in midair.
 	if not on_ground() and velocity.y < -0.01 and state in [State.IDLE, State.WALK, State.CROUCH, State.BLOCK]:
 		_set_state(State.JUMP)
+	# One sweep per tick covers every state (ground, air, ledge, rope); duel polling never sees them.
+	for action: String in sealed_actions():
+		if InputRouter.buffered(player_index, action) and not control_locked:
+			sealed_action.emit(action)
+
+## The actions the city consumes right now: all four in exploration, only the enemy hook inside a lethal pocket.
+func sealed_actions() -> Array[String]:
+	return POCKET_SEALED_ACTIONS if lethal_pocket else SEALED_ACTIONS
 
 func _tick_air(delta: float, intent: Dictionary) -> void:
 	if not parkour.tick(self, delta, intent):
@@ -54,16 +71,23 @@ func parkour_snapshot() -> Dictionary:
 	return get_meta("parkour_presentation", {}).duplicate()
 
 func _pressed(action: String) -> bool:
-	if action in ["skill1", "skill2", "ultimate", "grapple_enemy"]:
-		InputRouter.buffered(player_index, action)
-		return false
+	if action in sealed_actions():
+		return false # Consumed and reported by the end-of-tick sweep in _physics_process.
 	return super._pressed(action)
+
+## The city never pulls a fighter on a rope (ADR-023, ADR-024 п. 6): even a crouched generic grapple stays a
+## parkour shot, so an enemy inside a pocket cannot be hooked by another route.
+func _try_grapple(_prefer_enemy: bool) -> bool:
+	return super._try_grapple(false)
 
 func _start_flash(axis: float, jump_dash: bool = false) -> bool:
 	if not super._start_flash(axis, jump_dash):
 		return false
-	# Fighter's static clamp_arena belongs to duel scenes. Collision still uses move_and_slide.
+	# Fighter's duel circle does not apply to the open city; a lethal pocket holds the flash inside its own circle.
+	# Collision still uses move_and_slide.
 	_flash_to = _flash_from + _dash_vec * data.flash_distance
+	if lethal_pocket:
+		_flash_to = bound(_flash_to)
 	return true
 
 func floor_y() -> float:
@@ -79,8 +103,11 @@ func floor_y() -> float:
 	return -support_probe_depth
 
 func _post_move() -> void:
-	# Physical world collision supplies floor and walls; the city owns fall recovery.
+	# Physical world collision supplies floor and walls; the city owns fall recovery. Inside a lethal pocket the
+	# pocket's soft wall holds the hero like the duel circle (the enemy pushes both bodies apart, Fighter._push_radial).
 	_water_grounded = false
+	if lethal_pocket and _free():
+		_soft_wall()
 
 func restart_at(point: Vector3) -> void:
 	reset_for_round(point.x, 1)

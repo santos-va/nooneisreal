@@ -36,6 +36,11 @@ var chatter: Node
 var current_context: Dictionary = {}
 var current_fallback: String = ""
 var listen_at: float = INF
+## ADR-024 lethal pocket: residents whose lane crosses the pocket stand aside for the fight and walk their lanes again
+## after it (index → {"aside": Vector3, "route": Array, "state": motion_state}). Residents have no hurtbox, so this is
+## about the frame and the pocket, not about hits. While `fight_lock` is on nobody offers a conversation.
+var fight_hold: Dictionary = {}
+var fight_lock: bool = false
 
 func setup(target: Node3D, district_progress: CityProgress = null, story_model: CityStory = null, lower_model: CityLowerStory = null) -> void:
 	player = target
@@ -93,6 +98,10 @@ func _physics_process(delta: float) -> void:
 	if dialogue.opened:
 		if runtime >= listen_at:
 			_present(conversation_index, "listen", player.global_position)
+		return
+	if fight_lock:
+		nearest = -1
+		dialogue.prompt.visible = false
 		return
 	nearest = find_nearest()
 	dialogue.prompt.visible = nearest >= 0 and not InputRouter.ui_suppressed()
@@ -153,6 +162,8 @@ func _refresh_actors() -> void:
 			if actor_states.has(index):
 				actor.restore_motion(actor_states[index])
 			actors[index] = actor
+			if fight_hold.has(index) and not fight_hold[index].has("route"):
+				_hold_actor(index)
 		elif not active and actors.has(index):
 			actor_states[index] = actors[index].motion_state()
 			if chatter != null:
@@ -162,6 +173,77 @@ func _refresh_actors() -> void:
 		if actors.has(index):
 			# Work/rest goals describe the routine, not a command to freeze the actor.
 			actors[index].walking = not (dialogue.opened and index == conversation_index) and actors[index].work_kind.is_empty()
+
+## Every corner of a resident's lane and every straight leg between them, in world space (workers: their post).
+static func lane(index: int) -> Array[Vector3]:
+	if index >= 0 and index < 3:
+		return [CityPlaces.shops()[index].worker]
+	var home := CityNpcActor.home_for(index)
+	return [home + Vector3(-0.5, 0, -4), home + Vector3(0.5, 0, -4), home + Vector3(0.5, 0, 4), home + Vector3(-0.5, 0, 4)]
+
+
+## True when the resident's lane comes within `reach` of `center` on the ground plane (corners and legs).
+static func lane_crosses(index: int, center: Vector3, reach: float) -> bool:
+	var points := lane(index)
+	var c := Vector2(center.x, center.z)
+	for i: int in points.size():
+		var a := Vector2(points[i].x, points[i].z)
+		var b := Vector2(points[(i + 1) % points.size()].x, points[(i + 1) % points.size()].z)
+		if Geometry2D.get_closest_point_to_segment(c, a, b).distance_to(c) <= reach:
+			return true
+	return false
+
+
+## Moves every resident whose lane crosses the circle (radius + clearance) to a point `aside` metres beyond it on the
+## line from the centre through its home (never closer than the home), and stops conversations. Returns the held
+## indices, sorted.
+func hold_clear_of(center: Vector3, radius: float, clearance: float, aside: float) -> Array[int]:
+	release_hold()
+	fight_lock = true
+	if dialogue != null and dialogue.opened:
+		dialogue.close()
+	var held: Array[int] = []
+	for index: int in population.people.size():
+		if not lane_crosses(index, center, radius + clearance):
+			continue
+		var out := CityNpcActor.home_for(index) - center
+		out.y = 0.0
+		var reach := maxf(radius + clearance + aside, out.length())
+		out = out.normalized() if out.length() > 0.01 else Vector3.RIGHT
+		fight_hold[index] = {"aside": center + out * reach}
+		held.append(index)
+		if actors.has(index):
+			_hold_actor(index)
+	return held
+
+
+func _hold_actor(index: int) -> void:
+	var actor: CityNpcActor = actors[index]
+	var spot: Vector3 = to_local(fight_hold[index].aside)
+	fight_hold[index]["route"] = actor.route.duplicate()
+	fight_hold[index]["state"] = actor.motion_state()
+	var stand: Array[Vector3] = [spot]
+	actor.route = stand
+	actor.waypoint = 0
+	actor.pause_left = 0.0
+	actor.position = spot
+
+
+## Every held resident gets its own lane and its exact pre-fight motion back; conversations resume.
+func release_hold() -> void:
+	for index: int in fight_hold:
+		var entry: Dictionary = fight_hold[index]
+		if not entry.has("route"):
+			continue
+		if actors.has(index):
+			var actor: CityNpcActor = actors[index]
+			actor.route = entry.route
+			actor.restore_motion(entry.state)
+		else:
+			actor_states[index] = entry.state
+	fight_hold.clear()
+	fight_lock = false
+
 
 func _update_conversations() -> void:
 	for index: int in actors:

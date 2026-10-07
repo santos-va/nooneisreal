@@ -19,9 +19,11 @@ var conversing: bool = false
 static func home_for(index: int) -> Vector3:
 	if index >= 0 and index < 3:
 		return CityPlaces.shops()[index].worker
+	# Resident 7 walks the west side of the market court (was (2, 0, 22)): the old lane ran between the
+	# lens and the PracticeLedge landing for 0.85 s (T6 Y1, docs/Fix/2026-10-07-Camera-Readability-Iteration-2.md).
 	var homes: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO, Vector3.ZERO,
 		Vector3(-5.5, 0, -5), Vector3(3.8, 0, -11), Vector3(5.6, 0, 4), Vector3(-4, 0, 13),
-		Vector3(2, 0, 22), Vector3(-20, 0, 2), Vector3(-15, 0, -3), Vector3(25, 0, 4), Vector3(-1.7, 0, -4)]
+		Vector3(-3, 0, 23), Vector3(-20, 0, 2), Vector3(-15, 0, -3), Vector3(25, 0, 4), Vector3(-1.7, 0, -4)]
 	return homes[clampi(index, 0, homes.size() - 1)]
 
 func setup(index: int, person: Dictionary) -> void:
