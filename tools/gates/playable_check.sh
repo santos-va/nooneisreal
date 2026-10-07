@@ -75,6 +75,7 @@ cases = [
     ('gait', 'tools/animation/gait_check.gd', r'GAIT_CHECK_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('comfort-ui', 'tools/ui/comfort_ui_check.gd', r'COMFORT_UI PASS \(0 failures; mutation=\)', [], 0),
     ('match-lifecycle', 'tools/match/match_lifecycle_check.gd', r'MATCH_LIFECYCLE PASS \([1-9][0-9]* checks, 0 failures; mutation=\)', [], 0),
+    ('lethal-fight', 'tools/match/lethal_fight_check.gd', r'LETHAL_FIGHT_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('weighted-swing', 'tools/grapple/weighted_swing_check.gd', r'WEIGHTED_SWING_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('ultimate-wave', 'tools/skills/ultimate_wave_check.gd', r'ULTIMATE_WAVE_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('combat-identity', 'tools/animation/combat_identity_check.gd', r'COMBAT_IDENTITY checks=[1-9][0-9]* failures=0', [], 0),
@@ -132,6 +133,13 @@ for mutation in ('damping', 'recovery50', 'floor', 'station', 'mask', 'restore',
     cases.append(('tight-station-negative-' + mutation, 'tools/camera/tight_station_probe.gd',
                   rf'TIGHT_STATION_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mode={mutation}',
                   ['--', '--check', '--break=' + mutation], 1))
+# Lethal pocket (ADR-024): sparring turned lethal, HP that does not carry (full / none / into a retry), an enemy that
+# never dies or dies at the first KO, a lethal clock, residents that stay or never return, skills sealed in the pocket
+# or open outside it, a city camera left off and a CPU that backs into the wall must each go red.
+for mutation in ('sparring', 'carry', 'carry_none', 'retry_carry', 'death', 'early_death', 'clock', 'npc', 'npc_return', 'skills', 'outside', 'exit', 'edge'):
+    cases.append(('lethal-fight-negative-' + mutation, 'tools/match/lethal_fight_check.gd',
+                  rf'LETHAL_FIGHT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
 # City step 0: no sealed-skill hint, no throttle, no modal from the city pause, no return to the pause must go red.
 for mutation in ('signal', 'interval', 'comfort', 'focus'):
     cases.append(('city-controls-negative-' + mutation, 'tools/ui/city_controls_check.gd',
@@ -202,6 +210,7 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('tricks-independent-negative-', 'ERROR: T4_TRICKS: '),
                           ('tight-station-negative-', 'ERROR: TIGHT_STATION: '),
                           ('city-controls-negative-', 'ERROR: CITY_CONTROLS: '),
+                          ('lethal-fight-negative-', 'ERROR: LETHAL_FIGHT: '),
                           ('match-lifecycle-negative-', 'ERROR: MATCH_LIFECYCLE: ')):
         if name.startswith(scope):
             assertion_prefix = prefix

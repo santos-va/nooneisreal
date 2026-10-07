@@ -55,6 +55,11 @@ var _sealed_since: float = INF
 ## own input token, exactly as in the duel pause.
 var comfort_button: Button
 var comfort: ComfortPanel
+## ADR-024: while a lethal pocket fight runs, its HUD (LethalHud) owns the top of the screen, so the exploration
+## cards, the quest guide and the hook cue step aside. The pause stays here: CityHud is the only pause owner. Skills
+## are open in the pocket, so only the enemy hook is still answered — with the pocket's own line.
+var fight_mode: bool = false
+const POCKET_SEALED_HINT := "ENEMY HOOK SEALED IN THIS FIGHT"
 
 
 func setup(model: CityOnboarding) -> void:
@@ -312,7 +317,7 @@ func _refresh_progress() -> void:
 		_quest_totals.text += " · Сюжет не збережено"
 	if is_instance_valid(_lower_story) and not _lower_story.save_ok:
 		_quest_totals.text += " · Продовження не збережено"
-	_quest_card.show()
+	_quest_card.visible = not fight_mode
 	_refresh_journal()
 	_refresh_quest_guide()
 
@@ -441,7 +446,7 @@ func _refresh_quest_guide() -> void:
 	if _quest_guide == null:
 		return
 	_quest_guide.hide()
-	if paused_ui or InputRouter.ui_suppressed() or not is_instance_valid(_player) or not is_instance_valid(_progress):
+	if fight_mode or paused_ui or InputRouter.ui_suppressed() or not is_instance_valid(_player) or not is_instance_valid(_progress):
 		return
 	if not _progress is CityProgress:
 		return
@@ -575,6 +580,25 @@ func _on_stamina(value: float, maximum: float) -> void:
 	_refresh_resources()
 
 
+## Enter / leave the lethal pocket's HUD arrangement (CityLethalFight). Leaving shows the journal card again.
+func set_fight_mode(value: bool) -> void:
+	fight_mode = value
+	_sealed_left = 0.0
+	_sealed_since = INF
+	if _status_card != null:
+		_status_card.visible = not value
+	if _quest_guide != null:
+		_quest_guide.hide()
+	if _aim_cue != null:
+		_aim_cue.hide()
+	if _quest_card != null:
+		if value:
+			_quest_card.hide()
+		else:
+			_refresh_progress()
+	_refresh_traversal_hint()
+
+
 func _on_sealed_action(_action: String) -> void:
 	if paused_ui or InputRouter.ui_suppressed() or _sealed_since < SEALED_HINT_INTERVAL:
 		return
@@ -598,7 +622,7 @@ func _process(_delta: float) -> void:
 	if _aim_cue == null:
 		return
 	_aim_cue.hide()
-	if not is_instance_valid(_player) or paused_ui or InputRouter.ui_suppressed():
+	if fight_mode or not is_instance_valid(_player) or paused_ui or InputRouter.ui_suppressed():
 		return
 	var camera := get_viewport().get_camera_3d()
 	if camera == null or not camera.has_meta("harpoon_aim"):
@@ -639,7 +663,7 @@ func _refresh_traversal_hint() -> void:
 	if not is_instance_valid(_player) or paused_ui or InputRouter.ui_suppressed():
 		return
 	if _sealed_left > 0.0:
-		hint_label.text = SEALED_HINT
+		hint_label.text = POCKET_SEALED_HINT if fight_mode else SEALED_HINT
 		hint_label.show()
 		return
 	if not _story_prompt.is_empty():

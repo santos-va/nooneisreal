@@ -23,6 +23,8 @@ var progress: CityProgress
 var cosmetics: CityCosmetics
 var journey: CityJourney
 @export var journey_save_path: String = CityJourney.SAVE_PATH
+## ADR-024: the first lethal fight in the central_court pocket (entry at its safe point).
+var lethal: CityLethalFight
 @export var journey_save_enabled: bool = true
 var _prior_free_move: bool
 var _prior_profile: String
@@ -119,6 +121,10 @@ func _ready() -> void:
 	npc_director.conversation_started.connect(camera_rig.begin_conversation)
 	npc_director.conversation_ended.connect(camera_rig.end_conversation)
 	hud.bind_quest_context(npc_director)
+	lethal = CityLethalFight.new()
+	lethal.name = "LethalFight"
+	add_child(lethal)
+	lethal.setup(self)
 	_reset_observation()
 
 func _physics_process(delta: float) -> void:
@@ -265,7 +271,7 @@ func _interact_lower(id: String) -> bool:
 
 func _update_story_interaction() -> void:
 	hud.set_story_prompt("")
-	if InputRouter.ui_suppressed() or npc_director.find_nearest() >= 0:
+	if lethal.active or InputRouter.ui_suppressed() or npc_director.find_nearest() >= 0:
 		return
 	var selected: String = ""
 	var best: float = INF
@@ -276,6 +282,7 @@ func _update_story_interaction() -> void:
 				best = distance
 				selected = id
 	if selected.is_empty():
+		_update_lethal_entry()
 		return
 	var gamepad: bool = camera_rig.aim.last_gamepad
 	var action: String = story.text("prompt_" + selected)
@@ -289,6 +296,14 @@ func _update_story_interaction() -> void:
 	if InputRouter.just_pressed(1, "interact"):
 		interact_story(selected)
 
+## The lethal pocket's entry is an explicit interaction at its safe point, prompted like the story points.
+func _update_lethal_entry() -> void:
+	if not lethal.can_enter():
+		return
+	hud.set_story_prompt(lethal.prompt_text(camera_rig.aim.last_gamepad))
+	if InputRouter.just_pressed(1, "interact"):
+		lethal.open()
+
 func _reset_observation() -> void:
 	_last_position = player.global_position
 	_last_grounded = player.on_ground()
@@ -297,6 +312,8 @@ func _reset_observation() -> void:
 
 func recover_to_spawn() -> void:
 	# Fall recovery resets runtime motion, but retains the last safe place.
+	if lethal != null and lethal.active:
+		lethal.close("abort")
 	ropes.clear_match()
 	player.restart_at(journey.resume_position())
 	camera_rig.reset_view()

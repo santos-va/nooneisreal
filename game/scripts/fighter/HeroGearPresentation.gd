@@ -12,6 +12,8 @@ const MAX_ACCEL: float = 18.0
 const PIN_STANDOFF_CHOKO: float = 0.003
 const PIN_STANDOFF_SKEA: float = 0.0032
 const MAX_TOTAL_FOLD: float = deg_to_rad(15.0)
+## The heroes this gear is authored for; SkeletalRig builds it for no one else (a CPU enemy keeps its own model).
+const HEROES: Array[String] = ["choko", "skea"]
 var fighter: Fighter
 var rig: SkeletalRig
 var garment = Garment.new()

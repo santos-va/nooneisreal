@@ -84,6 +84,11 @@ const WATER_GETUP_EXTRA := 6      # Stage-River: getting up out of the water is 
 # free movement, GameState.free_move — numbers: T5 Арес, docs/GDD/02-Combat-System.md § Вільний 3D-рух
 # (per-fighter ones live in CharacterData: block_arc_deg, circle_speed_mult, grapple_cone_deg)
 const ARENA_RADIUS := 20.0        # `arena_radius`, ДИЗАЙН, PLACEHOLDER (Арес 2026-10-03, Р4; ≠ ARENA_HALF_WIDTH since then)
+## The circle this fighter's fight holds it in (free movement). The duel keeps ARENA_RADIUS around the origin; a city
+## pocket gives its fighters its own centre and radius (CityLethalFight, ADR-024). Instance state, so a pocket bound
+## never outlives the fight or leaks into another scene. The static clamp_arena() stays the duel's circle.
+var arena_center: Vector3 = Vector3.ZERO
+var arena_radius: float = ARENA_RADIUS
 const MIN_LINE := 0.05            # below this the direction to the opponent is undefined: keep the last
 
 @export var player_index: int = 1
@@ -331,6 +336,12 @@ func heal(amount: float) -> void:
 
 func heal_full() -> void:
 	hp = data.max_hp
+	hp_changed.emit(hp, data.max_hp)
+
+
+## A lethal fight's next round starts with the carried HP (MatchFlow.carried_hp), never above max.
+func set_round_hp(value: float) -> void:
+	hp = clampf(value, 0.0, data.max_hp)
 	hp_changed.emit(hp, data.max_hp)
 
 
@@ -725,8 +736,14 @@ func _tick_air(delta: float, intent: Dictionary) -> void:
 		_set_state(State.IDLE)
 
 
-## Separate from the charged signature dash/flash skill.
+## Separate from the charged signature dash/flash skill. A hero without its own row keeps Choko's (as before); a
+## CPU-only enemy never borrows a hero's tuning — it gets the neutral DodgeProfile defaults.
+static var _neutral_dodge: DodgeProfile = DodgeProfile.new()
+
+
 func dodge_profile() -> DodgeProfile:
+	if data.cpu_only and not DODGE_PROFILES.has(data.id):
+		return _neutral_dodge
 	return DODGE_PROFILES.get(data.id, DODGE_PROFILES["choko"])
 
 
@@ -866,7 +883,7 @@ func _start_flash(axis: float, jump_dash: bool = false) -> bool:
 	_water_grounded = false
 	if _free():
 		_aim_flash()
-		_flash_to = clamp_arena(global_position + _dash_vec * data.flash_distance)
+		_flash_to = bound(global_position + _dash_vec * data.flash_distance)
 	else:
 		var tx := clampf(global_position.x + float(dash_dir) * data.flash_distance, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH)
 		_flash_to = Vector3(tx, global_position.y, 0.0)
@@ -1376,7 +1393,7 @@ func beat_flash(to: Vector3) -> void:
 		return
 	dodging = false
 	_flash_from = global_position
-	_flash_to = clamp_arena(Vector3(to.x, global_position.y, to.z))
+	_flash_to = bound(Vector3(to.x, global_position.y, to.z))
 	flashing = true
 	dash_dir = facing
 	_flash_travel_frames = FLASH_TRAVEL
@@ -1632,10 +1649,17 @@ func _spawn_ragdoll(impulse: Vector3, muscles: bool) -> void:
 	_clear_ragdoll()
 	if skeletal != null:
 		# launch 7.1: the hero itself falls — the ragdoll runs on the skeleton (BoneRagdoll)
+		var snapshot := animator.part_snapshot()
+		# Н7: Jolt rejects a non-uniform scale on a body ("not supported by Jolt"). receive_hit squashes the drawing
+		# (picture only) right before a KO / knockdown, and the skeleton carried that scale into every PhysicalBone3D.
+		# The bone ragdoll starts from the unsquashed body, as Ragdoll.build_from orthonormalizes its parts.
+		if squash > 0.0:
+			squash = 0.0
+			_apply_squash()
 		var br := BoneRagdoll.new()
 		_ragdoll = br
 		get_parent().add_child(br)
-		br.build_on(skeletal, animator.part_snapshot(), impulse, muscles)
+		br.build_on(skeletal, snapshot, impulse, muscles)
 	else:
 		_ragdoll = Ragdoll.new()
 		get_parent().add_child(_ragdoll)
@@ -1657,7 +1681,7 @@ func _tick_launched() -> void:
 		_set_state(State.KNOCKDOWN)
 		return
 	var p := _ragdoll.pelvis_position()
-	if _free() and not _splat_used and _flat(p).length() >= ARENA_RADIUS:
+	if _free() and not _splat_used and _flat(p - arena_center).length() >= arena_radius:
 		_wall_splat(p)
 		return
 	global_position = _ground_spot(p)
@@ -1677,9 +1701,9 @@ func _tick_launched() -> void:
 ## The flying ragdoll met the arena wall: end it, pin the body to the wall with its back to it,
 ## facing the centre. No damage. Hurtbox stays on, so the attacker gets a follow-up window.
 func _wall_splat(p: Vector3) -> void:
-	var n := _flat(p).normalized()
+	var n := _flat(p - arena_center).normalized()
 	_clear_ragdoll()
-	global_position = clamp_arena(Vector3(p.x, floor_y(), p.z))
+	global_position = bound(Vector3(p.x, floor_y(), p.z))
 	velocity = Vector3.ZERO
 	_set_forward(-n)
 	animator.visible = veil_frames <= 0
@@ -1862,14 +1886,25 @@ static func clamp_arena(p: Vector3) -> Vector3:
 	return Vector3(f.x, p.y, f.z)
 
 
+## This fighter's own circle (arena_center, arena_radius); the plane keeps the static clamp. With the defaults it is
+## clamp_arena() exactly: x − 0 and 0 + x are the same floats.
+func bound(p: Vector3) -> Vector3:
+	if not GameState.free_move:
+		return clamp_arena(p)
+	var f := Vector3(p.x - arena_center.x, 0.0, p.z - arena_center.z)
+	if f.length() > arena_radius:
+		f = f.normalized() * arena_radius
+	return Vector3(arena_center.x + f.x, p.y, arena_center.z + f.z)
+
+
 ## Free movement soft wall (docs/GDD/02 § Коло арени): at the circle the outward radial part of the
 ## velocity is removed and the tangential part stays — the fighter slides along the edge.
 func _soft_wall() -> void:
-	var f := _flat(global_position)
-	if f.length() <= ARENA_RADIUS:
+	var f := _flat(global_position - arena_center)
+	if f.length() <= arena_radius:
 		return
 	var n := f.normalized()
-	global_position = clamp_arena(global_position)
+	global_position = bound(global_position)
 	var out := velocity.x * n.x + velocity.z * n.z
 	if out > 0.0:
 		velocity.x -= out * n.x
@@ -1880,7 +1915,7 @@ func _soft_wall() -> void:
 func _ground_spot(p: Vector3) -> Vector3:
 	if not _free():
 		return Vector3(clampf(p.x, -ARENA_HALF_WIDTH, ARENA_HALF_WIDTH), 0.0, 0.0)
-	return clamp_arena(Vector3(p.x, 0.0, p.z))
+	return bound(Vector3(p.x, 0.0, p.z))
 
 
 # --- water (river stage) -------------------------------------------------------------------------
@@ -1980,8 +2015,8 @@ func _push_radial() -> void:
 		return
 	var dir := d / l if l > 0.0001 else -forward
 	var push := dir * (MIN_SEPARATION - l) * 0.5
-	global_position = clamp_arena(global_position + push)
-	opponent.global_position = clamp_arena(opponent.global_position - push)
+	global_position = bound(global_position + push)
+	opponent.global_position = opponent.bound(opponent.global_position - push)
 
 
 func _update_hitbox_debug() -> void:

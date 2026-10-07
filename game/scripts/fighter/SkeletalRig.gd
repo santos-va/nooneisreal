@@ -97,6 +97,8 @@ var foot_contact = FootContact.new()
 var cadence = Cadence.new()
 var _crouch_exit_frames: int = -1
 var sword: SwordPresentation
+## The Lamplighter's procedural pole (weapon_kind "staff", ADR-024); null for every other fighter.
+var staff: StaffPresentation
 var _sword_mirror_base: Dictionary = {}
 ## PLACEHOLDER art duration: return to stance after a swing, never blend into a contact/reaction.
 @export_range(0.0, 0.2) var attack_return_seconds: float = 0.10
@@ -144,7 +146,13 @@ func setup(f: Fighter) -> void:
 		sword.name = "SwordPresentation"
 		add_child(sword)
 		sword.setup(f, self)
-	if hero_skeleton != null:
+	elif f.data.weapon_kind == "staff":
+		staff = StaffPresentation.new()
+		staff.name = "StaffPresentation"
+		add_child(staff)
+		staff.setup(f, self)
+	# Hero gear (Choko's watch, Skea's book and kunai) belongs to the two heroes only: any other model keeps its own.
+	if hero_skeleton != null and f.data.id in HeroGear.HEROES:
 		gear = HeroGear.new()
 		gear.name = "HeroGear"
 		add_child(gear)
@@ -559,6 +567,8 @@ func _on_mannequin_updated() -> void:
 		sword.update_pose()
 	if gear != null:
 		gear.update_pose()
+	if staff != null:
+		staff.update_pose()
 	if ragdoll == null and parkour_motion.finish_roll_support(_fighter):
 		if sword != null:
 			sword.update_pose()

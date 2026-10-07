@@ -84,6 +84,18 @@ func setup(data: CharacterData) -> void:
 		blade.material_override = acc
 		blade.position = Vector3(0.02, -0.55, 0)
 		(parts["forearm_r"]["pivot"] as Node3D).add_child(blade)
+	elif data.weapon_kind == "staff":
+		# Capsule view of the Lamplighter's pole (the skeletal view uses StaffPresentation): a long shaft through the
+		# right fist, one third below it. PLACEHOLDER length ≈ 4/3 of the body, docs/Art/Prompts/Prompt-Library.md § 19.
+		var pole := MeshInstance3D.new()
+		var shaft := CylinderMesh.new()
+		shaft.top_radius = 0.025
+		shaft.bottom_radius = 0.025
+		shaft.height = 2.27
+		pole.mesh = shaft
+		pole.material_override = acc
+		pole.position = Vector3(0.0, -0.3 - 2.27 / 6.0, 0)
+		(parts["forearm_r"]["pivot"] as Node3D).add_child(pole)
 	elif data.weapon_kind == "fans":
 		for side in ["forearm_l", "forearm_r"]:
 			var fan := MeshInstance3D.new()
