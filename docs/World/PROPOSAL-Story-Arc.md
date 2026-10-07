@@ -5,6 +5,11 @@
 > The canon lives in [[Lore]], [[Skea]] and [[Choko]]. **Nothing here becomes canon until Santos answers "yes" to an
 > item by its number**; then Klio moves that item into [[Lore]] with a meeting log, and strikes it here.
 >
+> **Status (2026-10-07):** after [[ADR-024-Lethal-Fights-And-First-Enemy]] and [[PROPOSAL-First-Enemy]] Q1–Q5 (Santos
+> delegated them to Klio's recommendations: «все дозволено») the Act I row in § 4 is aligned. Choko × Skea is a
+> **friendly sparring**; it **complements** the H11 echo frame (arcade and versus stay Echo Trial), it does not replace it.
+> The "Skea not himself" fight is removed. The arc table itself is still a proposal.
+>
 > **Status (2026-10-03, latest):** Santos — «H12–H14 — у канон» → H12-A, H13, H14-A are canon too ([[Lore]] § Портрет,
 > пристрій і помічник). Still a proposal: H8 (open), the arc table, endings (Q6), § 5.
 >
@@ -285,7 +290,7 @@ intros/endings now. Stages are the ones that already exist or are planned on [[C
 | part | beat | playable fight | stage |
 |---|---|---|---|
 | **Prologue — The Catacombs** | Night. Choko waits in the street; something goes wrong below; he forces his way in and finds Skea unconscious. (Canon up to here.) | Tutorial: Choko vs. an echo in the dark | back alley (night) |
-| **Act I — Half** | Skea wakes up wrong: the grin, the silence. The squad looks into the disappearances; the first stolen body walks the market. | Choko vs. Skea — Skea not himself (the first "is it really him?" fight) · Skea vs. a page | market street, bazaar |
+| **Act I — Half** | Skea wakes up wrong: the grin, the silence. The squad looks into the disappearances; the first stolen body walks the market. | Choko vs. Skea — friendly sparring, no blood, no death ([[ADR-024-Lethal-Fights-And-First-Enemy]]) · Choko or Skea vs. the first page, working label «Ліхтарник» (Lamplighter) — to the death; its imprint enters the book only in Skea's run ([[PROPOSAL-First-Enemy]]) | market street, bazaar |
 | **Act II — Pages** | Choko's device tries to print the curser's face — and keeps printing Skea's smile (H12). The ∞8 trail leads from page to page. Skea cuts one down; its imprint enters the book (H5). The amulet calls back the teammate's shadow for one fight. **Shaper appears** — Skea's face, Skea's smile, eyes that smile. | Skea vs. page · Choko vs. Shaper (wearing Skea) | main street, river |
 | **Act III — No One Is Real** | The clear portrait is finally glued into the book; the trail sharpens; through dialogue they learn his name (H12). The Quiet One begins: streets empty, people turn to shadows. The Eight show Choko what his watch did in the catacombs (H1-A). | Skea vs. Shaper | the clock tower (H9) |
 | **Finale** | Choko and Skea vs. the Quiet One under the clock. | duo / tag fight (future mode) | fountain square at night, CRONSHIFT neon |
@@ -341,4 +346,4 @@ intros/endings now. Stages are the ones that already exist or are planned on [[C
 
 ## Related
 - [[Lore]] · [[Skea]] · [[Choko]] · [[Roster]] · [[Cronshift]] · [[2026-10-03-Skea-Curse-Lore-Answers]] · [[2026-10-03-Choko-Skea-Bond-and-Curse]] · [[03-Skills-Framework]] · [[01-Vision]] · [[index]]
-- [[PROPOSAL-First-Enemy]] — кандидати першого ворога (2026-10-07, пропозиція)
+- [[PROPOSAL-First-Enemy]] — кандидати першого ворога (2026-10-07; Q1–Q5 прийнято) · [[ADR-024-Lethal-Fights-And-First-Enemy]]
