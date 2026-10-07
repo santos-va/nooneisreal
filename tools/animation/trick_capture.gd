@@ -96,7 +96,7 @@ func route(hero: String, required: String) -> void:
 	world.add_child(f)
 	f.set_physics_process(false)
 	f.skeletal.set_physics_process(false)
-	f.restart_at(Vector3(4, 0, 31.4) if required == "wall_kick" else Vector3(0, 3, 20))
+	f.restart_at(Vector3(4, 0, 18.2) if required == "wall_kick" else Vector3(0, 3, 20))
 	if not drawn_hand.is_empty() and f.skeletal.sword != null:
 		f.sword_drawn = true
 		f.sword_hand = drawn_hand

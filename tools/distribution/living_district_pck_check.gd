@@ -344,7 +344,7 @@ func check_camera_isolation(fighter: Node3D, camera: Camera3D, stage: Node3D) ->
 	var camera_pose: Transform3D = camera.global_transform
 	camera.global_position = fighter.global_position + Vector3.UP * 1.2
 	proximity.update(camera, 0.5)
-	check(late.material_override != shared and float(late.material_override.get_shader_parameter("camera_visibility")) < 0.01 and effective_camera_visibility(shared) == original_visibility, "Packed camera fades late hero gear without fading shared NPC material")
+	check(late.material_override != shared and is_equal_approx(float(late.material_override.get_shader_parameter("camera_visibility")), float(proximity.get("fill_floor"))) and effective_camera_visibility(shared) == original_visibility, "Packed camera fades late hero gear to the fill floor without fading shared NPC material")
 	proximity.reset()
 	check(late.material_override == shared and effective_camera_visibility(shared) == original_visibility, "Packed camera reset restores exact shared material pointer")
 	camera.global_transform = camera_pose

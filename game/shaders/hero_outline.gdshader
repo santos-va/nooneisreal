@@ -2,6 +2,7 @@
 shader_type spatial;
 render_mode cull_front, unshaded, depth_draw_opaque;
 
+#define CAMERA_PROXIMITY_OUTLINE
 #include "res://shaders/camera_proximity.gdshaderinc"
 
 uniform vec4 outline_color : source_color = vec4(0.06,0.05,0.09,1.0);
@@ -15,6 +16,6 @@ void vertex() {
 }
 
 void fragment() {
-	if (camera_proximity_hidden(FRAGCOORD.xy) || protected_face > 0.001) { discard; }
+	if (camera_outline_hidden(FRAGCOORD.xy) || protected_face > 0.001) { discard; }
 	ALBEDO = outline_color.rgb;
 }

@@ -129,7 +129,7 @@ func _route(hero: String, wall_run: bool) -> void:
 	world.add_child(fighter)
 	fighter.set_physics_process(false)
 	fighter.skeletal.set_physics_process(false)
-	var start: Vector3 = Vector3(14, 0, 30.7) if wall_run else Vector3(4, 0, 31.4)
+	var start: Vector3 = Vector3(14, 0, 30.7) if wall_run else Vector3(4, 0, 18.2)
 	fighter.restart_at(Vector3(-2.0, 0.0, 0.0) if fixtures else start)
 	var input: Node = root.get_node("InputRouter")
 	input.apply_profile("solo", false)

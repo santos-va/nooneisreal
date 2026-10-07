@@ -18,8 +18,25 @@ extends SceneTree
 ## gives the drawn silhouette; hero_px = changed pixels inside it, so the hero's shadow is excluded); the production camera
 ## cull mask contains that layer, lights keep their full cull masks, gameplay/physics are untouched.
 ## failures counts harness integrity only (missing hang/kick/drop/landing), not readability.
+##
+## Stations: practice = the shipped PracticeLedge grip face (read from CityDistrict); tight = the
+## pre-2026-10-07 ledge rebuilt as a probe-only fixture 1.8 m from SouthBoundary; open = control.
+## Regression (headless, tools/gates/playable_check.sh): --check [--break=damping|floor|station]
+##   Subject: for every route and tick of the declared set,
+##   S1 arm growth per tick <= follow * (1 - exp(-production rate * dt)) on the tight kick (damping law);
+##   S2 practice station: hang and post-landing ticks keep >= 4/6 key points and visibility >= 0.85;
+##   S3 tight kick: applied fill >= the proximity fill floor and the ink outline stays at 1.
+##   Sentinel: TIGHT_STATION_COMPLETE checks=N failures=M mode=<break or none>; failures print
+##   "TIGHT_STATION: ..." errors. PLACEHOLDER thresholds from docs/Plans/2026-10-07-Tight-Support-Camera.md.
 
-const STATIONS := {"tight": Vector3(4, 0, 31.4), "open": Vector3(12, 0, -3.3)}
+const TIGHT_STATION := Vector3(4, 0, 31.4)
+const TIGHT_LEDGE_CENTER := Vector3(4, 1.4, 29) # CityDistrict.gd PracticeLedge at f27fd67
+const LEDGE_SIZE := Vector3(2.8, 2.8, 2.4)
+const OPEN_STATION := Vector3(12, 0, -3.3)
+const STATION_GAP: float = 1.2 # start this far from the grip face, as the original fixtures did
+const MIN_KEYPOINTS: float = 4.0 / 6.0 # PLACEHOLDER (plan step 2)
+const MIN_VISIBILITY: float = 0.85 # PLACEHOLDER (plan step 2)
+const SETTLED_HANG_TICKS: int = 10
 const KEYPOINTS: Array[String] = ["Head", "LeftHand", "RightHand", "Hips", "LeftFoot", "RightFoot"]
 const HERO_LAYER: int = 1 << 19
 const IDLE_TICKS: int = 30
@@ -32,12 +49,20 @@ const ALL_LAYERS: int = 0xFFFFFFFF
 
 var folder: String = "/tmp/nir-tight-station-probe"
 var heroes: Array[String] = ["choko", "skea"]
-var stations: Array[String] = ["tight", "open"]
+var stations: Array[String] = ["practice", "tight", "open"]
+var check_mode: bool = false
+var break_mode: String = "none"
+var out_given: bool = false
+var checks: int = 0
+var check_failures: int = 0
+var after_process: Node
+var check_routes: Array[Array] = []
 var transitions: Array[String] = ["hang", "drop", "kick"]
 var orbit: float = 0.0
 var profile: String = "high"
 var png_every: int = 6
 var jpg: bool = false
+var arm_recovery_override: float = -1.0
 var sample_every: int = 3
 var native: bool = false
 var trace: Array[Dictionary] = []
@@ -63,6 +88,11 @@ func run() -> void:
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--out="):
 			folder = argument.trim_prefix("--out=")
+			out_given = true
+		elif argument == "--check":
+			check_mode = true
+		elif argument.begins_with("--break="):
+			break_mode = argument.trim_prefix("--break=")
 		elif argument.begins_with("--hero="):
 			heroes.assign(Array(argument.trim_prefix("--hero=").split(",")))
 		elif argument.begins_with("--station="):
@@ -73,6 +103,8 @@ func run() -> void:
 			orbit = float(argument.trim_prefix("--orbit="))
 		elif argument.begins_with("--profile="):
 			profile = argument.trim_prefix("--profile=")
+		elif argument.begins_with("--arm-recovery-rate="):
+			arm_recovery_override = float(argument.trim_prefix("--arm-recovery-rate="))
 		elif argument == "--jpg":
 			jpg = true
 		elif argument.begins_with("--png-every="):
@@ -80,7 +112,18 @@ func run() -> void:
 		elif argument.begins_with("--sample-every="):
 			sample_every = maxi(1, int(argument.trim_prefix("--sample-every=")))
 	native = DisplayServer.get_name() != "headless"
-	DirAccess.make_dir_recursive_absolute(folder)
+	if check_mode:
+		_declare_check_routes()
+	if not check_mode or out_given:
+		DirAccess.make_dir_recursive_absolute(folder)
+	# Reads happen after every node's _process (CityCamera applies proximity there), also headless.
+	var helper := GDScript.new()
+	helper.source_code = "extends Node\nsignal processed\nfunc _process(_delta: float) -> void:\n\tprocessed.emit()\n"
+	helper.reload()
+	after_process = Node.new()
+	after_process.set_script(helper)
+	after_process.process_priority = 1000
+	root.add_child(after_process)
 	root.size = Vector2i(960, 640)
 	await process_frame
 	game = root.get_node("GameState")
@@ -98,11 +141,16 @@ func run() -> void:
 	if native:
 		_build_measure_viewports()
 	summary_rows.append("case,segment,ticks,arm_desired,arm_hit_min,arm_hit_med,arm_hit_max,arm_ratio_med,lift_med,cam_head_min,cam_head_med,cam_body_min,cam_body_med,visibility_min,visibility_med,visibility_max,applied_min,keypoints_visible_min,keypoints_visible_med,hero_px_frac_med,hero_px_frac_min,hero_only_px_frac_med,world_occluded_med,cam_in_solid_ticks,near_plane_overlap_ticks,near_plane_overlap_21_9_ticks,clearance_min,camera_y_max,arm_step_max,visibility_step_max,samples")
-	for hero: String in heroes:
-		for station: String in stations:
-			for transition: String in transitions:
-				await route(hero, station, transition)
 	var expected: int = heroes.size() * stations.size() * transitions.size()
+	if check_mode:
+		expected = check_routes.size()
+		for spec: Array in check_routes:
+			await route(spec[0], spec[1], spec[2])
+	else:
+		for hero: String in heroes:
+			for station: String in stations:
+				for transition: String in transitions:
+					await route(hero, station, transition)
 	if routes.size() != expected:
 		failures += 1
 		push_error("TIGHT_STATION_PROBE incomplete route set %d/%d" % [routes.size(), expected])
@@ -118,18 +166,24 @@ func run() -> void:
 		"images": saved, "failures": failures, "routes": routes, "trace": trace,
 		"limits": "Station starts, not a continuous traversal; Linux llvmpipe Compatibility is not M3 Forward+; physics raycasts ignore visual-only meshes (pixel coverage covers them).",
 	}
-	var file := FileAccess.open(folder.path_join("receipt.json"), FileAccess.WRITE)
-	if file == null:
-		failures += 1
-	else:
-		file.store_string(JSON.stringify(receipt, "\t") + "\n")
-		file.close()
-	var csv := FileAccess.open(folder.path_join("summary.csv"), FileAccess.WRITE)
-	if csv == null:
-		failures += 1
-	else:
-		csv.store_string("\n".join(summary_rows) + "\n")
-		csv.close()
+	if check_mode:
+		_evaluate()
+		receipt["checks"] = checks
+		receipt["check_failures"] = check_failures
+		receipt["break"] = break_mode
+	if not check_mode or out_given:
+		var file := FileAccess.open(folder.path_join("receipt.json"), FileAccess.WRITE)
+		if file == null:
+			failures += 1
+		else:
+			file.store_string(JSON.stringify(receipt, "\t") + "\n")
+			file.close()
+		var csv := FileAccess.open(folder.path_join("summary.csv"), FileAccess.WRITE)
+		if csv == null:
+			failures += 1
+		else:
+			csv.store_string("\n".join(summary_rows) + "\n")
+			csv.close()
 	if graphics != null:
 		graphics.set_profile(old_profile)
 	for singleton: String in ["Sfx", "UltMusic", "Music"]:
@@ -142,6 +196,15 @@ func run() -> void:
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
 		OS.delay_msec(1)
+	if after_process != null:
+		after_process.queue_free()
+	if check_mode:
+		if failures > 0:
+			check_failures += failures
+			push_error("TIGHT_STATION: harness incomplete (%d)" % failures)
+		print("TIGHT_STATION_COMPLETE checks=%d failures=%d mode=%s" % [checks, check_failures, break_mode])
+		quit(1 if check_failures else 0)
+		return
 	print("TIGHT_STATION_PROBE_COMPLETE routes=%d ticks=%d images=%d failures=%d" % [routes.size(), trace.size(), saved, failures])
 	quit(1 if failures else 0)
 
@@ -184,7 +247,8 @@ func route(hero: String, station_id: String, transition: String) -> void:
 	if profile != "high" and profile != "project-default":
 		id += "_" + profile
 	var output: String = folder.path_join(id)
-	DirAccess.make_dir_recursive_absolute(output)
+	if not check_mode or out_given:
+		DirAccess.make_dir_recursive_absolute(output)
 	game.p1_character = hero
 	# Project classes stay dynamic: a --script SceneTree compiles before autoloads exist.
 	var world = load("res://scenes/world/CityWorld.tscn").instantiate()
@@ -203,7 +267,16 @@ func route(hero: String, station_id: String, transition: String) -> void:
 	world.npc_director.save_enabled = false
 	var actor = world.player
 	var rig = world.camera_rig
-	var station: Vector3 = STATIONS[station_id]
+	var production_rate: float = rig.arm_recovery_rate
+	var production_floor: float = rig.proximity.fill_floor
+	if arm_recovery_override >= 0.0:
+		rig.arm_recovery_rate = arm_recovery_override
+	if break_mode == "damping":
+		rig.arm_recovery_rate = 1.0e6 # Negative control: the pre-fix instant recovery.
+	elif break_mode == "floor":
+		rig.proximity.fill_floor = 0.0 # Negative control: the pre-fix dither to nothing, line included.
+		rig.proximity.keep_outline = false
+	var station: Vector3 = _station_point(world, station_id)
 	input.v_clear(1)
 	actor.restart_at(station)
 	rig.reset_view()
@@ -254,6 +327,7 @@ func route(hero: String, station_id: String, transition: String) -> void:
 		var sample: bool = native and (tick % sample_every == 0)
 		if sample:
 			_sync_measure(rig.camera, actor)
+		await after_process.processed
 		if native:
 			await RenderingServer.frame_post_draw
 		var snapshot: Dictionary = actor.parkour_snapshot()
@@ -308,12 +382,97 @@ func route(hero: String, station_id: String, transition: String) -> void:
 	var segments: Dictionary = _summarize(id, rows)
 	routes.append({"case": id, "hero": hero, "station": station_id, "station_point": vec(station),
 		"transition": transition, "ok": ok, "hang_ticks": hang_ticks, "action_tick": action_tick,
+		"production_rate": production_rate, "follow": rig.follow_distance, "production_floor": production_floor,
 		"landed_tick": landed_tick, "kick_seen": kick_seen, "drop_seen": drop_seen,
 		"ticks": rows.size(), "images": saved - images_before, "segments": segments})
 	print("TIGHT_STATION_PROBE_ROUTE case=%s ok=%s ticks=%d hang=%d action=%d landed=%d" % [id, ok, rows.size(), hang_ticks, action_tick, landed_tick])
 	world.queue_free()
 	await process_frame
 	await physics_frame
+
+func _declare_check_routes() -> void:
+	# Each negative control runs only the routes its broken property is measured on.
+	match break_mode:
+		"damping", "floor":
+			check_routes.assign([["choko", "tight", "kick"]])
+		"station":
+			check_routes.assign([["choko", "tight", "kick"]])
+		_:
+			for hero: String in ["choko", "skea"]:
+				for transition: String in ["hang", "drop", "kick"]:
+					check_routes.append([hero, "practice", transition])
+				check_routes.append([hero, "tight", "kick"])
+
+func _station_point(world: Node3D, station_id: String) -> Vector3:
+	match station_id:
+		"tight":
+			# Rebuild the old ledge with the district's own builder: same collision layer and material.
+			world.district._box("ProbeTightLedge", TIGHT_LEDGE_CENTER, LEDGE_SIZE, "stone", 9)
+			return TIGHT_STATION
+		"practice":
+			var ledge: Node3D = world.district.get_node_or_null("PracticeLedge") as Node3D
+			var shape: BoxShape3D = null
+			if ledge != null:
+				for child: Node in ledge.get_children():
+					if child is CollisionShape3D and (child as CollisionShape3D).shape is BoxShape3D:
+						shape = (child as CollisionShape3D).shape as BoxShape3D
+			if shape == null:
+				failures += 1
+				push_error("TIGHT_STATION_PROBE missing PracticeLedge collision")
+				return OPEN_STATION
+			var face: float = ledge.global_position.z + shape.size.z * 0.5
+			return Vector3(ledge.global_position.x, 0, face + STATION_GAP)
+	return OPEN_STATION
+
+func _check(ok: bool, label: String) -> void:
+	checks += 1
+	if not ok:
+		check_failures += 1
+		push_error("TIGHT_STATION: " + label)
+
+func _evaluate() -> void:
+	for route_record: Dictionary in routes:
+		var id: String = route_record.case
+		var rows: Array[Dictionary] = []
+		for row: Dictionary in trace:
+			if row.case == id:
+				rows.append(row)
+		_check(bool(route_record.ok) and not rows.is_empty(), id + " route reached its declared phases")
+		if rows.is_empty():
+			continue
+		var station: String = route_record.station
+		var transition: String = route_record.transition
+		if station == "tight" and transition == "kick" and break_mode in ["none", "damping"]:
+			# S1: the outward growth law of CityCamera._limit_arm_recovery at its production rate.
+			var bound: float = float(route_record.follow) * (1.0 - exp(-float(route_record.production_rate) / 60.0)) + 0.005
+			var worst: float = 0.0
+			for index: int in range(1, rows.size()):
+				worst = maxf(worst, float(rows[index].arm_hit) - float(rows[index - 1].arm_hit))
+			_check(worst <= bound, "%s arm outward growth %.3f m/tick <= %.3f" % [id, worst, bound])
+		if station == "tight" and transition == "kick" and break_mode in ["none", "floor"]:
+			# S3: the fill never thins below its floor and the ink line stays on every tick.
+			var floor_value: float = float(route_record.production_floor)
+			var low_fill: float = INF
+			var low_outline: float = INF
+			for row: Dictionary in rows:
+				low_fill = minf(low_fill, float(row.applied) if row.applied != null else 1.0)
+				low_outline = minf(low_outline, float(row.applied_outline) if row.applied_outline != null else 1.0)
+			_check(low_fill >= floor_value - 0.0001, "%s applied fill min %.3f >= floor %.3f" % [id, low_fill, floor_value])
+			_check(low_outline >= 0.9999, "%s ink outline min %.3f stays 1" % [id, low_outline])
+		var s2_station: String = "tight" if break_mode == "station" else "practice"
+		if station == s2_station and break_mode in ["none", "station"]:
+			# S2: readable hero in the settled hang and on every tick after landing.
+			var judged: int = 0
+			var worst_points: float = 1.0
+			var worst_visibility: float = 1.0
+			for row: Dictionary in rows:
+				var settled_hang: bool = row.segment == "hang" and int(row.hang_ticks) >= SETTLED_HANG_TICKS
+				if settled_hang or row.segment == "landed":
+					judged += 1
+					worst_points = minf(worst_points, float(row.keypoints_visible))
+					worst_visibility = minf(worst_visibility, float(row.visibility))
+			_check(judged > 0 and worst_points >= MIN_KEYPOINTS - 0.0001 and worst_visibility >= MIN_VISIBILITY,
+				"%s settled hang/landing key points min %.2f >= %.2f, visibility min %.2f >= %.2f over %d ticks" % [id, worst_points, MIN_KEYPOINTS, worst_visibility, MIN_VISIBILITY, judged])
 
 func _away_keys(yaw: float) -> Array[String]:
 	# DuelFrame.human_to_world: world = right * x + view * y, view = (-sin, 0, -cos), right = (cos, 0, -sin).
@@ -372,14 +531,18 @@ func _measure(world: Node3D, actor, rig, exclude: Array[RID]) -> Dictionary:
 	var near_body: Vector3 = Geometry3D.get_closest_point_to_segment(cam,
 		actor.global_position + Vector3.UP * 0.55, actor.global_position + Vector3.UP * 1.9)
 	var applied: Variant = null
+	var applied_outline: Variant = null
 	var body_material: ShaderMaterial = actor.skeletal.hero_mesh.material_override as ShaderMaterial
 	if body_material != null:
 		applied = body_material.get_shader_parameter("camera_visibility")
+		if body_material.next_pass is ShaderMaterial:
+			applied_outline = (body_material.next_pass as ShaderMaterial).get_shader_parameter("camera_outline_visibility")
 	var solid: Array[String] = _overlap_names(space, _point_shape(), Transform3D(Basis.IDENTITY, cam), exclude)
 	var near_hits: Array[String] = _overlap_names(space, _near_plane_shape(camera, float(root.size.x) / float(root.size.y)), _near_plane_transform(camera), exclude)
 	var near_wide: Array[String] = _overlap_names(space, _near_plane_shape(camera, 21.0 / 9.0), _near_plane_transform(camera), exclude)
 	return {
-		"arm_desired": snappedf(rig.arm.spring_length, 0.0001),
+		"arm_desired": snappedf(rig.follow_distance, 0.0001),
+		"arm_reach": snappedf(rig.arm.spring_length, 0.0001),
 		"arm_hit": snappedf(rig.arm.get_hit_length(), 0.0001),
 		"arm_ratio": snappedf(rig.arm.get_hit_length() / maxf(rig.arm.spring_length, 0.0001), 0.0001),
 		"arm_lift": snappedf(rig.arm.position.y, 0.0001), "arm_shoulder": snappedf(rig.arm.position.x, 0.0001),
@@ -388,6 +551,8 @@ func _measure(world: Node3D, actor, rig, exclude: Array[RID]) -> Dictionary:
 		"cam_head": snappedf(cam.distance_to(head), 0.0001), "cam_body": snappedf(cam.distance_to(near_body), 0.0001),
 		"visibility": snappedf(rig.proximity.visibility, 0.0001),
 		"applied": null if applied == null else snappedf(float(applied), 0.0001),
+		"applied_outline": null if applied_outline == null else snappedf(float(applied_outline), 0.0001),
+		"fill": snappedf(float(rig.proximity.get("fill_visibility") if rig.proximity.get("fill_visibility") != null else rig.proximity.visibility), 0.0001),
 		"keypoints": points, "keypoints_visible": snappedf(float(visible) / float(KEYPOINTS.size()), 0.0001),
 		"keypoint_min_depth": snappedf(min_depth, 0.0001),
 		"cam_in_solid": solid, "near_plane_overlap": near_hits, "near_plane_overlap_21_9": near_wide,
@@ -486,6 +651,7 @@ func _pixels(output: String, tick: int, keep: bool) -> Dictionary:
 	var visible: int = 0
 	var changed: int = 0
 	var silhouette: int = 0
+	var ink: int = 0
 	var mask: Image = Image.create(MEASURE_SIZE.x, MEASURE_SIZE.y, false, Image.FORMAT_L8) if keep else null
 	for pixel: int in total:
 		var i: int = pixel * 4
@@ -499,6 +665,9 @@ func _pixels(output: String, tick: int, keep: bool) -> Dictionary:
 			changed += 1
 			if drawn:
 				visible += 1
+				# Unshaded ink hull colour (outline_color 0.06, 0.05, 0.09 -> sRGB 15, 13, 23).
+				if absi(h[i] - 15) <= 6 and absi(h[i + 1] - 13) <= 6 and absi(h[i + 2] - 23) <= 6:
+					ink += 1
 				if keep:
 					mask.set_pixel(pixel % MEASURE_SIZE.x, pixel / MEASURE_SIZE.x, Color.WHITE)
 			elif keep:
@@ -510,6 +679,7 @@ func _pixels(output: String, tick: int, keep: bool) -> Dictionary:
 		hero_only.save_png(output.path_join("m%04d_hero_only.png" % tick))
 	return {"hero_px": visible, "hero_px_frac": snappedf(float(visible) / float(total), 0.00001),
 		"changed_px_frac": snappedf(float(changed) / float(total), 0.00001),
+		"ink_px": ink, "ink_px_frac": snappedf(float(ink) / float(total), 0.00001),
 		"hero_only_px": silhouette, "hero_only_px_frac": snappedf(float(silhouette) / float(total), 0.00001),
 		"world_occluded": null if silhouette == 0 else snappedf(1.0 - minf(1.0, float(visible) / float(silhouette)), 0.0001)}
 
