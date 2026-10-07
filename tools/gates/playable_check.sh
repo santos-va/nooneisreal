@@ -36,6 +36,7 @@ cases = [
     ('quest-journal', 'tools/ui/quest_journal_check.gd', r'QUEST_JOURNAL_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('ui', 'tools/ui/layout_check.gd', r'UI_LAYOUT PASS \(0 failures; mutation=\)', [], 0),
     ('district-ui', 'tools/ui/district_ui_check.gd', r'DISTRICT_UI_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    ('city-controls', 'tools/ui/city_controls_check.gd', r'CITY_CONTROLS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('locomotion-states', 'tools/animation/locomotion_states_check.gd', r'LOCOMOTION_STATES_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('authored-evasion', 'tools/animation/authored_evasion_check.gd', r'AUTHORED_EVASION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('authored-combat', 'tools/animation/authored_combat_check.gd', r'AUTHORED_COMBAT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
@@ -131,6 +132,11 @@ for mutation in ('damping', 'recovery50', 'floor', 'station', 'mask', 'restore',
     cases.append(('tight-station-negative-' + mutation, 'tools/camera/tight_station_probe.gd',
                   rf'TIGHT_STATION_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mode={mutation}',
                   ['--', '--check', '--break=' + mutation], 1))
+# City step 0: no sealed-skill hint, no throttle, no modal from the city pause, no return to the pause must go red.
+for mutation in ('signal', 'interval', 'comfort', 'focus'):
+    cases.append(('city-controls-negative-' + mutation, 'tools/ui/city_controls_check.gd',
+                  rf'CITY_CONTROLS_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
 @contextmanager
 def isolated_profile():
     # Linux has an OS-supported data root override. macOS does not: use Godot's
@@ -195,6 +201,7 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('graphics-independent-negative-', 'ERROR: T4_GRAPHICS: '),
                           ('tricks-independent-negative-', 'ERROR: T4_TRICKS: '),
                           ('tight-station-negative-', 'ERROR: TIGHT_STATION: '),
+                          ('city-controls-negative-', 'ERROR: CITY_CONTROLS: '),
                           ('match-lifecycle-negative-', 'ERROR: MATCH_LIFECYCLE: ')):
         if name.startswith(scope):
             assertion_prefix = prefix

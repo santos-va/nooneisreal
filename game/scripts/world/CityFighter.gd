@@ -3,6 +3,11 @@ extends Fighter
 ## Exploration adapter. The duel controller, animations and parkour remain authoritative.
 ## Only city support/flash bounds and unavailable combat systems differ from Fighter.
 
+## Arena-dependent actions stay sealed in the city (ADR-023). A fresh press is consumed, never acted
+## on, and reported once so the HUD can say why nothing happened. No new input action is involved.
+signal sealed_action(action: String)
+const SEALED_ACTIONS: Array[String] = ["skill1", "skill2", "ultimate", "grapple_enemy"]
+
 @export var support_probe_depth: float = 64.0 # PLACEHOLDER district safety depth.
 const ParkourMotor = preload("res://scripts/world/CityParkourMotor.gd")
 @export var parkour_profile: Resource = preload("res://data/world/city_parkour.tres")
@@ -25,6 +30,10 @@ func _physics_process(delta: float) -> void:
 	# Walking off a roof must use airborne controls/gravity, never a grounded jump in midair.
 	if not on_ground() and velocity.y < -0.01 and state in [State.IDLE, State.WALK, State.CROUCH, State.BLOCK]:
 		_set_state(State.JUMP)
+	# One sweep per tick covers every state (ground, air, ledge, rope); duel polling never sees them.
+	for action: String in SEALED_ACTIONS:
+		if InputRouter.buffered(player_index, action) and not control_locked:
+			sealed_action.emit(action)
 
 func _tick_air(delta: float, intent: Dictionary) -> void:
 	if not parkour.tick(self, delta, intent):
@@ -54,9 +63,8 @@ func parkour_snapshot() -> Dictionary:
 	return get_meta("parkour_presentation", {}).duplicate()
 
 func _pressed(action: String) -> bool:
-	if action in ["skill1", "skill2", "ultimate", "grapple_enemy"]:
-		InputRouter.buffered(player_index, action)
-		return false
+	if action in SEALED_ACTIONS:
+		return false # Consumed and reported by the end-of-tick sweep in _physics_process.
 	return super._pressed(action)
 
 func _start_flash(axis: float, jump_dash: bool = false) -> bool:
