@@ -65,9 +65,9 @@ static func mode() -> String:
 	return ContentSettings.blood_mode()
 
 
+## Manual preset, or in AUTO the tier fixed when AUTO was applied (never changed by the frame-time controller).
 static func profile() -> QualityProfile:
-	var p := QualityProfile.make(GraphicsSettings.get_profile())
-	return p if p != null else QualityProfile.make("high")
+	return GraphicsSettings.budget_profile()
 
 
 ## GDD 02 § Кров: level 1…4 from the move's damage and the crit.

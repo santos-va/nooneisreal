@@ -57,6 +57,7 @@ cases = [
     ('graphics-settings', 'tools/settings/graphics_check.gd', r'GRAPHICS_CHECK_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('graphics-ui', 'tools/ui/graphics_ui_check.gd', r'GRAPHICS_UI_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('graphics-independent', 'tools/settings/graphics_independent_check.gd', r'T4_GRAPHICS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
+    ('display-auto', 'tools/settings/display_auto_check.gd', r'DISPLAY_AUTO_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
     ('comfort-input', 'tools/input/comfort_input_check.gd', r'COMFORT_INPUT_CHECK checks=[1-9][0-9]* failures=0', [], 0),
     ('free-movement', 'tools/input/free_movement_check.gd', r'FREE_MOVEMENT_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
     ('limb-input', 'tools/input/limb_input_check.gd', r'LIMB_INPUT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
@@ -151,6 +152,13 @@ for mutation in ('sparring', 'cfg', 'flash', 'notice', 'back', 'block', 'mode', 
     cases.append(('blood-content-negative-' + mutation, 'tools/fx/blood_content_check.gd',
                   rf'BLOOD_CONTENT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
+# DISPLAY / AUTO (plan 2026-10-07-Auto-Display-And-Quality step 4): a damaged graphics.cfg saved over, a fullscreen
+# combination that toggles in a fight, a saved preset migrated to AUTO, a frame-time controller running headless and
+# an upscaler requested without checking it exists must each go red.
+for mutation in ('cfg', 'combat_key', 'migrate', 'headless_controller', 'upscaler'):
+    cases.append(('display-auto-negative-' + mutation, 'tools/settings/display_auto_check.gd',
+                  rf'DISPLAY_AUTO_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
 # City step 0: no sealed-skill hint, no throttle, no modal from the city pause, no return to the pause must go red.
 for mutation in ('signal', 'interval', 'comfort', 'focus'):
     cases.append(('city-controls-negative-' + mutation, 'tools/ui/city_controls_check.gd',
@@ -221,6 +229,7 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('tricks-independent-negative-', 'ERROR: T4_TRICKS: '),
                           ('tight-station-negative-', 'ERROR: TIGHT_STATION: '),
                           ('city-controls-negative-', 'ERROR: CITY_CONTROLS: '),
+                          ('display-auto-negative-', 'ERROR: DISPLAY_AUTO: '),
                           ('lethal-fight-negative-', 'ERROR: LETHAL_FIGHT: '),
                           ('blood-content-negative-', 'ERROR: BLOOD_CONTENT: '),
                           ('match-lifecycle-negative-', 'ERROR: MATCH_LIFECYCLE: ')):

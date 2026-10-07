@@ -32,6 +32,8 @@ func _ready() -> void:
 	InputRouter.acquire_ui(self)
 	var bg := TextureRect.new()
 	bg.texture = load("res://assets/menu/menu_skyline_plate_v1.png")
+	# Imported with mipmaps (T6 brief 8K-Upscale-Candidates § Хендофи): 3840 px shrunk on 1080p screens stays clean.
+	bg.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -73,6 +75,7 @@ func _ready() -> void:
 	var description := _text("Meet the residents. Find your way over the rooftops.\nTake on the district at your own pace.", 22)
 	journey.add_child(description)
 	var artwork := TextureRect.new()
+	artwork.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	artwork.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	artwork.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	artwork.custom_minimum_size = Vector2(0, 170)
@@ -309,6 +312,7 @@ func _card_rect(pos: Vector2) -> TextureRect:
 	var t := TextureRect.new()
 	t.position = pos
 	t.size = Vector2(480, 272)
+	t.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -326,6 +330,7 @@ func _portrait_rect() -> TextureRect:
 	var t := TextureRect.new()
 	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	t.custom_minimum_size = Vector2(44, 44)
+	t.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS   # 1024 px portrait drawn at 44 units
 	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return t

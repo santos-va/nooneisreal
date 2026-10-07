@@ -216,8 +216,9 @@ func _run() -> void:
 	_check(volume_after < volume_before and bus_db < bus_before, "keyboard Left lowers master volume live (%.2f -> %.2f, bus %.2f -> %.2f dB)" % [volume_before, volume_after, bus_before, bus_db])
 	var scale_before: float = root.scaling_3d_scale
 	var quality: OptionButton = modal.get("quality_choice")
-	quality.select(0)
-	quality.item_selected.emit(0)
+	var low_index: int = (graphics.get("PROFILES") as Array).find("low")   # Auto is first since the DISPLAY/AUTO step
+	quality.select(low_index)
+	quality.item_selected.emit(low_index)
 	_check(graphics.call("get_profile") == "low" and root.scaling_3d_scale != scale_before, "choosing Low applies to the city viewport at once (scale %.2f -> %.2f)" % [scale_before, root.scaling_3d_scale])
 	if mutation == "focus":
 		hud.comfort.closed.disconnect(Callable(hud, "_on_comfort_closed"))

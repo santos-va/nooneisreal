@@ -300,6 +300,7 @@ func _skill_slot(icon_path: String) -> Dictionary:
 	if icon_path != "" and ResourceLoader.exists(icon_path):
 		var icon := TextureRect.new()
 		icon.texture = load(icon_path) as Texture2D
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS   # 512 px icon drawn at ~34 px on 1080p
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.custom_minimum_size = Vector2.ONE * skill_icon_size(canvas_scale())
 		_skill_textures.append(icon)
