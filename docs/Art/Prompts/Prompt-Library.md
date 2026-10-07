@@ -451,5 +451,131 @@ Redraw the first reference image as a hand-drawn illustration in exactly the dra
 медіаною по плямах кожного матеріалу і звіряємо з [[Palette-Remap]]. Розбіжність понад 10 одиниць світлоти HSL — рядок таблиці
 міняється.
 
+## 19. Ліхтарник — перший ворог ([[ADR-024-Lethal-Fights-And-First-Enemy]]) — `lamplighter-*-v1`
+
+**RED: потребує слова Santos і get_cost у головній сесії.** Нічого не згенеровано; sub-агент T6 генерувати не може
+(T6, 2026-10-07). «Ліхтарник» — робочий ярлик, не ім'я (ADR-024 п. 2); ім'я дає Santos. Номер розділу — 19, бо § 16–18
+уже зайняті, і на них посилаються [[Asset-Manifest]], [[Textures-Registry]] та журнали
+(`grep -rln "Prompt-Library\]\] § 1[6-8]\|Prompt-Library § 1[6-8]" docs | grep -v Prompts/Prompt-Library.md | wc -l` → 6).
+
+**Звідки кожна деталь** — канонічних фактів понад [[Lore]] і ADR-024 тут немає; решта — арт-напрям із міткою:
+
+| деталь | джерело | мітка |
+|---|---|---|
+| Високий прямий силует; жердина з гачком стирчить вище голови; гасить ліхтарі, щоб вулиці стихли | ADR-024 п. 2; [[PROPOSAL-First-Enemy]] § 3 A | рішення (Santos: «все дозволено») |
+| Людське тіло зниклого містянина, тінь у **власному** тілі; кров справжня, але живе тільки в рушії | ADR-024 п. 5; [[2026-10-07-Blood-Visual-Language]] § Чого не робимо | рішення; у [[Lore]] ще не перенесено (`grep -n "власному\|Ліхтарник" docs/World/Lore.md` → 0 рядків) — справа T7 |
+| Тінь-сторінка — слухняна тінь доброї душі; той, хто прокляв, — «Тихий» | [[Lore]] § Той, хто прокляв (H6), § Як Skea лишився «на половині» | канон |
+| Ліхтарник кварталу; довгий плащ; ліхтар на поясі; вицвілий одяг без помаранчу Choko й фіолету Skea | [[PROPOSAL-First-Enemy]] § 3 A і § 3 «Спільне» | [P] Кліо, прийнято разом із кандидатом A |
+| Підвісні ліхтарі, латунь, присмерк, не кіберпанк | [[Cronshift]] § Палітра і настрій | канон міста |
+| Крій, кашкет, ґудзики, ковпачок-гасильник, попелясто-сірий `#9A958A` | T6 | [P] арт-напрям, не лор |
+
+**Колір плаща `#9A958A`** (розрахунок WCAG python у цій сесії, та сама формула, що в [[2026-10-07-Blood-Visual-Language]]): проти
+сланцю `#4A5C73` — 2.29, бірюзової тіні `#1F4D5A` — 3.10, худі Skea — 3.26, лінії `#2B2230` — 5.12; кров К1 на плащі — 2.45. Проти
+теракоти `#C8623A` (1.34) і куртки Choko (1.43) сірий тримається насиченістю, а не яскравістю. Тінь за правилом × `#B07AA6` → `#6A475A`.
+Червоного в костюмі немає навмисно: червоне на ворогові — лише кров.
+
+**[?] Розвилки Santos.** У промптах нижче стоїть варіант «а»; інший варіант — заміна одного речення.
+
+| # | питання | а (у промпті) | б | в |
+|---|---|---|---|---|
+| [?]1 | Ознака сторінки | обличчя спокійне й порожнє, не кліпає, «слухає тишу» (гра з канону «слухняна тінь» і «Тихий», нового факту немає); у листі поз — ще й власна тінь на землі не збігається з позою ([P] Кліо, PROPOSAL § 3 «Спільне») | лише обличчя, без тіні | на тілі нічого: ознака живе тільки в рушії |
+| [?]2 | Вік і обличчя зниклого | чоловік середніх років, звичайне втомлене обличчя, сива щетина | літній, зморшки, сиві вуса | молодий |
+| [?]3 | Ліхтар на поясі | латунний, скло темне, згаслий | ледь жевріє | без ліхтаря |
+| [?]4 | Голова жердини | відкритий латунний гак + маленький ковпачок-гасильник поруч (чим гасять) | лише гак | гак загострений, як зброя — інший силует, рішення разом із T5 |
+| [?]5 | Довжина плаща | до колін, глибокі розрізи з боків і ззаду: ноги лишаються окремими для рига Meshy | до середини гомілки — довший силует, ризик злиття ніг у 3D | — |
+
+**Конфлікт пропорцій, який закриваємо явно** (як § 12): `{STYLE}` каже «head about one fifth», IDENTITY — «about one sixth»; перевага
+в пізнішого й конкретнішого. Від Skea (теж високий) ворога відрізняє постава: Skea розхлябаний і сутулий, Ліхтарник прямий, як жердина.
+
+**`{IDENTITY_LAMPLIGHTER}`** — тіло **без жердини** (T-пози й 3D беруть лише його):
+```
+a tall, rigidly upright adult man of Cronshift, the old lamplighter of the quarter, an ordinary human body and not a monster; head about one sixth of his height, long straight back, squared shoulders, solid but not bulky, never slouching, always standing stiff and straight as a pole with the chin level; a plain, tired, middle-aged human face with a long jaw, short greying stubble and deep-set eyes; his expression is completely calm and empty, mouth closed, eyes open and unblinking, looking slightly past the viewer as if listening to silence; short dark-grey hair under a flat-topped peaked lamplighter's cap of dark charcoal cloth with a small dull brass badge that has no letters or numbers; a long faded ash-grey (#9A958A) single-breasted lamplighter's greatcoat reaching to the knees, with deep vents at both sides and at the back so both legs stay separate and visible, soot-darkened at the hem and cuffs, a high turned-up collar, one row of dull brass buttons, deep flap pockets; a wide dark leather belt with a small brass hand lantern hanging at the left hip, its glass dark and unlit; dark charcoal trousers tucked into worn black leather work boots; thick dark leather work gloves; muted faded palette of ash grey, charcoal and dull brass only
+```
+
+**`{POLE_LAMPLIGHTER}`** — жердина як окремий предмет-зброя (лист поз; картка § 19c має свій текст без «his»):
+```
+a long lamplighter's pole, about one and a third times his height, so that it always rises well above his head: a straight dark wooden shaft with three dull brass ferrules and a dark leather-wrapped grip in its lower third, ending at the top in an open curved brass hook with a small brass snuffer cone mounted beside it, and a blunt iron cap at the bottom end; worn, soot-darkened brass
+```
+
+**`{NEG_ENEMY}`** — після `{NEG}` у кожному промпті ворога з людиною, за зразком `{NEG_SKEA}`. «No blood» стоїть навмисно: кров
+додає рушій, запечену кров перемикач BLOOD не прибере (ADR-024 п. 7, [[2026-10-07-Blood-Visual-Language]] § Чого не робимо).
+```
+Not a monster, not a zombie, not a ghost, not a demon, no horns, no claws, no fangs, no glowing eyes, no extra limbs, no visible bones, no torn flesh; an ordinary human townsman who feels quietly wrong, yet still the same flat hand-drawn sketch style — no horror realism, no gore, no blood, no wounds, no red stains; no crimson or red anywhere on the clothing or the pole; no orange, no purple, no violet, no emerald green; no infinity symbol, no neon, no glowing runes.
+```
+
+### 19a. Лист поз — `lamplighter-sheet-v1` (шаблон § 1, пози замінені, як у § 12)
+
+**RED: потребує слова Santos і get_cost у головній сесії.**
+
+- **Модель:** `gpt_image_2_5`, `quality: high`, `resolution: 2k`, 16:9, **×2** — перша ідентичність, Santos обирає одну.
+  `variant` не задавати (типово flare): у запусках героїв 2026-10-03 цього параметра не було; чи він змінює вигляд або ціну —
+  не перевірено (`models_explore get gpt_image_2_5`, 2026-10-07: `variant` flare/sunburst, `quality` low…max).
+- **Референс [?]R:** а (рекомендую) — канон річки `a2913501-694d-4bbc-9908-66892760bf7e`, лише лінія й палітра присмерку; людини на
+  ньому немає, тож чужа ідентичність не протече (так зроблено пропи § 10 і дрон § 11). б — без референсу, лише `{STYLE}` (тоді
+  речення «Take only the line work…» прибрати). Героїв референсом **не** беремо: лист Skea тягне високий худий силует, Choko —
+  помаранч; обидва ворогові заборонені PROPOSAL § 3 «Спільне».
+- **Пози** — силует і характер, **не мувсет**: атаки ворога формулює T5 Арес; він або Santos можуть замінити пози 4–6 до запуску.
+
+```
+{STYLE} Character pose sheet on a flat muted mint-sage background (#B8CBB1), eight full-body poses of the same original character in two rows of four, evenly spaced, no frames, same scale, all poses share one ground line: 1) standing perfectly straight, the pole held upright beside him in the right hand, its hook high above his head; 2) three-quarter view walking his old evening route with a stiff, measured stride, the pole upright; 3) reaching up with the pole and pressing the snuffer cone over a small hanging street lamp above him, the lamp glass going dark; 4) guard stance, the pole held across his body in both hands, hook forward at head height, keeping his distance; 5) a long straight thrust with the pole at full reach, hook first, his torso still rigid; 6) a wide horizontal sweep of the hook at chest height, with one curved ink motion arc following it; 7) back view, looking over the shoulder with the empty stare, the pole upright; 8) side view standing perfectly straight, the pole vertical, a clean profile silhouette. In every pose his own cast shadow on the ground does not match his body: it lags behind his movement or points the wrong way, as if it belonged to someone standing differently. Take only the line work, colors and dusk palette of the reference image; it shows a city, not this character. Keep the same face, cap, coat, lantern and pole in all eight poses. Identity: {IDENTITY_LAMPLIGHTER}; he carries {POLE_LAMPLIGHTER}. Small title "LAMPLIGHTER" in the top-left corner in hand-lettered marker. {NEG} {NEG_ENEMY}
+```
+
+**Відбір (Santos):** гак вище голови в позах 1, 2, 7, 8; профіль (8) не нагадує Skea; одне обличчя й одна жердина в усіх позах;
+немає червоного, помаранчу, фіолету й крові; тінь на землі «чужа» — якщо лишаємо [?]1а.
+
+### 19b. T-пози — `lamplighter-tpose-{front,34,back}-v1` (шаблон § 3, як § 15a)
+
+**RED: потребує слова Santos і get_cost у головній сесії.**
+
+- **Модель:** `gpt_image_2_5`, `quality: high`, `resolution: 2k`, 3:4, **×1 на вид, 3 запуски** — лише після вибору листа 19a.
+  Види — як у героїв, без боку: front → three-quarter front → back (`multi_image_to_3d` бере 1–4, [[Menu-Skyline-Prompts]] § C2).
+- **Референс:** переможець 19a (повний UUID) — обличчя, одяг, пропорції. Для спини можна додати другим переможця front (як § 15b).
+- **Жердини немає:** вона окремий пропс, як меч Choko (канон Santos для 3D: чистий персонаж). Ліхтар на поясі лишається в меші ([?]3).
+- **Тіні немає:** тінь на землі — справа рушія. Якщо Santos лишить [?]1а, «чужа» тінь — це ТЗ Гефесту, а не текстура.
+
+```
+{STYLE} Single full-body figure only, {VIEW} view, standing in a clean T-pose with both arms straight out to the sides and palms down, two gloved hands clearly visible, legs slightly apart, feet flat, whole body in frame head to toe, centered. Pure white background, no shadow, no ground plane. Empty hands: no pole, no stick, no staff, no hook anywhere, the pole is removed; only the small unlit brass hand lantern stays hanging on the belt at the left hip. Flat even lighting, flat colors with inked lines. Take the face, cap, coat, proportions and drawing style exactly from the reference image, but not the pole and not the cast shadow. The coat keeps its deep side and back vents, so both legs are clearly separate from the coat skirts. Identity: {IDENTITY_LAMPLIGHTER}. {NEG} {NEG_ENEMY}
+```
+
+`{VIEW}`: `front` · `three-quarter front` · `back`. Для спини після першого речення додається:
+`Seen exactly from behind: the back of the cap, the turned-up collar, the plain back of the greatcoat with one centre vent from the waist down; the lantern still hangs at his left hip.`
+
+### 19c. Картка жердини — `lamplighter-item-pole-v1` (шаблон § 4)
+
+**RED: потребує слова Santos і get_cost у головній сесії.**
+
+- **Модель:** `gpt_image_2_5`, `quality: high`, `resolution: 2k`, 16:9, **×1**, після вибору 19a; референс — переможець 19a, «лише жердина».
+- Шаблон § 4 байт-у-байт; слоти й хвіст нижче. Довгий предмет: якщо модель покладе види горизонтально, а не в ряд вертикально, це
+  прийнятно.
+
+| слот | значення |
+|---|---|
+| ITEM | `Lamplighter's pole: a long straight lamplighter's pole, clearly taller than a man, a dark wooden shaft with three dull brass ferrules and a dark leather-wrapped grip in its lower third, ending at the top in an open curved brass hook with a small brass snuffer cone mounted beside it, and a blunt iron cap at the bottom end; worn, soot-darkened brass. Take only the pole from the reference image, nothing else` |
+| DETAILS | `the brass hook and the snuffer cone at the top; the leather-wrapped grip with a brass ferrule` |
+| ITEM_TITLE | `LAMPLIGHTER POLE` |
+| хвіст після `{NEG}` | `No blood, no red, no blade, no spear tip, no glow, no flame.` |
+
+### 19d. Кошторис і порядок
+
+`balance` (sub-агент T6, лише читання, 2026-10-07) → `{"credits":4133.75,"subscription_plan_type":"ultra"}`. План T1
+([[2026-10-07-First-Enemy-Lethal-Fight]], крок 5) записав 4502.75; на що пішла різниця 369 — не перевірено.
+
+| крок | id | модель · параметри | шт. | кр./шт. | разом |
+|---|---|---|---|---|---|
+| 1 | `lamplighter-sheet-v1` | `gpt_image_2_5` · high · 2k · 16:9 · реф. річки | 2 | 2.75 | 5.5 |
+| 2 | `lamplighter-tpose-{front,34,back}-v1` | `gpt_image_2_5` · high · 2k · 3:4 · реф. переможець 1 | 3 | 2.75 | 8.25 |
+| 3 | `lamplighter-item-pole-v1` | `gpt_image_2_5` · high · 2k · 16:9 · реф. переможець 1 | 1 | 2.75 | 2.75 |
+| 4 | `lamplighter-3d-v1` | `multi_image_to_3d`: `should_texture:true`, `enable_pbr:false`, `enable_rigging:true`, `pose_mode:t-pose`, `topology:quad`, `target_polycount:20000`, без `texture_prompt` (як C2 героїв) | 1 | 35 | 35 |
+| | | | | | **51.5** |
+
+Мінімум (лист ×1, без картки) — 2.75 + 8.25 + 35 = **46**, та сама цифра, що в плані T1. Ціни — за `get_cost` 2026-10-03
+([[Higgsfield-Pipeline]]), **не перевірено сьогодні**; `get_cost` — у головній сесії. Кожен крок — окреме слово Santos: 1 →
+вибір листа → 2 і 3 одним батчем → вибір T-поз → 4. 3D жердини в кошторис не входить: процедурна жердина (циліндр і гак, 0 кр.,
+T2) або Meshy з картки 19c (ціну не перевірено). `rigging_height_meters` — дефолт, як у героїв; зріст ворога задає рушій.
+
+**Після генерації:** журнал запусків — сюди, під § 19; рядок у [[Asset-Manifest]]; файл у `game/assets/` — лише разом із рядком
+[[Textures-Registry]] (`python3 tools/gates/texture_registry_check.py` → rc0).
+
 ## Related
 - [[Style-Guide]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Prompts]] · [[Choko]] · [[Skea]] · [[Stage-River]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[2026-10-03-Skea-Redesign]] · [[Lore]] · [[Palette-Remap]] · [[2026-10-03-Santos-Packs-Arenas]]
+- [[ADR-024-Lethal-Fights-And-First-Enemy]] · [[PROPOSAL-First-Enemy]] · [[2026-10-07-Blood-Visual-Language]] · [[2026-10-07-First-Enemy-Lethal-Fight]] · [[Cronshift]] · [[Menu-Skyline-Prompts]]
