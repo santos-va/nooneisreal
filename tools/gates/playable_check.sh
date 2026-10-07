@@ -125,7 +125,9 @@ cases.append(('tricks-independent-negative-budget', 'tools/parkour/tricks_indepe
               r'T4_TRICKS_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation=budget',
               ['--', '--break=budget'], 1))
 # Tight-support camera: pre-fix instant recovery, a drifted k=50, dither to nothing and the old ledge site must go red.
-for mutation in ('damping', 'recovery50', 'floor', 'station'):
+# Iteration 2: opaque hull in the dither holes, a non-exact hull back at full fill, residents unfaded at the
+# lens and resident 7 on its old lane across the practice landing must go red too.
+for mutation in ('damping', 'recovery50', 'floor', 'station', 'mask', 'restore', 'resident', 'lane'):
     cases.append(('tight-station-negative-' + mutation, 'tools/camera/tight_station_probe.gd',
                   rf'TIGHT_STATION_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mode={mutation}',
                   ['--', '--check', '--break=' + mutation], 1))

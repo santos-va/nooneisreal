@@ -6,10 +6,27 @@ const FULLY_CLEAR_DISTANCE: float = 0.85
 const INSIDE_DISTANCE: float = 0.35
 const CLOTH_SHADER = preload("res://shaders/camera_cloth.gdshader")
 const RESPONSE: float = 18.0
+const DEPTH_MASK = preload("res://shaders/camera_proximity_mask.gdshader")
+## Opaque ink hull -> its camera-near depth-mask twin (same uniforms, depth_draw_never).
+const NEAR_HULLS := {
+	"res://shaders/hero_outline.gdshader": preload("res://shaders/hero_outline_near.gdshader"),
+	"res://shaders/outline.gdshader": preload("res://shaders/outline_near.gdshader"),
+}
 ## Sketch-Cel rule (docs/Art/2026-10-07-Tight-Station-Readability-Criteria.md): the ink line stays,
 ## the fill thins. PLACEHOLDER floor pending T6 frame acceptance; tests may lower it to prove the old policy.
 var fill_floor: float = 0.25
 var keep_outline: bool = true
+## While the fill is thinned, each body -> hull chain becomes body -> depth mask -> near hull (T3 V3),
+## so the ink hull no longer shows through the fill holes as a dark mass. At full visibility the
+## original chain is untouched. Tests may switch it off to prove the dark-figure policy.
+var depth_mask: bool = true
+## Iteration-2 step 3 (T6: fade the occluder, never the hero): a resident whose body the lens nears
+## dithers out through camera-local copies of its slot materials. Shared NPC materials, node
+## visibility and the resident's shadow stay; the conversation partner is never faded.
+## PLACEHOLDER metres pending T6 frame acceptance; tests may switch the policy off.
+const RESIDENT_HIDDEN_DISTANCE: float = 0.45
+const RESIDENT_CLEAR_DISTANCE: float = 1.25
+var resident_fade: bool = true
 ## Raw lens-to-body factor (0 at the head/torso, 1 when clear); the applied values follow below.
 var visibility: float = 1.0
 var fill_visibility: float = 1.0
@@ -18,8 +35,10 @@ var _materials: Array[ShaderMaterial] = []
 var _original: Array[Variant] = []
 var _outlines: Array[ShaderMaterial] = []
 var _outline_original: Array[Variant] = []
+var _hulls: Array[Dictionary] = []
 var _clothing: Array[Dictionary] = []
 var _gear: Array[Dictionary] = []
+var _residents: Dictionary = {} # resident instance id -> {"actor", "visibility", "slots"}
 var _player: Fighter
 
 func setup(player: Fighter) -> void:
@@ -35,11 +54,33 @@ func _collect(material: Material) -> void:
 	if _supports(shader_material, "camera_visibility"):
 		_materials.append(shader_material)
 		_original.append(shader_material.get_shader_parameter("camera_visibility"))
+		var hull: ShaderMaterial = shader_material.next_pass as ShaderMaterial
+		if hull != null and hull.shader != null and NEAR_HULLS.has(hull.shader.resource_path):
+			var chain: ShaderMaterial = _mask_chain(hull)
+			_hulls.append({"body": shader_material, "hull": hull, "mask": chain})
 	elif _supports(shader_material, "camera_outline_visibility"):
 		_outlines.append(shader_material)
 		_outline_original.append(shader_material.get_shader_parameter("camera_outline_visibility"))
 	if material.next_pass != null:
 		_collect(material.next_pass)
+
+## Camera-local depth mask whose next_pass is the near twin of `hull`. Mask before hull in the
+## alpha queue: alpha sorting is render_priority first (T3: rasterizer_scene_gles3.h:723-727).
+static func _mask_chain(hull: ShaderMaterial) -> ShaderMaterial:
+	var near := ShaderMaterial.new()
+	near.shader = NEAR_HULLS[hull.shader.resource_path]
+	near.render_priority = hull.render_priority + 1
+	_sync_uniforms(near, hull)
+	var mask := ShaderMaterial.new()
+	mask.shader = DEPTH_MASK
+	mask.render_priority = hull.render_priority
+	mask.set_meta("camera_proximity_mask", true)
+	mask.next_pass = near
+	return mask
+
+static func _sync_uniforms(target: ShaderMaterial, source: ShaderMaterial) -> void:
+	for uniform: Dictionary in source.shader.get_shader_uniform_list():
+		target.set_shader_parameter(uniform.name, source.get_shader_parameter(uniform.name))
 
 static func _supports(material: ShaderMaterial, uniform_name: String) -> bool:
 	if material.get_shader_parameter(uniform_name) != null:
@@ -79,6 +120,7 @@ func update(camera: Camera3D, delta: float) -> void:
 	for index: int in _outlines.size():
 		_outlines[index].set_shader_parameter("camera_outline_visibility", (1.0 if _outline_original[index] == null else float(_outline_original[index])) * outline_visibility)
 	var faded: bool = fill_visibility < 0.999 or outline_visibility < 0.999
+	_apply_masks(depth_mask and fill_visibility < 0.999)
 	for entry: Dictionary in _clothing:
 		var mesh: MeshInstance3D = entry.mesh.get_ref()
 		if not is_instance_valid(mesh):
@@ -109,6 +151,101 @@ func update(camera: Camera3D, delta: float) -> void:
 			_set_slot(mesh,entry.slot,entry.local)
 		elif _get_slot(mesh,entry.slot) == entry.local:
 			_set_slot(mesh,entry.slot,entry.original)
+	_update_residents(camera, delta)
+
+func _update_residents(camera: Camera3D, delta: float) -> void:
+	var seen: Dictionary = {}
+	var director: Node = null
+	if resident_fade:
+		for child: Node in _player.get_parent().get_children():
+			if child is CityNpcDirector:
+				director = child
+	if director != null:
+		for value: Variant in (director as CityNpcDirector).actors.values():
+			if not is_instance_valid(value):
+				continue
+			var actor := value as CityNpcActor
+			if actor == null or actor.conversing:
+				continue
+			var id: int = actor.get_instance_id()
+			var near: Vector3 = Geometry3D.get_closest_point_to_segment(camera.global_position,
+				actor.global_position + Vector3.UP * 0.2, actor.global_position + Vector3.UP * 1.65)
+			var desired: float = smoothstep(RESIDENT_HIDDEN_DISTANCE, RESIDENT_CLEAR_DISTANCE, camera.global_position.distance_to(near))
+			if not _residents.has(id):
+				if desired >= 0.999:
+					continue
+				_residents[id] = {"actor": weakref(actor), "visibility": 1.0, "slots": []}
+			var entry: Dictionary = _residents[id]
+			entry.visibility = lerpf(entry.visibility, desired, 1.0 - exp(-RESPONSE * maxf(delta, 0.0)))
+			if absf(entry.visibility - desired) < 0.002:
+				entry.visibility = desired
+			if entry.visibility < 0.999:
+				seen[id] = true
+				_fade_resident(actor, entry)
+	for id: int in _residents.keys():
+		if not seen.has(id):
+			_restore_resident(_residents[id])
+			_residents.erase(id)
+
+func _fade_resident(actor: CityNpcActor, entry: Dictionary) -> void:
+	var slots: Array = entry.slots
+	# A rebuilt or replaced slot (work prop, clothing) owns its new value; dead meshes are released.
+	for i: int in range(slots.size() - 1, -1, -1):
+		var slot_entry: Dictionary = slots[i]
+		var mesh: MeshInstance3D = slot_entry.mesh.get_ref()
+		var current: Material = _get_slot(mesh, slot_entry.slot) if is_instance_valid(mesh) else null
+		if not is_instance_valid(mesh) or (current != slot_entry.local and current != slot_entry.original):
+			slots.remove_at(i)
+	for node: Node in actor.find_children("*", "MeshInstance3D", true, false):
+		var mesh := node as MeshInstance3D
+		if mesh.mesh == null:
+			continue
+		var ids: Array[int] = []
+		if mesh.material_override != null:
+			ids.append(-1)
+		else:
+			for surface: int in mesh.mesh.get_surface_count():
+				ids.append(surface)
+		for slot: int in ids:
+			var known: bool = false
+			for slot_entry: Dictionary in slots:
+				if slot_entry.mesh.get_ref() == mesh and slot_entry.slot == slot:
+					known = true
+					break
+			if known:
+				continue
+			var source: Material = mesh.material_override if slot < 0 else mesh.get_active_material(slot)
+			var local: ShaderMaterial = null
+			if source is StandardMaterial3D:
+				local = ShaderMaterial.new()
+				local.shader = CLOTH_SHADER
+			elif source is ShaderMaterial and _supports(source as ShaderMaterial, "camera_visibility") and source.next_pass == null:
+				# Not duplicate(): in a rendering build it reads the property list, which writes every
+				# unset uniform default into the shared source (measured: null -> 1.0). _copy_shader fills it.
+				local = ShaderMaterial.new()
+				local.shader = (source as ShaderMaterial).shader
+				local.render_priority = source.render_priority
+			if local != null:
+				slots.append({"mesh": weakref(mesh), "slot": slot, "original": _get_slot(mesh, slot), "source": source, "local": local})
+	for slot_entry: Dictionary in slots:
+		var mesh: MeshInstance3D = slot_entry.mesh.get_ref()
+		if slot_entry.source is StandardMaterial3D:
+			var standard: StandardMaterial3D = slot_entry.source
+			slot_entry.local.set_shader_parameter("albedo", standard.albedo_color)
+			slot_entry.local.set_shader_parameter("roughness", standard.roughness)
+			slot_entry.local.set_shader_parameter("albedo_tex", standard.albedo_texture)
+			slot_entry.local.set_shader_parameter("uv_scale", standard.uv1_scale)
+			slot_entry.local.set_shader_parameter("camera_visibility", entry.visibility)
+		else:
+			_copy_shader(slot_entry.local, slot_entry.source, entry.visibility, entry.visibility)
+		_set_slot(mesh, slot_entry.slot, slot_entry.local)
+
+func _restore_resident(entry: Dictionary) -> void:
+	for slot_entry: Dictionary in entry.slots:
+		var mesh: MeshInstance3D = slot_entry.mesh.get_ref()
+		if is_instance_valid(mesh) and _get_slot(mesh, slot_entry.slot) == slot_entry.local:
+			_set_slot(mesh, slot_entry.slot, slot_entry.original)
+	entry.slots.clear()
 
 func _prune_slots() -> void:
 	# A cosmetic rebuild or explicit replacement owns the new slot value. Do not
@@ -147,6 +284,20 @@ static func _set_slot(mesh: MeshInstance3D, slot: int, material: Material) -> vo
 	elif mesh.mesh != null and slot < mesh.mesh.get_surface_count():
 		mesh.set_surface_override_material(slot,material)
 
+func _apply_masks(masked: bool) -> void:
+	# Only a slot that still holds our original hull (or our mask) is ours: a presenter that set its
+	# own next_pass (sword dissolve sets null) keeps it, and the swap resumes when the hull returns.
+	for entry: Dictionary in _hulls:
+		var body: ShaderMaterial = entry.body
+		var mask: ShaderMaterial = entry.mask
+		if masked:
+			if body.next_pass == entry.hull:
+				body.next_pass = mask
+			if body.next_pass == mask:
+				_sync_uniforms(mask.next_pass as ShaderMaterial, entry.hull)
+		elif body.next_pass == mask:
+			body.next_pass = entry.hull
+
 static func _duplicate_chain(source: Material) -> Material:
 	var local: Material = source.duplicate()
 	if source.next_pass != null:
@@ -161,8 +312,11 @@ static func _copy_shader(local: ShaderMaterial, source: ShaderMaterial, fade: fl
 		elif uniform.name == "camera_outline_visibility":
 			value = (1.0 if value == null else float(value))*outline_fade
 		local.set_shader_parameter(uniform.name,value)
-	if local.next_pass is ShaderMaterial and source.next_pass is ShaderMaterial:
-		_copy_shader(local.next_pass,source.next_pass,fade,outline_fade)
+	var local_next: Material = local.next_pass
+	if local_next != null and local_next.has_meta("camera_proximity_mask"):
+		local_next = local_next.next_pass # Our depth mask sits between a gear body and its near hull.
+	if local_next is ShaderMaterial and source.next_pass is ShaderMaterial:
+		_copy_shader(local_next,source.next_pass,fade,outline_fade)
 
 func _collect_gear() -> void:
 	var roots: Array[Node] = []
@@ -212,6 +366,10 @@ func _collect_gear() -> void:
 					if not supported:
 						continue
 					local = _duplicate_chain(source)
+					var local_hull: ShaderMaterial = local.next_pass as ShaderMaterial
+					# Gear locals are only shown while faded, so their ink is always the masked chain.
+					if depth_mask and local_hull != null and local_hull.shader != null and NEAR_HULLS.has(local_hull.shader.resource_path):
+						local.next_pass = _mask_chain(local_hull)
 				else:
 					continue
 				_gear.append({"mesh":weakref(mesh),"slot":slot,"original":_get_slot(mesh,slot),"source":source,"local":local})
@@ -245,6 +403,7 @@ func reset() -> void:
 		_materials[index].set_shader_parameter("camera_visibility", _original[index])
 	for index: int in _outlines.size():
 		_outlines[index].set_shader_parameter("camera_outline_visibility", _outline_original[index])
+	_apply_masks(false)
 	for entry: Dictionary in _clothing:
 		var mesh: MeshInstance3D = entry.mesh.get_ref()
 		if is_instance_valid(mesh) and mesh.material_override == entry.local:
@@ -254,6 +413,9 @@ func reset() -> void:
 		var mesh: MeshInstance3D = entry.mesh.get_ref()
 		if is_instance_valid(mesh) and _get_slot(mesh,entry.slot) == entry.local:
 			_set_slot(mesh,entry.slot,entry.original)
+	for id: int in _residents:
+		_restore_resident(_residents[id])
+	_residents.clear()
 
 func restore() -> void:
 	reset()
@@ -261,6 +423,7 @@ func restore() -> void:
 	_original.clear()
 	_outlines.clear()
 	_outline_original.clear()
+	_hulls.clear()
 	_clothing.clear()
 	_gear.clear()
 	_player = null

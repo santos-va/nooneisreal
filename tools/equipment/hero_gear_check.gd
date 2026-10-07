@@ -378,9 +378,16 @@ func run() -> void:
 		for i: int in 30:
 			proximity.update(camera,DT)
 		check(proximity.visibility < 0.01,"near-body camera fixture actually fades")
-		var hero_ink: ShaderMaterial = f.skeletal.hero_mesh.material_override.next_pass as ShaderMaterial
+		var hero_body: ShaderMaterial = f.skeletal.hero_mesh.material_override as ShaderMaterial
+		var hero_ink: ShaderMaterial = null
+		for entry: Dictionary in proximity._hulls:
+			if entry.body == hero_body:
+				hero_ink = entry.hull
 		# 2026-10-07 policy: the face-safe outline is owned by the camera policy but keeps its ink line.
-		check(hero_ink in proximity._outlines and is_equal_approx(float(hero_ink.get_shader_parameter("camera_outline_visibility")),1.0),"face-safe hero outline joins camera proximity and keeps its line")
+		check(hero_ink != null and hero_ink in proximity._outlines and is_equal_approx(float(hero_ink.get_shader_parameter("camera_outline_visibility")),1.0),"face-safe hero outline joins camera proximity and keeps its line")
+		# Iteration-2 step 2: while faded the face-safe hull is drawn by its depth-masked near twin.
+		var hero_mask: Material = hero_body.next_pass
+		check(hero_mask != null and hero_mask.has_meta("camera_proximity_mask") and hero_mask.next_pass is ShaderMaterial and (hero_mask.next_pass as ShaderMaterial).shader.resource_path == "res://shaders/hero_outline_near.gdshader","faded face-safe hull goes through the depth mask to its near twin")
 		for item: MeshInstance3D in late:
 			check(item.get_surface_override_material(0) is ShaderMaterial and is_equal_approx(float(item.get_surface_override_material(0).get_shader_parameter("camera_visibility")),proximity.fill_floor) and float(item.get_surface_override_material(0).get_shader_parameter("camera_visibility")) >= 0.25 - 0.0001,"late nested surface slot joins fade down to the >= 25 % fill floor (T6 criteria literal)")
 		check(shared.get_shader_parameter("camera_visibility") == null or is_equal_approx(float(shared.get_shader_parameter("camera_visibility")),1.0),"NPC shared shader receives no player fade")
@@ -401,6 +408,7 @@ func run() -> void:
 			check(proximity._gear.size() == tracked,"freed nested geometry releases material entries")
 		proximity.restore()
 		check(late[0].get_surface_override_material(0) == replacement and late[1].get_surface_override_material(0) == simple,"all exact original material pointers restored")
+		check(hero_ink != null and hero_body.next_pass == hero_ink,"exit restores the exact face-safe hull chain")
 		proximity.setup(f)
 		var removed_mesh := MeshInstance3D.new()
 		removed_mesh.mesh = BoxMesh.new()

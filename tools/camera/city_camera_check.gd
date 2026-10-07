@@ -75,13 +75,22 @@ func run() -> void:
 		await ticks(36)
 		var body: ShaderMaterial = city.player.skeletal.hero_mesh.material_override
 		check(is_equal_approx(opacity(body), rig.proximity.fill_floor) and opacity(body) >= FILL_FLOOR_MIN - 0.0001, "hero fill follows proximity down to its >= 25 % floor")
-		check(body.next_pass is ShaderMaterial and body.next_pass in rig.proximity._outlines and is_equal_approx(ink(body.next_pass), 1.0), "hero ink outline joins the policy and is never dithered")
+		# Iteration-2 step 2 (T3 V3 depth mask): while the fill is thinned the chain is body -> depth
+		# mask -> near hull, so the hull cannot fill the dither holes; the original hull keeps ink 1.
+		var hull: ShaderMaterial = null
+		for entry: Dictionary in rig.proximity._hulls:
+			if entry.body == body:
+				hull = entry.hull
+		check(hull != null and hull in rig.proximity._outlines and is_equal_approx(ink(hull), 1.0), "hero ink outline joins the policy and is never dithered")
+		var mask: Material = body.next_pass
+		check(mask != null and mask.has_meta("camera_proximity_mask") and mask.next_pass is ShaderMaterial and (mask.next_pass as ShaderMaterial).shader.resource_path == "res://shaders/hero_outline_near.gdshader" and is_equal_approx(ink(mask.next_pass), 1.0), "faded hero ink is drawn through the depth mask by its near hull")
 		check(city.player.visible and city.player.skeletal.visible, "actor and rig visibility authority untouched")
 		var other := Camera3D.new()
 		city.add_child(other)
 		other.make_current()
 		await ticks(2)
 		check(is_equal_approx(opacity(body), 1.0), "inactive camera restores material")
+		check(hull != null and body.next_pass == hull, "inactive camera restores the exact opaque hull chain")
 		rig.camera.make_current()
 		other.queue_free()
 		await ticks(36)
@@ -99,6 +108,7 @@ func run() -> void:
 		rig.proximity.restore()
 		check(is_equal_approx(opacity(late), 0.8), "late material exact original restored")
 		check(is_equal_approx(opacity(body), 1.0), "body exact original restored")
+		check(hull != null and body.next_pass == hull, "teardown leaves the exact opaque hull chain")
 		for mesh: Node in cloth.get_children():
 			check(mesh.material_override == cloth.cloth, "original cloth resource restored")
 		check(cloth.cloth.albedo_color == original, "cosmetic palette was never mutated")
