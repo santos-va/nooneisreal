@@ -1,6 +1,6 @@
 # План — спрага, стани речовин і «Сила», іконки предметів у меню
 
-**Дата:** 2026-10-08 · **Роль:** T1 Дедал · **Статус:** `approved` — напрям і розвилки закрито відповідями Santos у [[ADR-026-Substances-Nutrition-And-Thirst]]; числа — PLACEHOLDER T5 ·
+**Дата:** 2026-10-08 · **Роль:** T1 Дедал · **Статус:** `done` (кроки 0–3; крок 4 — приймання T6/T8 і аудит T4 — відкритий) · раніше `approved` — напрям і розвилки закрито відповідями Santos у [[ADR-026-Substances-Nutrition-And-Thirst]]; числа — PLACEHOLDER T5 ·
 **Виріс з:**
 - рішення [[ADR-026-Substances-Nutrition-And-Thirst]];
 - числа T5: [[2026-10-08-Thirst-Numbers]], [[2026-10-08-Substances-And-Nutrition]];
