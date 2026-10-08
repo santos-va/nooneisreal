@@ -90,7 +90,7 @@ func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 			return false
 		if phase == "hang":
 			elapsed += delta
-			if elapsed > profile.hang_seconds:
+			if elapsed > hang_limit(actor):
 				reset(actor, false)
 				return false
 			actor.velocity = Vector3.ZERO
@@ -169,6 +169,11 @@ func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 	return _try_side_run(actor)
 
 ## The hunger scale (CityFighter.wall_run_allowed, T5 § 3): no wall steps from «famished» on. Grips, kicks, vaults stay.
+## How long a hang holds: the shared profile's hang_seconds plus what the body adds now (CityFighter «Сила», T5 § 5.2:
+## +1 s in the city). The profile itself is never mutated (it is shared by both heroes and every world).
+func hang_limit(actor: Fighter) -> float:
+	return profile.hang_seconds + (float(actor.call("hang_bonus_seconds")) if actor.has_method("hang_bonus_seconds") else 0.0)
+
 func _wall_run_allowed(actor: Fighter) -> bool:
 	return not actor.has_method("wall_run_allowed") or bool(actor.call("wall_run_allowed"))
 
@@ -561,7 +566,7 @@ func _publish(actor: Fighter) -> void:
 		duration = side_seconds
 	actor.set_meta("parkour_presentation", {
 		"phase": phase, "progress": clampf(elapsed / maxf(duration, 0.0001), 0.0, 1.0), "duration":duration,
-		"hold_remaining": maxf(0.0, (profile.hang_seconds if phase == "hang" else (side_seconds if phase == "wall_side" else profile.wall_seconds)) - elapsed),
+		"hold_remaining": maxf(0.0, (hang_limit(actor) if phase == "hang" else (side_seconds if phase == "wall_side" else profile.wall_seconds)) - elapsed),
 		"left_hand": hands[0] if hands.size() == 2 else Vector3.ZERO,
 		"right_hand": hands[1] if hands.size() == 2 else Vector3.ZERO,
 		"wall_normal": normal, "wall_point": wall_point,

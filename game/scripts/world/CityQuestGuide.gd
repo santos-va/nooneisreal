@@ -62,18 +62,20 @@ static func bearing_text(point: Vector3, origin: Vector3, camera_basis: Basis) -
 	var right := forward.cross(Vector3.UP)
 	var angle := rad_to_deg(atan2(delta.dot(right), delta.dot(forward)))
 	# PLACEHOLDER presentation sectors and vertical threshold; no physical movement logic.
-	var bearing := "↑ Ahead"
+	# The built-in font has no arrows (plan 2026-10-08-Thirst-Substances-Icons step 3): `‹ ›` point to the side the turn
+	# goes, the word carries the rest.
+	var bearing := "Ahead"
 	if absf(angle) >= 150.0:
-		bearing = "↶ Behind" if angle < 0.0 else "↷ Behind"
+		bearing = "‹ Behind" if angle < 0.0 else "Behind ›"
 	elif angle > 45.0:
-		bearing = "→ Right"
+		bearing = "Right ›"
 	elif angle < -45.0:
-		bearing = "← Left"
+		bearing = "‹ Left"
 	elif angle > 20.0:
-		bearing = "↗ Ahead"
+		bearing = "Ahead ›"
 	elif angle < -20.0:
-		bearing = "↖ Ahead"
+		bearing = "‹ Ahead"
 	if delta.length() < 2.0:
 		bearing = "Nearby"
-	var height := " · Higher ↑" if delta.y > 2.0 else (" · Lower ↓" if delta.y < -2.0 else "")
+	var height := " · Higher" if delta.y > 2.0 else (" · Lower" if delta.y < -2.0 else "")
 	return "%s · %.0f m%s" % [bearing, delta.length(), height]

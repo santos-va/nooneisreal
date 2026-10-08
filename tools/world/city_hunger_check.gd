@@ -404,12 +404,15 @@ func _k9() -> void:
 	_check(not labels.is_empty() and labels[0] == "Поїсти · FOOD 40% · жетони 3" and _focused() == labels[0], "K9 hungry: the counter first and focused (%s, %s)" % [labels.slice(0, 2), _focused()])
 	await _press("Поїсти")
 	labels = _labels()
-	_check(labels == ["Відвар шавлії · +25% → 65% · 1 жет.", "Житній буханець · +60% → 100% · 2 жет.", "Окраєць у борг · +30% → 70% · 0 жет. · лише коли жетонів немає", "Назад до розмови"], "K9 the counter: three foods, gain → result · price, the crust shown with its reason (%s)" % [labels])
+	# Plan 2026-10-08-Thirst-Substances-Icons step 2: the healthy food of T7 Л1 follows the three (T5 § 5.2 numbers).
+	_check(labels == ["Відвар шавлії · FOOD +25% » 65% · WATER +30% » 100% · 1 жет.", "Житній буханець · FOOD +60% » 100% · 2 жет.", "Окраєць у борг · FOOD +30% » 70% · 0 жет. · лише коли жетонів немає",
+		"Мочені яблука · FOOD +15% » 55% · VITAMINS 10:00 · 1 жет.", "Узвар · FOOD +15% » 55% · WATER +30% » 100% · VITAMINS 10:00 · 1 жет.", "Два яйця в мундирі · FOOD +15% » 55% · STRENGTH 15:00 · 1 жет.", "Пиріжок із сиром · FOOD +40% » 80% · STRENGTH 15:00 · 2 жет.",
+		"Назад до розмови"], "K9 the counter: three foods and four healthy ones, gain → result · effect · price, the crust shown with its reason (%s)" % [labels])
 	_check(npc.dialogue.body.text.begins_with("Припаси «Шавлії» · Жетони: 3 · FOOD 40%"), "K9 the heading (%s)" % npc.dialogue.body.text.get_slice("\n", 0))
 	sfx.last_frame.erase("ui_confirm")
 	_button("Відвар шавлії").grab_focus()
 	await _press("Відвар шавлії")
-	_check(progress.credits() == 2 and hunger.centi == 6500 and sfx.last_frame.has("ui_confirm") and _focused().begins_with("Відвар шавлії · +25% → 90% · 1 жет."), "K9 the tea: −1, +25, ui_confirm, the focus stays on it (%d, %.2f, %s)" % [progress.credits(), hunger.value(), _focused()])
+	_check(progress.credits() == 2 and hunger.centi == 6500 and sfx.last_frame.has("ui_confirm") and _focused().begins_with("Відвар шавлії · FOOD +25% » 90% · WATER +30% » 100% · 1 жет."), "K9 the tea: −1, +25, ui_confirm, the focus stays on it (%d, %.2f, %s)" % [progress.credits(), hunger.value(), _focused()])
 	await _press("Житній буханець")
 	_check(progress.credits() == 0 and hunger.centi == FULL and _focused() == "Назад до розмови", "K9 the loaf: −2, up to 100 not past it; nothing left to buy → focus on «Назад» (%d, %.2f, %s)" % [progress.credits(), hunger.value(), _focused()])
 	_check(_button("Відвар шавлії").disabled and str(_button("Відвар шавлії").get_meta("full_text")).ends_with("· ти ситий"), "K9 at 100: «ти ситий» (%s)" % _button("Відвар шавлії").get_meta("full_text"))

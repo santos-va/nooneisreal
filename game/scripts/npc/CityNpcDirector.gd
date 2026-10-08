@@ -457,6 +457,8 @@ func _choose(action: String) -> void:
 ## when it can still be bought, else it goes to «Назад».
 func _show_food(line: String, keep: String = "") -> void:
 	var text: String = "Припаси «Шавлії» · Жетони: %d · FOOD %d%%" % [progress.credits(), hunger.percent()]
+	if hunger.thirst != null and hunger.thirst.has_source():
+		text += " · WATER %d%%" % hunger.thirst.percent()   # T8 п. 5: the heading names WATER at its end
 	if line.is_empty():
 		line = _counter_line()
 	if not line.is_empty():
@@ -464,10 +466,10 @@ func _show_food(line: String, keep: String = "") -> void:
 	var options: Array[Dictionary] = []
 	for entry: Dictionary in hunger.foods:
 		var state: Dictionary = hunger.food_state(String(entry.id))
-		var label: String = "%s · +%d%% → %d%% · %d жет." % [entry.title, ceili(float(state.gain) / 100.0), ceili(float(state.after) / 100.0), int(state.price)]
+		var label: String = food_label(entry, state)
 		if not bool(state.enabled):
 			label += " · " + String(state.reason)
-		options.append({"id": "eat:" + String(entry.id), "label": label, "enabled": bool(state.enabled)})
+		options.append({"id": "eat:" + String(entry.id), "label": label, "enabled": bool(state.enabled), "icon": String(entry.get("icon", ""))})
 	options.append({"id": "back", "label": "Назад до розмови"})
 	dialogue.show_choices(text, options)
 	var target: Button = null
@@ -478,6 +480,18 @@ func _show_food(line: String, keep: String = "") -> void:
 				target = child
 	if not keep.is_empty() and target != null:
 		target.grab_focus()
+
+
+## A counter row (T8 п. 5): the name, each scale it raises with its gain and result, then the price.
+static func food_label(entry: Dictionary, state: Dictionary) -> String:
+	# `»` stands for «becomes»: the game's font (Godot's built-in Open Sans SemiBold) has no `→` (plan step 3).
+	var label: String = "%s · FOOD +%d%% » %d%%" % [entry.title, ceili(float(state.gain) / 100.0), ceili(float(state.after) / 100.0)]
+	if int(state.get("water", 0)) > 0:
+		label += " · WATER +%d%% » %d%%" % [ceili(float(state.water) / 100.0), ceili(float(state.water_after) / 100.0)]
+	if not String(state.get("effect", "")).is_empty():
+		# T8 п. 3: the effect and its full time on the button, before the price (`STRENGTH 15:00`, `VITAMINS 10:00`).
+		label += " · " + CityHud.haze_text(float(state.effect_frames) / 60.0, String(state.effect).to_upper())
+	return label + " · %d жет." % int(state.price)
 
 
 ## Mira's words at the counter (T7 § 4, PLACEHOLDER): the haze, no token with or without the crust.

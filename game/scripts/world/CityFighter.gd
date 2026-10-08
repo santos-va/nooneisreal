@@ -18,6 +18,9 @@ var haze: CityHaze = null
 ## refill — in the city and in a lethal pocket alike — and no wall steps from «famished» on. Fighter and the duel never
 ## read it.
 var hunger: CityHunger = null
+## «Хміль» and «Задишка» (plan 2026-10-08-Thirst-Substances-Icons step 2; T5 Substances § 3): braking × 0.5 and no wall
+## steps, or the dodge refill × 0.75 — in the city only, never inside a lethal pocket (whose entry they shut anyway).
+var substances: CitySubstances = null
 
 @export var support_probe_depth: float = 64.0 # PLACEHOLDER district safety depth.
 const ParkourMotor = preload("res://scripts/world/CityParkourMotor.gd")
@@ -53,13 +56,28 @@ func sealed_actions() -> Array[String]:
 func _hazy() -> bool:
 	return haze != null and not lethal_pocket and haze.haze_active()
 
+func _substance() -> bool:
+	return substances != null and not lethal_pocket and substances.active()
+
+## What the city multiplies the dodge refill by right now: the body band and «Сила» (CityHunger), «Задишка».
+func dodge_regen_scale() -> float:
+	return (hunger.dodge_regen_multiplier() if hunger != null else 1.0) * (substances.regen_multiplier() if _substance() else 1.0)
+
+## What the city multiplies the ground braking by right now: «Заплутаність» or «Хміль» (never both: they do not stack).
+func decel_scale() -> float:
+	return (haze.decel_multiplier() if _hazy() else 1.0) * (substances.decel_multiplier() if _substance() else 1.0)
+
+## «Сила»'s extra hang (CityParkourMotor.hang_limit): city only.
+func hang_bonus_seconds() -> float:
+	return hunger.hang_bonus_seconds() if hunger != null and not lethal_pocket else 0.0
+
 func speed_mult() -> float:
 	return super.speed_mult() * (haze.walk_multiplier() if _hazy() else 1.0) * (hunger.walk_multiplier() if hunger != null else 1.0)
 
 ## Fighter._tick_dodge_stamina with the refill scaled by the hunger band (T5 § 3); the pause after a dodge, the cost and
 ## the invulnerability stay exactly as they are.
 func _tick_dodge_stamina(delta: float) -> void:
-	if hunger == null:
+	if hunger == null and not _substance():
 		super._tick_dodge_stamina(delta)
 		return
 	if control_locked or state == State.KO or dodging:
@@ -68,13 +86,13 @@ func _tick_dodge_stamina(delta: float) -> void:
 		_dodge_regen_wait = maxf(0.0, _dodge_regen_wait - delta)
 		return
 	var previous: float = dodge_stamina
-	dodge_stamina = minf(dodge_stamina_max(), dodge_stamina + dodge_profile().stamina_regen * hunger.dodge_regen_multiplier() * delta)
+	dodge_stamina = minf(dodge_stamina_max(), dodge_stamina + dodge_profile().stamina_regen * dodge_regen_scale() * delta)
 	if dodge_stamina != previous:
 		dodge_stamina_changed.emit(dodge_stamina, dodge_stamina_max())
 
-## CityParkourMotor asks before a vertical or side wall run (T5 § 3: none from «famished» on).
+## CityParkourMotor asks before a vertical or side wall run (T5 § 3: none from «famished» on, none in «Хміль»).
 func wall_run_allowed() -> bool:
-	return hunger == null or hunger.wall_run_allowed()
+	return (hunger == null or hunger.wall_run_allowed()) and (not _substance() or substances.wall_run_allowed())
 
 ## H = 0 (CityHunger): the body drops with the existing KO presentation — no damage, no blood, no knocked_out signal.
 ## restart_at at the safe point clears it.
@@ -89,12 +107,12 @@ func collapse_from_hunger() -> void:
 
 ## Fighter._walk_physics with the braking rate scaled by the state (T5: «ноги не слухаються»).
 func _walk_physics(delta: float, vx: float, vz: float = 0.0) -> void:
-	if not _hazy():
+	if not _hazy() and not _substance():
 		super._walk_physics(delta, vx, vz)
 		return
 	var cur := Vector2(velocity.x, velocity.z if _free() else 0.0)
 	var want := Vector2(vx, vz if _free() else 0.0)
-	var rate := data.ground_accel if want.length() > cur.length() - 0.001 else data.ground_decel * haze.decel_multiplier()
+	var rate := data.ground_accel if want.length() > cur.length() - 0.001 else data.ground_decel * decel_scale()
 	var h := cur.move_toward(want, rate * delta)
 	_ground_physics(delta, h.x, h.y)
 

@@ -21,6 +21,17 @@ const CLOSE_LABEL := "Завершити розмову · Esc / B"
 var guard_seconds: float = 0.35
 var _guard_left: float = 0.0
 var _guard_hold: bool = false
+## Item icons in a counter row (plan 2026-10-08-Thirst-Substances-Icons step 3; T8 06-UI-UX § «Спрага…» п. 5): a choice
+## may name `icon` (a slug of game/assets/ui/icons/items/icon_item_<slug>.png). In a list where at least one row has an
+## icon, every button carries one 32 × 32 logical px left of its text (`icon_max_width` 32, `expand_icon` off, 10 px gap,
+## the text aligned left); a row without an item icon gets a transparent one of the same size, so all the text starts in
+## one column — never a «?» placeholder. The wrap width loses the icon's 42 px. Mipmapped filtering: a 512 px picture
+## shown 20× smaller does not shimmer.
+const ITEM_ICON_PATH := "res://assets/ui/icons/items/icon_item_%s.png"
+const ICON_SIZE := 32
+const ICON_GAP := 10
+var icon_list: bool = false
+static var _blank_icon: ImageTexture
 
 func _ready() -> void:
 	layer = 30
@@ -83,6 +94,10 @@ func show_choices(text: String, choices: Array[Dictionary], close_label: String 
 	for old: Node in choices_box.get_children():
 		choices_box.remove_child(old)
 		old.queue_free()
+	icon_list = false
+	for choice: Dictionary in choices:
+		if not String(choice.get("icon", "")).is_empty():
+			icon_list = true
 	var first: Button
 	for choice: Dictionary in choices:
 		var button := Button.new()
@@ -93,6 +108,7 @@ func show_choices(text: String, choices: Array[Dictionary], close_label: String 
 		button.custom_minimum_size.y = 43
 		button.disabled = not bool(choice.get("enabled", true))
 		button.pressed.connect(func() -> void: choice_selected.emit(str(choice.id)))
+		_dress_icon(button, String(choice.get("icon", "")))
 		choices_box.add_child(button)
 		if first == null and not button.disabled:
 			first = button
@@ -103,6 +119,7 @@ func show_choices(text: String, choices: Array[Dictionary], close_label: String 
 	close_button.clip_text = true
 	close_button.custom_minimum_size.y = 43
 	close_button.pressed.connect(close)
+	_dress_icon(close_button, "")
 	choices_box.add_child(close_button)
 	_layout_panel()
 	opened = true
@@ -110,6 +127,28 @@ func show_choices(text: String, choices: Array[Dictionary], close_label: String 
 	prompt.hide()
 	InputRouter.acquire_ui(self)
 	(first if first != null else close_button).grab_focus()
+
+## The item icon (or the transparent stand-in) left of the text, only in a list that has icons.
+func _dress_icon(button: Button, slug: String) -> void:
+	if not icon_list:
+		return
+	var path: String = ITEM_ICON_PATH % slug
+	var texture: Texture2D = load(path) as Texture2D if not slug.is_empty() and ResourceLoader.exists(path) else null
+	button.icon = texture if texture != null else blank_icon()
+	button.set_meta("item_icon", slug if texture != null else "")
+	button.expand_icon = false
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.add_theme_constant_override("icon_max_width", ICON_SIZE)
+	button.add_theme_constant_override("h_separation", ICON_GAP)
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+
+
+static func blank_icon() -> ImageTexture:
+	if _blank_icon == null:
+		_blank_icon = ImageTexture.create_from_image(Image.create(ICON_SIZE, ICON_SIZE, false, Image.FORMAT_RGBA8))
+	return _blank_icon
+
 
 func show_fact(text: String, guard: bool = false) -> void:
 	show_choices(text, [], CLOSE_LABEL, guard)
@@ -163,7 +202,7 @@ func _layout_panel() -> void:
 			var line: String = ""
 			for word: String in full_text.split(" "):
 				var candidate: String = word if line.is_empty() else line + " " + word
-				if not line.is_empty() and font.get_string_size(candidate, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > panel_width - 76.0:
+				if not line.is_empty() and font.get_string_size(candidate, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > panel_width - 76.0 - (float(ICON_SIZE + ICON_GAP) if icon_list else 0.0):
 					lines.append(line)
 					line = word
 				else:

@@ -124,7 +124,7 @@ func _build_plate() -> void:
 		arrow.rotation.x = 0.55
 		arrow = _ink(plate, Vector3(-0.073,-0.34,z+0.09), Vector3(0.022,0.06,0.15))
 		arrow.rotation.x = -0.55
-	_text(plate, "ДВІР → НИЖНІ СХОДИ → ВЕЖА", Vector3(-0.085,-0.65,0), -PI/2, 0.0039, true)
+	_text(plate, "ДВІР › НИЖНІ СХОДИ › ВЕЖА", Vector3(-0.085,-0.65,0), -PI/2, 0.0039, true)   # no `→` in the font
 	_text(plate, "СЛУЖБОВА СХЕМА", Vector3(-0.085,0.75,0), -PI/2, 0.0048, true)
 
 func _build_delivered_record() -> void:
@@ -138,7 +138,7 @@ func _build_delivered_record() -> void:
 	_box(_record, "CopyBoard", Vector3.ZERO, Vector3(1.4,1.05,0.08), "wood")
 	_box(_record, "Paper", Vector3(0,0,-0.055), Vector3(1.24,0.88,0.02), "cloth_cream")
 	_text(_record, "КОПІЯ СЛУЖБОВОЇ СХЕМИ", Vector3(0,0.31,-0.073), PI, 0.0022)
-	_text(_record, "ДВІР → НИЖНІ СХОДИ → ВЕЖА", Vector3(0,-0.28,-0.073), PI, 0.0022)
+	_text(_record, "ДВІР › НИЖНІ СХОДИ › ВЕЖА", Vector3(0,-0.28,-0.073), PI, 0.0022)
 	# Repeat the three physical symbols, rather than substituting a quest marker.
 	for x: float in [0.47,0.27]:
 		_box(_record,"CopyCourt",Vector3(x,0.04,-0.073),Vector3(0.025,0.18,0.018),"ink")

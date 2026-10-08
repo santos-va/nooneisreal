@@ -231,9 +231,9 @@ func _street_furniture() -> void:
 	var guide := Transform3D(Basis.IDENTITY, Vector3(-5.7, 0, 13.7))
 	_box(guide, Vector3(0, 1.9, 0), Vector3(0.13, 3.8, 0.13), "iron", "WayfindingPost")
 	_box(guide, Vector3(0, 3.35, 0), Vector3(3.3, 0.58, 0.14), "cloth_teal")
-	_sign(guide * Vector3(0, 3.35, 0.085), "КРАМНИЦІ  ←", 0.0065, 0.0)
+	_sign(guide * Vector3(0, 3.35, 0.085), "‹  КРАМНИЦІ", 0.0065, 0.0)   # no arrows in the built-in font
 	_box(guide, Vector3(0, 2.7, 0), Vector3(3.3, 0.5, 0.14), "wood")
-	_sign(guide * Vector3(0, 2.7, 0.085), "ВЕЖА · МІСТ  ↑", 0.0056, 0.0)
+	_sign(guide * Vector3(0, 2.7, 0.085), "ВЕЖА · МІСТ  ›", 0.0056, 0.0)
 	# Backed wall notices add identity without placing scenery in walkable aisles.
 	for shop: Dictionary in Places.shops():
 		var at: Vector3 = shop.door + Vector3(0, 2.72, 7.77)

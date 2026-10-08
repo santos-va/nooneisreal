@@ -252,13 +252,14 @@ func _refresh() -> void:
 	var c1 := GameState.load_character(GameState.p1_character)
 	var c2 := GameState.load_character(GameState.p2_character)
 	city_button.text = "CONTINUE DISTRICT" if CityProgress.has_saved_hero(GameState.p1_character) else "ENTER DISTRICT"
-	_p1_btn.text = "HERO:  ◂ %s ▸" % (c1.display_name if c1 else GameState.p1_character)
-	_p2_btn.text = "OPPONENT:  ◂ %s ▸" % (c2.display_name if c2 else GameState.p2_character)
-	stage_btn.text = "STAGE:  ◂ %s ▸" % GameState.stage().get("label", GameState.stage().name)
-	time_btn.text = "TIME:  ◂ %s ▸" % ("NIGHT" if GameState.night else "DAY")
+	# `‹ ›` (covered by the built-in font) instead of `◂ ▸` (rendered as an empty box).
+	_p1_btn.text = "HERO:  ‹ %s ›" % (c1.display_name if c1 else GameState.p1_character)
+	_p2_btn.text = "OPPONENT:  ‹ %s ›" % (c2.display_name if c2 else GameState.p2_character)
+	stage_btn.text = "STAGE:  ‹ %s ›" % GameState.stage().get("label", GameState.stage().name)
+	time_btn.text = "TIME:  ‹ %s ›" % ("NIGHT" if GameState.night else "DAY")
 	var solo := InputRouter.profile == InputRouter.PROFILE_SOLO
-	_keys_btn.text = "KEYBOARD:  ◂ %s ▸" % ("SOLO" if solo else "SHARED")
-	mode_btn.text = "MODE:  ◂ %s ▸" % ("3D (free move)" if GameState.free_move else "2.5D (plane)")
+	_keys_btn.text = "KEYBOARD:  ‹ %s ›" % ("SOLO" if solo else "SHARED")
+	mode_btn.text = "MODE:  ‹ %s ›" % ("3D (free move)" if GameState.free_move else "2.5D (plane)")
 	if _foot:
 		_update_footer()
 	if _card1:
@@ -277,7 +278,7 @@ func _set_hint(vs_cpu: bool) -> void:
 
 func _update_footer() -> void:
 	if _foot != null:
-		_foot.text = "District journey · Auto-save · Comfort & controls ↗" if city_button.has_focus() else compact_hint_text()
+		_foot.text = "District journey · Auto-save · Comfort & controls ›" if city_button.has_focus() else compact_hint_text()
 
 
 ## STAGE row: the next rotation arena, remembered in settings.cfg [gameplay] stage (id, not index).
@@ -349,7 +350,7 @@ func _go() -> void:
 
 
 func compact_hint_text() -> String:
-	return "%s · %s · %s · Comfort & controls ↗" % ["P1 vs CPU" if hint_vs_cpu else "P1 vs P2", "3D" if GameState.free_move else "2.5D", "SOLO" if InputRouter.profile == InputRouter.PROFILE_SOLO else "SHARED"]
+	return "%s · %s · %s · Comfort & controls ›" % ["P1 vs CPU" if hint_vs_cpu else "P1 vs P2", "3D" if GameState.free_move else "2.5D", "SOLO" if InputRouter.profile == InputRouter.PROFILE_SOLO else "SHARED"]
 
 
 func _exit_tree() -> void:
