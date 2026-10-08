@@ -17,8 +17,9 @@ func _run() -> void:
 	var settings: Node = load("res://scripts/core/GraphicsSettings.gd").new()
 	settings.storage_path = test_path
 	root.add_child(settings)
-	check(settings.get_profile() == "high", "missing settings retain current High default")
-	check(root.msaa_3d == Viewport.MSAA_4X and is_equal_approx(root.scaling_3d_scale, 1.0), "default matches prior project rendering")
+	# 06-UI-UX § 3 (T8): AUTO is the default while nothing is saved; headless AUTO seeds like the old High.
+	check(settings.get_profile() == "auto", "missing settings start in AUTO")
+	check(root.msaa_3d == Viewport.MSAA_4X and is_equal_approx(root.scaling_3d_scale, 1.0), "headless AUTO matches prior project rendering")
 	check(not FileAccess.file_exists(test_path), "load does not create a file")
 	var ids: Array[String] = QualityProfile.ids()
 	ids.clear()

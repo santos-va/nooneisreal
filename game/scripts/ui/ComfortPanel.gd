@@ -14,12 +14,21 @@ var _status: Label
 var _settings: Node
 var _graphics: Node
 var quality_choice: OptionButton
-var _graphics_save_error: int = OK
+var quality_help: Label
+## 06-UI-UX § DISPLAY (T8): first row on desktops, absent on phones. Both modes keep the monitor's video mode.
+var display_choice: OptionButton
+var display_help: Label
+const DISPLAY_LABELS: Array[String] = ["Fullscreen — whole screen, no borders", "Windowed — window with a frame"]
+const QUALITY_LABELS: Array[String] = ["Auto — adapts to your screen", "Low — lighter rendering", "Medium — balanced", "High — full detail"]
+const QUALITY_HELP := "Applies immediately. Text and controls stay sharp."
+const AUTO_LINE_PERIOD := 1.0   # PLACEHOLDER (T8): the AUTO line refreshes at most once a second, only while open
+var _auto_line_age: float = 0.0
 ## ADR-024 п. 7 (T8): blood in lethal fights and the hit flash, stored by ContentSettings. No new input actions.
 var blood_choice: OptionButton
 var hit_flash_choice: OptionButton
 var _content: Node
 var _content_save_error: int = OK   # like graphics: content.cfg is written only when a content choice changes
+var _comfort_save_error: int = OK
 const BLOOD_LABELS: Array[String] = ["Full — splashes and stains", "Muted — darker, shorter, no pools", "Ink — ink strokes instead of blood", "Off — only hit sparks"]
 const HIT_FLASH_LABELS: Array[String] = ["Full", "Reduced — half as bright and short"]
 var _syncing := true
@@ -56,21 +65,28 @@ func _ready() -> void:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.add_theme_constant_override("separation", 18)
 	scroll.add_child(content)
+	if bool(_graphics.call("display_switchable")):
+		content.add_child(_label("DISPLAY", 32))
+		display_choice = _choice("DisplayMode", DISPLAY_LABELS)
+		content.add_child(display_choice)
+		_focus_order.append(display_choice)
+		display_choice.item_selected.connect(func(index: int):
+			if not _syncing and _graphics.call("set_window_mode", _graphics.WINDOW_MODES[index]):
+				_save())
+		display_help = _label(display_hint(), 24)
+		display_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		content.add_child(display_help)
+		_graphics.connect("display_changed", _on_display_changed)
 	content.add_child(_label("GRAPHICS QUALITY", 32))
-	quality_choice = OptionButton.new()
-	quality_choice.name = "GraphicsQuality"
-	quality_choice.custom_minimum_size.y = 48
-	quality_choice.add_theme_font_size_override("font_size", 32)
-	quality_choice.get_popup().add_theme_font_size_override("font_size", 32)
-	for label: String in ["Low — lighter rendering", "Medium — balanced", "High — full detail"]:
-		quality_choice.add_item(label)
+	quality_choice = _choice("GraphicsQuality", QUALITY_LABELS)
 	content.add_child(quality_choice)
 	_focus_order.append(quality_choice)
 	quality_choice.item_selected.connect(func(index: int):
-		if not _syncing and _graphics.call("set_profile", QualityProfile.ids()[index]):
-			_graphics_save_error = _graphics.call("save_settings")
+		if not _syncing and _graphics.call("set_profile", _graphics.PROFILES[index]):
+			_graphics.call("save_settings")
+			_refresh_quality_help()
 			_save())
-	var quality_help := _label("Applies immediately. Text and controls stay sharp.", 24)
+	quality_help = _label(QUALITY_HELP, 24)
 	quality_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	content.add_child(quality_help)
 	var labels := {"master": "MASTER", "sfx": "SOUND EFFECTS", "music": "MUSIC", "shake": "CAMERA SHAKE"}
@@ -159,7 +175,12 @@ func show_panel(invoker: Control, controls: String) -> void:
 	controls_label.text += "\nAIM (solo)\nVisible parkour anchors are suggested along your movement; precise center aiming is optional.\nHold the right mouse button and drag, or use the right stick, to choose with the camera.\nCity orbit stays in place; the duel view returns smoothly. The cue suggests a target; the hook must still reach it.\n"
 	controls_label.text += "\nCHOKO SWORD\nWeapon swap first draws the sword from the back; later swaps reform it in the other hand.\nUse it while standing or walking.\nThe armed hand cuts; the free hand punches. A kick or dash interrupts the transfer.\n"
 	controls_label.text += _gamepad_help()
+	if display_choice != null:
+		controls_label.text += "\n\nWINDOW\n" + display_hint().replace(" · ", "\n") + "\nGamepad: the DISPLAY line above."
+	# The green macOS button or OS keys may have changed the window while the panel was closed.
+	_graphics.call("sync_from_window")
 	_sync_values()
+	_status.text = _status_text()
 	show()
 	_layout()
 	scroll.scroll_vertical = 0
@@ -171,7 +192,7 @@ func show_panel(invoker: Control, controls: String) -> void:
 
 func close_panel() -> void:
 	_save()
-	for choice: OptionButton in [quality_choice, blood_choice, hit_flash_choice]:
+	for choice: OptionButton in _choices():
 		choice.get_popup().hide()
 	hide()
 	InputRouter.release_ui(self)
@@ -181,7 +202,10 @@ func close_panel() -> void:
 
 func _sync_values() -> void:
 	_syncing = true
-	quality_choice.select(QualityProfile.ids().find(_graphics.call("get_profile")))
+	if display_choice != null:
+		display_choice.select(_graphics.WINDOW_MODES.find(_graphics.call("get_window_mode")))
+	quality_choice.select(_graphics.PROFILES.find(_graphics.call("get_profile")))
+	_refresh_quality_help()
 	blood_choice.select(_content.BLOOD_MODES.find(_content.call("blood_mode")))
 	hit_flash_choice.select(_content.HIT_FLASH_MODES.find(_content.call("hit_flash")))
 	for key: String in sliders:
@@ -191,16 +215,62 @@ func _sync_values() -> void:
 func _save() -> void:
 	if _status == null:
 		return
-	var result: int = _settings.call("save_settings")
-	_status.text = "Could not save preferences; changes apply for this session." if result != OK or _graphics_save_error != OK or _content_save_error != OK else ""
+	_comfort_save_error = _settings.call("save_settings")
+	_status.text = _status_text()
+
+
+## The graphics owner remembers its last failed write, including one made by the fullscreen key while closed.
+func _status_text() -> String:
+	var graphics_error: int = _graphics.get("save_error")
+	return "Could not save preferences; changes apply for this session." if _comfort_save_error != OK or graphics_error != OK or _content_save_error != OK else ""
+
+
+func _choices() -> Array[OptionButton]:
+	var result: Array[OptionButton] = []
+	for choice: OptionButton in [display_choice, quality_choice, blood_choice, hit_flash_choice]:
+		if choice != null:
+			result.append(choice)
+	return result
+
+
+## T8 hint under DISPLAY: the macOS line names the Mac keys; F11 is not promised there.
+static func display_hint() -> String:
+	if OS.get_name() == "macOS":
+		return "Ctrl+Cmd+F in menus and pause · or the green window button"
+	return "F11 anytime · Alt+Enter in menus and pause"
+
+
+func _on_display_changed(_mode: String) -> void:
+	if display_choice == null:
+		return
+	_syncing = true
+	display_choice.select(_graphics.WINDOW_MODES.find(_graphics.call("get_window_mode")))
+	_syncing = false
+	_refresh_quality_help()
+	if visible:
+		_status.text = _status_text()
+
+
+func _refresh_quality_help() -> void:
+	_auto_line_age = 0.0
+	if quality_help != null:
+		quality_help.text = _graphics.call("auto_summary") if _graphics.call("get_profile") == "auto" else QUALITY_HELP
+
+
+func _process(delta: float) -> void:
+	if not visible or _graphics.call("get_profile") != "auto":
+		return
+	_auto_line_age += delta
+	if _auto_line_age >= AUTO_LINE_PERIOD:
+		_refresh_quality_help()
 
 func _keep_focus(control: Control) -> void:
 	if visible and control != null and not is_ancestor_of(control):
 		back_button.grab_focus.call_deferred()
 
 func _input(event: InputEvent) -> void:
-	for choice: OptionButton in [quality_choice, blood_choice, hit_flash_choice]:
-		if choice != null and choice.get_popup().visible:
+	for choice: OptionButton in _choices():
+		if choice.get_popup().visible:
 			return
 	if visible and not event.is_echo() and (event.is_action_pressed("ui_cancel") or event.is_action_pressed("ui_pause")):
 		get_viewport().set_input_as_handled()

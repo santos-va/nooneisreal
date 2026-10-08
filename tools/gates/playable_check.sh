@@ -47,7 +47,8 @@ cases = [
     ('contact', 'tools/fx/water_contact_check.gd', r'WATER CONTACT CHECK: 0 failures', [], 0),
     ('camera', 'tools/camera/framing_check.gd', r'CAMERA_FRAMING: [1-9][0-9]* checks, 0 failures', [], 0),
     ('city-camera', 'tools/camera/city_camera_check.gd', r'CITY_CAMERA_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
-    ('tight-station', 'tools/camera/tight_station_probe.gd', r'TIGHT_STATION_COMPLETE checks=[1-9][0-9]* failures=0 mode=none', ['--', '--check'], 0),
+    # Headless has no pixels: the run must say S5 was not measured, right before its sentinel (T4 audit 2026-10-07).
+    ('tight-station', 'tools/camera/tight_station_probe.gd', r'TIGHT_STATION S5=NOT MEASURED \(headless\)\nTIGHT_STATION_COMPLETE checks=[1-9][0-9]* failures=0 mode=none', ['--', '--check'], 0),
     ('conversation-camera', 'tools/camera/conversation_camera_check.gd', r'CONVERSATION_CAMERA_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('impact', 'tools/camera/impact_check.gd', r'impact-check: OK \([1-9][0-9]* checks, 0 failures\)', [], 0),
     ('foot', 'tools/animation/foot_contact_check.gd', r'FOOT CONTACT: [1-9][0-9]* checks, 0 failures', [], 0),
@@ -56,6 +57,7 @@ cases = [
     ('graphics-settings', 'tools/settings/graphics_check.gd', r'GRAPHICS_CHECK_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('graphics-ui', 'tools/ui/graphics_ui_check.gd', r'GRAPHICS_UI_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('graphics-independent', 'tools/settings/graphics_independent_check.gd', r'T4_GRAPHICS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
+    ('display-auto', 'tools/settings/display_auto_check.gd', r'DISPLAY_AUTO_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
     ('comfort-input', 'tools/input/comfort_input_check.gd', r'COMFORT_INPUT_CHECK checks=[1-9][0-9]* failures=0', [], 0),
     ('free-movement', 'tools/input/free_movement_check.gd', r'FREE_MOVEMENT_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
     ('limb-input', 'tools/input/limb_input_check.gd', r'LIMB_INPUT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
@@ -72,6 +74,8 @@ cases = [
     ('authored-hook', 'tools/animation/authored_hook_check.gd', r'AUTHORED_HOOK_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('parkour-motion', 'tools/animation/parkour_motion_check.gd', r'PARKOUR_MOTION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('trick-motion', 'tools/animation/trick_motion_check.gd', r'TRICK_MOTION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    # Living body (plan 2026-10-07-Living-Body, step 1): R1/R7/R8/J1-J3 drawn over the authority, the duel unchanged.
+    ('living-body', 'tools/animation/living_body_check.gd', r'LIVING_BODY_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('gait', 'tools/animation/gait_check.gd', r'GAIT_CHECK_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('comfort-ui', 'tools/ui/comfort_ui_check.gd', r'COMFORT_UI PASS \(0 failures; mutation=\)', [], 0),
     ('match-lifecycle', 'tools/match/match_lifecycle_check.gd', r'MATCH_LIFECYCLE PASS \([1-9][0-9]* checks, 0 failures; mutation=\)', [], 0),
@@ -84,9 +88,14 @@ cases = [
     ('combat-control', 'tools/combat/control_check.gd', r'COMBAT_CONTROL_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('combat-intent', 'tools/combat/intent_check.gd', r'COMBAT_INTENT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('traversal', 'tools/grapple/traversal_check.gd', r'TRAVERSAL_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    # Aim-free rope (plan 2026-10-07-Aim-Free-Rope, T8 variant Г): the selection, the refusal and the district coverage.
+    ('auto-hook', 'tools/grapple/auto_hook_check.gd', r'AUTO_HOOK_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('anchor-coverage', 'tools/world/anchor_coverage.gd', r'ANCHOR_COVERAGE_COMPLETE checks=[1-9][0-9]* failures=0 anchors=[1-9][0-9]* t8=[0-9]+/[0-9]+ real=[0-9]+/[0-9]+ roofs=([0-9]+)/\1 supports=([0-9]+)/\2', [], 0),
     ('city-parkour', 'tools/parkour/city_parkour_check.gd', r'CITY_PARKOUR_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-tricks', 'tools/parkour/city_tricks_check.gd', r'CITY_TRICKS_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('tricks-independent', 'tools/parkour/tricks_independent_check.gd', r'T4_TRICKS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
+    # Living body step 2: P1 vault, P4 side wall run, P5 ledge shimmy, P8 heavy landing (picture only).
+    ('parkour-moves', 'tools/parkour/parkour_moves_check.gd', r'PARKOUR_MOVES_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('dodge-stamina', 'tools/combat/dodge_stamina_check.gd', r'DODGE_STAMINA_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('music', 'tools/audio/music_check.gd', r'\[music\] failures=0', [], 0),
     ('district-life', 'tools/npc/district_life_check.gd', r'\[district-life\] [1-9][0-9]* checks / 0 failures', [], 0),
@@ -104,6 +113,13 @@ cases = [
     ('city-geometry', 'tools/world/city_geometry_check.gd', r'CITY_GEOMETRY_COMPLETE checks=[1-9][0-9]* failures=0 meshes=[1-9][0-9]*', [], 0),
     ('city-runtime', 'tools/world/city_runtime_check.gd', r'CITY_RUNTIME_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-onboarding', 'tools/world/city_onboarding_check.gd', r'CITY_ONBOARDING_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    # City events, stage 1 (plan 2026-10-08-City-Events-Stage-1, steps 1–5): the director, the alley, the leaves and
+    # the drugs key, the haze state, tokens as money.
+    ('city-event-director', 'tools/world/city_event_director_check.gd', r'CITY_EVENT_DIRECTOR_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-alley', 'tools/world/city_alley_check.gd', r'CITY_ALLEY_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-leaves', 'tools/world/city_leaves_check.gd', r'CITY_LEAVES_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-haze', 'tools/world/city_haze_check.gd', r'CITY_HAZE_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-economy', 'tools/npc/city_economy_check.gd', r'CITY_ECONOMY_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
 ]
 for mutation in ('portrait', 'icon', 'input'):
     cases.append(('ui-negative-' + mutation, 'tools/ui/layout_check.gd',
@@ -136,23 +152,68 @@ for mutation in ('damping', 'recovery50', 'floor', 'station', 'mask', 'restore',
                   ['--', '--check', '--break=' + mutation], 1))
 # Lethal pocket (ADR-024): sparring turned lethal, HP that does not carry (full / none / into a retry), an enemy that
 # never dies or dies at the first KO, a lethal clock, residents that stay or never return, skills sealed in the pocket
-# or open outside it, a city camera left off and a CPU that backs into the wall must each go red.
-for mutation in ('sparring', 'carry', 'carry_none', 'retry_carry', 'death', 'early_death', 'clock', 'npc', 'npc_return', 'skills', 'outside', 'exit', 'edge'):
+# (all three, or only skill2 and the ultimate after an open skill1) or open outside it, a city camera left off and a
+# CPU that backs into the wall must each go red.
+for mutation in ('sparring', 'carry', 'carry_none', 'retry_carry', 'death', 'early_death', 'clock', 'npc', 'npc_return', 'skills', 'skills_late', 'outside', 'exit', 'edge'):
     cases.append(('lethal-fight-negative-' + mutation, 'tools/match/lethal_fight_check.gd',
                   rf'LETHAL_FIGHT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
 # Blood and content (ADR-024 п. 4, п. 7): blood in a sparring, a damaged content.cfg saved over, a Reduced hit flash at
 # full strength, a card that is not remembered, a step back from the card that counts as seen, blood on a block, Off
-# that still bleeds, Ink that still drops and blood that changes the fight must each go red.
-for mutation in ('sparring', 'cfg', 'flash', 'notice', 'back', 'block', 'mode', 'ink', 'state'):
+# that still bleeds, Ink that still drops, blood drawing the shared presentation RNG, a puddle from a late blow after
+# the round is decided, blood that changes the fight and blood that moves a fighter's RNG must each go red.
+for mutation in ('sparring', 'cfg', 'flash', 'notice', 'back', 'block', 'mode', 'ink', 'rng', 'late', 'state', 'rng_state'):
     cases.append(('blood-content-negative-' + mutation, 'tools/fx/blood_content_check.gd',
                   rf'BLOOD_CONTENT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# DISPLAY / AUTO (plan 2026-10-07-Auto-Display-And-Quality step 4): a damaged graphics.cfg saved over, a fullscreen
+# combination that toggles in a fight, a saved preset migrated to AUTO, a frame-time controller running headless and
+# an upscaler requested without checking it exists must each go red.
+for mutation in ('cfg', 'combat_key', 'migrate', 'headless_controller', 'upscaler'):
+    cases.append(('display-auto-negative-' + mutation, 'tools/settings/display_auto_check.gd',
+                  rf'DISPLAY_AUTO_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# Aim-free rope (N10): the base selection, a press that fires into empty air, a launch without the re-check and no
+# 0.25 s switch delay must each go red.
+for mutation in ('base', 'empty_shot', 'no_recheck', 'lock'):
+    cases.append(('auto-hook-negative-' + mutation, 'tools/grapple/auto_hook_check.gd',
+                  rf'AUTO_HOOK_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# Living body: a presented pose left on the mannequin, a stun frame, a capsule-RNG draw or invulnerability leaked into
+# the fight, mirrored hit sides, a flinch clip that does not follow the hitstun, the get-up drawn by the authority alone,
+# every landing drawn as light, a deferred callback that forgets the living pose and a kept pose that makes the sword
+# transfer land twice must each go red.
+for mutation in ('pose', 'state', 'rng', 'hurtbox', 'side', 'fill', 'getup', 'tier', 'deferred', 'transfer'):
+    cases.append(('living-body-negative-' + mutation, 'tools/animation/living_body_check.gd',
+                  rf'LIVING_BODY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# Parkour moves: a vault over a 1.5 m obstacle, a vault onto a 1 m drop, a side run at 45° to the wall and a shimmy
+# whose grips leave the ledge must each go red.
+for mutation in ('vault_height', 'vault_floor', 'side_angle', 'shimmy_grip'):
+    cases.append(('parkour-moves-negative-' + mutation, 'tools/parkour/parkour_moves_check.gd',
+                  rf'PARKOUR_MOVES_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
 # City step 0: no sealed-skill hint, no throttle, no modal from the city pause, no return to the pause must go red.
 for mutation in ('signal', 'interval', 'comfort', 'focus'):
     cases.append(('city-controls-negative-' + mutation, 'tools/ui/city_controls_check.gd',
                   rf'CITY_CONTROLS_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
+# City events, stage 1. Director: on in a scripted run, no alley cooldown, no pocket margin, no empty-street radius, the
+# seed ignored. Alley: a robbery above the cap, a face never remembered, robbers that never answer the sword, a chase
+# that does not end near people. Leaves: a content source that ignores Off, a damaged content.cfg saved over, four
+# leaves, twice a session, «Ні» that starts the state. Haze: no plateau, a vignette over the HUD, nothing forgotten, the
+# lethal pocket open in the state, a timer that stands. Economy: food at a wrong price, a damaged save written over, a
+# second refund. Each must go red.
+for script, sentinel, prefix, mutations in (
+        ('tools/world/city_event_director_check.gd', 'CITY_EVENT_DIRECTOR', 'city-event-director', ('headless', 'cooldown', 'pocket', 'empty', 'rng')),
+        ('tools/world/city_alley_check.gd', 'CITY_ALLEY', 'city-alley', ('cap', 'memory', 'sword', 'people')),
+        ('tools/world/city_leaves_check.gd', 'CITY_LEAVES', 'city-leaves', ('off', 'cfg', 'count', 'session', 'refuse')),
+        ('tools/world/city_haze_check.gd', 'CITY_HAZE', 'city-haze', ('pulse', 'layer', 'forget', 'pocket', 'end')),
+        ('tools/npc/city_economy_check.gd', 'CITY_ECONOMY', 'city-economy', ('price', 'save', 'refund'))):
+    for mutation in mutations:
+        cases.append((prefix + '-negative-' + mutation, script,
+                      rf'{sentinel}_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                      ['--', '--break=' + mutation], 1))
 @contextmanager
 def isolated_profile():
     # Linux has an OS-supported data root override. macOS does not: use Godot's
@@ -218,9 +279,18 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('tricks-independent-negative-', 'ERROR: T4_TRICKS: '),
                           ('tight-station-negative-', 'ERROR: TIGHT_STATION: '),
                           ('city-controls-negative-', 'ERROR: CITY_CONTROLS: '),
+                          ('living-body-negative-', 'ERROR: LIVING_BODY: '),
+                          ('parkour-moves-negative-', 'ERROR: PARKOUR_MOVES: '),
+                          ('auto-hook-negative-', 'ERROR: AUTO_HOOK: '),
+                          ('display-auto-negative-', 'ERROR: DISPLAY_AUTO: '),
                           ('lethal-fight-negative-', 'ERROR: LETHAL_FIGHT: '),
                           ('blood-content-negative-', 'ERROR: BLOOD_CONTENT: '),
-                          ('match-lifecycle-negative-', 'ERROR: MATCH_LIFECYCLE: ')):
+                          ('match-lifecycle-negative-', 'ERROR: MATCH_LIFECYCLE: '),
+                          ('city-event-director-negative-', 'ERROR: CITY_EVENT_DIRECTOR: '),
+                          ('city-alley-negative-', 'ERROR: CITY_ALLEY: '),
+                          ('city-leaves-negative-', 'ERROR: CITY_LEAVES: '),
+                          ('city-haze-negative-', 'ERROR: CITY_HAZE: '),
+                          ('city-economy-negative-', 'ERROR: CITY_ECONOMY: ')):
         if name.startswith(scope):
             assertion_prefix = prefix
     unexpected = [line for line in errors

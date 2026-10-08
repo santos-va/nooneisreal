@@ -176,3 +176,5 @@
 ## Related
 - [[Roster]] · [[Cronshift]] · [[Choko]] · [[Skea]] · [[2026-10-03-Choko-Skea-Bond-and-Curse]] · [[2026-10-03-Skea-Curse-Lore-Answers]] · [[PROPOSAL-Story-Arc]] · [[index]]
 - [[PROPOSAL-First-Enemy]] · [[ADR-024-Lethal-Fights-And-First-Enemy]] · [[2026-10-07-T1-Orchestration-Session]]
+- [[PROPOSAL-Quests-And-City-Events]] — квести й «Випадки міста» (пропозиція Кліо, 2026-10-07; не канон)
+- [[PROPOSAL-Food-Of-Cronshift]] — їжа, «Шавлія» й репліки Міри (пропозиція Кліо, 2026-10-08; не канон)

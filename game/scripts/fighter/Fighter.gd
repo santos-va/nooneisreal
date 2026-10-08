@@ -1886,10 +1886,11 @@ static func clamp_arena(p: Vector3) -> Vector3:
 	return Vector3(f.x, p.y, f.z)
 
 
-## This fighter's own circle (arena_center, arena_radius); the plane keeps the static clamp. With the defaults it is
-## clamp_arena() exactly: x − 0 and 0 + x are the same floats.
+## This fighter's own circle (arena_center, arena_radius); the plane keeps the static clamp. With the default centre and
+## radius it returns clamp_arena(p) itself, so the duel stays literally byte-identical: the general formula below is
+## equal by value but not by bits, since 0 + (−0.0) = +0.0 flips the sign of a zero coordinate (T4 audit 2026-10-07).
 func bound(p: Vector3) -> Vector3:
-	if not GameState.free_move:
+	if not GameState.free_move or (arena_center == Vector3.ZERO and arena_radius == ARENA_RADIUS):
 		return clamp_arena(p)
 	var f := Vector3(p.x - arena_center.x, 0.0, p.z - arena_center.z)
 	if f.length() > arena_radius:

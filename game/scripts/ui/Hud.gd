@@ -300,6 +300,7 @@ func _skill_slot(icon_path: String) -> Dictionary:
 	if icon_path != "" and ResourceLoader.exists(icon_path):
 		var icon := TextureRect.new()
 		icon.texture = load(icon_path) as Texture2D
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS   # 512 px icon drawn at ~34 px on 1080p
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.custom_minimum_size = Vector2.ONE * skill_icon_size(canvas_scale())
 		_skill_textures.append(icon)
@@ -627,6 +628,9 @@ func _update_aim_cues() -> void:
 		var intent := helper.capture(p1, mode == 0, false)
 		var point: Vector3 = intent.point
 		if camera.is_position_behind(point) or (intent.target_id.is_empty() and not intent.manual):
+			continue
+		# T8 Г: a traversal press without a target is no shot, so the parkour row never marks a camera ray point.
+		if mode == 1 and intent.get("assist", false) and intent.target_id.is_empty():
 			continue
 		var screen := camera.unproject_position(point)
 		if not get_viewport().get_visible_rect().has_point(screen):

@@ -41,6 +41,14 @@ var listen_at: float = INF
 ## about the frame and the pocket, not about hits. While `fight_lock` is on nobody offers a conversation.
 var fight_hold: Dictionary = {}
 var fight_lock: bool = false
+## City events, stage 1 (plan 2026-10-08-City-Events-Stage-1): «Заплутаність» fades every second sentence of a
+## resident's reply a moment after it is shown (step 4; CityHaze) — never the choice labels, prices, quest or story
+## lines; and «Шавлія» sells food for `food_price` tokens (step 5), which also lets the state fade.
+var haze: CityHaze = null
+@export var food_price: int = 1 # PLACEHOLDER — T5 brief § 4.3: «Перекус коштує 1 жетон».
+var _haze_full_text: String = ""
+var _haze_faded_text: String = ""
+var _haze_fade_at: float = INF
 
 func setup(target: Node3D, district_progress: CityProgress = null, story_model: CityStory = null, lower_model: CityLowerStory = null) -> void:
 	player = target
@@ -98,6 +106,10 @@ func _physics_process(delta: float) -> void:
 	if dialogue.opened:
 		if runtime >= listen_at:
 			_present(conversation_index, "listen", player.global_position)
+		if runtime >= _haze_fade_at:
+			_haze_fade_at = INF
+			if dialogue.body.text == _haze_full_text:
+				dialogue.body.text = _haze_faded_text
 		return
 	if fight_lock:
 		nearest = -1
@@ -301,9 +313,21 @@ func _show_conversation(response: String = "", topic: String = "greeting") -> vo
 	current_context = conversation_context.facts(population, index, hero_id, progress, topic)
 	current_fallback = conversation_context.reply(current_context, index)
 	var relation: String = "друзі" if int(current_context.trust) >= 6 else ("знайомі" if int(current_context.meetings) > 1 else "знайомство")
-	var text: String = str(population.people[index].name) + " — " + job_title + " · " + relation + "\n\n" + current_fallback
+	var header: String = str(population.people[index].name) + " — " + job_title + " · " + relation + "\n\n"
+	var text: String = header + current_fallback
+	var tail: String = ""
+	if job == "grocer" and haze != null and haze.haze_active() and response.is_empty():
+		tail = "«Тобі б поїсти»."   # T7 В2: Mira notices; a hint, never faded
 	if not response.is_empty():
-		text += "\n\n" + response
+		tail = response
+	if not tail.is_empty():
+		text += "\n\n" + tail
+	_haze_fade_at = INF
+	if haze != null and haze.haze_active():
+		# Only the resident's own reply fades; the header, a quest/story response and every option stay whole.
+		_haze_full_text = text
+		_haze_faded_text = header + CityHaze.fade_line(current_fallback, index + int(conversation_context.turns.get(str(hero_id) + ":" + str(population.people[index].id) + ":" + topic, 0))) + ("\n\n" + tail if not tail.is_empty() else "")
+		_haze_fade_at = runtime + haze.forget_delay_seconds
 	var options: Array[Dictionary] = []
 	if story != null:
 		if job == "workshop":
@@ -325,6 +349,10 @@ func _show_conversation(response: String = "", topic: String = "greeting") -> vo
 				options.append({"id": "turn:" + str(q.id), "label": "Завершити: " + str(q.title) + " · +%d жет." % int(q.reward)})
 			elif status == "active":
 				options.append({"id": "hint:" + str(q.id), "label": "Нагадати: " + str(q.title)})
+		if job == "grocer":
+			var price: int = maxi(food_price, 0)
+			var short: int = price - int(progress.summary().credits)
+			options.append({"id": "food", "label": "Поїсти · %d жет." % price + (" · бракує %d жет." % short if short > 0 else ""), "enabled": short <= 0})
 		if job == "tailor":
 			if progress.quest_status("parcel") == "active":
 				options.append({"id": "parcel", "label": "Передати пакунок ниток"})
@@ -391,6 +419,13 @@ func _choose(action: String) -> void:
 		if progress.set_palette(argument):
 			_present(index, "agree", player.global_position)
 			_show_conversation("Перев’язь змінено. Можна вийти з розмови й оглянути героя.")
+	elif action == "food" and job == "grocer" and progress != null:
+		if progress.buy_food(maxi(food_price, 0)):
+			_present(index, "agree", player.global_position)
+			var calmer: bool = haze != null and haze.eat()
+			_show_conversation("Міра ставить перед тобою миску гарячої юшки й окраєць хліба. " + ("Голова потроху прояснюється." if calmer else "Смачного."))
+		else:
+			_show_conversation("Бракує жетонів. Заходь, як матимеш.")
 	elif action == "memory":
 		var memories: String = population.dialogue(index, hero_id)
 		if index == 2 and lower_story != null and lower_story.hero_id == hero_id and lower_story.stage() == "locked" and lower_story.heroes[hero_id].accepted:

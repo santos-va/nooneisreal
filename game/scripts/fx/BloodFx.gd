@@ -2,12 +2,16 @@ class_name BloodFx
 extends Node
 ## Lethal-fight blood (ADR-024 п. 4; docs/GDD/02-Combat-System.md § Кров: коли і скільки; look —
 ## docs/Art/2026-10-07-Blood-Visual-Language.md variant A + floor drops). It only WATCHES the fight — `hit_landed`,
-## the decisive KO — and spawns flat shapes; it writes nothing back to a fighter or the match, draws from its own RNG
-## and spawns nothing with Fx.enabled off or in a sparring (`flow.lethal` false). So hp, states and hitboxes are the
-## same with blood or without (the blood fixture compares the fight tick by tick).
+## the decisive KO — and spawns flat shapes; it writes nothing back to a fighter or the match, draws every random
+## number from its own `rng` in all modes (Ink passes it to SmearShards, whose strokes then seed from it too), so
+## neither the global RNG nor the shared FxShader.rng() moves, and spawns nothing with Fx.enabled off or in a sparring
+## (`flow.lethal` false). So hp, states, hitboxes and the fighters' RNGs are the same with blood or without, in every
+## mode and quality profile (the blood fixture compares the fight tick by tick).
 ##   clean hit (incl. through Skea's ult armour and on a frozen fighter) → splash by `move.damage` level, crit +1
 ##     (cap 4); a grounded victim also gets 1/2/3/4 floor drops;
 ##   the decisive KO of the enemy → splash +1 level and a puddle under the body (three steps in 12 frames to ≈ 1.2 m);
+##     decisive = the blow that wins the match while the round is still fought (flow.phase FIGHT): a late blow on a
+##     body after the round is decided (ROUND_END) is an ordinary splash and pools nothing;
 ##   block, chip, DoT, grapple pull → nothing (they never emit a clean `hit_landed`).
 ## ContentSettings.blood: full · muted (shade colours, shorter, no puddle) · ink (attacker-palette ink rays, no drops)
 ## · off (only the existing sparks). Budgets come from QualityProfile (GraphicsSettings). Every count, size and
@@ -61,9 +65,9 @@ static func mode() -> String:
 	return ContentSettings.blood_mode()
 
 
+## Manual preset, or in AUTO the tier fixed when AUTO was applied (never changed by the frame-time controller).
 static func profile() -> QualityProfile:
-	var p := QualityProfile.make(GraphicsSettings.get_profile())
-	return p if p != null else QualityProfile.make("high")
+	return GraphicsSettings.budget_profile()
 
 
 ## GDD 02 § Кров: level 1…4 from the move's damage and the crit.
@@ -83,7 +87,7 @@ func _on_hit(attacker: Fighter, victim: Fighter, move: MoveData, blocked: bool) 
 	if not _may_spawn(victim, at):
 		return
 	var level := level_for(move.damage, victim.last_hit_crit)
-	var decisive: bool = victim.hp <= 0.0 and int(flow.wins.get(attacker.player_index, 0)) + 1 >= GameState.rounds_to_win
+	var decisive: bool = flow.phase == MatchFlow.Phase.FIGHT and victim.hp <= 0.0 and int(flow.wins.get(attacker.player_index, 0)) + 1 >= GameState.rounds_to_win
 	if decisive:
 		level = mini(level + 1, 4)
 	var m := mode()
@@ -92,7 +96,7 @@ func _on_hit(attacker: Fighter, victim: Fighter, move: MoveData, blocked: bool) 
 	if m == "ink":
 		# Not black blood: rays and streaks in the attacker's palette (T6 § Перемикач).
 		var feet := victim.global_position   # SmearShards lifts its pieces 0.3–1.9 m itself
-		SmearShards.burst(Fx.root(victim), feet - attacker.forward * 0.3, feet + attacker.forward * (0.6 + 0.2 * level), [attacker.data.vfx_primary, RIM], 4 + 2 * level, 2 + level)
+		SmearShards.burst(Fx.root(victim), feet - attacker.forward * 0.3, feet + attacker.forward * (0.6 + 0.2 * level), [attacker.data.vfx_primary, RIM], 4 + 2 * level, 2 + level, rng)
 		ink_bursts += 1
 		return
 	var q := profile()

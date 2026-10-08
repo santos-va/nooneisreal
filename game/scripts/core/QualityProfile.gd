@@ -1,6 +1,11 @@
 class_name QualityProfile
 extends Resource
 ## PLACEHOLDER presentation presets; no device performance claim or gameplay budget.
+## Manual presets keep bilinear 3D scaling: the spatial upscaler belongs to AUTO only (06-UI-UX § UPSCALER, U1).
+
+## 16× anisotropy for every profile (plan step 4, T3 § в: level 4 = 16×). It acts only on samplers declared
+## *_anisotropic (gear_surface, hero_garment); the project default was level 2 (4×).
+const ANISOTROPY := Viewport.ANISOTROPY_16X
 
 @export var id: String = "high"
 @export var render_scale: float = 1.0
@@ -38,3 +43,5 @@ static func make(value: Variant) -> QualityProfile:
 func apply_to(viewport: Viewport) -> void:
 	viewport.scaling_3d_scale = render_scale
 	viewport.msaa_3d = msaa
+	viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	viewport.anisotropic_filtering_level = ANISOTROPY

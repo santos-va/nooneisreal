@@ -10,10 +10,15 @@ extends SceneTree
 ##      (1/2/3/4); block, DoT → none; frozen → splash; off / ink / muted; quality ½ and ¼; 16 floor drops at High;
 ##      the lens rule; the decisive KO → +1 level and a puddle to ≈ 1.2 m in three steps; the pocket's close takes the
 ##      blood with it.
-##   T. Blood never changes the fight: two fresh fights, full vs off, are identical tick by tick.
+##      Every mode draws its randomness from BloodFx.rng: a hit in full / muted / ink / off leaves the shared
+##      FxShader.rng() and the global RNG where they were (ADR-024 п. 4).
+##   T. Blood never changes the fight: fresh fights with blood (Choko Full/High, Choko Ink/High, Skea Muted/Low) are
+##      identical tick by tick to the same hero's fight with Off/High — hp, states, positions, frames, hitstop, the
+##      round and both fighters' and the CPU brain's RNG states. Five traces cover Ink, Muted, Low and both heroes
+##      without a full cross product (Ink never reads the quality profile; Full/Muted do). TRACE_TICKS is PLACEHOLDER.
 ## Thresholds are literals of GDD 02 § Кров, the T6 brief and the T8 spec. --break=<m> is a negative control;
 ## sentinel BLOOD_CONTENT_COMPLETE checks=N failures=M mutation=<m>; failures print "BLOOD_CONTENT: ...".
-const MUTATIONS := ["sparring", "cfg", "flash", "notice", "back", "block", "mode", "ink", "state"]
+const MUTATIONS := ["sparring", "cfg", "flash", "notice", "back", "block", "mode", "ink", "rng", "late", "state", "rng_state"]
 const FLASH_FULL_SECONDS := 0.09        # RigAnimator.gd:194 at c1cdd4e, the current white flash
 const HIT_LIGHT_FULL := 4.0             # HitSpark.gd:38, the current hit light
 const REDUCED_MAX := 0.5                # T8: Reduced ≤ half of Full
@@ -21,7 +26,9 @@ const FLOOR_LIMIT_HIGH := 16            # T6 § Профілі якості: Hig
 const PUDDLE_FULL := 1.2                # T6: the pool grows to ≈ 1.2 m …
 const PUDDLE_STEPS := 3                 # … in three steps
 const SAFE_POINT := Vector3(0, 0, 9.5)
-const TRACE_TICKS := 700
+const TRACE_TICKS := 700               # PLACEHOLDER: ≈ 11.7 s of fight, 14 splashes with Choko Full (2026-10-07)
+## [hero, blood mode, quality profile] — the reference of each hero is Off/High (index 0 and 3).
+const TRACES := [["choko", "off", "high"], ["choko", "full", "high"], ["choko", "ink", "high"], ["skea", "off", "high"], ["skea", "muted", "low"]]
 var checks: int = 0
 var failures: int = 0
 var mutation: String = "none"
@@ -32,6 +39,7 @@ var F: GDScript
 var MF: GDScript
 var BloodScript: GDScript
 var SplashScript: GDScript
+var FxS: GDScript
 var _paths: Array[String] = []
 
 
@@ -114,6 +122,7 @@ func _run() -> void:
 	MF = load("res://scripts/arena/MatchFlow.gd")
 	BloodScript = load("res://scripts/fx/BloodFx.gd")
 	SplashScript = load("res://scripts/fx/BloodSplash.gd")
+	FxS = load("res://scripts/fx/FxShader.gd")
 	var old_content: String = content.storage_path
 	state.set_free_move(true)
 	router.apply_profile("solo", false)
@@ -126,9 +135,9 @@ func _run() -> void:
 		await _sparring()
 	if mutation in ["none", "cfg", "flash"]:
 		await _content_settings()
-	if mutation in ["none", "notice", "back", "block", "mode", "ink"]:
+	if mutation in ["none", "notice", "back", "block", "mode", "ink", "rng", "late"]:
 		await _pocket()
-	if mutation in ["none", "state"]:
+	if mutation in ["none", "state", "rng_state"]:
 		await _traces()
 	content.load_settings(old_content)
 	for path: String in _paths:
@@ -428,6 +437,26 @@ func _pocket() -> void:
 			longest = maxf(longest, float(item.life))
 		fill = (muted._items[0].mat as ShaderMaterial).get_shader_parameter("fill")
 	_check(blood.splashes == s0 + 1 and fill.get_luminance() < Color("A3243B").get_luminance() and longest <= 0.55 * 0.5 + 0.0001, "Muted: darker (%s) and shorter (%.2f s ≤ half of 0.55 s)" % [fill.to_html(false), longest])
+	await _ticks(20)
+	# Own RNG in every mode: BloodFx's hit handler alone (no HitSpark, which draws the shared RNG by design) leaves
+	# FxShader.rng() and the global RNG untouched, and still draws its blood (so the check is not vacuous).
+	var own_rng: RandomNumberGenerator = blood.rng
+	if mutation == "rng":
+		blood.rng = FxS.call("rng")   # blood sharing the presentation RNG
+	for m: String in ["full", "muted", "ink", "off"]:
+		content.set_blood_mode(m)
+		var shared: RandomNumberGenerator = FxS.call("rng")
+		var before_state: int = shared.state
+		var drawn: int = blood.splashes + blood.ink_bursts
+		seed(4242)
+		blood._on_hit(hero, enemy, light, false)
+		var global_after: int = randi()
+		seed(4242)
+		var global_moved: bool = global_after != randi()
+		var drew: bool = (blood.splashes + blood.ink_bursts) == drawn + (0 if m == "off" else 1)
+		_check(shared.state == before_state and not global_moved and drew, "%s: a hit leaves FxShader.rng() and the global RNG where they were (shared moved %s, global moved %s, drew %s)" % [m, shared.state != before_state, global_moved, drew])
+		await _ticks(10)
+	blood.rng = own_rng
 	content.set_blood_mode("full")
 	await _ticks(20)
 	# Quality: Medium ½ and Low ¼ of High's drops (T6 table).
@@ -465,6 +494,19 @@ func _pocket() -> void:
 	await _until(func() -> bool: return enemy.is_actionable(), 200)
 	enemy.hp = 1.0
 	enemy.receive_hit(hero, light)
+	# GDD 02 / ADR-024 п. 4: the puddle belongs to the decisive KO — a blow that wins the match while the round is still
+	# fought. Round 1 is now decided (ROUND_END, the hero one win from the match): a late lethal blow on the body pools
+	# nothing (T4 audit 2026-10-07, proposal 7).
+	var late_phase: int = flow.phase
+	var late_wins: int = int(flow.wins.get(hero.player_index, 0))
+	if mutation == "late":
+		flow.phase = MF.Phase.FIGHT   # the guard sees a round still being fought
+	blood._on_hit(hero, enemy, light, false)
+	flow.phase = late_phase
+	_check(late_phase == MF.Phase.ROUND_END and late_wins + 1 >= state.rounds_to_win and enemy.hp <= 0.0 and blood._puddle_frames < 0,
+		"a late lethal blow after round 1 is decided pools nothing (phase %d, hero wins %d, puddle scheduled %s)" % [late_phase, late_wins, blood._puddle_frames >= 0])
+	if mutation == "late":
+		blood.reset_match()   # keep the negative to its own subject
 	await _ticks(80)
 	_check(blood.puddle_size() == 0.0, "a round-1 KO leaves no puddle")
 	await _until(func() -> bool: return flow.round_no == 2 and flow.phase == MF.Phase.FIGHT, 400)
@@ -493,26 +535,40 @@ func _pocket() -> void:
 
 
 # --- T. blood never changes the fight ----------------------------------------------------------------------
-func _trace(mode: String) -> Array:
+func _trace(hero_id: String, mode: String, profile: String) -> Array:
+	var label := "%s %s/%s" % [hero_id, mode, profile]
 	content.set_blood_mode(mode)
+	var graphics: Node = root.get_node("GraphicsSettings")
+	var old_profile: String = graphics.get_profile()
+	graphics.set_profile(profile)
+	state.p1_character = hero_id
 	var world: Node = _city()
 	await _ticks(20)
 	var hero: Node = world.player
 	hero.restart_at(SAFE_POINT)
 	await _ticks(10)
 	var opened: bool = world.lethal.request_open()
-	_check(opened and world.lethal.notice == null, "%s: a seen card never shows again; the fight opens at once" % mode)
+	_check(opened and world.lethal.notice == null and hero.data.id == hero_id, "%s: a seen card never shows again; the fight opens at once (hero %s)" % [label, hero.data.id])
 	if not opened:
 		world.queue_free()
+		graphics.set_profile(old_profile)
 		await _ticks(3)
 		return []
 	var enemy: Node = world.lethal.enemy
 	var flow: Node = world.lethal.flow
-	if mutation == "state" and mode == "full":
+	var brain: Node = enemy._brain
+	if mutation == "state" and hero_id == "choko" and mode == "full":
 		for f: Node in [hero, enemy]:
 			f.hit_landed.connect(func(_a: Node, victim: Node, _m: Resource, blocked: bool) -> void:
 				if not blocked:
 					victim.hp -= 1.0)
+	if mutation == "rng_state" and mode == "ink":
+		# Blood that draws one number from the hero's own fight RNG: hp, states and positions stay the same (that RNG
+		# only picks weak marks), so only the RNG columns of the trace can see it.
+		for f: Node in [hero, enemy]:
+			f.hit_landed.connect(func(_a: Node, _v: Node, _m: Resource, blocked: bool) -> void:
+				if not blocked:
+					hero._rng.randi())
 	var out: Array = []
 	for tick: int in TRACE_TICKS:
 		if tick % 23 == 5:
@@ -521,11 +577,13 @@ func _trace(mode: String) -> Array:
 			router.v_press(1, "heavy")
 		await _ticks(1)
 		out.append([snappedf(hero.hp, 0.001), hero.state, snappedf(hero.global_position.x, 0.0001), snappedf(hero.global_position.z, 0.0001), hero.move_frame, hero.hitstop_frames,
-			snappedf(enemy.hp, 0.001), enemy.state, snappedf(enemy.global_position.x, 0.0001), snappedf(enemy.global_position.z, 0.0001), enemy.move_frame, enemy.hitstop_frames, flow.phase, flow.round_no])
-	var splashes: int = world.lethal.blood.splashes
-	out.append(["splashes", splashes])
+			snappedf(enemy.hp, 0.001), enemy.state, snappedf(enemy.global_position.x, 0.0001), snappedf(enemy.global_position.z, 0.0001), enemy.move_frame, enemy.hitstop_frames, flow.phase, flow.round_no,
+			hero._rng.state, enemy._rng.state, brain._rng.state if brain != null else -1])
+	var blood: Node = world.lethal.blood
+	out.append(["blood", blood.splashes, blood.ink_bursts])
 	world.lethal.close("abort")
 	world.queue_free()
+	graphics.set_profile(old_profile)
 	await _ticks(5)
 	return out
 
@@ -533,19 +591,52 @@ func _trace(mode: String) -> Array:
 func _traces() -> void:
 	if not content.notice_seen():
 		content.mark_notice_seen()   # a scoped negative run skips part L, where the card is confirmed for real
-	var on: Array = await _trace("full")
-	var off: Array = await _trace("off")
-	if on.is_empty() or off.is_empty():
-		_check(false, "both traces ran")
-		return
-	var on_splashes: int = int(on.pop_back()[1])
-	var off_splashes: int = int(off.pop_back()[1])
-	var first := -1
-	for i: int in mini(on.size(), off.size()):
-		if on[i] != off[i]:
-			first = i
-			break
-	print("BLOOD_CONTENT_INFO trace: %d ticks, %d splashes with Full, %d with Off, first difference %d" % [on.size(), on_splashes, off_splashes, first])
-	_check(on_splashes > 0 and off_splashes == 0, "the traced fight bleeds with Full (%d splashes) and not with Off (%d)" % [on_splashes, off_splashes])
-	_check(first == -1 and on.size() == TRACE_TICKS and off.size() == TRACE_TICKS, "hp, states, positions, frames and hitstop are identical with blood and without over %d ticks (first difference: %d)" % [TRACE_TICKS, first])
+	var old_hero: String = state.p1_character
+	var runs: Array = []
+	for row: Array in TRACES:
+		runs.append(await _trace(row[0], row[1], row[2]))
+	state.p1_character = old_hero
 	content.set_blood_mode("full")
+	var refs: Dictionary = {}   # hero → its Off/High trace (TRACES lists each reference before that hero's variants)
+	var summary: PackedStringArray = []
+	for i: int in TRACES.size():
+		var hero_id: String = TRACES[i][0]
+		var mode: String = TRACES[i][1]
+		var label := "%s %s/%s" % TRACES[i]
+		var run: Array = runs[i]
+		if run.is_empty():
+			_check(false, "%s: the trace ran" % label)
+			continue
+		var counts: Array = run.pop_back()
+		var splashes: int = int(counts[1])
+		var inks: int = int(counts[2])
+		var shows: bool
+		match mode:
+			"off":
+				shows = splashes == 0 and inks == 0
+			"ink":
+				shows = inks > 0 and splashes == 0
+			_:
+				shows = splashes > 0 and inks == 0
+		_check(shows, "%s: the traced fight shows its own blood (splashes %d, ink %d)" % [label, splashes, inks])
+		if mode == "off" and TRACES[i][2] == "high":
+			refs[hero_id] = run
+			summary.append("%s reference, %d ticks" % [label, run.size()])
+			continue
+		if not refs.has(hero_id):
+			_check(false, "%s: an Off/High reference of the same hero ran" % label)
+			continue
+		var ref: Array = refs[hero_id]
+		var first := -1
+		var column := -1
+		for k: int in mini(run.size(), ref.size()):
+			if run[k] != ref[k]:
+				first = k
+				for c: int in run[k].size():
+					if run[k][c] != ref[k][c]:
+						column = c
+						break
+				break
+		summary.append("%s %d splashes %d ink, first difference %d (column %d)" % [label, splashes, inks, first, column])
+		_check(first == -1 and run.size() == TRACE_TICKS and ref.size() == TRACE_TICKS, "%s: hp, states, positions, frames, hitstop, round and the fighters'/CPU RNG states equal %s off/high over %d ticks (first difference: %d, column %d)" % [label, hero_id, TRACE_TICKS, first, column])
+	print("BLOOD_CONTENT_INFO trace: %d ticks each; %s" % [TRACE_TICKS, "; ".join(summary)])

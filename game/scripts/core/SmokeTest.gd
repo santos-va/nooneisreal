@@ -1542,6 +1542,15 @@ static func _gdd_slots(d: CharacterData, got: Dictionary) -> String:
 	return ""
 
 
+## A playable hero is never CPU-only (ADR-024 п. 9 exempts only the enemy); "" or why not.
+static func _hero_not_cpu_only(d: CharacterData, hero_id: String) -> String:
+	if d == null:
+		return "%s.tres missing" % hero_id
+	if d.cpu_only:
+		return "%s.tres is marked cpu_only (cpu_only == true), a hero must be playable" % hero_id
+	return ""
+
+
 static func _gdd_compare(got: Dictionary) -> String:
 	for k in got:
 		if absf(float(got[k][0]) - float(got[k][1])) > 0.0001:
@@ -1551,10 +1560,21 @@ static func _gdd_compare(got: Dictionary) -> String:
 
 ## ADR-024 п. 9 on the real data: the CPU-only enemy passes without ultimate/throw, and three breaks from the same
 ## rule still fail — a hero without an ultimate, the enemy marked playable (cpu_only off), the enemy without a light.
+## Both heroes are explicitly not CPU-only (T4 audit 2026-10-07, proposal 6): a hero marked cpu_only would slip through
+## the exemption with an empty ultimate slot, so the hero rule is checked on choko.tres and skea.tres themselves and a
+## Choko copy marked cpu_only must be refused by it.
 func _cpu_only_slot_contract() -> String:
 	var enemy := load("res://data/characters/lamplighter.tres") as CharacterData
 	if enemy == null or not enemy.cpu_only:
 		return "lamplighter.tres missing or not cpu_only"
+	for hero_id: String in ["choko", "skea"]:
+		var miss_hero := _hero_not_cpu_only(load("res://data/characters/%s.tres" % hero_id) as CharacterData, hero_id)
+		if miss_hero != "":
+			return miss_hero
+	var marked := (load("res://data/characters/choko.tres") as CharacterData).duplicate() as CharacterData
+	marked.cpu_only = true
+	if _hero_not_cpu_only(marked, "choko") == "":
+		return "a Choko copy marked cpu_only passed the hero rule, must fail"
 	var hero := (p1.data as CharacterData).duplicate() as CharacterData
 	hero.ultimate = null
 	var playable := enemy.duplicate() as CharacterData
@@ -2145,7 +2165,7 @@ func _physics_process(_delta: float) -> void:
 				if slots != "":
 					_fail("ADR-024 п. 9 slot contract: " + slots)
 					return
-				_ok("ADR-024 п. 9: CPU-only lamplighter passes without ultimate/throw, its normals at the GDD class literals; a hero without an ultimate, the enemy marked playable and the enemy without a light still fail")
+				_ok("ADR-024 п. 9: CPU-only lamplighter passes without ultimate/throw, its normals at the GDD class literals; a hero without an ultimate, the enemy marked playable and the enemy without a light still fail; choko and skea have cpu_only == false, a Choko copy marked cpu_only is refused")
 				_ang0 = _bearing(p1, p2)
 				_d0 = _flat(p1.global_position - p2.global_position).length()
 				_swept = 0.0

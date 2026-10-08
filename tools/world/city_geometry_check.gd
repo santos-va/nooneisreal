@@ -125,15 +125,20 @@ func _run() -> void:
 		_expect(collision.size == Vector3(20, 1, 0.2), "open bridge rail preserves the complete safety collider")
 		var infill: MeshInstance3D = parapet.get_child(0) as MeshInstance3D
 		_expect((infill.mesh as BoxMesh).size.y <= 0.25 and infill.position.y < -0.3, "bridge infill reveals footfalls")
+	# Plan 2026-10-07-Aim-Free-Rope step 2 appends anchors with supports; the four street lamps keep indices 0-3 and their
+	# street checks. Coverage, roofs and supports of all of them: tools/world/anchor_coverage.gd.
 	var anchors: Array[Node] = get_nodes_in_group("grapple_anchor")
-	_expect(anchors.size() == 4, "four sparse street anchors")
+	_expect(anchors.size() == Layout.anchors().size() and anchors.size() > 4, "every CityLayout anchor is live, the four street lamps first")
 	for node: Node in anchors:
 		var anchor: Node3D = node as Node3D
+		var below: Dictionary = _ray(anchor.position, anchor.position - Vector3.UP * 12)
+		_expect(not below.is_empty() and anchor.position.y - float(below.position.y) >= 2.75, "idle rope at %s hangs over a floor within 12 m" % anchor.position)
+		if Layout.anchors().find(anchor.position) >= 4:
+			continue
 		var origin: Vector3 = Vector3(signf(anchor.position.x) * 4, 1.2, signf(anchor.position.z) * 4)
 		_expect(origin.distance_to(anchor.position) < 14.0, "anchor has a nearby in-range street approach")
 		_expect(_ray(origin, anchor.position, 8).is_empty(), "anchor approach is unobstructed")
-		var below: Dictionary = _ray(anchor.position, anchor.position - Vector3.UP * 8)
-		_expect(not below.is_empty() and absf(float(below.position.y)) < 0.01, "idle rope hangs over ground zero")
+		_expect(absf(float(below.position.y)) < 0.01, "street lamp rope hangs over ground zero")
 	print("CITY_GEOMETRY_COMPLETE checks=%d failures=%d meshes=%d" % [checks, failures, district.geometry_count])
 	district.queue_free()
 	await process_frame

@@ -6,6 +6,10 @@ extends Node3D
 ## Design: docs/GDD/04-Grapple-System.md
 
 signal changed(charges: int, cooldown_left: float, max_charges: int)
+## A traversal press that issued nothing (T8 Г): reason is a HarpoonAim.REASONS code; the HUD words it.
+signal denied(reason: String)
+## grapple_denied for a traversal press plays at most once per this many physics ticks (0.3 s, PLACEHOLDER).
+const DENIED_GAP_TICKS := 18
 
 enum Target { NONE, ANCHOR, ENEMY }
 
@@ -265,9 +269,18 @@ func retarget(recorded_aim: Dictionary = {}) -> bool:
 	if packet.is_empty():
 		var camera := get_viewport().get_camera_3d()
 		if camera != null and camera.has_meta("harpoon_aim"):
-			packet = camera.get_meta("harpoon_aim").capture(fighter, false)
+			packet = camera.get_meta("harpoon_aim").press_packet(fighter, false)
 	var id := String(packet.get("target_id", ""))
 	var selected := get_node_or_null(NodePath(id)) as Node3D if not id.is_empty() else null
+	if packet.get("assist", false) and not (selected != null and selected.is_in_group("deployed_rope")) and not _assist_ready(packet, false):
+		# T8 Г: the transfer has no windup, so the same press re-selects once from this hand, else it is denied.
+		var fresh := _fresh_traversal()
+		if not _assist_ready(fresh, false):
+			_deny(_reason_of(fresh))
+			return false
+		packet = fresh
+		id = String(packet.get("target_id", ""))
+		selected = get_node_or_null(NodePath(id)) as Node3D
 	if selected != null and selected.is_in_group("deployed_rope"):
 		var old_intent := aim_intent
 		aim_intent = packet
@@ -307,7 +320,7 @@ func fire(prefer_enemy: bool, shot_action: String = "grapple", recorded_aim: Dic
 		var camera := get_viewport().get_camera_3d()
 		if camera != null and camera.has_meta("harpoon_aim"):
 			var aim: Node = camera.get_meta("harpoon_aim")
-			aim_intent = aim.capture(fighter, prefer_enemy)
+			aim_intent = aim.press_packet(fighter, prefer_enemy)
 	if not prefer_enemy:
 		var existing := reusable_rope()
 		if existing != 0:
@@ -318,6 +331,13 @@ func fire(prefer_enemy: bool, shot_action: String = "grapple", recorded_aim: Dic
 	# A distant/stale rope cue never falls through to issuing a new device.
 	if not prefer_enemy and _rope_intent():
 		return Target.NONE
+	if _assist_intent() and not _assist_ready(aim_intent, true):
+		# T8 Г: no target, no shot — no windup, no slot, no fatigue and no throw animation; a sound and a reason.
+		var fresh := _fresh_traversal() if charges > 0 else {}
+		if not _assist_ready(fresh, true):
+			_deny("no_harpoons" if charges <= 0 else _reason_of(aim_intent if fresh.is_empty() else fresh))
+			return Target.NONE
+		aim_intent = fresh
 	if _recorded_anchor_occupied():
 		Sfx.play("grapple_denied", -4)
 		return Target.NONE
@@ -382,7 +402,75 @@ func _recorded_anchor_occupied() -> bool:
 	return selected != null and registry.occupied(selected.global_position)
 
 
+## The current shot carries a traversal packet (human P1, solo camera, never the enemy hook): T8 Г applies.
+func _assist_intent() -> bool:
+	return not _prefer_enemy and aim_intent.get("assist", false)
+
+
+## A traversal packet may launch now: a free anchor with stock, on a clear line from the hand, in range of the hand now
+## and of the hand at contact (contact_hand). `with_windup` for a fresh press; a launch or a transfer has none left.
+func _assist_ready(packet: Dictionary, with_windup: bool) -> bool:
+	if packet.is_empty() or charges <= 0:
+		return false
+	var id := String(packet.get("target_id", ""))
+	var selected := get_node_or_null(NodePath(id)) as Node3D if not id.is_empty() else null
+	if selected == null or not selected.is_in_group("grapple_anchor") or registry.occupied(selected.global_position):
+		return false
+	var hand := fighter.global_position + HAND
+	var point := selected.global_position
+	return hand.distance_to(point) <= range_m and point.distance_to(contact_hand(point, with_windup)) <= range_m and line_clear(hand, point)
+
+
+## T8 Г: where the hand meets `point` if a traversal shot is taken now. A fresh press first travels through the windup
+## (the city keeps its run; the duel brakes to a stop at 30 m/s², see drive), then the body coasts during the flight.
+## A point beyond range from that hand would rewind at contact (_flight), so selection and launch refuse it. The hand
+## path is a straight line, so checking now and at contact also covers the launch hand.
+func contact_hand(point: Vector3, with_windup: bool) -> Vector3:
+	var hand := fighter.global_position + HAND
+	var flat := Vector3(fighter.velocity.x, 0.0, fighter.velocity.z)
+	if with_windup and not responsive_parkour:
+		if flat.length() < 0.001:
+			return hand
+		return hand + flat.normalized() * minf(flat.length() * float(WINDUP_FRAMES) / 60.0, flat.length_squared() / 60.0)
+	if with_windup:
+		hand += flat * float(parkour_windup_frames) / 60.0
+	var speed := parkour_projectile_speed if responsive_parkour else projectile_speed
+	return hand + flat * (hand.distance_to(point) / maxf(1.0, speed))
+
+
+## A new traversal selection from the fighter's actual hand by the same rules, anchors only (a device is about to be
+## launched); never remembered (the camera owns that).
+func _fresh_traversal() -> Dictionary:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null or not camera.has_meta("harpoon_aim"):
+		return {}
+	var packet: Dictionary = camera.get_meta("harpoon_aim").capture(fighter, false, false, true)
+	return packet if packet.get("assist", false) else {}
+
+
+func _reason_of(packet: Dictionary) -> String:
+	if charges <= 0:
+		return "no_harpoons"
+	var reason := String(packet.get("reason", ""))
+	return reason if not reason.is_empty() else "none"
+
+
+func _deny(reason: String) -> void:
+	if Engine.get_physics_frames() - int(Sfx.last_frame.get("grapple_denied", -1000000)) >= DENIED_GAP_TICKS:
+		Sfx.play("grapple_denied", -4)
+	denied.emit(reason)
+
+
 func _launch() -> void:
+	if _assist_intent() and not chain_throw and not _assist_ready(aim_intent, false):
+		# T8 Г: the windup moved the hand (or the point was taken). Re-select from the actual hand before spending;
+		# nothing to launch at returns to IDLE with no slot or fatigue spent. A shot into empty air never happens.
+		var fresh := _fresh_traversal()
+		if not _assist_ready(fresh, false):
+			_deny(_reason_of(fresh))
+			_finish_idle()
+			return
+		aim_intent = fresh
 	if _recorded_anchor_occupied():
 		Sfx.play("grapple_denied", -4)
 		_finish_idle()
@@ -446,6 +534,8 @@ func _flight(delta: float, held: bool) -> void:
 		_deployed_token = token
 		registry.attach_user(token, self)
 		token = 0
+		if _assist_intent():
+			Sfx.play("grapple_anchor", -6) # T8: silent until the sound is added with its registry row.
 		attached = held
 		phase = Phase.HANG if held else Phase.IDLE
 		_tip.visible = false

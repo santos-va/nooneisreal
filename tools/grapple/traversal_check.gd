@@ -263,10 +263,14 @@ func assistance() -> void:
 	var angle: float = rad_to_deg(acos(center_axis.dot((first.position - camera.position).normalized())))
 	check(angle > 10.0 and candidate.target_id == String(first.get_path()), "action assistance selects visible off-center anchor along movement")
 	f._wish = Vector3.LEFT
+	# T8 Г (P7): a still-valid target may be replaced only 0.25 s after the last change, so each switch waits it out.
+	check(helper.capture(f, false).target_id == String(first.get_path()), "a new travel direction does not replace a valid target inside 0.25 s")
+	await switch_delay()
 	check(helper.capture(f, false).target_id == String(next.get_path()), "changing travel direction replaces opposite-side sticky target")
 	f._wish = Vector3.RIGHT
 	camera.look_at(next.position)
 	helper.apply_look(Vector2(0.001, 0.0))
+	await switch_delay()
 	check(helper.capture(f, false).target_id == String(next.get_path()), "explicit orbit overrides movement preference")
 	helper.reset()
 	camera.look_at(first.position)
@@ -293,7 +297,9 @@ func assistance() -> void:
 	check(not f.grapple.line_clear(f.position + Hook.HAND, first.position), "hook and preview agree on layer-one geometry")
 	wall.position = camera.position.lerp(first.position, 0.5)
 	await physics_frame
-	check(helper.capture(f, false).target_id.is_empty(), "camera-hidden anchor is not advertised through walls")
+	# T8 Г changes this sign by design (06-UI-UX, P3): the camera line is a weight, the hand line stays a hard filter.
+	var hidden: Dictionary = helper.capture(f, false)
+	check(hidden.target_id == String(first.get_path()) and hidden.camera_hidden, "camera-hidden anchor stays selectable when the hand sees it (T8 decision, sign changed)")
 	wall.position = Vector3(50, 50, 50)
 	await physics_frame
 	check(helper.capture(f, false).target_id == String(first.get_path()), "removing obstruction restores assisted target")
@@ -313,6 +319,12 @@ func assistance() -> void:
 			break
 	check(f.grapple.phase == Hook.Phase.MISS_REWIND and f.grapple.token != 0, "solid world collision stops projectile and keeps its token recoverable")
 	wall.free()
+
+
+## 0.25 s (T8 traversal_switch_delay) plus one tick of physics frames.
+func switch_delay() -> void:
+	for tick: int in roundi(helper.traversal_switch_delay * Engine.physics_ticks_per_second) + 1:
+		await physics_frame
 
 
 func responsive_profile() -> void:

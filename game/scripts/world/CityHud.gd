@@ -27,6 +27,20 @@ var _rope_text: String = ""
 var _dash_text: String = ""
 var _player: Fighter
 var _aim_cue: Label
+## T8 Г: the ring / grey ring / edge arrow drawn from the camera's one published packet (CityCamera → HarpoonAim).
+var _hook_marker: CityHookMarker
+var _marked_id: String = ""
+## A refused traversal press is answered in the shared hint line (PLACEHOLDER words and seconds, T8 table).
+const HOOK_DENIED_SECONDS: float = 1.5
+const HOOK_REASONS := {
+	"no_harpoons": "NO HARPOONS · reuse a hanging rope",
+	"behind": "ANCHOR BEHIND · turn around",
+	"above": "NO ANCHOR ABOVE",
+	"too_far": "ANCHOR TOO FAR · get closer",
+	"none": "NO ANCHOR IN REACH",
+}
+var _denied_text: String = ""
+var _denied_left: float = 0.0
 var _stamina_bar: ProgressBar
 var _stamina_text: String = ""
 var _progress: Node
@@ -59,6 +73,14 @@ var comfort: ComfortPanel
 ## cards, the quest guide and the hook cue step aside. The pause stays here: CityHud is the only pause owner. Skills
 ## are open in the pocket, so only the enemy hook is still answered — with the pocket's own line.
 var fight_mode: bool = false
+## «Заплутаність» (plan 2026-10-08-City-Events-Stage-1 step 4; T8 06-UI-UX § «Заплутаність» поруч зі шкалою): the last
+## line of the status card shows `HAZE m:ss` only while the state lasts; its end says HAZE FADES on the bottom line for
+## HAZE_FADES_SECONDS. Words PLACEHOLDER (T7 names the state). No new input action.
+var haze_label: Label
+var _haze: CityHaze
+var _haze_fades_left: float = 0.0
+const HAZE_FADES_TEXT := "HAZE FADES"
+const HAZE_FADES_SECONDS: float = 2.0
 const POCKET_SEALED_HINT := "ENEMY HOOK SEALED IN THIS FIGHT"
 
 
@@ -104,6 +126,13 @@ func _ready() -> void:
 	_stamina_bar.custom_minimum_size.y = 5
 	_stamina_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_stamina_bar)
+	haze_label = _label("", 18)
+	haze_label.name = "HazeLine"
+	haze_label.hide()
+	column.add_child(haze_label)
+	_hook_marker = CityHookMarker.new()
+	_hook_marker.name = "HookMarker"
+	_root.add_child(_hook_marker)
 	_aim_cue = _label("", 20)
 	_aim_cue.add_theme_color_override("font_outline_color", Color("171322"))
 	_aim_cue.add_theme_constant_override("outline_size", 6)
@@ -131,6 +160,10 @@ func _ready() -> void:
 	_quest_guide = CityQuestGuide.new()
 	_root.add_child(_quest_guide)
 	_build_quest()
+	# The hook ring and its label draw above the cards (the ring marks a world point; the label steps around the cards);
+	# the pause panel built next stays above them.
+	_root.move_child(_hook_marker, -1)
+	_root.move_child(_aim_cue, -1)
 	_build_pause()
 	_refresh()
 
@@ -459,7 +492,7 @@ func _refresh_quest_guide() -> void:
 
 func exploration_help() -> String:
 	var text := "Move: WASD / left stick · Look: RMB + drag / right stick\n"
-	text += "Jump / hold to reel (limited): %s / A · Hook: tap %s / L3 (or Y + LT)\n" % [InputRouter.binding_label(1, "jump", false), InputRouter.binding_label(1, "grapple_parkour", false)]
+	text += "Jump / hold to reel (limited): %s / A · Hook: tap %s / L3 (or Y + LT), marked anchor only\n" % [InputRouter.binding_label(1, "jump", false), InputRouter.binding_label(1, "grapple_parkour", false)]
 	text += "Face anchor: hook / transfer · Finite hooks · Reuse rope within 0.70m of hand.\n"
 	text += "Ledge: hold jump + move into edge; release, then press jump to climb.\n"
 	text += "Skea wall steps: hold jump + move into wall; release to drop.\n"
@@ -532,7 +565,7 @@ func _refresh() -> void:
 		"move": "Walk · WASD / left stick",
 		"look": "Look up · RMB + drag / right stick",
 		"jump": "Jump · %s / A" % InputRouter.binding_label(1, "jump", false),
-		"rope": "Aim at a lamp · %s / L3 to hook" % InputRouter.binding_label(1, "grapple_parkour", false),
+		"rope": "Move toward a lamp · %s / L3 to hook" % InputRouter.binding_label(1, "grapple_parkour", false),
 		"explore": "",
 	}
 	objective_label.text = String(prompts[onboarding.current_id()])
@@ -549,6 +582,7 @@ func bind_player(player: Fighter) -> void:
 	player.dodge_stamina_changed.connect(_on_stamina)
 	_on_stamina(player.dodge_stamina, player.dodge_stamina_max())
 	player.grapple_changed.connect(_on_rope)
+	player.grapple.denied.connect(_on_hook_denied)
 	player.dash_changed.connect(_on_dash)
 	_on_rope(player.grapple.charges, player.grapple.cooldown_left, player.grapple.max_charges)
 	_on_dash(player.dash_charges_left, player.dash_recharge_left, player.data.dash_charges)
@@ -580,6 +614,26 @@ func _on_stamina(value: float, maximum: float) -> void:
 	_refresh_resources()
 
 
+func bind_haze(model: CityHaze) -> void:
+	_haze = model
+	_haze.fading.connect(func() -> void: _haze_fades_left = HAZE_FADES_SECONDS)
+	_refresh_haze()
+
+
+static func haze_text(seconds: float) -> String:
+	var whole: int = ceili(maxf(seconds, 0.0))
+	return "HAZE %d:%02d" % [whole / 60, whole % 60]
+
+
+func _refresh_haze() -> void:
+	if haze_label == null:
+		return
+	var on: bool = is_instance_valid(_haze) and _haze.haze_active()
+	haze_label.visible = on
+	if on:
+		haze_label.text = haze_text(_haze.haze_remaining())
+
+
 ## Enter / leave the lethal pocket's HUD arrangement (CityLethalFight). Leaving shows the journal card again.
 func set_fight_mode(value: bool) -> void:
 	fight_mode = value
@@ -591,11 +645,23 @@ func set_fight_mode(value: bool) -> void:
 		_quest_guide.hide()
 	if _aim_cue != null:
 		_aim_cue.hide()
+	if _hook_marker != null:
+		_hook_marker.clear()
+	_denied_left = 0.0
 	if _quest_card != null:
 		if value:
 			_quest_card.hide()
 		else:
 			_refresh_progress()
+	_refresh_traversal_hint()
+
+
+## T8 Г: a traversal press that issued nothing names its reason for HOOK_DENIED_SECONDS; a repeat refreshes the timer.
+func _on_hook_denied(reason: String) -> void:
+	if paused_ui or InputRouter.ui_suppressed() or fight_mode:
+		return
+	_denied_text = HOOK_REASONS.get(reason, HOOK_REASONS["none"])
+	_denied_left = HOOK_DENIED_SECONDS
 	_refresh_traversal_hint()
 
 
@@ -611,6 +677,9 @@ func _process(_delta: float) -> void:
 	if not paused_ui and not InputRouter.ui_suppressed():
 		_sealed_left = maxf(0.0, _sealed_left - _delta)
 		_sealed_since += _delta
+		_denied_left = maxf(0.0, _denied_left - _delta)
+		_haze_fades_left = maxf(0.0, _haze_fades_left - _delta)
+	_refresh_haze()
 	_refresh_traversal_hint()
 	_guide_elapsed += _delta
 	if paused_ui or InputRouter.ui_suppressed():
@@ -619,41 +688,130 @@ func _process(_delta: float) -> void:
 	elif _guide_elapsed >= 0.1:
 		_guide_elapsed = 0.0
 		_refresh_quest_guide()
-	if _aim_cue == null:
+	_refresh_hook_cue(_delta)
+
+
+## T8 Г: one sample per physics tick, published by the camera; this HUD never selects on its own. Ring on the target,
+## an edge arrow toward a target outside the frame, a grey ring on an anchor that is only too far; nothing otherwise
+## (no HOOK at a camera ray point). During the windup the ring closes and fills on the pressed target.
+func _refresh_hook_cue(delta: float) -> void:
+	if _aim_cue == null or _hook_marker == null:
 		return
 	_aim_cue.hide()
+	_hook_marker.tick(delta)
 	if fight_mode or not is_instance_valid(_player) or paused_ui or InputRouter.ui_suppressed():
+		_hook_marker.clear()
 		return
 	var camera := get_viewport().get_camera_3d()
 	if camera == null or not camera.has_meta("harpoon_aim"):
+		_hook_marker.clear()
 		return
 	var helper: HarpoonAim = camera.get_meta("harpoon_aim")
-	var intent := helper.capture(_player, false, false)
-	var point: Vector3 = intent.point
-	if camera.is_position_behind(point) or (intent.target_id.is_empty() and not intent.manual):
-		return
-	var screen := camera.unproject_position(point)
-	if not get_viewport().get_visible_rect().has_point(screen):
-		return
-	var kind: String = intent.get("candidate_kind", "")
-	var verb := "GRAB ROPE" if kind == "rope" else ("TRANSFER" if _player.grapple.busy() else "HOOK")
+	var hook: GrappleHook = _player.grapple
+	var to_root := _root.get_global_transform_with_canvas().affine_inverse()
 	var binding: String = InputRouter.binding_label(_player.player_index, "grapple_parkour", helper.last_gamepad)
-	if kind == "rope" and not intent.get("reachable", true):
+	if hook.phase == GrappleHook.Phase.WINDUP and hook.aim_intent.get("assist", false):
+		var pressed: Node3D = get_node_or_null(NodePath(String(hook.aim_intent.get("target_id", "")))) as Node3D
+		if pressed != null and not camera.is_position_behind(pressed.global_position):
+			_hook_marker.ring(to_root * camera.unproject_position(pressed.global_position), false, hook.windup_progress, false)
+		else:
+			_hook_marker.clear()
+		return
+	if hook.phase != GrappleHook.Phase.IDLE and hook.phase != GrappleHook.Phase.HANG:
+		_hook_marker.clear()
+		return
+	var packet: Dictionary = helper.published
+	if packet.is_empty() or int(packet.get("player", 0)) != _player.player_index or not packet.get("assist", false):
+		_hook_marker.clear()
+		_marked_id = ""
+		return
+	var id := String(packet.target_id)
+	if id.is_empty():
+		_marked_id = ""
+		if float(packet.get("far_distance", 0.0)) > 0.0:
+			var far: Vector3 = packet.far_point
+			var grey := to_root * camera.unproject_position(far)
+			_hook_marker.ring(grey, true, 0.0, false)
+			_place_cue("TOO FAR · %.1fm" % float(packet.far_distance), grey)
+		else:
+			_hook_marker.clear()
+		return
+	if id != _marked_id:
+		_hook_marker.pulse()
+		_marked_id = id
+	var point: Vector3 = packet.point
+	var kind: String = packet.get("candidate_kind", "")
+	var verb := "GRAB ROPE" if kind == "rope" else ("TRANSFER" if hook.busy() else "HOOK")
+	if kind == "rope" and not packet.get("reachable", true):
 		verb = "APPROACH ROPE"
 		binding = ""
-	_aim_cue.text = "◇ %s%s · %.2fm" % [(binding + " · ") if not binding.is_empty() else "", verb, float(intent.get("contact_distance", (_player.global_position + GrappleHook.HAND).distance_to(point)))]
-	_aim_cue.position = _root.get_global_transform_with_canvas().affine_inverse() * screen + Vector2(-18, -32)
-	var bounds := get_viewport().get_visible_rect().size
+	var text := "◇ %s%s · %.1fm" % [(binding + " · ") if not binding.is_empty() else "", verb, float(packet.get("contact_distance", (_player.global_position + GrappleHook.HAND).distance_to(point)))]
+	if packet.get("in_frame", false):
+		var screen := to_root * camera.unproject_position(point)
+		_hook_marker.ring(screen, false, 0.0, packet.get("camera_hidden", false))
+		_place_cue(text, screen)
+		return
+	var edge := _edge_point(camera, point, to_root)
+	_hook_marker.arrow(edge.position, edge.direction)
+	_place_cue(text, edge.position, -Vector2(edge.direction)) # beside the arrow, on the inner side
+
+
+## The frame edge toward an off-screen point, inside the cue margins (12 px sides and top, 80 px bottom) and below the
+## status and quest cards, as for the label.
+func _edge_point(camera: Camera3D, point: Vector3, to_root: Transform2D) -> Dictionary:
+	var bounds := _root.size
+	var center := bounds * 0.5
+	var screen := to_root * camera.unproject_position(point)
+	var direction := screen - center
+	if camera.is_position_behind(point):
+		direction = -direction
+	if direction.length_squared() < 1.0:
+		direction = Vector2.DOWN
+	var margin := CityHookMarker.ARROW_SIZE_1080 * _hook_marker.scale_factor()
+	var low := Vector2(12.0 + margin, 12.0 + margin)
+	var high := bounds - Vector2(12.0 + margin, 80.0 + margin)
+	var reach := INF
+	if absf(direction.x) > 0.0001:
+		reach = minf(reach, ((high.x if direction.x > 0.0 else low.x) - center.x) / direction.x)
+	if absf(direction.y) > 0.0001:
+		reach = minf(reach, ((high.y if direction.y > 0.0 else low.y) - center.y) / direction.y)
+	var edge := center + direction * maxf(0.0, reach)
+	for card: Control in [_status_card, _quest_card, _quest_guide]:
+		if card != null and card.visible and card.get_rect().grow(margin).has_point(edge):
+			edge.y = card.get_rect().end.y + margin + 8.0
+	return {"position": edge, "direction": direction.normalized()}
+
+
+## The label next to its mark: above a ring (below it when a card is in the way), on the inner side of an edge arrow.
+## Then the old rules: 12 px from the sides and the top, 80 px from the bottom, below a card it still overlaps.
+func _place_cue(text: String, anchor: Vector2, side: Vector2 = Vector2.UP) -> void:
+	_aim_cue.text = text
+	var bounds := _root.size
 	var extent := _aim_cue.get_minimum_size()
-	_aim_cue.position.x = clampf(_aim_cue.position.x, 12.0, maxf(12.0, bounds.x - extent.x - 12.0))
-	_aim_cue.position.y = clampf(_aim_cue.position.y, 12.0, maxf(12.0, bounds.y - extent.y - 80.0))
-	if _status_card.get_rect().intersects(Rect2(_aim_cue.position, extent)):
-		_aim_cue.position.y = _status_card.get_rect().end.y + 8.0
-	if _quest_card.visible and _quest_card.get_rect().intersects(Rect2(_aim_cue.position, extent)):
-		_aim_cue.position.y = _quest_card.get_rect().end.y + 8.0
-	if _quest_guide.visible and _quest_guide.get_rect().intersects(Rect2(_aim_cue.position, extent)):
-		_aim_cue.position.y = _quest_guide.get_rect().end.y + 8.0
+	var gap := _hook_marker.diameter() * 0.5 + 6.0
+	var cards: Array[Control] = [_status_card, _quest_card, _quest_guide]
+	var placed := _cue_at(anchor, side, gap, extent)
+	if side == Vector2.UP and _overlaps_card(placed, extent, cards):
+		placed = _cue_at(anchor, Vector2.DOWN, gap, extent)
+	placed.x = clampf(placed.x, 12.0, maxf(12.0, bounds.x - extent.x - 12.0))
+	placed.y = clampf(placed.y, 12.0, maxf(12.0, bounds.y - extent.y - 80.0))
+	for card: Control in cards:
+		if card.visible and card.get_rect().intersects(Rect2(placed, extent)):
+			placed.y = card.get_rect().end.y + 8.0
+	_aim_cue.position = placed
 	_aim_cue.show()
+
+
+func _cue_at(anchor: Vector2, side: Vector2, gap: float, extent: Vector2) -> Vector2:
+	var center := anchor + side.normalized() * (gap + absf(side.normalized().x) * extent.x * 0.5 + absf(side.normalized().y) * extent.y * 0.5)
+	return center - extent * 0.5
+
+
+func _overlaps_card(at: Vector2, extent: Vector2, cards: Array[Control]) -> bool:
+	for card: Control in cards:
+		if card.visible and card.get_rect().intersects(Rect2(at, extent)):
+			return true
+	return false
 
 
 func _refresh_traversal_hint() -> void:
@@ -666,8 +824,16 @@ func _refresh_traversal_hint() -> void:
 		hint_label.text = POCKET_SEALED_HINT if fight_mode else SEALED_HINT
 		hint_label.show()
 		return
+	if _haze_fades_left > 0.0 and not fight_mode:
+		hint_label.text = HAZE_FADES_TEXT
+		hint_label.show()
+		return
 	if not _story_prompt.is_empty():
 		hint_label.text = _story_prompt
+		hint_label.show()
+		return
+	if _denied_left > 0.0 and not fight_mode:
+		hint_label.text = _denied_text
 		hint_label.show()
 		return
 	var gamepad := false

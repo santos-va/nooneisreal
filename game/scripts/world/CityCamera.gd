@@ -21,7 +21,6 @@ var camera: Camera3D
 var aim: HarpoonAim
 var _yaw: float = 0.0
 var _pitch: float = 0.0
-var _cue: MeshInstance3D
 var _conversation: Node3D
 var _conversation_frame := CityConversationFrame.new()
 var _conversation_goal: Dictionary = {}
@@ -62,19 +61,6 @@ func _ready() -> void:
 	aim.return_speed = 0.0 # City orbit stays where the player leaves it.
 	add_child(aim)
 	aim.setup(camera, true)
-	_cue = MeshInstance3D.new()
-	var cue_mesh := SphereMesh.new()
-	cue_mesh.radius = 0.15
-	cue_mesh.height = 0.3
-	_cue.mesh = cue_mesh
-	var cue_material := StandardMaterial3D.new()
-	cue_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	cue_material.albedo_color = Color(0.2, 1.0, 0.75)
-	_cue.material_override = cue_material
-	_cue.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_cue.top_level = true
-	_cue.visible = false
-	add_child(_cue)
 
 func setup(fighter: CityFighter) -> void:
 	player = fighter
@@ -123,10 +109,9 @@ func _physics_process(delta: float) -> void:
 	var turn := Vector2(angle_difference(previous, _yaw), _pitch - previous_pitch).length()
 	if turn > 0.00001:
 		looked.emit(turn)
-	var packet := aim.capture(player, false)
-	_cue.visible = not String(packet.target_id).is_empty() and not InputRouter.ui_suppressed()
-	if _cue.visible:
-		_cue.global_position = packet.point
+	# T8 Г: the one traversal sample of this tick. CityHud draws the ring, edge arrow and label from it and a press
+	# fires at it; the old 3D sphere and the HUD's second sample are gone.
+	aim.publish(player)
 
 func _update_conversation(delta: float) -> void:
 	var active: bool = is_instance_valid(_conversation) and not _conversation_goal.is_empty()
