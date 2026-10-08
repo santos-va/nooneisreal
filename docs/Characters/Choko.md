@@ -3,6 +3,7 @@
 **Роль у команді:** головний герой, лідер, **технік** (Santos, 2026-10-03). **Статус у грі:** боєць №1; базовий кіт реалізовано (числа PLACEHOLDER). Видимий меч/стійку/передачу з #168 доповнено носінням за спиною, діставанням і пиловим реформуванням у змердженому [PR #170](https://github.com/santos-va/nooneisreal/pull/170). Технічні перевірки зелені; M3 і суб’єктивний playtest ще відкриті.
 **Картка:** `card_choko_v3.png` (Higgsfield, 2026-10-02 11:15, id `bcddbbc6`) — [[Textures-Registry]]; файл завантажений і використовується поточним `choko.tres` як портрет/картка.
 **Роль у бою:** контроль часу. Меч, перемотка, заморозка. Міцніший і повільніший за [[Skea]].
+**Вік:** **≈ 20 років**, дорослий — як [[Skea]]. Канон (Santos, 2026-10-08, питальник, обраний варіант: «Дорослий, ≈ 20 як Skea»); рішення — [[ADR-026-Substances-Nutrition-And-Thirst]] п. 5. Точнішого числа Santos не дав — не визначено.
 
 ## Зовнішність — одяг v5 (Santos, 2026-10-03, santos-va/nooneisreal#38)
 
@@ -84,4 +85,4 @@
 - З [[2026-10-02-Characters-Interview]] блок A: віяла, маска на очі, голос і фрази. Пасивка Printer та окремі удари кінцівками вже визначені; подробиці ударів руків’ям не встановлені.
 
 ## Related
-- [[index]] · [[Plans/2026-10-04-Choko-Stance-Sword]] · [[05-Platforms-Input]] · [[02-Combat-System]] · [[Skea]] · [[Roster]] · [[Lore]] · [[03-Skills-Framework]] · [[08-Balance]] · [[VFX-Direction]] · [[Prompts]] · [[2026-10-03-Choko-Outfit-v5]] · [[2026-10-03-Choko-Skea-Bond-and-Curse]]
+- [[index]] · [[Plans/2026-10-04-Choko-Stance-Sword]] · [[05-Platforms-Input]] · [[02-Combat-System]] · [[Skea]] · [[Roster]] · [[Lore]] · [[03-Skills-Framework]] · [[08-Balance]] · [[VFX-Direction]] · [[Prompts]] · [[2026-10-03-Choko-Outfit-v5]] · [[2026-10-03-Choko-Skea-Bond-and-Curse]] · [[ADR-026-Substances-Nutrition-And-Thirst]]

@@ -187,3 +187,4 @@
 - [[index]] · [[Lore]] · [[Cronshift]] · [[PROPOSAL-Quests-And-City-Events]] · [[PROPOSAL-First-Enemy]]
 - [[2026-10-08-Survival-Hunger]] · [[2026-10-08-City-Events-Stage-1]] · [[ADR-025-Street-Scuffle-And-City-Events]] · [[ADR-024-Lethal-Fights-And-First-Enemy]] · [[ADR-019-Audit-And-Many-Views-Before-Decision]]
 - [[2026-10-07-Tricks-Moves-And-Street-Encounters]] · [[2026-10-05-District-Life]] · [[06-UI-UX]] · [[Style-Guide]] · [[Choko]] · [[Skea]]
+- [[PROPOSAL-Substances-And-Healthy-Food]] — продовження: речовини, вода, вітамінне й протеїнове (2026-10-08)
