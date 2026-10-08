@@ -74,6 +74,8 @@ cases = [
     ('authored-hook', 'tools/animation/authored_hook_check.gd', r'AUTHORED_HOOK_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('parkour-motion', 'tools/animation/parkour_motion_check.gd', r'PARKOUR_MOTION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('trick-motion', 'tools/animation/trick_motion_check.gd', r'TRICK_MOTION_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    # Living body (plan 2026-10-07-Living-Body, step 1): R1/R7/R8/J1-J3 drawn over the authority, the duel unchanged.
+    ('living-body', 'tools/animation/living_body_check.gd', r'LIVING_BODY_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('gait', 'tools/animation/gait_check.gd', r'GAIT_CHECK_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('comfort-ui', 'tools/ui/comfort_ui_check.gd', r'COMFORT_UI PASS \(0 failures; mutation=\)', [], 0),
     ('match-lifecycle', 'tools/match/match_lifecycle_check.gd', r'MATCH_LIFECYCLE PASS \([1-9][0-9]* checks, 0 failures; mutation=\)', [], 0),
@@ -92,6 +94,8 @@ cases = [
     ('city-parkour', 'tools/parkour/city_parkour_check.gd', r'CITY_PARKOUR_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-tricks', 'tools/parkour/city_tricks_check.gd', r'CITY_TRICKS_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('tricks-independent', 'tools/parkour/tricks_independent_check.gd', r'T4_TRICKS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
+    # Living body step 2: P1 vault, P4 side wall run, P5 ledge shimmy, P8 heavy landing (picture only).
+    ('parkour-moves', 'tools/parkour/parkour_moves_check.gd', r'PARKOUR_MOVES_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('dodge-stamina', 'tools/combat/dodge_stamina_check.gd', r'DODGE_STAMINA_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('music', 'tools/audio/music_check.gd', r'\[music\] failures=0', [], 0),
     ('district-life', 'tools/npc/district_life_check.gd', r'\[district-life\] [1-9][0-9]* checks / 0 failures', [], 0),
@@ -168,6 +172,20 @@ for mutation in ('base', 'empty_shot', 'no_recheck', 'lock'):
     cases.append(('auto-hook-negative-' + mutation, 'tools/grapple/auto_hook_check.gd',
                   rf'AUTO_HOOK_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
+# Living body: a presented pose left on the mannequin, a stun frame, a capsule-RNG draw or invulnerability leaked into
+# the fight, mirrored hit sides, a flinch clip that does not follow the hitstun, the get-up drawn by the authority alone,
+# every landing drawn as light, a deferred callback that forgets the living pose and a kept pose that makes the sword
+# transfer land twice must each go red.
+for mutation in ('pose', 'state', 'rng', 'hurtbox', 'side', 'fill', 'getup', 'tier', 'deferred', 'transfer'):
+    cases.append(('living-body-negative-' + mutation, 'tools/animation/living_body_check.gd',
+                  rf'LIVING_BODY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# Parkour moves: a vault over a 1.5 m obstacle, a vault onto a 1 m drop, a side run at 45° to the wall and a shimmy
+# whose grips leave the ledge must each go red.
+for mutation in ('vault_height', 'vault_floor', 'side_angle', 'shimmy_grip'):
+    cases.append(('parkour-moves-negative-' + mutation, 'tools/parkour/parkour_moves_check.gd',
+                  rf'PARKOUR_MOVES_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
 # City step 0: no sealed-skill hint, no throttle, no modal from the city pause, no return to the pause must go red.
 for mutation in ('signal', 'interval', 'comfort', 'focus'):
     cases.append(('city-controls-negative-' + mutation, 'tools/ui/city_controls_check.gd',
@@ -238,6 +256,8 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('tricks-independent-negative-', 'ERROR: T4_TRICKS: '),
                           ('tight-station-negative-', 'ERROR: TIGHT_STATION: '),
                           ('city-controls-negative-', 'ERROR: CITY_CONTROLS: '),
+                          ('living-body-negative-', 'ERROR: LIVING_BODY: '),
+                          ('parkour-moves-negative-', 'ERROR: PARKOUR_MOVES: '),
                           ('auto-hook-negative-', 'ERROR: AUTO_HOOK: '),
                           ('display-auto-negative-', 'ERROR: DISPLAY_AUTO: '),
                           ('lethal-fight-negative-', 'ERROR: LETHAL_FIGHT: '),

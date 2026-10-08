@@ -160,11 +160,16 @@ func _run() -> void:
 		for suffix: String in ["", ".tmp"]:
 			if FileAccess.file_exists(path + suffix):
 				DirAccess.remove_absolute(ProjectSettings.globalize_path(path + suffix))
-	for singleton: String in ["Sfx", "UltMusic"]:
+	# Same teardown as city_controls_check.gd: Ogg playback (round_start.ogg) retires on audio-mixer wall time, not on
+	# accelerated --fixed-fps frames, so 4 frames left «2 resources still in use at exit» depending on timing.
+	for singleton: String in ["Sfx", "UltMusic", "Music"]:
 		var node := root.get_node_or_null(singleton)
 		if node != null:
 			node.queue_free()
-	await _frames(4)
+	var deadline: int = Time.get_ticks_msec() + 250
+	while Time.get_ticks_msec() < deadline:
+		await process_frame
+		OS.delay_msec(1)
 	print("DISPLAY_AUTO_COMPLETE checks=%d failures=%d mutation=%s" % [checks, failures, mutation])
 	quit(1 if failures else 0)
 

@@ -24,12 +24,20 @@ var kick_release_frame: int = -1
 var input_revision: int = -1
 var floor_point: Vector3 = Vector3.ZERO
 var floor_normal: Vector3 = Vector3.UP
+## P1 vault (plan 2026-10-07-Living-Body step 2): the swept path over the obstacle and the speed carried out of it.
+var vault_path: Array[Vector3] = []
+var vault_top: Vector3 = Vector3.ZERO
+var vault_exit: Vector3 = Vector3.ZERO
+## P4 side wall run: the direction along the wall and this hero's run length.
+var side_tangent: Vector3 = Vector3.ZERO
+var side_seconds: float = 0.0
 
 func reset(actor: Fighter, recharge: bool = true) -> void:
 	phase = ""
 	elapsed = 0.0
 	support = null
 	hands.clear()
+	vault_path.clear()
 	kick_release_frame = -1
 	actor.set_meta("parkour_presentation", {})
 	if recharge:
@@ -74,6 +82,10 @@ func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 		if not _support_valid(actor):
 			reset(actor, false)
 			return false
+		if phase == "vault":
+			return _tick_vault(actor, delta)
+		if phase == "wall_side":
+			return _tick_side(actor, delta, intent)
 		if phase == "hang" and _try_kick(actor, delta, intent, {"collider":support,"normal":normal,"position":wall_point}):
 			return false
 		if phase == "hang":
@@ -94,6 +106,8 @@ func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 					return true
 				phase = "mantle"
 				elapsed = 0.0
+			if phase == "hang":
+				_shimmy(actor, delta)
 			_publish(actor)
 			return true
 		if phase == "mantle":
@@ -131,6 +145,8 @@ func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 			actor.move_and_slide()
 			_publish(actor)
 			return true
+	if _try_vault(actor):
+		return true
 	if not kick_spent and kick_release_frame >= 0 and intent.jump_held and not intent.block and not intent.crouch and actor.wish().length() >= profile.minimum_kick_away:
 		if _try_kick(actor, delta, intent, _wall(actor, -actor.wish().normalized())):
 			return false
@@ -139,18 +155,197 @@ func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 	var direction: Vector3 = actor.wish().normalized()
 	if not grip_spent and _try_grip(actor, direction):
 		return true
-	if actor.data.id != "skea" or wall_spent or actor.velocity.y < 0.0:
+	if actor.data.id == "skea" and not wall_spent and actor.velocity.y >= 0.0:
+		var wall: Dictionary = _wall(actor, direction)
+		if not wall.is_empty() and direction.dot(-Vector3(wall.normal)) >= profile.minimum_wall_approach:
+			wall_spent = true
+			phase = "wall_run"
+			elapsed = 0.0
+			_set_support(wall)
+			actor._set_forward(-normal)
+			_publish(actor)
+			return true
+	# Nothing above took the jump: a run along a wall becomes the side wall run (P4).
+	return _try_side_run(actor)
+
+## P1: on the run, right after take-off, an obstacle 0.6–1.3 m high and ≤ 0.8 m deep with the floor beyond at the
+## take-off level is crossed on a swept kinematic path, as the mantle is. No hang, no speed bonus.
+func _try_vault(actor: Fighter) -> bool:
+	if not phase.is_empty() or actor.velocity.y <= 0.0 or float(actor.frame_in_state) > profile.vault_window_seconds * 60.0:
 		return false
-	var wall: Dictionary = _wall(actor, direction)
-	if wall.is_empty() or direction.dot(-Vector3(wall.normal)) < profile.minimum_wall_approach:
+	var travel := Vector3(actor.velocity.x, 0.0, actor.velocity.z)
+	if travel.length() < profile.run_min_speed:
 		return false
-	wall_spent = true
-	phase = "wall_run"
+	var d: Vector3 = travel.normalized()
+	if actor.wish().dot(d) < profile.minimum_wall_approach:
+		return false
+	var radius: float = _radius(actor)
+	var start: Vector3 = actor.global_position
+	var ground: float = actor.floor_y()
+	var origin := Vector3(start.x, ground + profile.vault_min_height * 0.5, start.z)
+	var face: Dictionary = _ray(actor, origin, origin + d * (profile.vault_reach + radius))
+	if face.is_empty() or not face.collider is StaticBody3D or absf(Vector3(face.normal).y) > 0.15 or d.dot(-Vector3(face.normal)) < profile.minimum_wall_approach:
+		return false
+	var near: Vector3 = face.position
+	var probe: Vector3 = near + d * 0.05
+	var top: Dictionary = _ray(actor, Vector3(probe.x, ground + profile.vault_max_height + 0.3, probe.z), Vector3(probe.x, ground + profile.vault_min_height - 0.05, probe.z))
+	if top.is_empty() or top.collider != face.collider or Vector3(top.normal).dot(Vector3.UP) < 0.95:
+		return false
+	var top_y: float = float(top.position.y)
+	if top_y - ground < profile.vault_min_height or top_y - ground > profile.vault_max_height:
+		return false
+	# The far face, found from beyond the deepest obstacle allowed: anything deeper is not a vault.
+	var beyond: Vector3 = near + d * (profile.vault_max_depth + 0.3)
+	var back: Dictionary = _ray(actor, Vector3(beyond.x, top_y - 0.1, beyond.z), Vector3(near.x, top_y - 0.1, near.z))
+	if back.is_empty() or back.collider != face.collider or Vector3(back.normal).dot(d) < 0.7:
+		return false
+	var s_near: float = (near - start).dot(d)
+	var s_far: float = (Vector3(back.position) - start).dot(d)
+	if s_far - s_near > profile.vault_max_depth:
+		return false
+	var lift: float = profile.clearance
+	var out_at: Vector3 = start + d * (s_far + radius + 0.35)
+	var land: Dictionary = _ray(actor, Vector3(out_at.x, top_y + 0.5, out_at.z), Vector3(out_at.x, ground - 1.0, out_at.z))
+	if land.is_empty() or land.collider == face.collider or Vector3(land.normal).dot(Vector3.UP) < 0.95 or absf(float(land.position.y) - ground) > profile.vault_floor_tolerance:
+		return false
+	var rise: Vector3 = start + d * maxf(0.0, s_near - radius - 0.05)
+	rise.y = top_y + lift
+	var cross: Vector3 = start + d * (s_far + radius + 0.05)
+	cross.y = top_y + lift
+	var down: Vector3 = Vector3(out_at.x, float(land.position.y) + lift, out_at.z)
+	var path: Array[Vector3] = [start, rise, cross, down]
+	for index: int in 3:
+		if not _clear(actor, path[index], path[index + 1]):
+			return false
+	vault_path = path
+	vault_top = Vector3(probe.x, top_y, probe.z) + d * maxf(0.0, (s_far - s_near) * 0.5 - 0.05)
+	vault_exit = travel
+	support = face.collider as StaticBody3D
+	support_transform = support.global_transform
+	normal = face.normal
+	wall_point = near
+	var side: Vector3 = d.cross(Vector3.UP).normalized() * profile.grip_half_width
+	hands.assign([vault_top - side, vault_top + side])
+	phase = "vault"
 	elapsed = 0.0
-	_set_support(wall)
-	actor._set_forward(-normal)
+	actor._set_forward(d)
 	_publish(actor)
 	return true
+
+func _tick_vault(actor: Fighter, delta: float) -> bool:
+	elapsed += delta
+	var progress: float = minf(elapsed / profile.vault_seconds, 1.0)
+	var before: Vector3 = actor.global_position
+	if not _move_clear(actor, _along(vault_path, progress)):
+		reset(actor, false)
+		actor.velocity = Vector3.ZERO
+		return false
+	actor.velocity = (actor.global_position - before) / delta
+	_publish(actor)
+	if progress >= 1.0:
+		var exit: Vector3 = vault_exit
+		reset(actor, false)
+		actor.velocity = exit   # the run speed it came in with, never more
+	return true
+
+## A point `progress` of the way along a polyline, by length.
+static func _along(path: Array[Vector3], progress: float) -> Vector3:
+	var total: float = 0.0
+	for index: int in path.size() - 1:
+		total += path[index].distance_to(path[index + 1])
+	var left: float = total * clampf(progress, 0.0, 1.0)
+	for index: int in path.size() - 1:
+		var piece: float = path[index].distance_to(path[index + 1])
+		if left <= piece or index == path.size() - 2:
+			return path[index].lerp(path[index + 1], clampf(left / maxf(piece, 0.0001), 0.0, 1.0))
+		left -= piece
+	return path[path.size() - 1]
+
+## P4: on the run, at the top of the jump (rising slower than side_wall_start_rise) and with the jump held, a wall
+## beside the body at ≤ side_wall_max_angle to the travel takes a horizontal run along it at wall_along_speed. Skea runs
+## wall_seconds, Choko side_wall_short_seconds. It spends the airborne wall effort; the exit is the existing wall kick.
+func _try_side_run(actor: Fighter) -> bool:
+	if wall_spent or actor.velocity.y > profile.side_wall_start_rise:
+		return false
+	# The angle is the player's: the wished direction, not a velocity a wall collision has already turned along it.
+	var wish: Vector3 = Vector3(actor.wish().x, 0.0, actor.wish().z)
+	if wish.length() < profile.minimum_wall_approach:
+		return false
+	var d: Vector3 = wish.normalized()
+	var travel := Vector3(actor.velocity.x, 0.0, actor.velocity.z)
+	if travel.dot(d) < profile.run_min_speed:
+		return false
+	var limit: float = sin(deg_to_rad(profile.side_wall_max_angle))
+	for side: Vector3 in [d.cross(Vector3.UP), -d.cross(Vector3.UP)]:
+		var wall: Dictionary = _wall(actor, side)
+		if wall.is_empty() or absf(d.dot(Vector3(wall.normal))) > limit:
+			continue
+		var n: Vector3 = Vector3(wall.normal)
+		wall_spent = true
+		phase = "wall_side"
+		elapsed = 0.0
+		side_tangent = (d - n * d.dot(n)).normalized()
+		side_seconds = profile.wall_seconds if actor.data.id == "skea" else profile.side_wall_short_seconds
+		_set_support(wall)
+		actor._set_forward(side_tangent)
+		actor.velocity = side_tangent * profile.wall_along_speed
+		_publish(actor)
+		return true
+	return false
+
+func _tick_side(actor: Fighter, delta: float, intent: Dictionary) -> bool:
+	if not intent.jump_held:
+		reset(actor, false)
+		kick_release_frame = InputRouter.frame()
+		return false
+	elapsed += delta
+	var wall: Dictionary = _wall(actor, -normal)
+	if elapsed >= side_seconds or wall.is_empty() or wall.collider != support:
+		reset(actor, false)
+		actor.velocity.y = minf(actor.velocity.y, 0.0)
+		return false
+	wall_point = wall.position
+	# Height is held: a horizontal run along the facade, pressed lightly against it.
+	actor.velocity = side_tangent * profile.wall_along_speed - normal * 0.5
+	actor.move_and_slide()
+	_publish(actor)
+	return true
+
+## P5: left/right along the ledge while hanging. Both grips, the floor a later mantle lands on and the swept body must
+## stay valid at the new place; otherwise the body stays where it is. The hang timer is not touched.
+func _shimmy(actor: Fighter, delta: float) -> void:
+	if hands.size() != 2:
+		return
+	var tangent: Vector3 = normal.cross(Vector3.UP).normalized()
+	var along: float = actor.wish().dot(tangent)
+	if absf(along) < profile.minimum_wall_approach:
+		return
+	var step: Vector3 = tangent * signf(along) * profile.shimmy_speed * delta
+	for hand: Vector3 in hands:
+		var inside: Vector3 = hand + step - normal * profile.top_inset
+		var contact: Dictionary = _ray(actor, inside + Vector3.UP * 0.08, inside - Vector3.UP * 0.08)
+		if contact.is_empty() or contact.collider != support or Vector3(contact.normal).dot(Vector3.UP) < 0.95:
+			return
+	var side: Vector3 = tangent * profile.grip_half_width
+	for offset: Vector3 in [Vector3.ZERO, side, -side, -normal * 0.3]:
+		var point: Vector3 = landing + step + offset
+		var floor_hit: Dictionary = _ray(actor, point + Vector3.UP * 0.1, point - Vector3.UP * 0.15)
+		if floor_hit.is_empty() or floor_hit.collider != support or Vector3(floor_hit.normal).dot(Vector3.UP) < 0.95:
+			return
+	var before: Vector3 = actor.global_position
+	if not _clear(actor, before, before + step):
+		return
+	actor.move_and_collide(step)
+	var moved: Vector3 = actor.global_position - before
+	hang += moved
+	apex += moved
+	landing += moved
+	wall_point += moved
+	hands.assign([hands[0] + moved, hands[1] + moved])
+
+func _radius(actor: Fighter) -> float:
+	var shape: CapsuleShape3D = (actor.get_node("BodyShape") as CollisionShape3D).shape as CapsuleShape3D
+	return shape.radius if shape != null else 0.35
 
 func _try_kick(actor: Fighter, delta: float, intent: Dictionary, wall: Dictionary) -> bool:
 	if kick_spent or kick_release_frame < 0 or not intent.jump_held or wall.is_empty():
@@ -310,9 +505,12 @@ func _support_valid(actor: Fighter) -> bool:
 	if not is_instance_valid(support) or not support.is_inside_tree() or not support.global_transform.is_equal_approx(support_transform):
 		return false
 	# Node lifetime alone is insufficient: collision may be disabled or its shape removed.
-	if phase == "wall_run":
+	if phase in ["wall_run", "wall_side"]:
 		var contact: Dictionary = _ray(actor, wall_point + normal * 0.08, wall_point - normal * 0.08)
 		return not contact.is_empty() and contact.collider == support
+	if phase == "vault":
+		var top: Dictionary = _ray(actor, vault_top + Vector3.UP * 0.08, vault_top - Vector3.UP * 0.08)
+		return not top.is_empty() and top.collider == support
 	for hand: Vector3 in hands:
 		var inside: Vector3 = hand - normal * profile.top_inset
 		var contact: Dictionary = _ray(actor, inside + Vector3.UP * 0.08, inside - Vector3.UP * 0.08)
@@ -353,9 +551,13 @@ func _publish(actor: Fighter) -> void:
 		duration = profile.wall_kick_seconds
 	elif phase == "landing_roll":
 		duration = profile.roll_seconds
+	elif phase == "vault":
+		duration = profile.vault_seconds
+	elif phase == "wall_side":
+		duration = side_seconds
 	actor.set_meta("parkour_presentation", {
 		"phase": phase, "progress": clampf(elapsed / maxf(duration, 0.0001), 0.0, 1.0), "duration":duration,
-		"hold_remaining": maxf(0.0, (profile.hang_seconds if phase == "hang" else profile.wall_seconds) - elapsed),
+		"hold_remaining": maxf(0.0, (profile.hang_seconds if phase == "hang" else (side_seconds if phase == "wall_side" else profile.wall_seconds)) - elapsed),
 		"left_hand": hands[0] if hands.size() == 2 else Vector3.ZERO,
 		"right_hand": hands[1] if hands.size() == 2 else Vector3.ZERO,
 		"wall_normal": normal, "wall_point": wall_point,

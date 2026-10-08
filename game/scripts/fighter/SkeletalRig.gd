@@ -32,6 +32,7 @@ const AuthoredCombat = preload("res://scripts/fighter/AuthoredCombatMotion.gd")
 const GroundMotion = preload("res://scripts/fighter/AuthoredLocomotion.gd")
 const DodgeSource = preload("res://scripts/fighter/AuthoredDodgeMotion.gd")
 const LandingSource = preload("res://scripts/fighter/AuthoredLandingMotion.gd")
+const LivingBody = preload("res://scripts/fighter/LivingBodyMotion.gd")
 
 const MANNEQUIN := "res://assets/animations/ual/UAL1.glb"
 const EXTRA_LIBRARY := "res://assets/animations/ual/UAL2.glb"
@@ -117,6 +118,8 @@ var ground_contact = GroundContact.new()
 var motion_signals = MotionSignals.new()
 var gear: Node3D
 var face_presentation = FacePresentation.new()
+## Plan 2026-10-07-Living-Body: flinch, get-up, jump and landing drawn over the authoritative mannequin for the hero only.
+var living_body = LivingBody.new()
 
 
 func setup(f: Fighter) -> void:
@@ -135,12 +138,15 @@ func setup(f: Fighter) -> void:
 	authored_combat.setup(player, skeleton)
 	authored_landing.setup(player, skeleton)
 	authored_hook.setup(player, skeleton)
+	living_body.setup(player, skeleton, f)
+	f.hit_landed.connect(living_body.on_hit)
 	# retarget after the mannequin's modifiers ran: outside this signal get_bone_global_pose() gives the clip's pose,
 	# not the skeleton ragdoll's (launch 7.1)
 	skeleton.skeleton_updated.connect(_on_mannequin_updated)
 	_hide_capsules()
 	if f.data.model_scene != "":
 		_setup_hero(f.data.model_scene)
+		living_body.set_hero(hero)
 	if f.data.weapon_kind == "sword":
 		sword = SwordPresentation.new()
 		sword.name = "SwordPresentation"
@@ -231,7 +237,12 @@ func _cel_material() -> void:
 
 ## Copies the mannequin's pose onto the hero: per bone, global rotation = mannequin's rotation from its rest ·
 ## rest alignment · hero rest; local = parent⁻¹ · global. Hips position follows the mannequin's, scaled.
+## While the living body owns this tick's hero pose (it drew, then gave the mannequin back to the authority), every
+## retarget — the deferred skeleton callback or a direct call — reapplies that pose, so a repeat is idempotent.
 func retarget() -> void:
+	if living_body.holds_hero() and ragdoll == null:
+		living_body.reapply_hero(hero_skeleton)
+		return
 	var glob: Dictionary = {}
 	for pair in _map:
 		var hi: int = pair[0]
@@ -263,8 +274,10 @@ func retarget() -> void:
 	authored_hook.apply_hands(hero_skeleton, _fighter)
 	if ragdoll == null:
 		parkour_motion.apply_contacts(hero_skeleton, _fighter)
+		living_body.apply_hero_contacts(hero_skeleton, _fighter)
 	if not rolling:
 		body_motion.apply_gaze(hero_skeleton, skeleton, _fighter, ragdoll)
+	living_body.keep_hero(hero_skeleton)   # only while the living pose is laid on the mannequin
 
 
 ## Presentation endpoint only; physics keeps GrappleHook.HAND and its deterministic rope constraint.
@@ -405,6 +418,7 @@ func _physics_process(delta: float) -> void:
 		body_motion.reset()
 		face_presentation.reset()
 		ground_contact.reset()
+		living_body.reset()
 		_last_state = _fighter.state
 		_state_frames = 0
 		_crouch_exit_frames = -1
@@ -510,10 +524,15 @@ func _physics_process(delta: float) -> void:
 		body_motion.apply_source(skeleton)
 	# Transitions start from what was actually drawn, including stance overlays.
 	locomotion._last_output = _bone_poses()
+	# The living body lays its pose over this authoritative one for the hero retarget only, then restores every bone
+	# exactly: BoneRagdoll, the smoke and every other reader of the mannequin see the pose above, bit for bit.
+	var living: bool = hero_skeleton != null and living_body.draw(skeleton, hero, _fighter, self, delta)
 	# State/rays advance at physics rate even when rendering is slower. Deferred
 	# skeleton callbacks reapply the same cached frame; ragdoll remains modifier-led.
 	if ragdoll == null:
 		_on_mannequin_updated()
+		if living:
+			living_body.restore(skeleton, hero_skeleton)
 
 
 func _bone_poses() -> Array[Transform3D]:

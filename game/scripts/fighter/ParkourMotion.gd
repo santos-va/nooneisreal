@@ -4,6 +4,8 @@ extends RefCounted
 ## All distances/timings below are PLACEHOLDER art constraints, never movement authority.
 const WALL_STRIDE: float = 0.72
 const ENTRY_SECONDS: float = 0.10
+## P5: below this sideways speed (m/s) a hang shows Climb_Idle, above it Climb_Left/Right.
+const SHIMMY_SPEED: float = 0.3
 var phase: String = ""
 var cycle: float = 0.0
 var grip_error: float = 0.0
@@ -21,6 +23,8 @@ var _gear_serial: int = -1
 var _accessory_points: Dictionary = {}
 var accessory_lift: float = 0.0
 var roll_support = preload("res://scripts/fighter/RollGroundSupport.gd").new()
+## Seconds into the looping side-run / shimmy clip: they play at their authored rate while the body travels.
+var _loop_time: float = 0.0
 
 func update(f: Fighter, velocity: Vector3, delta: float, discontinuous: bool) -> void:
 	_serial += 1
@@ -36,6 +40,7 @@ func update(f: Fighter, velocity: Vector3, delta: float, discontinuous: bool) ->
 	if discontinuous or previous != phase:
 		_elapsed = 0.0
 		cycle = 0.0
+		_loop_time = 0.0
 		_plants.clear()
 		_frame_feet.clear()
 	_elapsed += maxf(delta, 0.0)
@@ -44,18 +49,26 @@ func update(f: Fighter, velocity: Vector3, delta: float, discontinuous: bool) ->
 		cycle = fposmod(cycle + velocity.length() * maxf(delta, 0.0) / WALL_STRIDE, 1.0)
 	if phase == "wall_kick" and previous != phase:
 		_kick_source = "WallRun_Jump_L" if Vector3(_snapshot.wall_normal).dot(f.forward.cross(Vector3.UP)) < 0.0 else "WallRun_Jump_R"
-	source_clip = {"hang": "Climb_Idle", "mantle": "ClimbLedge", "wall_run": "Climb_Up", "wall_kick": _kick_source, "landing_roll": "Roll"}.get(phase, "")
+	source_clip = {"hang": "Climb_Idle", "mantle": "ClimbLedge", "wall_run": "Climb_Up", "wall_kick": _kick_source, "landing_roll": "Roll", "vault": "SafetyVault"}.get(phase, "")
+	var right: Vector3 = f.forward.cross(Vector3.UP)
+	if phase == "wall_side":
+		# The wall is on the hero's left when its outward normal points to the hero's right.
+		source_clip = "WallRun_L" if Vector3(_snapshot.wall_normal).dot(right) > 0.0 else "WallRun_R"
+	elif phase == "hang" and float(_snapshot.get("speed", 0.0)) > SHIMMY_SPEED:
+		source_clip = "Climb_Right" if Vector3(_snapshot.get("direction", Vector3.ZERO)).dot(right) > 0.0 else "Climb_Left"
+	if source_clip in ["WallRun_L", "WallRun_R", "Climb_Left", "Climb_Right"]:
+		_loop_time += maxf(delta, 0.0)
 	grip_error = 0.0
 
 static func valid_snapshot(snapshot: Dictionary) -> bool:
 	var mode: String = str(snapshot.get("phase", ""))
-	if mode not in ["hang", "mantle", "wall_run", "wall_kick", "landing_roll"]:
+	if mode not in ["hang", "mantle", "wall_run", "wall_kick", "landing_roll", "vault", "wall_side"]:
 		return false
-	var contacts: Array = ["floor_point", "floor_normal", "direction"] if mode == "landing_roll" else (["wall_point", "wall_normal"] if mode in ["wall_run", "wall_kick"] else ["left_hand", "right_hand"])
+	var contacts: Array = ["floor_point", "floor_normal", "direction"] if mode == "landing_roll" else (["wall_point", "wall_normal"] if mode in ["wall_run", "wall_kick", "wall_side"] else ["left_hand", "right_hand"])
 	for key: String in contacts:
 		if not snapshot.get(key) is Vector3 or not Vector3(snapshot[key]).is_finite():
 			return false
-	if mode in ["wall_run", "wall_kick"] and Vector3(snapshot.wall_normal).length_squared() < 0.5:
+	if mode in ["wall_run", "wall_kick", "wall_side"] and Vector3(snapshot.wall_normal).length_squared() < 0.5:
 		return false
 	if mode == "landing_roll" and (Vector3(snapshot.floor_normal).normalized().dot(Vector3.UP) < 0.95 or Vector3(snapshot.direction).length_squared() < 0.5):
 		return false
@@ -72,7 +85,10 @@ func apply_source(source: Skeleton3D, clips: AuthoredHookMotion) -> void:
 		return
 	_base = AuthoredLocomotion._poses(source)
 	var progress: float = clampf(float(_snapshot.get("progress", 0.0)), 0.0, 1.0)
-	var at: float = (cycle if phase == "wall_run" else (0.35 if phase == "hang" else progress)) * float(clips._lengths[source_clip])
+	var length: float = float(clips._lengths[source_clip])
+	var at: float = (cycle if phase == "wall_run" else (0.35 if phase == "hang" else progress)) * length
+	if source_clip in ["WallRun_L", "WallRun_R", "Climb_Left", "Climb_Right"]:
+		at = fposmod(_loop_time, length)
 	var weight: float = smoothstep(0.0, ENTRY_SECONDS, _elapsed)
 	if phase in ["wall_kick", "landing_roll"]:
 		weight *= 1.0 - smoothstep(0.80, 1.0, progress)
