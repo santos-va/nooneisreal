@@ -1,6 +1,7 @@
 extends SceneTree
 ## Plan docs/Plans/2026-10-08-City-Events-Stage-1.md step 5 — tokens as the city's money (ADR-025 п. 3): CityProgress
-## spends, earns, sells food at «Шавлія» for `food_price` and keeps the faces of the city events; saves stay exact.
+## spends, earns, sells food at «Шавлія» (Mira's counter, CityHunger.foods) and keeps the faces of the city events; saves
+## stay exact.
 ## Subject: for every change of tokens: never below 0 and never above 10000; food costs exactly its price and needs it;
 ## the only stage-1 source (a robber who gives up) returns at most what that face took; a save round-trips, an old save
 ## loads, and a damaged save is never written over.
@@ -148,31 +149,31 @@ func _run() -> void:
 	world.npc_director.save_enabled = false
 	await _ticks(20)
 	if mutation == "price":
-		world.npc_director.food_price = 2
+		world.hunger.foods[0].price = 2
+	world.hunger.set_centi(5000)   # hungry (no hunger clock in a fixture): the counter comes first, the tea fits
 	var shop: Dictionary = CityPlaces.shops()[0]
 	world.player.restart_at(Vector3(shop.worker.x, 0.0, shop.service.z))
 	await _ticks(40)
 	var npc: Node = world.npc_director
 	_check(npc.open_conversation(0), "E3 Mira can be talked to")
+	_press_label(npc, "Поїсти · FOOD 50% · жетони 0")
+	await _ticks(2)
 	var label: String = ""
 	var enabled: bool = false
 	for child: Node in npc.dialogue.choices_box.get_children():
-		if child is Button and str(child.get_meta("full_text", child.text)).begins_with("Поїсти"):
+		if child is Button and str(child.get_meta("full_text", child.text)).begins_with("Відвар шавлії"):
 			label = str(child.get_meta("full_text", child.text))
 			enabled = not child.disabled
-	_check(label == "Поїсти · %d жет. · бракує %d жет." % [FOOD, FOOD] and not enabled, "E3 with 0 tokens the food is shown with what is missing and cannot be bought (%s)" % label)
+	_check(label == "Відвар шавлії · +25%% → 75%% · %d жет. · бракує %d жет." % [FOOD, FOOD] and not enabled, "E3 with 0 tokens the tea is shown with what is missing and cannot be bought (%s)" % label)
 	npc.dialogue.close()
 	world.progress.earn_credits(3)
 	await _ticks(2)
 	npc.open_conversation(0)
-	var bought: bool = false
-	for child: Node in npc.dialogue.choices_box.get_children():
-		if child is Button and str(child.get_meta("full_text", child.text)) == "Поїсти · %d жет." % FOOD and not child.disabled:
-			(child as Button).pressed.emit()
-			bought = true
-			break
+	_press_label(npc, "Поїсти · FOOD 50% · жетони 3")
 	await _ticks(2)
-	_check(bought and world.progress.credits() == 3 - FOOD and "Смачного." in npc.dialogue.body.text, "E3 Mira sells food for %d token (%d left)" % [FOOD, world.progress.credits()])
+	var bought: bool = _press_label(npc, "Відвар шавлії · +25%% → 75%% · %d жет." % FOOD)
+	await _ticks(2)
+	_check(bought and world.progress.credits() == 3 - FOOD and "Смачного." in npc.dialogue.body.text and world.hunger.centi == 7500, "E3 Mira sells the tea for %d token (%d left, FOOD %d)" % [FOOD, world.progress.credits(), world.hunger.percent()])
 	var others: bool = false
 	npc.dialogue.close()
 	await _ticks(2)
@@ -180,7 +181,7 @@ func _run() -> void:
 	await _ticks(40)
 	if npc.open_conversation(1):
 		for child: Node in npc.dialogue.choices_box.get_children():
-			if child is Button and str(child.get_meta("full_text", child.text)).begins_with("Поїсти"):
+			if child is Button and (str(child.get_meta("full_text", child.text)).begins_with("Поїсти") or str(child.get_meta("id", "")).begins_with("eat:")):
 				others = true
 		npc.dialogue.close()
 	_check(not others, "E3 food is sold at «Шавлія» only")
@@ -195,3 +196,12 @@ func _run() -> void:
 		OS.delay_msec(1)
 	print("CITY_ECONOMY_COMPLETE checks=%d failures=%d mutation=%s" % [checks, failures, mutation])
 	quit(1 if failures else 0)
+
+
+## Presses the enabled button whose whole label is `label`; false when there is none.
+func _press_label(npc: Node, label: String) -> bool:
+	for child: Node in npc.dialogue.choices_box.get_children():
+		if child is Button and not child.is_queued_for_deletion() and not child.disabled and str(child.get_meta("full_text", child.text)) == label:
+			(child as Button).pressed.emit()
+			return true
+	return false

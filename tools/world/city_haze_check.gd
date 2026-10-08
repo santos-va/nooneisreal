@@ -9,8 +9,9 @@ extends SceneTree
 ##   H3 FOV 65 → 55 at the default CAMERA SHAKE, 65 at 0;  H4 walk × 0.85, braking × 0.6, tracking × 0.5 — none of it in
 ##   a lethal pocket, Fighter has no such field;  H5 Mira's conversation: the same options and prices as without the
 ##   state, the reply half gone after 2 s, «Тобі б поїсти», a quest offer and its acceptance whole, the meeting recorded;
-##   H6 food: −1 token, at most the 10 s fade left, HAZE FADES;  H7 the HAZE m:ss line is the card's last;
-##   H8 the lethal pocket waits;  H9 the end: FOV 65, no vignette, multipliers 1, no HAZE line.
+##   H6 food: −1 token, at most the 10 s fade left, HAZE LIFTING · Steps and view come back;  H7 the HAZE m:ss line is
+##   the card's last;  H8 the lethal pocket waits and says TOO HAZY TO FIGHT · …;  H9 the end: FOV 65, no vignette,
+##   multipliers 1, no HAZE line.
 ## Literals (T5 brief § 4.2 / § 4.4, T8 spec): 90 s, ramp 3 s, fade 10 s, × 0.85 / × 0.6 / × 0.5, FOV 65 → 55, 2 s,
 ## layer < 19, food 1 token.
 ## --break=pulse|layer|forget|pocket|end are negative controls.
@@ -25,6 +26,8 @@ const FOV_NARROW := 55.0
 const FORGET_TICKS := 120
 const HUD_LAYER := 19
 const FOOD := 1
+const HAZE_LIFTING := "HAZE LIFTING · Steps and view come back"                               # T8, final words
+const TOO_HAZY := "TOO HAZY TO FIGHT · Wait it out, or eat at «Шавлія» to clear it sooner"     # T8, final words
 var checks: int = 0
 var failures: int = 0
 var mutation: String = "none"
@@ -166,6 +169,7 @@ func _run() -> void:
 	# H5–H7: Mira -------------------------------------------------------------------------------------------------------
 	var npc: Node = world.npc_director
 	var shop: Dictionary = CityPlaces.shops()[0]
+	world.hunger.set_centi(6000)   # sated but not full (no hunger clock in a fixture): the tea can be had in H6
 	player.restart_at(Vector3(shop.worker.x, 0.0, shop.service.z))
 	await _ticks(40)
 	var clear_options: Array[String] = []
@@ -182,7 +186,7 @@ func _run() -> void:
 	var reply: String = npc.current_fallback
 	var hazy_options: Array[String] = _options(npc.dialogue)
 	_check(hazy_options == clear_options, "H5 every option and price is bit for bit as without the state (%s)" % [hazy_options])
-	_check(("Поїсти · %d жет." % FOOD) in hazy_options, "H5 «Шавлія» offers food for %d token" % FOOD)
+	_check(hazy_options.any(func(label: String) -> bool: return label.begins_with("Поїсти · FOOD ")), "H5 «Шавлія» offers its counter (%s)" % [hazy_options])
 	_check("«Тобі б поїсти»." in full and reply in full, "H5 Mira: «Тобі б поїсти»; the reply is first shown whole")
 	await _ticks(FORGET_TICKS + 4)
 	var faded: String = npc.dialogue.body.text
@@ -211,6 +215,28 @@ func _run() -> void:
 		await _press(npc.dialogue, "Беруся за справу")
 		await _ticks(FORGET_TICKS + 4)
 		_check(world.progress.quest_status(str(quest.id)) == "active" and str(quest.hint) in npc.dialogue.body.text, "H5 accepting works and its hint stays whole (%s)" % world.progress.quest_status(str(quest.id)))
+		# A ready quest: its hint inside Mira's greeting never fades, whatever the turn (4 turns, both parities).
+		for goal: Dictionary in quest.goals:
+			world.progress.record_event(str(goal.kind), str(goal.id))
+		var kept_turns: int = 0
+		var faded_turns: int = 0
+		for turn: int in 4:
+			npc.dialogue.close()
+			await _ticks(2)
+			npc.open_conversation(0)
+			await _ticks(FORGET_TICKS + 4)
+			var text: String = npc.dialogue.body.text
+			if NpcConversationContext.QUEST_READY_LINE in text:
+				kept_turns += 1
+			if "…" in text:
+				faded_turns += 1
+		_check(world.progress.quest_status(str(quest.id)) == "ready" and kept_turns == 4 and faded_turns == 4 and haze.haze_active(), "H5 a ready quest's hint stays whole in 4 of 4 hazy greetings while the rest fades (%s; kept %d, faded %d)" % [world.progress.quest_status(str(quest.id)), kept_turns, faded_turns])
+		var tailor_line: String = "Підбираю кольори перев’язей. " + NpcConversationContext.PRICE_LINES[0] + " Добрий шов помітний менше, ніж поганий жарт."
+		var price_kept: int = 0
+		for salt: int in 4:
+			if NpcConversationContext.PRICE_LINES[0] in CityHaze.fade_line(tailor_line, salt, NpcConversationContext.never_fade()):
+				price_kept += 1
+		_check(price_kept == 4, "H5 the tailor's price line never fades (%d / 4 salts)" % price_kept)
 	else:
 		_check(false, "H5 Mira offers a quest to test")
 	_check("resident_00" in Array(world.progress.heroes["choko"].events.get("meet", [])), "H5 the meeting is recorded as always")
@@ -219,11 +245,12 @@ func _run() -> void:
 	_check(line.visible and line.text.begins_with("HAZE ") and column.get_child(column.get_child_count() - 1) == line, "H7 the HAZE m:ss line is the card's last (%s)" % line.text)
 	var credits: int = world.progress.credits()
 	await _press(npc.dialogue, "Поїсти")
-	_check(world.progress.credits() == credits - FOOD and haze.haze_remaining() <= FADE + 0.001 and haze.haze_active(), "H6 food: −%d token, at most the %.0f s fade left (%.2f)" % [FOOD, FADE, haze.haze_remaining()])
-	_check(world.hud.get("_haze_fades_left") > 0.0, "H6 the end of the state is announced: HAZE FADES")
+	await _press(npc.dialogue, "Відвар шавлії")
+	_check(world.progress.credits() == credits - FOOD and haze.haze_remaining() <= FADE + 0.001 and haze.haze_active(), "H6 the sage tea: −%d token, at most the %.0f s fade left (%.2f)" % [FOOD, FADE, haze.haze_remaining()])
+	_check(world.hud.get("_haze_fades_left") > 0.0, "H6 the end of the state is announced: HAZE LIFTING")
 	npc.dialogue.close()
 	await _ticks(3)
-	_check(world.hud.hint_label.visible and world.hud.hint_label.text == "HAZE FADES", "H6 HAZE FADES on the bottom line (%s)" % world.hud.hint_label.text)
+	_check(world.hud.hint_label.visible and world.hud.hint_label.text == HAZE_LIFTING, "H6 «%s» on the bottom line (%s)" % [HAZE_LIFTING, world.hud.hint_label.text])
 
 	# H8: the lethal pocket waits --------------------------------------------------------------------------------------
 	player.restart_at(Vector3(0.0, 0.0, 9.5))
@@ -242,11 +269,23 @@ func _run() -> void:
 		await _ticks(1)
 	await _ticks(3)
 	_check(haze.haze_active() and not lethal.active, "H8 a hazy hero cannot open the lethal pocket")
+	_check(world.hud.get("_story_prompt") == TOO_HAZY, "H8 the safe point says «%s» (%s)" % [TOO_HAZY, world.hud.get("_story_prompt")])
 	if lethal.active:
 		lethal.close("abort")
 		await _ticks(3)
 
 	# H9: the end ---------------------------------------------------------------------------------------------------------
+	# A line shown just before the end does not fade after it (the fade is due 2 s later, the state ends in 1 s).
+	player.restart_at(Vector3(shop.worker.x, 0.0, shop.service.z))
+	await _ticks(40)
+	haze._remaining = minf(haze._remaining, 1.0)
+	var late_shown: String = ""
+	if npc.open_conversation(0):
+		late_shown = npc.dialogue.body.text
+	await _ticks(FORGET_TICKS + 4)
+	_check(not late_shown.is_empty() and not haze.haze_active() and npc.dialogue.body.text == late_shown, "H9 a reply shown before the end stays whole after the state has ended")
+	npc.dialogue.close()
+	await _ticks(2)
 	await _until(func() -> bool: return not haze.haze_active(), int((FADE + 1.0) * 60.0))
 	await _ticks(2)
 	_check(not haze.haze_active() and world.camera_rig.camera.fov == FOV and not world.haze_vignette.rect.visible, "H9 the state ends: FOV %.0f exactly, no vignette (%.3f)" % [FOV, world.camera_rig.camera.fov])

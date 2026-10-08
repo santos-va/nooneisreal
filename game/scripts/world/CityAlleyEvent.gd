@@ -3,13 +3,17 @@ extends Node
 ## В1 «Там людині погано» without a fight (plan 2026-10-08-City-Events-Stage-1, step 2; T7 brief В1; ADR-025 п. 2, п. 6).
 ## A temporary passer-by asks for help and leads the hero into the southeast passage; a second one closes the passage
 ## mouth behind and the first shows a knife: «Жетони. Усі.» Exits, every one without a fight:
-##   give  — min(tokens, cap_robbery) are taken, bought sashes stay;
+##   give  — min(tokens, cap_robbery) are taken, bought sashes stay; with no token left by the time the trap springs the
+##           same first exit turns its pockets out (nothing to take; T2's honest case, words PLACEHOLDER for T7);
 ##   talk  — Choko recognises a face he has met before; Skea says nothing and his smile widens; both send them off;
 ##           Choko with an unknown face is told not to talk his way out (the other exits remain);
-##   run   — past them, over the roofs or by rope; the chase ends near people (or they lose track); caught = robbed;
+##   run   — Esc / B, its button says so («Тікати · Esc / B», T8 GAP 1): past them, over the roofs or by rope; the
+##           chase ends near people (or they lose track); caught = robbed;
 ##   sword — Choko only: the robbers flee or give up (ADR-025 п. 6, «Лякає»); one who gives up returns what he took
 ##           from this hero before.
 ## The hero remembers the face (CityProgress, per hero): next time «Я тебе пам'ятаю» stops the trap before it starts.
+## T8 § 3: the trap and the facts that follow a world event open guarded (NpcDialogue.guard_seconds); the call has no
+## timer while its menu is open (GAP 3); a remembered face puts «Я тебе пам'ятаю» first.
 ## Every number is a PLACEHOLDER for T5/T7.
 signal finished(outcome: String)
 
@@ -24,6 +28,7 @@ const BLOCKER_TURN := Vector3(20.0, 0.0, 10.4)
 const SOUTH_EXIT := Vector3(20.0, 0.0, 31.0)
 const NORTH_EXIT := Vector3(20.0, 0.0, 9.0)
 const INSIDE := Vector3(20.0, 0.0, 21.0)
+const RUN_LABEL := "Тікати · Esc / B"           # T8 GAP 1: the trap's close button is the run
 
 @export var cap_robbery: int = 5              # T5 § 3.3 «не більше 5»; plan: min(tokens, cap_robbery)
 @export var approach_speed: float = 2.4       # PLACEHOLDER m/s, in a hurry
@@ -108,7 +113,9 @@ func robbery_amount() -> int:
 func _physics_process(delta: float) -> void:
 	if director == null or not is_instance_valid(asker):
 		return
-	phase_time += delta
+	# T8 GAP 3: the call's hidden timer stands while its menu is open (a menu has no timer).
+	if not (phase == "ask" and director.dialogue.opened):
+		phase_time += delta
 	var hero := _player()
 	if phase in ["trap", "told"]:
 		_step(blocker, _blocker_path, block_speed)
@@ -179,24 +186,33 @@ func _gamepad() -> bool:
 
 
 func open_ask() -> void:
-	var options: Array[Dictionary] = [{"id": "follow", "label": "Піти за ним"}]
+	var options: Array[Dictionary] = []
 	if known_before:
-		options.append({"id": "remember", "label": "Я тебе пам'ятаю"})
+		options.append({"id": "remember", "label": "Я тебе пам'ятаю"})   # T8 § 3: a known face is a reason to say no
+	options.append({"id": "follow", "label": "Піти за ним"})
 	options.append({"id": "decline", "label": "Не зараз"})
 	director.show_choices("Перехожий, захеканий:\n«Допоможи, там за рогом людині погано! Швидше!»", options, asker)
 
 
-func open_trap(text: String = "") -> void:
+## The tokens are counted again every time the trap opens (T8 GAP 4): the hero may have spent them or lost them on the
+## way. Then the first, safe exit is «give» with the exact amount, or — with nothing left — «turn out the pockets».
+func open_trap(text: String = "", guard: bool = false) -> void:
 	var amount: int = robbery_amount()
-	var options: Array[Dictionary] = [{"id": "give", "label": "Віддати · %d жет." % amount}]
+	var options: Array[Dictionary] = []
+	if amount > 0:
+		options.append({"id": "give", "label": "Віддати · %d жет." % amount})
+	else:
+		options.append({"id": "empty", "label": EMPTY_LABEL})
 	if not talk_tried:
 		options.append({"id": "talk", "label": "Говорити"})
-	options.append({"id": "run", "label": "Тікати"})
 	if can_draw_sword():
 		options.append({"id": "sword", "label": "Вийняти меч"})
 	if text.is_empty():
 		text = "Позаду хтось став у прохід. Прохач дістає ніж:\n«Жетони. Усі.»"
-	director.show_choices(text, options, asker)
+	director.show_choices(text, options, asker, RUN_LABEL, guard)
+
+
+const EMPTY_LABEL := "Вивернути кишені · жетонів немає"   # PLACEHOLDER words (T7, T8 GAP 4)
 
 
 func choose(action: String) -> void:
@@ -223,10 +239,12 @@ func choose(action: String) -> void:
 		return
 	if phase != "trap":
 		return
-	if action == "give":
+	if action == "give" and robbery_amount() > 0:
 		robbed = director.progress.spend_credits(robbery_amount())
 		director.progress.remember_face(face_id, robbed)
 		_tell("Він забирає %d жет.: «Розумник». Обидва йдуть геть.\nКуплені перев'язі лишаються твоїми." % robbed, "gave")
+	elif action == "empty" and robbery_amount() == 0:
+		_tell("Ти вивертаєш порожні кишені. Прохач спльовує: «Голодранець». Обидва йдуть геть.", "empty")
 	elif action == "talk" and not talk_tried:
 		talk_tried = true
 		if hero.data.id == "skea":
@@ -235,12 +253,12 @@ func choose(action: String) -> void:
 			_tell("«Ти ж той самий, що кликав мене минулого разу». Choko дивиться йому просто в очі.\nПрохач ховає ніж: «Ходімо звідси».", "recognized")
 		else:
 			open_trap("«Не заговорюй мені зуби. Жетони».")
-	elif action == "run":
-		_start_chase()
 	elif action == "sword" and can_draw_sword():
+		# The body draws first; a hero who cannot draw now stays in the trap with its menu (T4 audit of 31caa4c).
+		if not hero.draw_sword_for_event():
+			return
 		_set_phase("react")
 		director.dialogue.close()
-		hero.draw_sword_for_event()
 
 
 func dialogue_closed() -> void:
@@ -255,10 +273,10 @@ func dialogue_closed() -> void:
 			_after_told()
 
 
-func _tell(text: String, outcome: String) -> void:
+func _tell(text: String, outcome: String, guard: bool = false) -> void:
 	pending_outcome = outcome
 	_set_phase("told")
-	director.dialogue.show_fact(text)
+	director.dialogue.show_fact(text, guard)
 
 
 func _after_told() -> void:
@@ -299,7 +317,7 @@ func _spring_trap(hero: CityFighter) -> void:
 	director.progress.remember_face(face_id, 0)
 	if is_instance_valid(blocker):
 		_blocker_path = [BLOCKER_TURN, BLOCK]
-	open_trap()
+	open_trap("", true)   # the world opens it: guarded against a jump press
 
 
 ## One leg after another: a passer-by that arrived takes the next point of its path.
@@ -341,7 +359,10 @@ func _tick_chase(hero: CityFighter) -> void:
 			director.progress.remember_face(face_id, robbed)
 			for each: CityPasserby in _robbers():
 				each.stop()
-			_tell("Тебе наздогнали й притисли до стіни. Забирають %d жет. і йдуть геть." % robbed, "caught")
+			if robbed > 0:
+				_tell("Тебе наздогнали й притисли до стіни. Забирають %d жет. і йдуть геть." % robbed, "caught", true)
+			else:
+				_tell("Тебе наздогнали й притисли до стіни. Обшукують — порожньо. Лаються й ідуть геть.", "caught", true)
 			return
 		robber.walk_to(hero.global_position, chase_speed)
 
@@ -359,7 +380,7 @@ func _answer_sword() -> void:
 		var text := "Choko виймає меч. Прохач кидає ніж і підіймає руки: «Добре, добре! Ми йдемо»."
 		if refunded > 0:
 			text += "\nВін тремтячими руками повертає забране минулого разу: +%d жет." % refunded
-		_tell(text, "surrendered")
+		_tell(text, "surrendered", true)
 	else:
 		reaction = "flee"
 		asker.say("Тікаймо!", 1.5)

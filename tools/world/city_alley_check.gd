@@ -8,9 +8,14 @@ extends SceneTree
 ##   S2 give: −min(8, 5), bought sashes stay, the second one closes the north mouth, the face is remembered (lost 5);
 ##   S3 «Я тебе пам'ятаю» with that face: no trap, no loss;  S4 Choko talks to a known face: they leave, no loss;
 ##   S5 Choko talks to an unknown face: refused, talk gone; run → near a resident the chase ends, no loss;
-##   S6 run and stand still: caught, −min(tokens, 5);  S7 sword, give up: the face returns exactly what it took;
-##   S8 sword, flee: no change;  S9 the memory survives a reload of CityProgress from disk;
+##   S6 run and stand still: caught, −min(tokens, 5);  S7 sword, give up: the face returns exactly what it took; a hero
+##   who cannot draw now stays in the trap (no «react», no sword); the global RNG is untouched by the answer;
+##   S8 sword, flee: no change, the global RNG untouched;  S15 the same director seed gives the same answer to the sword;
+##   S9 the memory survives a reload of CityProgress from disk;
 ##   S10 Skea: no sword exit; talk → the smile, no loss;  S11 walking away from the call: ignored, no loss.
+## T8 06-UI-UX § «Випадки міста: COMFORT і HUD» п. 3: S2 the trap's close button says «Тікати · Esc / B» and there is
+## no separate «Тікати», focus on the first exit; S3 a remembered face puts «Я тебе пам'ятаю» first, focused. The guard,
+## the call's timer and the zero-token trap are tools/world/city_event_menus_check.gd (the frame budget of one run).
 ## Literal thresholds (plan / T5 brief, never read from the event): cap 5, people radius 6 m, sword answer ≤ 2 s.
 ## --break=cap|memory|sword|people are negative controls.
 ## Sentinel: CITY_ALLEY_COMPLETE checks=N failures=M mutation=<m>; failures print "CITY_ALLEY: ...".
@@ -19,6 +24,7 @@ const SWORD_ANSWER_TICKS := 120
 const ALLEY_SPOT := Vector3(16.0, 0.0, 6.0)
 const INSIDE_SPOT := Vector3(20.0, 0.0, 20.0)
 const NEAR_RESIDENT_10 := Vector3(23.0, 0.0, 4.0)   # resident 10's lane: x 24.5–25.5, z 0–8 (people radius 6 m)
+const RUN_LABEL := "Тікати · Esc / B"
 var checks: int = 0
 var failures: int = 0
 var mutation: String = "none"
@@ -75,11 +81,22 @@ func _tap_interact() -> void:
 func _options() -> Array[String]:
 	var labels: Array[String] = []
 	for child: Node in events.dialogue.choices_box.get_children():
-		if child is Button and not child.is_queued_for_deletion():
-			var text: String = str(child.get_meta("full_text", child.text))
-			if not text.begins_with("Завершити розмову"):
-				labels.append(text)
+		if child is Button and not child.is_queued_for_deletion() and not child.has_meta("close"):
+			labels.append(str(child.get_meta("full_text", child.text)))
 	return labels
+
+
+func _close_label() -> String:
+	for child: Node in events.dialogue.choices_box.get_children():
+		if child is Button and not child.is_queued_for_deletion() and child.has_meta("close"):
+			return str(child.get_meta("full_text", child.text))
+	return ""
+
+
+func _focused() -> String:
+	var owner: Control = root.gui_get_focus_owner()
+	return str(owner.get_meta("full_text", owner.text)) if owner is Button else ""
+
 
 
 func _press(prefix: String) -> bool:
@@ -179,7 +196,7 @@ func _run() -> void:
 	router.apply_profile("solo", false)
 	await _world(state, "choko")
 	progress.earn_credits(8)
-	for scenario: Callable in [_s1, _s2, _s3, _s4, _s5, _s6, _s7, _s8, _s11, _s9]:
+	for scenario: Callable in [_s1, _s2, _s3, _s4, _s5, _s6, _s7, _s8, _s15, _s11, _s9]:
 		await scenario.call()
 	await _clean()
 	world.queue_free()
@@ -252,7 +269,8 @@ func _s2() -> void:
 	if event == null:
 		return
 	var trap_options: Array[String] = _options()
-	_check(trap_options == ["Віддати · %d жет." % CAP, "Говорити", "Тікати", "Вийняти меч"], "S2 the trap offers give (min(8, %d)), talk, run, sword (%s)" % [CAP, trap_options])
+	_check(trap_options == ["Віддати · %d жет." % CAP, "Говорити", "Вийняти меч"] and _close_label() == RUN_LABEL, "S2 the trap offers give (min(8, %d)), talk, sword and the close button «%s»; no separate run (%s · %s)" % [CAP, RUN_LABEL, trap_options, _close_label()])
+	_check(_focused() == "Віддати · %d жет." % CAP, "S2 focus on the first, safe exit (%s)" % _focused())
 	_check(event.asker.knife != null and event.asker.knife.visible and event.asker.pose == "threat", "S2 the knife is out")
 	await _until(func() -> bool: return is_instance_valid(event) and is_instance_valid(event.blocker) and event.blocker.global_position.distance_to(event.BLOCK) < 0.2, 240)
 	var blocker_at: Vector3 = event.blocker.global_position if is_instance_valid(event) and is_instance_valid(event.blocker) else Vector3.INF
@@ -272,7 +290,7 @@ func _s3() -> void:
 	if not await _open_ask(event):
 		_check(false, "S3 the call opens")
 		return
-	_check("Я тебе пам'ятаю" in _options(), "S3 the remembered face offers «Я тебе пам'ятаю» (%s)" % [_options()])
+	_check(_options() == ["Я тебе пам'ятаю", "Піти за ним", "Не зараз"] and _focused() == "Я тебе пам'ятаю", "S3 the remembered face puts «Я тебе пам'ятаю» first, focused (%s, focus %s)" % [_options(), _focused()])
 	await _press("Я тебе пам'ятаю")
 	var no_blocker: bool = is_instance_valid(event) and event.blocker == null
 	var outcome: String = await _end(event)
@@ -296,7 +314,7 @@ func _s5() -> void:
 	if event == null:
 		return
 	await _press("Говорити")
-	_check(events.dialogue.opened and not ("Говорити" in _options()) and "Тікати" in _options(), "S5 the unknown face refuses talk; talk is gone, the other exits stay (%s)" % [_options()])
+	_check(events.dialogue.opened and not ("Говорити" in _options()) and "Віддати · %d жет." % mini(progress.credits(), CAP) in _options() and _close_label() == RUN_LABEL, "S5 the unknown face refuses talk; talk is gone, the other exits stay (%s · %s)" % [_options(), _close_label()])
 	await _press("Тікати")
 	_check(is_instance_valid(event) and event.phase == "chase" and not events.dialogue.opened, "S5 running starts the chase")
 	world.player.restart_at(NEAR_RESIDENT_10)
@@ -328,9 +346,16 @@ func _s7() -> void:
 		return
 	event.surrender_chance = 1.0
 	var before: int = progress.credits()
+	# A body that cannot draw now (here: blocking) leaves the trap as it is — no «react» towards an undrawn sword.
+	world.player._set_state(_fighter_state("BLOCK"))
+	await _press("Вийняти меч")
+	_check(is_instance_valid(event) and event.phase == "trap" and events.dialogue.opened and not world.player.sword_drawn and event.reaction == "", "S7 a hero who cannot draw stays in the trap: no react, no sword (%s)" % (event.phase if is_instance_valid(event) else "gone"))
+	world.player._set_state(_fighter_state("IDLE"))
+	var expected: int = _global_rng_mark()
 	await _press("Вийняти меч")
 	var answered: bool = await _until(func() -> bool: return is_instance_valid(event) and event.reaction != "", SWORD_ANSWER_TICKS)
 	_check(answered and event.reaction == "surrender", "S7 the robbers answer the sword within %d ticks" % SWORD_ANSWER_TICKS)
+	_check(randi() == expected, "S7 the answer to the sword draws only the director's RNG: the global RNG is untouched")
 	await _ticks(60)
 	_check(world.player.sword_drawn, "S7 Choko's sword is drawn")
 	_check(lost == CAP and progress.credits() == before + lost and progress.face_lost("alley_a") == 0, "S7 the face returns exactly what it took: lost %d, %d → %d" % [lost, before, progress.credits()])
@@ -345,10 +370,41 @@ func _s8() -> void:
 		return
 	event.surrender_chance = 0.0
 	var before: int = progress.credits()
+	var expected: int = _global_rng_mark()
 	await _press("Вийняти меч")
 	var answered: bool = await _until(func() -> bool: return is_instance_valid(event) and event.reaction != "", SWORD_ANSWER_TICKS)
+	_check(randi() == expected, "S8 the answer to the sword draws only the director's RNG: the global RNG is untouched")
 	var outcome: String = await _end(event)
 	_check(answered and outcome == "alley:fled" and progress.credits() == before, "S8 they flee, nothing changes (%s, %d → %d)" % [outcome, before, progress.credits()])
+
+
+## Fighter.State by name without a compile-time class reference (autoloads are not visible to --script compiles).
+func _fighter_state(state_name: String) -> int:
+	return int((load("res://scripts/fighter/Fighter.gd") as GDScript).get_script_constant_map()["State"][state_name])
+
+
+## The global RNG watchdog (as in the director check): seed(k) → the next randi(); seed(k) again before the action.
+func _global_rng_mark() -> int:
+	seed(4242)
+	var expected: int = randi()
+	seed(4242)
+	return expected
+
+
+## S15: the same director seed gives the same answer to the sword (50/50, its own RNG).
+func _s15() -> void:
+	var reactions: Array[String] = []
+	for attempt: int in 2:
+		var event: Node = await _trap("alley_c", "S15 #%d" % attempt)
+		if event == null:
+			return
+		event.surrender_chance = 0.5
+		events.rng.seed = 271828
+		await _press("Вийняти меч")
+		await _until(func() -> bool: return is_instance_valid(event) and event.reaction != "", SWORD_ANSWER_TICKS)
+		reactions.append(String(event.reaction) if is_instance_valid(event) else "")
+		await _end(event)
+	_check(reactions.size() == 2 and not reactions[0].is_empty() and reactions[0] == reactions[1], "S15 the same director seed → the same answer to the sword (%s)" % [reactions])
 
 
 ## S11: walking away from the call.
@@ -389,3 +445,4 @@ func _s10() -> void:
 	_check(events.dialogue.opened and "посмішка ширшає" in events.dialogue.body.text.to_lower(), "S10 Skea says nothing; the smile widens")
 	var outcome: String = await _end(event)
 	_check(outcome == "alley:smile" and progress.credits() == 6, "S10 they back off, nothing lost (%s, %d)" % [outcome, progress.credits()])
+

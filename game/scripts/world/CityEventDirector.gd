@@ -269,8 +269,9 @@ func _on_finished(outcome: String, id: String, event: Node) -> void:
 
 
 # --- the event's modal conversation (the same NpcDialogue as the residents, its own instance) ------------------------
-func show_choices(text: String, options: Array[Dictionary], actor: Node3D) -> void:
-	dialogue.show_choices(text, options)
+## `close_label` names what Esc / B does in this menu; `guard` marks a menu the world opened (NpcDialogue.guard_seconds).
+func show_choices(text: String, options: Array[Dictionary], actor: Node3D, close_label: String = NpcDialogue.CLOSE_LABEL, guard: bool = false) -> void:
+	dialogue.show_choices(text, options, close_label, guard)
 	if is_instance_valid(actor) and actor != _conversation_actor:
 		_conversation_actor = actor
 		conversation_started.emit(actor)

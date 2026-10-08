@@ -12,6 +12,15 @@ var local_toggle: CheckButton
 var choices_box: VBoxContainer
 var opened: bool = false
 var panel_width: float = 540.0
+## The close button's words. A menu whose Esc / B means something else names it (the alley trap: «Тікати · Esc / B»).
+const CLOSE_LABEL := "Завершити розмову · Esc / B"
+## T8 06-UI-UX § «Випадки міста: COMFORT і HUD» п. 3, GAP 2: a menu that opened without the player's press (the world
+## opened it) takes no ui_accept / ui_cancel for `guard_seconds` and until a button held at that moment is let go, so a
+## jump (Space / A are also ui_accept) never picks an option. Up / down work at once; nothing blinks. PLACEHOLDER 0.35 s
+## (T8; a source is T3's).
+var guard_seconds: float = 0.35
+var _guard_left: float = 0.0
+var _guard_hold: bool = false
 
 func _ready() -> void:
 	layer = 30
@@ -66,7 +75,9 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_layout_panel)
 	_layout_panel()
 
-func show_choices(text: String, choices: Array[Dictionary]) -> void:
+func show_choices(text: String, choices: Array[Dictionary], close_label: String = CLOSE_LABEL, guard: bool = false) -> void:
+	_guard_left = guard_seconds if guard else 0.0
+	_guard_hold = guard
 	body.text = text
 	flavor.text = ""
 	for old: Node in choices_box.get_children():
@@ -76,6 +87,7 @@ func show_choices(text: String, choices: Array[Dictionary]) -> void:
 	for choice: Dictionary in choices:
 		var button := Button.new()
 		button.set_meta("full_text", str(choice.label))
+		button.set_meta("id", str(choice.id))
 		button.text = str(choice.label)
 		button.clip_text = true
 		button.custom_minimum_size.y = 43
@@ -85,8 +97,9 @@ func show_choices(text: String, choices: Array[Dictionary]) -> void:
 		if first == null and not button.disabled:
 			first = button
 	var close_button := Button.new()
-	close_button.text = "Завершити розмову · Esc / B"
+	close_button.text = close_label
 	close_button.set_meta("full_text", close_button.text)
+	close_button.set_meta("close", true)
 	close_button.clip_text = true
 	close_button.custom_minimum_size.y = 43
 	close_button.pressed.connect(close)
@@ -98,14 +111,25 @@ func show_choices(text: String, choices: Array[Dictionary]) -> void:
 	InputRouter.acquire_ui(self)
 	(first if first != null else close_button).grab_focus()
 
-func show_fact(text: String) -> void:
-	show_choices(text, [])
+func show_fact(text: String, guard: bool = false) -> void:
+	show_choices(text, [], CLOSE_LABEL, guard)
+
+## True while a world-opened menu still refuses accept / cancel (see guard_seconds).
+func guarding() -> bool:
+	return opened and (_guard_left > 0.0 or _guard_hold)
 
 func close() -> void:
 	opened = false
+	_guard_left = 0.0
+	_guard_hold = false
 	panel.hide()
 	InputRouter.release_ui(self)
 	closed.emit()
+
+func _input(event: InputEvent) -> void:
+	# Before the GUI: a guarded menu never lets an accept / cancel (press or release) reach its buttons.
+	if guarding() and (event.is_action("ui_accept") or event.is_action("ui_cancel")):
+		get_viewport().set_input_as_handled()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if opened and event.is_action_pressed("ui_cancel"):
@@ -115,7 +139,11 @@ func _unhandled_input(event: InputEvent) -> void:
 func _exit_tree() -> void:
 	InputRouter.release_ui(self)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if _guard_left > 0.0:
+		_guard_left = maxf(0.0, _guard_left - delta)
+	if _guard_left <= 0.0 and _guard_hold and not (Input.is_action_pressed("ui_accept") or Input.is_action_pressed("ui_cancel")):
+		_guard_hold = false
 	if get_tree().paused or InputRouter.ui_suppressed():
 		prompt.hide()
 

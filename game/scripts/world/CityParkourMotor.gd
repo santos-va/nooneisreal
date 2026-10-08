@@ -155,7 +155,7 @@ func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 	var direction: Vector3 = actor.wish().normalized()
 	if not grip_spent and _try_grip(actor, direction):
 		return true
-	if actor.data.id == "skea" and not wall_spent and actor.velocity.y >= 0.0:
+	if actor.data.id == "skea" and not wall_spent and actor.velocity.y >= 0.0 and _wall_run_allowed(actor):
 		var wall: Dictionary = _wall(actor, direction)
 		if not wall.is_empty() and direction.dot(-Vector3(wall.normal)) >= profile.minimum_wall_approach:
 			wall_spent = true
@@ -167,6 +167,10 @@ func tick(actor: Fighter, delta: float, intent: Dictionary) -> bool:
 			return true
 	# Nothing above took the jump: a run along a wall becomes the side wall run (P4).
 	return _try_side_run(actor)
+
+## The hunger scale (CityFighter.wall_run_allowed, T5 § 3): no wall steps from «famished» on. Grips, kicks, vaults stay.
+func _wall_run_allowed(actor: Fighter) -> bool:
+	return not actor.has_method("wall_run_allowed") or bool(actor.call("wall_run_allowed"))
 
 ## P1: on the run, right after take-off, an obstacle 0.6–1.3 m high and ≤ 0.8 m deep with the floor beyond at the
 ## take-off level is crossed on a swept kinematic path, as the mantle is. No hang, no speed bonus.
@@ -265,7 +269,7 @@ static func _along(path: Array[Vector3], progress: float) -> Vector3:
 ## beside the body at ≤ side_wall_max_angle to the travel takes a horizontal run along it at wall_along_speed. Skea runs
 ## wall_seconds, Choko side_wall_short_seconds. It spends the airborne wall effort; the exit is the existing wall kick.
 func _try_side_run(actor: Fighter) -> bool:
-	if wall_spent or actor.velocity.y > profile.side_wall_start_rise:
+	if wall_spent or actor.velocity.y > profile.side_wall_start_rise or not _wall_run_allowed(actor):
 		return false
 	# The angle is the player's: the wished direction, not a velocity a wall collision has already turned along it.
 	var wish: Vector3 = Vector3(actor.wish().x, 0.0, actor.wish().z)

@@ -103,9 +103,17 @@ func _run() -> void:
 		await _synthetic(hero)
 	for hero: String in ["choko", "skea"]:
 		await _district(hero)
-	var until := Time.get_ticks_msec() + 300
-	while Time.get_ticks_msec() < until:
+	# Same teardown as city_controls_check.gd: Ogg playback (the last grapple_fire voices) retires on audio-mixer wall
+	# time, not on accelerated --fixed-fps frames; a voice still live at quit() left «2 resources still in use at exit».
+	# The old 300 ms busy wait also spent hundreds to thousands of frames of the harness's --quit-after 12000.
+	for singleton: String in ["Sfx", "UltMusic", "Music"]:
+		var node := root.get_node_or_null(singleton)
+		if node != null:
+			node.queue_free()
+	var deadline: int = Time.get_ticks_msec() + 250
+	while Time.get_ticks_msec() < deadline:
 		await process_frame
+		OS.delay_msec(1)
 	print("AUTO_HOOK frames=%d (the playable harness quits after 12000)" % Engine.get_process_frames())
 	print("AUTO_HOOK_COMPLETE checks=%d failures=%d mutation=%s" % [checks, failures, mutation])
 	quit(1 if failures else 0)

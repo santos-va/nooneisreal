@@ -32,6 +32,9 @@ var _trail: Dictionary = {}
 var _pips: Dictionary = {}
 var _announce_left: float = 0.0
 var _root: Control
+## The city's hunger word on the hero's line (T8 06-UI-UX § Шкала голоду → Кишеня; PLACEHOLDER words), set by
+## CityLethalFight from CityHunger.pocket_status(). Empty in a sated pocket; there is no bar.
+var status_suffix: String = ""
 
 
 func bind(a: Fighter, b: Fighter, f: MatchFlow) -> void:
@@ -205,6 +208,12 @@ func _button(text: String, callback: Callable) -> Button:
 	return button
 
 
+## The pocket opened with the city's hp (CityLethalFight entry_hp): the trails start where the bars are, not at full.
+func snap_trails() -> void:
+	for live: ProgressBar in _trail:
+		(_trail[live] as ProgressBar).value = live.value
+
+
 func _on_hp(bar: ProgressBar, hp: float, max_hp: float) -> void:
 	bar.value = clampf(hp / maxf(max_hp, 0.001), 0.0, 1.0)
 
@@ -215,6 +224,8 @@ func _refresh_resources() -> void:
 	var s1: float = hero.cooldowns.get("skill1", 0.0)
 	var s2: float = hero.cooldowns.get("skill2", 0.0)
 	resources_label.text = "METER %d%% · S1 %s · S2 %s" % [roundi(hero.meter / Fighter.MAX_METER * 100.0), "✓" if s1 <= 0.0 else "%.1f" % s1, "✓" if s2 <= 0.0 else "%.1f" % s2]
+	if not status_suffix.is_empty():
+		resources_label.text += " · " + status_suffix
 
 
 func _on_announce(text: String, seconds: float) -> void:

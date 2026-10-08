@@ -57,7 +57,8 @@ static func anchor_supports() -> Array[Dictionary]:
 		{"point": Vector3(8.6, 6.7, 24.6), "mount": Vector3(10.05, 7.0, 24.6), "kind": "bracket"},
 		{"point": Vector3(-8.6, 6.7, 17.4), "mount": Vector3(-10.05, 7.0, 17.4), "kind": "bracket"},
 		{"point": Vector3(-8.6, 6.7, 24.6), "mount": Vector3(-10.05, 7.0, 24.6), "kind": "bracket"},
-		# Southeast passage (a dead end): one bracket on the plain east-wing wall, which has no facade trim.
+		# Southeast passage (open to the south: it ends in the strip z 30–32 along SouthBoundary, probe 2026-10-08): one
+		# bracket on the plain east-wing wall, which has no facade trim.
 		{"point": Vector3(20.4, 7.0, 22.0), "mount": Vector3(22.05, 7.3, 22.0), "kind": "bracket"},
 		# East street: north faces of both southeast wings, between window rows.
 		{"point": Vector3(28, 8.6, 10.6), "mount": Vector3(28, 8.9, 12.05), "kind": "bracket"},

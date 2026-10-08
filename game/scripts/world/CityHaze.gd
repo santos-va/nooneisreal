@@ -107,13 +107,18 @@ func fov_offset() -> float:
 	return fov_narrow_degrees * weight() * clampf(shake / 0.5, 0.0, 1.0)
 
 
-## Half of the sentences of a resident's line fade to «…»: sentence k fades when (k + salt) is odd, so the choice is
-## fixed by the resident and the turn (no randf) and exactly ⌊n/2⌋ or ⌈n/2⌉ of n sentences go.
-static func fade_line(text: String, salt: int) -> String:
+## Half of the sentences of a resident's line fade to «…»: the j-th fadeable sentence fades when (j + salt) is odd, so
+## the choice is fixed by the resident and the turn (no randf) and exactly ⌊n/2⌋ or ⌈n/2⌉ of the n fadeable sentences
+## go. A sentence in `keep` (a quest hint, a price — NpcConversationContext.never_fade()) never fades and is not counted.
+static func fade_line(text: String, salt: int, keep: PackedStringArray = PackedStringArray()) -> String:
 	var sentences: PackedStringArray = split_sentences(text)
+	var fadeable: int = 0
 	for k: int in sentences.size():
-		if posmod(k + salt, 2) == 1:
+		if keep.has(sentences[k]):
+			continue
+		if posmod(fadeable + salt, 2) == 1:
 			sentences[k] = FORGOTTEN
+		fadeable += 1
 	return " ".join(sentences)
 
 
