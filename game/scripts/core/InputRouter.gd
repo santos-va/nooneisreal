@@ -540,7 +540,11 @@ func _route_pad(event: InputEvent) -> void:
 	var name := action_name(device + 1, action)
 	_pad_routes[source] = name
 	_pressed_at[name] = _frame
-	_routed_just[name] = _frame
+	# Events arrive between physics ticks and _physics_process() increments _frame first, so the edge belongs to the
+	# NEXT tick (as Godot stamps Input.is_action_just_pressed). Stamped `_frame`, a routed pad press was never
+	# just_pressed (the city's interact by Y + D-pad Down: talk, story, the pocket, the pump) — found 2026-10-08, plan
+	# 2026-10-08-Thirst-Substances-Icons step 1. Only the city's interact reads just_pressed (the duel reads buffered).
+	_routed_just[name] = _frame + 1
 
 
 func _pad_connection_changed(device: int, connected: bool) -> void:

@@ -11,6 +11,9 @@ var materials: Dictionary = {}
 var geometry_count: int = 0
 var maintenance: CityMaintenance
 var lower_gallery: CityLowerGallery
+## The water pump on the edge of the market court (plan 2026-10-08-Thirst-Substances-Icons step 1): the city's free
+## water, and the switch of the thirst scale (CityThirst stays off without a water source).
+var water_pump: CityWaterPump
 
 func _ready() -> void:
 	materials = Materials.palette()
@@ -31,6 +34,9 @@ func _ready() -> void:
 	lower_gallery = CityLowerGallery.new()
 	lower_gallery.name = "CityLowerGallery"
 	add_child(lower_gallery)
+	water_pump = CityWaterPump.new()
+	add_child(water_pump)
+	water_pump.build(materials)
 	_markers()
 
 func _parkour_steps() -> void:

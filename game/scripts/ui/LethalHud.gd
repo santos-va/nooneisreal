@@ -223,7 +223,8 @@ func _refresh_resources() -> void:
 		return
 	var s1: float = hero.cooldowns.get("skill1", 0.0)
 	var s2: float = hero.cooldowns.get("skill2", 0.0)
-	resources_label.text = "METER %d%% · S1 %s · S2 %s" % [roundi(hero.meter / Fighter.MAX_METER * 100.0), "✓" if s1 <= 0.0 else "%.1f" % s1, "✓" if s2 <= 0.0 else "%.1f" % s2]
+	# `OK` for a ready skill: the built-in font has no `✓` (plan 2026-10-08-Thirst-Substances-Icons step 3).
+	resources_label.text = "METER %d%% · S1 %s · S2 %s" % [roundi(hero.meter / Fighter.MAX_METER * 100.0), "OK" if s1 <= 0.0 else "%.1f" % s1, "OK" if s2 <= 0.0 else "%.1f" % s2]
 	if not status_suffix.is_empty():
 		resources_label.text += " · " + status_suffix
 

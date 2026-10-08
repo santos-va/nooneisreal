@@ -45,7 +45,7 @@ func _ready() -> void:
 		_box("BenchLeg", Vector3(-22.25, 4.35, z), Vector3(0.9, 0.7, 0.14), "iron", true)
 	_box("ToolChest", Vector3(-22.25, 5.0, -12.8), Vector3(0.8, 0.35, 0.55), "copper", true)
 	_sign("EntranceSign", "СЛУЖБОВИЙ ДВІР", Vector3(-27.65, 6.72, -13.95), -PI * 0.5)
-	_sign("BypassSign", "ОБХІД ↑", Vector3(-19, 4.9, -10.25), 0.0)
+	_sign("BypassSign", "ОБХІД ›", Vector3(-19, 4.9, -10.25), 0.0)   # no arrows in the built-in font
 	_point("clue_a", Vector3(-27.66, 5.2, -13.15))
 	_point("clue_b", Vector3(-26.92, 5.25, -12.0))
 	_point("mechanism", Vector3(-26.85, 5.22, -15.25))

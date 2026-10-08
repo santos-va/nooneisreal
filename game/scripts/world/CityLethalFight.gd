@@ -144,7 +144,7 @@ func open() -> bool:
 	flow.setup(player, enemy)   # round 1 at full HP: (-3, 0, 0) hero, (3, 0, 0) enemy
 	var hunger: CityHunger = world.get("hunger")
 	entry_hp = hunger.pocket_entry_hp() if hunger != null else -1.0
-	hud.status_suffix = hunger.pocket_status() if hunger != null else ""
+	hud.status_suffix = hunger.pocket_words() if hunger != null else ""
 	_apply_entry_hp()
 	hud.snap_trails()
 	_open_camera()   # after the round-1 placement: the lens starts behind the hero, no swing from the street

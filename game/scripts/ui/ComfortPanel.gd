@@ -34,8 +34,10 @@ const HIT_FLASH_LABELS: Array[String] = ["Full", "Reduced — half as bright and
 ## 06-UI-UX § «Випадки міста: COMFORT і HUD» п. 1 (T8, Д3): the city's five-leaves event and its state, stored by
 ## ContentSettings (`drugs`). Order as ContentSettings.DRUGS_MODES. Full is a PLACEHOLDER default (Р4, until ratings).
 var drugs_choice: OptionButton
-const DRUGS_LABELS: Array[String] = ["Full — a passer-by may offer a smoke", "Off — no offer and no haze"]
-const DRUGS_HELP := "Off works at once, even mid-offer or mid-haze. CAMERA SHAKE at 0 stops the haze zoom; the dark edges stay."
+## T8 06-UI-UX § «Спрага…» п. 4 (variant Р2): the key, the node and the order stay; the words name alcohol and tobacco too.
+const DRUGS_TITLE := "DRUGS, ALCOHOL & TOBACCO · CITY ONLY"
+const DRUGS_LABELS: Array[String] = ["Full — may be offered or sold in the city", "Off — never offered or sold, no states"]
+const DRUGS_HELP := "Off works at once, even mid-offer or mid-state, with no after-effect. Water and food stay. CAMERA SHAKE at 0 stops the haze zoom; the dark edges stay."
 var _syncing := true
 
 func _ready() -> void:
@@ -138,7 +140,7 @@ func _ready() -> void:
 	blood_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	content.add_child(blood_help)
 	# Applies at once (the city's director drops the offer and the state on Off); RESTORE never resets it.
-	content.add_child(_label("DRUGS · CITY ONLY", 32))
+	content.add_child(_label(DRUGS_TITLE, 32))
 	drugs_choice = _choice("DrugsMode", DRUGS_LABELS)
 	content.add_child(drugs_choice)
 	_focus_order.append(drugs_choice)

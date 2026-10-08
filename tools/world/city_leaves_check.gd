@@ -302,24 +302,28 @@ func _l6() -> void:
 	_check(outcome == "leaves:smoked" and JSON.stringify(progress.snapshot()) == before_progress and JSON.stringify(world.npc_director.population.relationships) == before_people and content.call("drugs_mode") == before_content, "«Затягнутись»: no bonus — progress (tokens, faces, events), residents' memory and content unchanged (%s)" % outcome)
 
 
-## L7: Off in the middle removes the event and the state.
+## L7: Off in the middle removes the event and the state. Plan 2026-10-08-Thirst-Substances-Icons step 2 (T5 М6): no
+## offer starts while a state lasts, so the state begins after the passer-by is already offering.
 func _l7() -> void:
+	world.haze.clear()
 	var event: Node = await _offer()
 	if event == null:
 		return
-	_check(world.haze.haze_active(), "the state from L6 still lasts")
+	world.haze.begin()
+	_check(world.haze.haze_active(), "the state lasts (begun mid-offer)")
 	content.call("set_drugs_mode", "off")
 	await _ticks(2)
 	_check(events.active == null and _leaf_people() == 0 and String(events.outcomes.back()) == "leaves:abort_content", "Off in the middle: the passer-by and his leaves are gone at once (%s)" % events.outcomes.back())
 	_check(not world.haze.haze_active() and not world.haze_vignette.rect.visible, "Off clears the state and its vignette")
 	content.call("set_drugs_mode", "full")
 	# The same through the row: the city pause → COMFORT & CONTROLS → DRUGS Off, real keys, while he stands offering.
-	world.haze.begin()
-	await _ticks(200)   # past the ramp-in: a narrowed FOV to be put back
+	world.haze.clear()
 	var standing: Node = await _offer_standing()
 	if standing == null:
 		_check(false, "L7 row: the passer-by stands offering")
 		return
+	world.haze.begin()
+	await _ticks(200)   # past the ramp-in: a narrowed FOV to be put back
 	var base_fov: float = world.haze.base_fov
 	_check(world.haze.haze_active() and world.camera_rig.camera.fov < base_fov - 0.5 and world.hud.haze_label.visible, "L7 row: the state lasts, the FOV narrowed (%.2f), HAZE line shown" % world.camera_rig.camera.fov)
 	await _key(KEY_ESCAPE)

@@ -307,7 +307,7 @@ func _skill_slot(icon_path: String) -> Dictionary:
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(_outlined(icon))
-	var lbl := _label("✓", FONT_SMALL, HORIZONTAL_ALIGNMENT_LEFT)
+	var lbl := _label("OK", FONT_SMALL, HORIZONTAL_ALIGNMENT_LEFT)   # the built-in font has no `✓`
 	lbl.add_theme_color_override("font_color", Color(0.9, 0.9, 0.9, 0.85))
 	# Reserve countdown width so ticking cooldowns never shift adjacent resources.
 	lbl.custom_minimum_size.x = 40
@@ -519,8 +519,8 @@ func _on_cooldowns(idx: int, cd: Dictionary) -> void:
 	var s1: float = cd.get("skill1", 0.0)
 	var s2: float = cd.get("skill2", 0.0)
 	var labels: Array = _cool[idx]
-	(labels[0] as Label).text = "✓" if s1 <= 0.0 else "%.1f" % s1
-	(labels[1] as Label).text = "✓" if s2 <= 0.0 else "%.1f" % s2
+	(labels[0] as Label).text = "OK" if s1 <= 0.0 else "%.1f" % s1
+	(labels[1] as Label).text = "OK" if s2 <= 0.0 else "%.1f" % s2
 
 
 func _on_dash(idx: int, c: int, r: float, mc: int) -> void:
@@ -640,7 +640,7 @@ func _update_aim_cues() -> void:
 		var verb := "GRAB ROPE" if kind == "rope" else ("TRANSFER" if p1.grapple.busy() else "HOOK")
 		if kind == "rope" and not intent.get("reachable", true):
 			verb = "PREPARE GRAB"
-		cue.text = ("◇ " if not intent.target_id.is_empty() else "+ ") + aim_binding(mode, helper.last_gamepad) + " · " + verb
+		cue.text = ("• " if not intent.target_id.is_empty() else "+ ") + aim_binding(mode, helper.last_gamepad) + " · " + verb
 		cue.position = _root.get_global_transform_with_canvas().affine_inverse() * screen + Vector2(-16, -16 + mode * 26)
 		cue.show()
 

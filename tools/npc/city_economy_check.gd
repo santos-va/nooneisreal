@@ -164,14 +164,14 @@ func _run() -> void:
 		if child is Button and str(child.get_meta("full_text", child.text)).begins_with("Відвар шавлії"):
 			label = str(child.get_meta("full_text", child.text))
 			enabled = not child.disabled
-	_check(label == "Відвар шавлії · +25%% → 75%% · %d жет. · бракує %d жет." % [FOOD, FOOD] and not enabled, "E3 with 0 tokens the tea is shown with what is missing and cannot be bought (%s)" % label)
+	_check(label == "Відвар шавлії · FOOD +25%% » 75%% · WATER +30%% » 100%% · %d жет. · бракує %d жет." % [FOOD, FOOD] and not enabled, "E3 with 0 tokens the tea is shown with what is missing and cannot be bought (%s)" % label)
 	npc.dialogue.close()
 	world.progress.earn_credits(3)
 	await _ticks(2)
 	npc.open_conversation(0)
 	_press_label(npc, "Поїсти · FOOD 50% · жетони 3")
 	await _ticks(2)
-	var bought: bool = _press_label(npc, "Відвар шавлії · +25%% → 75%% · %d жет." % FOOD)
+	var bought: bool = _press_label(npc, "Відвар шавлії · FOOD +25%% » 75%% · WATER +30%% » 100%% · %d жет." % FOOD)
 	await _ticks(2)
 	_check(bought and world.progress.credits() == 3 - FOOD and "Смачного." in npc.dialogue.body.text and world.hunger.centi == 7500, "E3 Mira sells the tea for %d token (%d left, FOOD %d)" % [FOOD, world.progress.credits(), world.hunger.percent()])
 	var others: bool = false

@@ -124,6 +124,11 @@ cases = [
     # 2026-10-08-Survival-Hunger step 4: T5 § 9, Santos «Повний перенос», the T8 HUD).
     ('city-event-menus', 'tools/world/city_event_menus_check.gd', r'CITY_EVENT_MENUS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('city-hunger', 'tools/world/city_hunger_check.gd', r'CITY_HUNGER_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    # Thirst, substance states, the strength buff and item icons (plan 2026-10-08-Thirst-Substances-Icons steps 1–3).
+    ('city-thirst', 'tools/world/city_thirst_check.gd', r'CITY_THIRST_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-substances', 'tools/world/city_substances_check.gd', r'CITY_SUBSTANCES_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('glyph-coverage', 'tools/ui/glyph_coverage_check.gd', r'GLYPH_COVERAGE_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('item-icons', 'tools/ui/item_icons_check.gd', r'ITEM_ICONS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
 ]
 for mutation in ('portrait', 'icon', 'input'):
     cases.append(('ui-negative-' + mutation, 'tools/ui/layout_check.gd',
@@ -219,7 +224,17 @@ for script, sentinel, prefix, mutations in (
         ('tools/world/city_event_menus_check.gd', 'CITY_EVENT_MENUS', 'city-event-menus', ('arming', 'asktimer', 'zero')),
         # Hunger: a wrong rate, a clock that runs in a conversation or the pocket, no floor, no token loss on the
         # collapse, an uncapped haze drop, RETRY at full hp, the crust without its condition.
-        ('tools/world/city_hunger_check.gd', 'CITY_HUNGER', 'city-hunger', ('rate', 'gate', 'pocket_clock', 'floor', 'collapse', 'haze', 'retry', 'crust'))):
+        ('tools/world/city_hunger_check.gd', 'CITY_HUNGER', 'city-hunger', ('rate', 'gate', 'pocket_clock', 'floor', 'collapse', 'haze', 'retry', 'crust')),
+        # Thirst: a wrong rate, a clock that runs in a conversation or the pocket, W not counted for the body, the scale
+        # running with no water source.
+        ('tools/world/city_thirst_check.gd', 'CITY_THIRST', 'city-thirst', ('rate', 'gate', 'pocket_clock', 'ignore', 'source')),
+        # Substance states: a profile that walks, brakes or refills better; a state begun over another; a drink that keeps
+        # the hangover.
+        ('tools/world/city_substances_check.gd', 'CITY_SUBSTANCES', 'city-substances', ('walk', 'decel', 'regen', 'stack', 'hangover')),
+        # Glyphs: a `✓` literal, a `→` in data, a `◇` in a triple-quoted string, a font that claims every character.
+        ('tools/ui/glyph_coverage_check.gd', 'GLYPH_COVERAGE', 'glyph-coverage', ('inject_gd', 'inject_json', 'inject_triple', 'font')),
+        # Item icons: icons stretched to the button's height, text centred, no stand-in for a row without an icon.
+        ('tools/ui/item_icons_check.gd', 'ITEM_ICONS', 'item-icons', ('expand', 'center', 'blank'))):
     for mutation in mutations:
         cases.append((prefix + '-negative-' + mutation, script,
                       rf'{sentinel}_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
@@ -302,7 +317,11 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('city-haze-negative-', 'ERROR: CITY_HAZE: '),
                           ('city-economy-negative-', 'ERROR: CITY_ECONOMY: '),
                           ('city-event-menus-negative-', 'ERROR: CITY_EVENT_MENUS: '),
-                          ('city-hunger-negative-', 'ERROR: CITY_HUNGER: ')):
+                          ('city-hunger-negative-', 'ERROR: CITY_HUNGER: '),
+                          ('city-thirst-negative-', 'ERROR: CITY_THIRST: '),
+                          ('city-substances-negative-', 'ERROR: CITY_SUBSTANCES: '),
+                          ('glyph-coverage-negative-', 'ERROR: GLYPH_COVERAGE: '),
+                          ('item-icons-negative-', 'ERROR: ITEM_ICONS: ')):
         if name.startswith(scope):
             assertion_prefix = prefix
     unexpected = [line for line in errors

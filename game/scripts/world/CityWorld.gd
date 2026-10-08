@@ -31,6 +31,10 @@ var haze_vignette: CityHazeVignette
 var events: CityEventDirector
 ## Plan 2026-10-08-Survival-Hunger step 4: the hunger scale (H, its bands, food, the collapse, the pocket transfer).
 var hunger: CityHunger
+## Plan 2026-10-08-Thirst-Substances-Icons step 1: the thirst scale on the hunger clock, and the pump that switches it on.
+var thirst: CityThirst
+## Step 2: «Хміль» and «Задишка» (sold by the street pedlar, CityVendorEvent); they never stack with «Заплутаність».
+var substances: CitySubstances
 @export var journey_save_enabled: bool = true
 var _prior_free_move: bool
 var _prior_profile: String
@@ -142,6 +146,11 @@ func _ready() -> void:
 	player.haze = haze
 	npc_director.haze = haze
 	hud.bind_haze(haze)
+	substances = CitySubstances.new()
+	substances.name = "Substances"
+	add_child(substances)
+	substances.haze = haze
+	player.substances = substances
 	events = CityEventDirector.new()
 	events.name = "CityEvents"
 	add_child(events)
@@ -152,9 +161,19 @@ func _ready() -> void:
 	hunger.name = "Hunger"
 	add_child(hunger)
 	hunger.setup(self)
+	thirst = CityThirst.new()
+	thirst.name = "Thirst"
+	add_child(thirst)
+	thirst.setup(self, hunger.running)
+	hunger.thirst = thirst
+	hunger.substances = substances
+	thirst.substances = substances
+	substances.thirst = thirst
 	player.hunger = hunger
 	npc_director.hunger = hunger
+	hud.bind_thirst(thirst)
 	hud.bind_hunger(hunger)
+	hud.bind_substances(substances)
 	_reset_observation()
 
 func _physics_process(delta: float) -> void:
@@ -312,7 +331,8 @@ func _update_story_interaction() -> void:
 				best = distance
 				selected = id
 	if selected.is_empty():
-		_update_lethal_entry()
+		if not _update_pump():
+			_update_lethal_entry()
 		return
 	var gamepad: bool = camera_rig.aim.last_gamepad
 	var action: String = story.text("prompt_" + selected)
@@ -326,6 +346,21 @@ func _update_story_interaction() -> void:
 	if InputRouter.just_pressed(1, "interact"):
 		interact_story(selected)
 
+## The water pump (plan 2026-10-08-Thirst-Substances-Icons step 1; T8 п. 2 «Колонка»): the existing `interact` at the
+## spout, prompted on the story line; no menu, free. True when the hero is at the spout (the prompt is shown).
+func _update_pump() -> bool:
+	if thirst == null or not thirst.can_drink(player):
+		return false
+	hud.set_story_prompt(InputRouter.binding_label(1, "interact", camera_rig.aim.last_gamepad) + " · " + PUMP_PROMPT)
+	if InputRouter.just_pressed(1, "interact"):
+		thirst.drink_water("pump")
+		Sfx.play(PUMP_SFX, PUMP_SFX_DB)
+	return true
+
+const PUMP_PROMPT := "Drink water · free"   # T8 п. 2, PLACEHOLDER T7
+const PUMP_SFX := "pump_drink"              # PLACEHOLDER name: silent until a registered file exists (Sfx.gd:6)
+const PUMP_SFX_DB := -8.0
+
 ## The lethal pocket's entry is an explicit interaction at its safe point, prompted like the story points.
 func _update_lethal_entry() -> void:
 	if not lethal.can_enter():
@@ -334,12 +369,19 @@ func _update_lethal_entry() -> void:
 		# T5 розвилка 8 / T7 § 5.2: the pocket waits until the state has passed; the fight stays deterministic.
 		hud.set_story_prompt(HAZY_ENTRY_TEXT)
 		return
+	if substances != null and substances.active():
+		# T5 Substances М5, T8 п. 3: any substance state shuts the pocket; the text names the state and both ways out.
+		hud.set_story_prompt(TIPSY_ENTRY_TEXT if substances.state == "tipsy" else WINDED_ENTRY_TEXT)
+		return
 	hud.set_story_prompt(lethal.prompt_text(camera_rig.aim.last_gamepad))
 	if InputRouter.just_pressed(1, "interact"):
 		lethal.request_open()
 
 ## T8 06-UI-UX § «Випадки міста: COMFORT і HUD» п. 2 (final words): the reason and both ways out; no key, no action.
 const HAZY_ENTRY_TEXT := "TOO HAZY TO FIGHT · Wait it out, or eat at «Шавлія» to clear it sooner"
+## T8 06-UI-UX § «Спрага…» п. 3 (PLACEHOLDER T7).
+const TIPSY_ENTRY_TEXT := "TOO TIPSY TO FIGHT · Wait it out, or drink water to clear it sooner"
+const WINDED_ENTRY_TEXT := "TOO WINDED TO FIGHT · Wait it out, or drink water to clear it sooner"
 
 func _reset_observation() -> void:
 	_last_position = player.global_position
@@ -369,6 +411,8 @@ func restart_exploration() -> void:
 	journey.restart_walk()
 	if haze != null:
 		haze.clear()
+	if substances != null:
+		substances.clear()
 	recover_to_spawn()
 	for node: Node in get_node("FX").get_children():
 		node.queue_free()

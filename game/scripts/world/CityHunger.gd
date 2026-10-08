@@ -16,12 +16,24 @@ extends Node
 ##   * Santos «Повний перенос» (ADR-025 п. 4): the lethal pocket takes the city hp (never below the floor), the dodge
 ##     refill and the walk of the band; H stands in the fight; RETRY gives back the hp the hero came in with; after the
 ##     pocket the city hp is the one from before it. The duel, VERSUS and training never see any of this.
-## Food (T5 § 5, names T7, all PLACEHOLDER): «Відвар шавлії» 1 token +25 (in the state: the state fades out in 10 s),
+## Thirst (plan 2026-10-08-Thirst-Substances-Icons step 1; T5 Thirst-Numbers): W (CityThirst) runs on this same clock
+## (step_frame steps it), and the body takes the worse of the two bands — B = max(band(H), band(W)), never the product —
+## for the dodge refill, the walk, the wall steps and the one hp tick. H = 0 or W = 0 is one collapse: H = max(H, 30),
+## W = max(W, 30), −min(tokens, 3) once (T5 § 5). The pocket takes B; RETRY the same entry.
+## Healthy food (plan step 2; ADR-026 п. 2; T5 Substances § 5.2; T7 Л1 at «Шавлія»): «Вітаміни» 10 min — the city hp
+## heals twice as often (sated 180, hungry 360 frames; the faint drain unchanged); «Сила» 15 min — the dodge refill × 1.2
+## (with the band) and the hang +1 s in the city. Both on the hunger clock (they stand in the pause, a conversation and the
+## pocket), a second dish of a class gives the full timer back (never × 1.44), both may run together, session only.
+## «Сила» carries into the pocket (Santos «Повний перенос»): × 1.2 there, its timer standing; hp never grows.
+## A drink (tea, uzvar, water) lets «Хміль» and «Задишка» fade and cancels the hangover (CitySubstances.drink).
+## Food (T5 § 5, names T7, all PLACEHOLDER): «Відвар шавлії» 1 token +25 and W +30 (in the state: the state fades out in 10 s),
 ## «Житній буханець» 2 tokens +60, «Окраєць у борг» 0 tokens +30 only with no token and H ≤ 25, at most once per 15 min of
 ## hunger time. H never goes above 100. Every number here is a PLACEHOLDER (T5).
 signal band_changed(band: String, previous: String)
 signal collapsed(tokens_lost: int)
 signal ate(food_id: String, gained: int)
+## A food effect ran out on the hunger clock: "strength" | "vitamins".
+signal effect_ended(effect: String)
 
 const FULL := 10000
 const BANDS: Array[String] = ["sated", "hungry", "famished", "faint"]
@@ -46,16 +58,34 @@ const BANDS: Array[String] = ["sated", "hungry", "famished", "faint"]
 @export var collapse_fall_frames: int = 90                  # the body drops; the dark comes over its second half
 @export var collapse_wake_frames: int = 30                  # the dark lifts at the safe point
 @export var foods: Array[Dictionary] = [
-	{"id": "tea", "title": "Відвар шавлії", "gain": 2500, "price": 1, "clears_haze": true},
-	{"id": "loaf", "title": "Житній буханець", "gain": 6000, "price": 2},
-	{"id": "crust", "title": "Окраєць у борг", "gain": 3000, "price": 0, "credit": true},
+	{"id": "tea", "title": "Відвар шавлії", "gain": 2500, "price": 1, "clears_haze": true, "water": 3000, "drink": true},
+	{"id": "loaf", "title": "Житній буханець", "gain": 6000, "price": 2, "icon": "rye_loaf"},
+	{"id": "crust", "title": "Окраєць у борг", "gain": 3000, "price": 0, "credit": true, "icon": "rye_crust"},
+	# T5 § 5.2 classes, T7 Л1 names: vitamin 1 token +15; protein snack 1 token +15; protein dish 2 tokens +40.
+	# `icon`: T6's accepted cell (docs/Art/2026-10-08-Substances-And-Food-Items.md § Підсумок хвилі 2); none for the tea
+	# (its cell failed criterion 2) and the cheese pastry (a copy of the pie) — they stand as text (T8 п. 5).
+	{"id": "pickled_apples", "title": "Мочені яблука", "gain": 1500, "price": 1, "effect": "vitamins", "icon": "pickled_apples"},
+	{"id": "uzvar", "title": "Узвар", "gain": 1500, "price": 1, "water": 3000, "drink": true, "effect": "vitamins", "icon": "uzvar"},
+	{"id": "eggs", "title": "Два яйця в мундирі", "gain": 1500, "price": 1, "effect": "strength", "icon": "eggs"},
+	{"id": "cheese_pastry", "title": "Пиріжок із сиром", "gain": 4000, "price": 2, "effect": "strength"},
 ]
+@export var strength_full_frames: int = 54000               # T5 § 5.2: «Сила» 15 min of hunger time
+@export var strength_regen_scale: float = 1.2               # T5 § 5.2: the dodge refill × 1.2
+@export var strength_hang_bonus: float = 1.0                # T5 § 5.2: hang_seconds 3.0 → 4.0, city only
+@export var vitamins_full_frames: int = 36000               # T5 § 5.2: «Вітаміни» 10 min of hunger time
+@export var vitamins_period_scale: float = 0.5              # T5 § 5.2: +1 % every 180 / 360 frames instead of 360 / 720
 
 var world: Node
 var player: CityFighter
 var progress: CityProgress
 var lethal: CityLethalFight
 var haze: CityHaze
+## The thirst scale on this clock (CityWorld binds it after setup); null: H alone, as before.
+var thirst: CityThirst = null
+## «Хміль» and «Задишка» (CityWorld binds them): a drink lets them fade.
+var substances: CitySubstances = null
+var strength_left: int = 0               # frames of hunger time left of «Сила»
+var vitamins_left: int = 0               # frames of hunger time left of «Вітаміни»
 var running: bool = true
 var centi: int = FULL
 var city_hp: float = 0.0
@@ -63,6 +93,7 @@ var crust_wait: int = 0                 # frames of hunger time until Mira gives
 var collapse_phase: String = ""         # "" | "fall" | "wake"
 var collapse_frames: int = 0
 var last_tokens_lost: int = 0
+var last_collapse_cause: String = ""   # "hunger" | "thirst" | "both" — the words of the HUD's collapse hint
 var collapsed_recently: bool = false    # Mira's first word after the collapse (T7 М6); session only
 var _decay_left: int = 18
 var _hp_band: int = -1
@@ -102,7 +133,7 @@ func enable_for_test(level: int) -> void:
 
 func _reset_counters() -> void:
 	_decay_left = decay_frames
-	_hp_band = band_index()
+	_hp_band = body_band_index()
 	_hp_frames = 0
 	_persist_left = persist_frames
 
@@ -131,16 +162,27 @@ func band() -> String:
 	return BANDS[band_index()]
 
 
+## The band the body takes: the worse of H's and W's (T5 Thirst-Numbers § 3.2). W counts only while thirst runs.
+func body_band_index() -> int:
+	return maxi(band_index(), thirst.body_band_index() if thirst != null else 0)
+
+
+## The band's refill × «Сила» (T5 § 5.3: it multiplies with the band, in the city and in the pocket alike).
 func dodge_regen_multiplier() -> float:
-	return regen_multipliers[band_index()]
+	return regen_multipliers[body_band_index()] * (strength_regen_scale if strength_left > 0 else 1.0)
+
+
+## «Сила»'s extra hang in the city (CityParkourMotor.hang_limit; the shared profile is never mutated).
+func hang_bonus_seconds() -> float:
+	return strength_hang_bonus if strength_left > 0 else 0.0
 
 
 func walk_multiplier() -> float:
-	return walk_multipliers[band_index()]
+	return walk_multipliers[body_band_index()]
 
 
 func wall_run_allowed() -> bool:
-	return band_index() < 2
+	return body_band_index() < 2
 
 
 func hp_floor() -> float:
@@ -175,6 +217,16 @@ func step_frame() -> void:
 		_decay_left = decay_frames
 		if centi > 0:
 			set_centi(centi - 1)
+	if thirst != null:
+		thirst.step_frame()
+	if strength_left > 0:
+		strength_left -= 1
+		if strength_left == 0:
+			effect_ended.emit("strength")
+	if vitamins_left > 0:
+		vitamins_left -= 1
+		if vitamins_left == 0:
+			effect_ended.emit("vitamins")
 	if crust_wait > 0:
 		crust_wait -= 1
 	_tick_hp()
@@ -182,7 +234,7 @@ func step_frame() -> void:
 	if _persist_left <= 0:
 		_persist_left = persist_frames
 		persist()
-	if centi <= 0 and collapse_phase.is_empty():
+	if (centi <= 0 or (thirst != null and thirst.dry())) and collapse_phase.is_empty():
 		_begin_collapse()
 
 
@@ -194,13 +246,15 @@ func simulate(frames: int) -> void:
 
 
 func _tick_hp() -> void:
-	var b: int = band_index()
+	var b: int = body_band_index()   # one tick for both scales (T5 § 3.2): never a second one for W
 	if b != _hp_band:
 		_hp_band = b
 		_hp_frames = 0
 	var period: int = hp_tick_frames[b]
 	if period <= 0:
 		return
+	if vitamins_left > 0 and b < 3:
+		period = maxi(1, roundi(float(period) * vitamins_period_scale))   # heals faster; the faint drain is untouched
 	_hp_frames += 1
 	if _hp_frames < period:
 		return
@@ -229,7 +283,7 @@ func set_centi(level: int) -> void:
 
 func persist() -> void:
 	if running and progress != null:
-		progress.set_hunger(centi, crust_wait)
+		progress.set_hunger(centi, crust_wait, thirst.centi if thirst != null and thirst.running else -1)
 
 
 ## Back from a restart (a fall from the map, the collapse, the pocket): the city hp is the one before it.
@@ -250,11 +304,36 @@ func pocket_entry_hp() -> float:
 	return maxf(city_hp, hp_floor()) if running else -1.0
 
 
-## The word the pocket's HUD adds to the hero's line (T8 PLACEHOLDER); empty when sated or not running.
+const HUNGER_WORDS: Array[String] = ["", "HUNGRY", "FAMISHED", "FAINT"]
+const THIRST_WORDS: Array[String] = ["", "THIRSTY", "PARCHED", "FAINT"]
+const BODY_EFFECTS: Array[String] = ["", "slower stamina", "slower stamina and walk", "slower stamina and walk"]
+
+
+## The words the pocket's HUD adds to the hero's line (T8 06-UI-UX § «Спрага…» п. 2, PLACEHOLDER): the worse scale's
+## word and the effect of B; equal bands → both words without the effect (`FAMISHED · PARCHED`, the 644 px half of the
+## band); both FAINT → one word. Empty when both are fine or nothing runs.
 func pocket_status() -> String:
 	if not running:
 		return ""
-	return ["", "HUNGRY · slower stamina", "FAMISHED · slower stamina and walk", "FAINT · slower stamina and walk"][band_index()]
+	var food: int = band_index()
+	var water: int = thirst.body_band_index() if thirst != null else 0
+	if food == 0 and water == 0:
+		return ""
+	if food > water:
+		return HUNGER_WORDS[food] + " · " + BODY_EFFECTS[food]
+	if water > food:
+		return THIRST_WORDS[water] + " · " + BODY_EFFECTS[water]
+	if food == 3:
+		return "FAINT · " + BODY_EFFECTS[3]
+	return HUNGER_WORDS[food] + " · " + THIRST_WORDS[water]
+
+
+## pocket_status() plus ` · STRENGTH` when «Сила» comes in with the hero (T8 п. 2); what CityLethalFight shows.
+func pocket_words() -> String:
+	var words: String = pocket_status()
+	if running and strength_left > 0:
+		words += (" · " if not words.is_empty() else "") + "STRENGTH"
+	return words
 
 
 # --- food at «Шавлія» ----------------------------------------------------------------------------------------------
@@ -265,15 +344,36 @@ func food(id: String) -> Dictionary:
 	return {}
 
 
+## W the entry adds (0 for solid food); counted only while the world has a water source (T5 Thirst § 4).
+func water_gain(entry: Dictionary) -> int:
+	return int(entry.get("water", 0)) if thirst != null and thirst.has_source() else 0
+
+
+## True when nothing the entry does would change anything (T8 п. 5): every scale it raises is at 100 and it shortens no
+## state the hero is in. Then the counter says «ти ситий».
+func _sated_for(entry: Dictionary) -> bool:
+	if centi < FULL and int(entry.gain) > 0:
+		return false
+	if water_gain(entry) > 0 and thirst.centi < CityThirst.FULL:
+		return false
+	if bool(entry.get("clears_haze", false)) and haze != null and haze.haze_active() and haze.haze_remaining() > haze.fade_out_seconds:
+		return false
+	if bool(entry.get("drink", false)) and substances != null and substances.active() and substances.remaining() > substances.fade_out_seconds:
+		return false
+	return true
+
+
 ## What the counter shows for `id`: enabled, the reason when not (words PLACEHOLDER T7/T8), the gain and the result.
 func food_state(id: String) -> Dictionary:
 	var entry: Dictionary = food(id)
 	if entry.is_empty():
-		return {"enabled": false, "reason": "", "gain": 0, "after": centi, "price": 0}
+		return {"enabled": false, "reason": "", "gain": 0, "after": centi, "price": 0, "water": 0, "water_after": 0}
 	var price: int = int(entry.price)
 	var tokens: int = progress.credits() if progress != null else 0
 	var reason: String = ""
-	if centi >= FULL:
+	var water: int = water_gain(entry)
+	var water_now: int = thirst.centi if water > 0 else 0
+	if _sated_for(entry):
 		reason = "ти ситий"
 	elif bool(entry.get("credit", false)):
 		if tokens > 0:
@@ -284,7 +384,10 @@ func food_state(id: String) -> Dictionary:
 			reason = "Міра пригостить пізніше"
 	elif tokens < price:
 		reason = "бракує %d жет." % (price - tokens)
-	return {"enabled": reason.is_empty(), "reason": reason, "gain": int(entry.gain), "after": mini(FULL, centi + int(entry.gain)), "price": price}
+	var effect: String = String(entry.get("effect", ""))
+	return {"enabled": reason.is_empty(), "reason": reason, "gain": int(entry.gain), "after": mini(FULL, centi + int(entry.gain)), "price": price,
+		"water": water, "water_after": mini(CityThirst.FULL, water_now + water), "effect": effect,
+		"effect_frames": strength_full_frames if effect == "strength" else (vitamins_full_frames if effect == "vitamins" else 0)}
 
 
 ## Buys and eats at once (no inventory). Returns {"ok", "gained", "cleared"}: cleared = the state now fades out.
@@ -300,6 +403,15 @@ func feed(id: String) -> Dictionary:
 	if bool(entry.get("credit", false)):
 		crust_wait = crust_cooldown_frames
 	var cleared: bool = bool(entry.get("clears_haze", false)) and haze != null and haze.eat()
+	if water_gain(entry) > 0:
+		thirst.gain(water_gain(entry))
+	if bool(entry.get("drink", false)) and substances != null:
+		substances.drink()
+	match String(entry.get("effect", "")):
+		"strength":
+			strength_left = strength_full_frames   # the full timer again, never stacked
+		"vitamins":
+			vitamins_left = vitamins_full_frames
 	persist()
 	ate.emit(id, centi - before)
 	return {"ok": true, "gained": centi - before, "cleared": cleared}
@@ -309,8 +421,10 @@ func feed(id: String) -> Dictionary:
 func _begin_collapse() -> void:
 	collapse_phase = "fall"
 	collapse_frames = 0
+	var dry: bool = thirst != null and thirst.dry()
+	last_collapse_cause = "both" if centi <= 0 and dry else ("thirst" if dry else "hunger")
 	if world != null and world.get("events") != null:
-		world.events.abort_active("hunger")
+		world.events.abort_active("thirst" if last_collapse_cause == "thirst" else "hunger")
 	player.collapse_from_hunger()
 
 
@@ -331,7 +445,9 @@ func _wake() -> void:
 	player.set_round_hp(city_hp)
 	last_tokens_lost = progress.spend_credits(mini(progress.credits(), collapse_tokens)) if progress != null else 0
 	collapsed_recently = true
-	set_centi(collapse_h)
+	set_centi(maxi(centi, collapse_h))   # T5 Thirst § 5: max, not «= 30» — a fall from thirst keeps the food
+	if thirst != null:
+		thirst.wake()
 	_reset_counters()
 	persist()
 	collapsed.emit(last_tokens_lost)

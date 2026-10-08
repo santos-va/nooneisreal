@@ -12,9 +12,13 @@ signal event_finished(id: String, outcome: String)
 signal conversation_started(actor: Node3D)
 signal conversation_ended
 
-const EVENTS: Array[String] = ["alley", "leaves"]
+## "vendor": the street pedlar of alcohol and tobacco (plan 2026-10-08-Thirst-Substances-Icons step 2; CityVendorEvent).
+const EVENTS: Array[String] = ["alley", "leaves", "vendor"]
 const ALLEY_SCRIPT := preload("res://scripts/world/CityAlleyEvent.gd")
 const LEAVES_SCRIPT := preload("res://scripts/world/CityLeavesEvent.gd")
+const VENDOR_SCRIPT := preload("res://scripts/world/CityVendorEvent.gd")
+## The pedlar meets the hero at the market court (T7 Л3: «Кухоль» is a market stall).
+const VENDOR_PLACES: Array[String] = ["market_court"]
 ## The mouth of the southeast passage (CityLayout: wings x 10–18 and 22–30, z 12–30; lintel over z 12–16).
 const PASSAGE_MOUTH := Vector3(20.0, 0.0, 11.0)
 ## В2 meets the hero near the market court or the roof bridge (T7 В2; CityPlaces.landmarks()).
@@ -26,7 +30,9 @@ const LEAVES_PLACES: Array[String] = ["market_court", "roof_bridge"]
 @export var grace_seconds: float = 90.0          # T_grace PLACEHOLDER: no event right after entering the city
 @export var gap_seconds: float = 60.0            # PLACEHOLDER: quiet time after any event before the next one
 @export var alley_cooldown_seconds: float = 240.0 # T_cooldown_alley PLACEHOLDER
-@export var leaves_per_session: int = 1          # T7 В2: not more often than once a session (PLACEHOLDER)
+## T7 В2: not more often than once a session (PLACEHOLDER). Since step 2 of plan 2026-10-08-Thirst-Substances-Icons this
+## is the session's one substance offer: the leaves and the pedlar share it (T5 Substances § 3.6).
+@export var leaves_per_session: int = 1
 @export var empty_radius: float = 8.0            # PLACEHOLDER: no resident this close — the street is empty
 @export var pocket_margin: float = 6.0           # PLACEHOLDER: metres beyond a fight pocket's edge with no event
 @export var alley_min_credits: int = 1           # PLACEHOLDER: the alley needs tokens to take
@@ -48,6 +54,7 @@ var session_time: float = 0.0
 var last_end_time: float = -INF
 var last_alley_time: float = -INF
 var leaves_count: int = 0
+var vendor_count: int = 0
 var started: Array[String] = []        # every started id, in order (fixtures and the journal read it)
 var outcomes: Array[String] = []       # "<id>:<outcome>" per finished event
 var _check_left: float = 0.0
@@ -153,13 +160,15 @@ func block_reason(id: String) -> String:
 				or absf(point.y - PASSAGE_MOUTH.y) > 0.75 or not clear_line(point, PASSAGE_MOUTH):
 			return "place"
 		return ""
-	if id == "leaves":
+	if id == "leaves" or id == "vendor":
 		if not drugs_allowed():
 			return "content"
-		if leaves_count >= leaves_per_session:
+		if substance_state():
+			return "state"   # М6: no offer while any substance state lasts
+		if leaves_count + vendor_count >= leaves_per_session:
 			return "session"
 		for place: Dictionary in CityPlaces.landmarks():
-			if place.id in LEAVES_PLACES and point.distance_to(place.position) <= leaves_reach:
+			if place.id in (LEAVES_PLACES if id == "leaves" else VENDOR_PLACES) and point.distance_to(place.position) <= leaves_reach:
 				return ""
 		return "place"
 	return "unknown"
@@ -168,6 +177,12 @@ func block_reason(id: String) -> String:
 ## ADR-025 Р4 / plan step 3: the `drugs` content key. Off removes the event completely.
 func drugs_allowed() -> bool:
 	return content != null and bool(content.call("drugs_allowed"))
+
+
+## «Заплутаність», «Хміль» or «Задишка» lasts (T5 М6: states never stack, so nothing is offered meanwhile).
+func substance_state() -> bool:
+	var substances: Node = world.get("substances") if world != null else null
+	return (haze != null and haze.haze_active()) or (substances != null and bool(substances.call("active")))
 
 
 func near_pocket(point: Vector3) -> bool:
@@ -228,13 +243,15 @@ func spawn_passerby(seed_value: int, at: Vector3) -> CityPasserby:
 func start(id: String) -> bool:
 	if active != null or id not in EVENTS:
 		return false
-	var event: Node = (ALLEY_SCRIPT if id == "alley" else LEAVES_SCRIPT).new()
+	var event: Node = {"alley": ALLEY_SCRIPT, "leaves": LEAVES_SCRIPT, "vendor": VENDOR_SCRIPT}[id].new()
 	event.name = "Event_" + id
 	add_child(event)
 	active = event
 	started.append(id)
 	if id == "leaves":
 		leaves_count += 1
+	elif id == "vendor":
+		vendor_count += 1
 	event.finished.connect(_on_finished.bind(id, event), CONNECT_ONE_SHOT)
 	event.call("begin", self)
 	event_started.emit(id)
@@ -296,11 +313,15 @@ func _on_closed() -> void:
 
 func _on_content_changed(key: String, _value: Variant) -> void:
 	if key == "drugs" and not drugs_allowed():
-		# Off removes the event completely: the passer-by, its leaves and the state it caused.
-		if active != null and active.get("id") == "leaves":
+		# Off removes the event completely: the passer-by, its leaves or his basket and the state it caused — at once,
+		# without the fade, the end hint or the hangover (T8 06-UI-UX § «Спрага…» п. 4).
+		if active != null and active.get("id") in ["leaves", "vendor"]:
 			abort_active("content")
 		if haze != null:
 			haze.clear()
+		var substances: Node = world.get("substances") if world != null else null
+		if substances != null:
+			substances.call("clear")
 
 
 func _exit_tree() -> void:

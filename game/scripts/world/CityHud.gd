@@ -114,6 +114,48 @@ const FAINT_CUE_SECONDS: float = 30.0      # PLACEHOLDER (T8)
 const FOOD_RISE_SECONDS: float = 0.3       # T8: a full bar's rise takes at most this
 const HUNGER_CUE := "hunger_cue"           # PLACEHOLDER name; silent until a registered file exists (Sfx.gd:6)
 const HUNGER_CUE_DB: float = -8.0
+## The thirst scale (plan 2026-10-08-Thirst-Substances-Icons step 1; T8 06-UI-UX § «Спрага, стани речовин і іконки
+## предметів», variant С2): `WATER n%[ · STATE]` and its own 8 px bar right under FOOD, the same notches, the same frame
+## in FAINT, hidden when the world has no water source. The effect comes from the worse band B (CityHunger.body_band_index),
+## so a crossing that does not raise B says «no extra effect yet»; two crossings inside one hint's window say it once.
+## FAINT never yields by B = 3, not by the text's prefix. Words PLACEHOLDER (T7/T8), colours PLACEHOLDER (T6).
+var water_label: Label
+var water_bar: CityMeterBar
+var _thirst: CityThirst
+var _water_shown: float = 1.0
+var _last_body_band: int = 0
+const WATER_WORDS := {"quenched": "", "thirsty": "THIRSTY", "parched": "PARCHED", "faint": "FAINT"}
+const WATER_HINTS := {
+	"thirsty": "THIRSTY · stamina recovers slower · water: the pump on the market square, free",
+	"parched": "PARCHED · slower walk, no wall steps · drink soon",
+	"faint": "FAINT · health drains · at 0 you collapse and lose tokens · water: the pump, free",
+}
+const WATER_COLORS := {"quenched": Color("8fb8de"), "thirsty": Color("e5b178"), "parched": Color("d98a5f"), "faint": Color("e07a6a")}
+## «No extra effect yet» (B did not rise) — the word, then where the scale is filled (T8 п. 2).
+const FOOD_WHERE := "food: «Шавлія»"
+const WATER_WHERE := "water: the pump on the market square, free"
+const NO_EXTRA := "%s · no extra effect yet · %s"
+## One hint for two crossings in one window: both words, the effect of the new B, both places.
+const MERGED_HINT := "%s · %s · %s · food: «Шавлія» · water: the pump, free"
+const MERGED_HINT_ONE := "%s · %s · food: «Шавлія» · water: the pump, free"
+const BODY_HINT_EFFECTS: Array[String] = ["", "stamina recovers slower", "slower walk, no wall steps", "health drains · at 0 you collapse and lose tokens"]
+const COLLAPSE_HINTS := {
+	"hunger": "You collapsed from hunger · lost %d tokens",
+	"thirst": "You collapsed from thirst · lost %d tokens",
+	"both": "You collapsed from hunger and thirst · lost %d tokens",
+}
+const THIRST_CUE := "thirst_cue"           # PLACEHOLDER name; silent until a registered file exists (Sfx.gd:6)
+const THIRST_CUE_DB: float = -8.0
+## Plan step 2 (T8 п. 3): two slots. The food effects «Сила» / «Вітаміни» (`STRENGTH m:ss · VITAMINS m:ss`, turquoise,
+## never red) on their own line right above HazeLine; the one substance state (`HAZE` / `TIPSY` / `WINDED m:ss`) stays the
+## card's last line. End hints go to the body queue for 2 s; `drugs` Off clears a state without any of them.
+var effects_label: Label
+var _substances: CitySubstances
+const EFFECTS_COLOR := Color("7bc9c6")
+const STATE_HINT_SECONDS: float = 2.0      # PLACEHOLDER (T8)
+const STATE_FADE_HINTS := {"tipsy": "TIPSY WEARS OFF · Steady steps again", "winded": "WINDED PASSES · Breath comes back"}
+const STRENGTH_ENDS_HINT := "STRENGTH WEARS OFF · Stamina and grip back to normal"
+const DRY_MOUTH_HINT := "DRY MOUTH · WATER −%d"
 
 
 func setup(model: CityOnboarding) -> void:
@@ -169,6 +211,16 @@ func _ready() -> void:
 	food_bar.notches = [0.5, 0.25, 0.1]
 	food_bar.hide()
 	column.add_child(food_bar)
+	water_label = _label("", 18)
+	water_label.name = "WaterLine"
+	water_label.custom_minimum_size.x = water_label.get_theme_font("font").get_string_size("WATER 100% · PARCHED", HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+	water_label.hide()
+	column.add_child(water_label)
+	water_bar = CityMeterBar.new(8.0)
+	water_bar.name = "WaterBar"
+	water_bar.notches = [0.5, 0.25, 0.1]
+	water_bar.hide()
+	column.add_child(water_bar)
 	health_label = _label("", 18)
 	health_label.name = "HealthLine"
 	health_label.hide()
@@ -179,6 +231,11 @@ func _ready() -> void:
 	health_bar.notches = [0.4]
 	health_bar.hide()
 	column.add_child(health_bar)
+	effects_label = _label("", 18)
+	effects_label.name = "EffectsLine"
+	effects_label.add_theme_color_override("font_color", EFFECTS_COLOR)
+	effects_label.hide()
+	column.add_child(effects_label)
 	haze_label = _label("", 18)
 	haze_label.name = "HazeLine"
 	haze_label.hide()
@@ -440,7 +497,7 @@ func _refresh_journal() -> void:
 				button.focus_entered.connect(func(): _journal_scroll.ensure_control_visible(button))
 				quest_buttons[id] = button
 			var button: Button = quest_buttons[id]
-			button.text = ("✓ TRACKING · " if id == selected and not _story_leads() else "TRACK · ") + caption
+			button.text = ("• TRACKING · " if id == selected and not _story_leads() else "TRACK · ") + caption   # no `✓` in the font
 			button.tooltip_text = str(entry.get("hint", ""))
 			button.show()
 		else:
@@ -454,14 +511,14 @@ func _refresh_journal() -> void:
 	if is_instance_valid(_story):
 		entries.insert(0, _story.journal_text())
 		var active: Node = _active_story()
-		story_button.text = ("✓ СЮЖЕТ · " if _story_leads() else "ВІДСТЕЖУВАТИ СЮЖЕТ · ") + (active.text("title") if is_instance_valid(active) else "")
+		story_button.text = ("• СЮЖЕТ · " if _story_leads() else "ВІДСТЕЖУВАТИ СЮЖЕТ · ") + (active.text("title") if is_instance_valid(active) else "")
 		if not is_instance_valid(active) and story_button.has_focus():
 			resume_button.grab_focus()
 		story_button.visible = is_instance_valid(active)
 	if is_instance_valid(_lower_story) and not _lower_story.journal_text().is_empty():
 		entries.insert(0, _lower_story.journal_text())
 	_journal.text = "\n\n".join(entries) if not entries.is_empty() else "Choose an accepted task to show its destination."
-	untrack_button.text = "QUEST GUIDE OFF ✓" if selected.is_empty() and not _story_leads() else "TURN OFF QUEST GUIDE"
+	untrack_button.text = "• QUEST GUIDE OFF" if selected.is_empty() and not _story_leads() else "TURN OFF QUEST GUIDE"
 	untrack_button.visible = _progress.has_method("track_quest")
 	# Accepted tasks first, then opt-out, then non-interactive available/completed entries.
 	var at := 0
@@ -563,7 +620,7 @@ func exploration_help() -> String:
 	text += "Strikes: %s; %s; %s; %s\n" % [InputRouter.binding_label(1, "left_hand", false), InputRouter.binding_label(1, "right_hand", false), InputRouter.binding_label(1, "left_leg", false), InputRouter.binding_label(1, "right_leg", false)]
 	# T8 § Шкала голоду → Пауза: the food line would push the pause past 900 px, so it joins the talk line (the FOOD
 	# row itself shows HUNGRY / FAMISHED / FAINT).
-	text += "Sword: %s / R3 · Talk for tasks: %s / Y + D-pad Down · Food: Mira in «Шавлія»\n" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
+	text += "Sword: %s / R3 · Talk for tasks: %s / Y + D-pad Down · Food: «Шавлія» · Water: the pump\n" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
 	text += "Sealed in the city, fights only: skills %s, %s · ultimate %s · enemy hook %s" % [InputRouter.binding_label(1, "skill1", false), InputRouter.binding_label(1, "skill2", false), InputRouter.binding_label(1, "ultimate", false), InputRouter.binding_label(1, "grapple_enemy", false)]
 	return text
 
@@ -683,18 +740,54 @@ func bind_haze(model: CityHaze) -> void:
 	_refresh_haze()
 
 
-static func haze_text(seconds: float) -> String:
+static func haze_text(seconds: float, word: String = "HAZE") -> String:
 	var whole: int = ceili(maxf(seconds, 0.0))
-	return "HAZE %d:%02d" % [whole / 60, whole % 60]
+	return "%s %d:%02d" % [word, whole / 60, whole % 60]
 
 
+## The card's last line: exactly one substance state (they never stack), its time left from city time.
 func _refresh_haze() -> void:
 	if haze_label == null:
 		return
-	var on: bool = is_instance_valid(_haze) and _haze.haze_active()
-	haze_label.visible = on
-	if on:
+	var hazy: bool = is_instance_valid(_haze) and _haze.haze_active()
+	var substance: bool = is_instance_valid(_substances) and _substances.active()
+	haze_label.visible = hazy or substance
+	if hazy:
 		haze_label.text = haze_text(_haze.haze_remaining())
+	elif substance:
+		haze_label.text = haze_text(_substances.remaining(), "TIPSY" if _substances.state == "tipsy" else "WINDED")
+	_refresh_effects()
+
+
+## The food effects' line: «Сила» and «Вітаміни» on the hunger clock (m:ss of hunger time).
+func _refresh_effects() -> void:
+	if effects_label == null:
+		return
+	var parts: PackedStringArray = []
+	if is_instance_valid(_hunger):
+		if _hunger.strength_left > 0:
+			parts.append(haze_text(float(_hunger.strength_left) / 60.0, "STRENGTH"))
+		if _hunger.vitamins_left > 0:
+			parts.append(haze_text(float(_hunger.vitamins_left) / 60.0, "VITAMINS"))
+	effects_label.visible = not parts.is_empty()
+	if not parts.is_empty():
+		effects_label.text = " · ".join(parts)
+
+
+func bind_substances(model: CitySubstances) -> void:
+	_substances = model
+	_substances.fading.connect(func(id: String) -> void: push_body_hint(String(STATE_FADE_HINTS.get(id, "")), STATE_HINT_SECONDS))
+	_substances.hangover.connect(func(dropped: int, crossed: bool) -> void:
+		if dropped > 0 and not crossed:
+			push_body_hint(DRY_MOUTH_HINT % ceili(float(dropped) / 100.0), STATE_HINT_SECONDS))
+	if is_instance_valid(_hunger) and not _hunger.effect_ended.is_connected(_on_effect_ended):
+		_hunger.effect_ended.connect(_on_effect_ended)
+	_refresh_haze()
+
+
+func _on_effect_ended(effect: String) -> void:
+	if effect == "strength":
+		push_body_hint(STRENGTH_ENDS_HINT, STATE_HINT_SECONDS)   # the hang shortens by 1 s: the player must know
 
 
 func bind_hunger(model: CityHunger) -> void:
@@ -703,25 +796,83 @@ func bind_hunger(model: CityHunger) -> void:
 		_hunger.collapsed.connect(_on_collapsed)
 	_food_shown = float(_hunger.centi) / float(CityHunger.FULL)
 	# A band the hero is already in (a loaded save) was not crossed now: only bands above FOOD wait for a crossing.
+	_hint_armed.clear()
 	for threshold: int in _thresholds():
-		_hint_armed[threshold] = _hunger.centi > threshold
+		_hint_armed["food:%d" % threshold] = _hunger.centi > threshold
+	if _water_on():
+		_water_shown = float(_thirst.centi) / float(CityThirst.FULL)
+		for threshold: int in _water_thresholds():
+			_hint_armed["water:%d" % threshold] = _thirst.centi > threshold
+	_last_body_band = _hunger.body_band_index()
 	_refresh_hunger(0.0)
 
 
+## Binds the thirst scale (before bind_hunger, which arms both scales' thresholds).
+func bind_thirst(model: CityThirst) -> void:
+	_thirst = model
+
+
+## WATER exists for the HUD when the scale is bound and the world has a water source (T8 п. 1 «Без прив'язки»).
+func _water_on() -> bool:
+	return is_instance_valid(_thirst) and _thirst.has_source()
+
+
 func _on_collapsed(lost: int) -> void:
-	push_body_hint(COLLAPSE_HINT % lost, COLLAPSE_HINT_SECONDS)
+	push_body_hint(String(COLLAPSE_HINTS.get(_hunger.last_collapse_cause, COLLAPSE_HINT)) % lost, COLLAPSE_HINT_SECONDS)
 
 
 func _thresholds() -> Array[int]:
 	return [_hunger.hungry_at, _hunger.famished_at, _hunger.faint_at]
 
 
-## The bottom line's queue of two for hunger and the collapse (T8): FAINT is never pushed out.
-func push_body_hint(text: String, seconds: float) -> void:
-	var entry := {"text": text, "left": seconds, "faint": text.begins_with("FAINT")}
+func _water_thresholds() -> Array[int]:
+	return [_thirst.thirsty_at, _thirst.parched_at, _thirst.faint_at]
+
+
+## The bottom line's queue of two for the body and the collapse (T8): a FAINT entry (B = 3, set by the caller — never the
+## text's prefix, T8 п. 2) is never pushed out. `scale` ("food" | "water" | "") and `band` let a crossing of the other
+## scale inside this entry's window merge into it.
+func push_body_hint(text: String, seconds: float, faint: bool = false, scale: String = "", band: int = 0) -> void:
+	var entry := {"text": text, "left": seconds, "faint": faint, "scale": scale, "band": band}
 	if _body_queue.size() >= 2:
 		_body_queue.remove_at(1)   # the shown one stays; the newest replaces the one still waiting
 	_body_queue.append(entry)
+
+
+## A band of `scale` was crossed downwards (T8 п. 2): the hint and the cue, or a merge into the other scale's hint still
+## in its window (one hint, no second cue).
+func _announce_crossing(scale: String, band: int, body: int) -> void:
+	var other: String = "water" if scale == "food" else "food"
+	for entry: Dictionary in _body_queue:
+		if String(entry.get("scale", "")) != other:
+			continue
+		var food_band: int = band if scale == "food" else int(entry.band)
+		var water_band: int = band if scale == "water" else int(entry.band)
+		var food_word: String = CityHunger.HUNGER_WORDS[food_band]
+		var water_word: String = CityHunger.THIRST_WORDS[water_band]
+		# Both FAINT: one word (it is shared because the effect is shared; the two places say what to do).
+		entry.text = MERGED_HINT % [food_word, water_word, BODY_HINT_EFFECTS[body]] if food_word != water_word \
+			else MERGED_HINT_ONE % [food_word, BODY_HINT_EFFECTS[body]]
+		entry.left = HUNGER_HINT_SECONDS
+		entry.faint = body == 3
+		entry.scale = "both"
+		if body == 3:
+			_faint_cue_left = FAINT_CUE_SECONDS
+		return
+	var band_name: String = (CityHunger.BANDS if scale == "food" else CityThirst.BANDS)[band]
+	var text: String
+	if body > _last_body_band:
+		text = String((FOOD_HINTS if scale == "food" else WATER_HINTS)[band_name])
+	else:
+		var word: String = (CityHunger.HUNGER_WORDS if scale == "food" else CityHunger.THIRST_WORDS)[band]
+		text = NO_EXTRA % [word, FOOD_WHERE if scale == "food" else WATER_WHERE]
+	push_body_hint(text, HUNGER_HINT_SECONDS, body == 3, scale, band)
+	if scale == "food":
+		Sfx.play(HUNGER_CUE, HUNGER_CUE_DB)
+	else:
+		Sfx.play(THIRST_CUE, THIRST_CUE_DB)
+	if body == 3:
+		_faint_cue_left = FAINT_CUE_SECONDS
 
 
 func _body_hint() -> String:
@@ -752,9 +903,24 @@ func _refresh_hunger(delta: float) -> void:
 	food_bar.framed = band == "faint"
 	food_bar.set_value(_food_shown)
 	food_bar.queue_redraw()
+	var water_on: bool = _water_on()
+	water_label.visible = water_on
+	water_bar.visible = water_on
+	if water_on:
+		var water_target: float = float(_thirst.centi) / float(CityThirst.FULL)
+		_water_shown = move_toward(_water_shown, water_target, delta / FOOD_RISE_SECONDS) if water_target > _water_shown else water_target
+		var water_band: String = _thirst.band()
+		var water_word: String = WATER_WORDS[water_band]
+		water_label.text = "WATER %d%%" % _thirst.percent() + ((" · " + water_word) if not water_word.is_empty() else "")
+		water_label.add_theme_color_override("font_color", WATER_COLORS[water_band] if water_band != "quenched" else Color(0.96, 0.94, 0.86))
+		water_bar.fill_color = WATER_COLORS[water_band]
+		water_bar.framed = water_band == "faint"
+		water_bar.set_value(_water_shown)
+		water_bar.queue_redraw()
+	var body: int = _hunger.body_band_index()
 	var maximum: float = _player.data.max_hp if is_instance_valid(_player) else 1.0
 	var hp: float = _player.hp if is_instance_valid(_player) else maximum
-	var hurt: bool = hp < maximum - 0.001 or band == "faint"
+	var hurt: bool = hp < maximum - 0.001 or body == 3
 	health_label.visible = hurt
 	health_bar.visible = hurt
 	if hurt:
@@ -764,23 +930,30 @@ func _refresh_hunger(delta: float) -> void:
 	collapse_veil.visible = collapse_veil.color.a > 0.0
 	if not _hunger.running:
 		return   # headless and fixtures without a clock: a fixed FOOD, no hint, no sound (T8 N5)
-	var thresholds: Array[int] = _thresholds()
-	for i: int in thresholds.size():
-		var threshold: int = thresholds[i]
-		var band_name: String = CityHunger.BANDS[i + 1]
-		if _hunger.centi <= threshold and bool(_hint_armed.get(threshold, true)):
-			_hint_armed[threshold] = false
-			push_body_hint(FOOD_HINTS[band_name], HUNGER_HINT_SECONDS)
-			Sfx.play(HUNGER_CUE, HUNGER_CUE_DB)
-			if band_name == "faint":
-				_faint_cue_left = FAINT_CUE_SECONDS
-		elif _hunger.centi > threshold + HINT_HYSTERESIS:
-			_hint_armed[threshold] = true
-	if band == "faint" and not paused_ui and not InputRouter.ui_suppressed() and not fight_mode:
+	# Each scale, each threshold: armed until crossed downwards, re-armed only HINT_HYSTERESIS above it (T8 п. 2).
+	var crossings: Array[Array] = []
+	for scale: String in (["food", "water"] if water_on and _thirst.running else ["food"]):
+		var level: int = _hunger.centi if scale == "food" else _thirst.centi
+		var thresholds: Array[int] = _thresholds() if scale == "food" else _water_thresholds()
+		for i: int in thresholds.size():
+			var key: String = "%s:%d" % [scale, thresholds[i]]
+			if level <= thresholds[i] and bool(_hint_armed.get(key, true)):
+				_hint_armed[key] = false
+				crossings.append([scale, i + 1])
+			elif level > thresholds[i] + HINT_HYSTERESIS:
+				_hint_armed[key] = true
+	for crossing: Array in crossings:
+		_announce_crossing(String(crossing[0]), int(crossing[1]), body)
+	_last_body_band = body
+	# One FAINT repeat for B = 3, whichever scale (or both) put the body there.
+	if body == 3 and not paused_ui and not InputRouter.ui_suppressed() and not fight_mode:
 		_faint_cue_left -= delta
 		if _faint_cue_left <= 0.0:
 			_faint_cue_left = FAINT_CUE_SECONDS
-			Sfx.play(HUNGER_CUE, HUNGER_CUE_DB)
+			if band == "faint":
+				Sfx.play(HUNGER_CUE, HUNGER_CUE_DB)
+			else:
+				Sfx.play(THIRST_CUE, THIRST_CUE_DB)
 
 
 ## Enter / leave the lethal pocket's HUD arrangement (CityLethalFight). Leaving shows the journal card again.
@@ -899,7 +1072,7 @@ func _refresh_hook_cue(delta: float) -> void:
 	if kind == "rope" and not packet.get("reachable", true):
 		verb = "APPROACH ROPE"
 		binding = ""
-	var text := "◇ %s%s · %.1fm" % [(binding + " · ") if not binding.is_empty() else "", verb, float(packet.get("contact_distance", (_player.global_position + GrappleHook.HAND).distance_to(point)))]
+	var text := "• %s%s · %.1fm" % [(binding + " · ") if not binding.is_empty() else "", verb, float(packet.get("contact_distance", (_player.global_position + GrappleHook.HAND).distance_to(point)))]
 	if packet.get("in_frame", false):
 		var screen := to_root * camera.unproject_position(point)
 		_hook_marker.ring(screen, false, 0.0, packet.get("camera_hidden", false))
