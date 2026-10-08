@@ -968,6 +968,13 @@ Hitstun і blockstun **не** чіпаємо: інакше втома супер
 лише час без дій за 297 с дає `fatigue` 0.99; удар по бійцю не змінює його `fatigue`; startup і шкода ударів однакові на `fatigue` 0 і 1; між раундами
 `fatigue` не падає.
 
+## Голод у місті (Г1, Арес 2026-10-08) — посилання
+
+Числа шкали виживання — у [[2026-10-08-Hunger-Numbers]] (усе PLACEHOLDER, у даних поки нічого немає). Для бою з них
+випливає одне правило: у дуелі, VERSUS і тренуванні голоду немає. Чи переноситься голод у смертельну кишеню, вирішує
+Santos. Рекомендація T5 (П2а): якщо на вході H ≤ 50, ухил відновлюється × 0,75; hp, хода, кадри й шкода не
+змінюються, а H під час бою не спадає. До рішення Santos і реалізації T2 у грі цього немає.
+
 ## Трюки й стиль
 
 Ідентичність бійців, системні техніки (тех-підйом, відштовх від стіни, зип-удар), по 7 трюків на бійця і числа ваги тіла — [[09-Tricks-And-Style]] (Арес 2026-10-03, PLACEHOLDER).
@@ -981,3 +988,4 @@ Hitstun і blockstun **не** чіпаємо: інакше втома супер
 - [[03-Skills-Framework]] · [[09-Tricks-And-Style]] · [[04-Grapple-System]] · [[05-Platforms-Input]] · [[Active-Ragdoll]] · [[Glossary]] · [[ADR-018-Camera-Frames-Fight-With-Air]] · [[2026-10-03-Crystal-Ult-Arena-Fatigue]] · [[2026-10-03-Ares-Crystal-Ult-Camera]]
 - [[2026-10-05-Expressive-Heroes-And-Combat]] · [[2026-10-05-Combat-Intent-And-Guard]]
 - [[ADR-024-Lethal-Fights-And-First-Enemy]] · [[2026-10-07-First-Enemy-Lethal-Fight]] · [[2026-10-07-Blood-Visual-Language]] · [[2026-10-07-Blood-And-Lethal-Rating]] · [[PROPOSAL-First-Enemy]] · [[Lore]]
+- [[2026-10-08-Hunger-Numbers]] · [[2026-10-08-Survival-Hunger]] · [[ADR-025-Street-Scuffle-And-City-Events]]
