@@ -4,7 +4,8 @@ extends SceneTree
 ## keyboard and gamepad events where the player acts.
 ##   S. A sparring never shows blood, even with a BloodFx watching it.
 ##   C. ContentSettings defaults, round trip, damaged and unknown files kept byte for byte (session: ink / reduced);
-##      the ComfortPanel rows by keyboard and gamepad; HIT FLASH Reduced ≤ half of Full.
+##      the ComfortPanel rows by keyboard and gamepad (HIT FLASH, BLOOD, DRUGS; T8 Д3 ring as literals, desktop and
+##      phone; --break=drugs_row: a DRUGS row that never calls set_drugs_mode); HIT FLASH Reduced ≤ half of Full.
 ##   L. The pocket: the card before the first fight (Esc / B step back unseen; Enter on a mode opens it, persisted,
 ##      never twice); levels by damage (< 50 / 50–89 / ≥ 90, crit +1, cap 4); clean hit → splash and floor drops
 ##      (1/2/3/4); block, DoT → none; frozen → splash; off / ink / muted; quality ½ and ¼; 16 floor drops at High;
@@ -18,7 +19,7 @@ extends SceneTree
 ##      without a full cross product (Ink never reads the quality profile; Full/Muted do). TRACE_TICKS is PLACEHOLDER.
 ## Thresholds are literals of GDD 02 § Кров, the T6 brief and the T8 spec. --break=<m> is a negative control;
 ## sentinel BLOOD_CONTENT_COMPLETE checks=N failures=M mutation=<m>; failures print "BLOOD_CONTENT: ...".
-const MUTATIONS := ["sparring", "cfg", "flash", "notice", "back", "block", "mode", "ink", "rng", "late", "state", "rng_state"]
+const MUTATIONS := ["sparring", "cfg", "flash", "notice", "back", "block", "mode", "ink", "rng", "late", "state", "rng_state", "drugs_row"]
 const FLASH_FULL_SECONDS := 0.09        # RigAnimator.gd:194 at c1cdd4e, the current white flash
 const HIT_LIGHT_FULL := 4.0             # HitSpark.gd:38, the current hit light
 const REDUCED_MAX := 0.5                # T8: Reduced ≤ half of Full
@@ -99,6 +100,38 @@ func _until(condition: Callable, limit: int) -> void:
 		await _ticks(1)
 
 
+## T8's literal ring order (desktop starts at DISPLAY; a phone at GRAPHICS QUALITY), and every stop's ↓ / ↑ neighbours.
+func _ring(panel: Control, desktop: bool) -> Array[Control]:
+	var ring: Array[Control] = []
+	if desktop:
+		ring.append(panel.display_choice)
+	ring.append_array([panel.quality_choice, panel.sliders["master"], panel.sliders["sfx"], panel.sliders["music"], panel.sliders["shake"],
+		panel.hit_flash_choice, panel.blood_choice, panel.drugs_choice, panel.restore_button, panel.controls_label, panel.back_button])
+	return ring
+
+
+func _ring_ok(panel: Control, desktop: bool) -> bool:
+	var ring: Array[Control] = _ring(panel, desktop)
+	if ring.has(null):
+		return false
+	var order: Array = panel.get("_focus_order")
+	if order.size() != ring.size():
+		return false
+	for i: int in ring.size():
+		var item: Control = ring[i]
+		if order[i] != item or item.focus_neighbor_bottom != item.get_path_to(ring[(i + 1) % ring.size()]) \
+				or item.focus_neighbor_top != item.get_path_to(ring[posmod(i - 1, ring.size())]):
+			return false
+	return true
+
+
+func _ring_names(panel: Control) -> String:
+	var names: PackedStringArray = []
+	for item: Control in panel.get("_focus_order"):
+		names.append(String(item.name) if item != null else "null")
+	return " → ".join(names)
+
+
 func _temp(name: String) -> String:
 	var path := "user://blood_content_%s_%d.cfg" % [name, OS.get_process_id()]
 	_paths.append(path)
@@ -133,7 +166,7 @@ func _run() -> void:
 	root.gui_embed_subwindows = true
 	if mutation in ["none", "sparring"]:
 		await _sparring()
-	if mutation in ["none", "cfg", "flash"]:
+	if mutation in ["none", "cfg", "flash", "drugs_row"]:
 		await _content_settings()
 	if mutation in ["none", "notice", "back", "block", "mode", "ink", "rng", "late"]:
 		await _pocket()
@@ -217,7 +250,10 @@ func _content_settings() -> void:
 		if mutation == "cfg":
 			_write(path, "[content]\nblood=\"full\"\n".to_utf8_buffer())
 		_check(FileAccess.get_file_as_bytes(path) == before, "%s file keeps its bytes for recovery" % case[0])
-	# ComfortPanel: BLOOD and HIT FLASH by keyboard and gamepad, between CAMERA SHAKE and RESTORE.
+	# ComfortPanel: HIT FLASH, BLOOD and DRUGS by keyboard and gamepad, between CAMERA SHAKE and RESTORE. T8 Д3
+	# (06-UI-UX § «Випадки міста: COMFORT і HUD» п. 1) — the ring, as literals:
+	#   DISPLAY → GRAPHICS QUALITY → MASTER → SOUND EFFECTS → MUSIC → CAMERA SHAKE → HIT FLASH → BLOOD → DRUGS
+	#   → RESTORE SOUND & SHAKE DEFAULTS → CONTROLS (help) → BACK → DISPLAY; a phone has no DISPLAY (BACK → GRAPHICS).
 	var ui_path := _temp("ui")
 	content.load_settings(ui_path)
 	var comfort: Node = root.get_node("ComfortSettings")
@@ -229,12 +265,17 @@ func _content_settings() -> void:
 	var panel: Control = load("res://scripts/ui/ComfortPanel.gd").new()
 	root.add_child(panel)
 	await _settle()
+	if mutation == "drugs_row":
+		for connection: Dictionary in panel.drugs_choice.item_selected.get_connections():
+			panel.drugs_choice.item_selected.disconnect(connection.callable)
 	panel.show_panel(launcher, "help")
 	await _settle()
+	_check(_ring_ok(panel, true), "the desktop ring follows the T8 literals (%s)" % _ring_names(panel))
 	var shake: Control = panel.sliders["shake"]
 	shake.grab_focus()
 	await _key(KEY_DOWN)
-	_check(panel.blood_choice.has_focus(), "Down from CAMERA SHAKE reaches BLOOD")
+	_check(panel.hit_flash_choice.has_focus(), "Down from CAMERA SHAKE reaches HIT FLASH")
+	panel.blood_choice.grab_focus()
 	await _key(KEY_ENTER)
 	var popup: PopupMenu = panel.blood_choice.get_popup()
 	_check(popup.visible, "Enter opens the BLOOD choices")
@@ -245,17 +286,49 @@ func _content_settings() -> void:
 	_check(saved.load(ui_path) == OK and saved.get_value("content", "blood", "") == "muted", "the BLOOD choice is saved to content.cfg")
 	panel.blood_choice.grab_focus()
 	await _key(KEY_DOWN)
-	_check(panel.hit_flash_choice.has_focus(), "Down from BLOOD reaches HIT FLASH")
+	_check(panel.drugs_choice.has_focus(), "Down from BLOOD reaches DRUGS")
+	# DRUGS: keyboard ↓ Enter ↓ Enter from BLOOD gives Off; gamepad A, D-pad ↑, A brings Full back.
+	panel.blood_choice.grab_focus()
+	await _key(KEY_DOWN)
+	await _key(KEY_ENTER)
+	_check(panel.drugs_choice.get_popup().visible, "Enter opens the DRUGS choices")
+	await _key(KEY_DOWN)
+	await _key(KEY_ENTER)
+	_check(content.drugs_mode() == "off" and panel.drugs_choice.selected == 1, "keyboard picks DRUGS Off (got %s)" % content.drugs_mode())
+	saved = ConfigFile.new()
+	_check(saved.load(ui_path) == OK and saved.get_value("content", "drugs", "") == "off", "the DRUGS choice is saved to content.cfg")
+	panel.drugs_choice.grab_focus()
+	await _pad(JOY_BUTTON_A)
+	await _pad(JOY_BUTTON_DPAD_UP)
+	await _pad(JOY_BUTTON_A)
+	_check(content.drugs_mode() == "full" and panel.drugs_choice.selected == 0, "gamepad brings DRUGS Full back (got %s)" % content.drugs_mode())
+	panel.restore_button.pressed.emit()
+	await _settle()
+	_check(content.drugs_mode() == "full" and panel.drugs_choice.selected == 0, "RESTORE SOUND & SHAKE DEFAULTS leaves DRUGS alone")
+	panel.hit_flash_choice.grab_focus()
 	await _pad(JOY_BUTTON_A)
 	await _pad(JOY_BUTTON_DPAD_DOWN)
 	await _pad(JOY_BUTTON_A)
 	_check(content.hit_flash() == "reduced" and panel.hit_flash_choice.selected == 1, "gamepad picks Reduced (got %s)" % content.hit_flash())
 	panel.hit_flash_choice.grab_focus()
 	await _key(KEY_DOWN)
-	_check(panel.restore_button.has_focus(), "Down from HIT FLASH reaches RESTORE (the old RESTORE → help step stays)")
+	_check(panel.blood_choice.has_focus(), "Down from HIT FLASH reaches BLOOD")
+	panel.drugs_choice.grab_focus()
+	await _key(KEY_DOWN)
+	_check(panel.restore_button.has_focus(), "Down from DRUGS reaches RESTORE (the old RESTORE → help step stays)")
 	panel.close_panel()
 	panel.queue_free()
 	launcher.queue_free()
+	await _settle()
+	var graphics: Node = root.get_node("GraphicsSettings")
+	var old_mobile: int = graphics.mobile_override
+	graphics.mobile_override = 1
+	var phone: Control = load("res://scripts/ui/ComfortPanel.gd").new()
+	root.add_child(phone)
+	await _settle()
+	_check(phone.display_choice == null and _ring_ok(phone, false), "the phone ring: the same without DISPLAY, BACK → GRAPHICS QUALITY (%s)" % _ring_names(phone))
+	phone.queue_free()
+	graphics.mobile_override = old_mobile
 	comfort.load_settings(old_comfort)
 	await _settle()
 	# HIT FLASH: Full is today's flash; Reduced is at most half of it, the hit light too.

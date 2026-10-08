@@ -10,6 +10,10 @@ const EVENT_KINDS: Array[String] = ["meet", "resident", "visit", "deliver", "rop
 ## events (plan 2026-10-08-City-Events-Stage-1, step 2): face id → tokens that face took from this hero (0 = met only).
 const CREDIT_LIMIT: int = 10000
 const FACE_LIMIT: int = 16
+## The hunger scale (plan 2026-10-08-Survival-Hunger step 4): H in hundredths per hero, and the frames of hunger time
+## until Mira's crust (T5 § 5). Both optional: an old save reads as H 100 and no wait; a present field must be exact.
+const HUNGER_FULL: int = 10000
+const CRUST_WAIT_LIMIT: int = 216000
 var hero_id: String = "choko"
 var heroes: Dictionary = {}
 var quests: Array[Dictionary] = []
@@ -355,6 +359,20 @@ func refund_face(face: String) -> int:
 	_changed()
 	return added
 
+func hunger_centi() -> int:
+	return int(heroes[hero_id].get("hunger", HUNGER_FULL))
+
+func crust_wait() -> int:
+	return int(heroes[hero_id].get("crust_wait", 0))
+
+## CityHunger writes H here (a band change, food, the collapse, once a minute of hunger time, leaving the city). It is
+## saved, never announced: the HUD reads CityHunger itself, so the journal is not rebuilt for a tick of hunger.
+func set_hunger(centi: int, wait: int = 0) -> void:
+	var profile: Dictionary = heroes[hero_id]
+	profile.hunger = clampi(centi, 0, HUNGER_FULL)
+	profile.crust_wait = clampi(wait, 0, CRUST_WAIT_LIMIT)
+	persist()
+
 func current_palette() -> Color:
 	for p: Dictionary in palettes:
 		if p.id == heroes[hero_id].palette:
@@ -393,6 +411,11 @@ func restore(data: Variant) -> bool:
 						return false
 		if p.owned.size() > palettes.size() or p.palette not in p.owned:
 			return false
+		# Optional since the hunger scale: an absent field is an old save (H 100); a present one must be exact.
+		if p.has("hunger") and not NpcPopulation._integer(p.hunger, 0, HUNGER_FULL):
+			return false
+		if p.has("crust_wait") and not NpcPopulation._integer(p.crust_wait, 0, CRUST_WAIT_LIMIT):
+			return false
 		# Optional since the city events: an absent field is an old save; a present one must be exact.
 		if p.has("faces"):
 			if not p.faces is Dictionary or p.faces.size() > FACE_LIMIT:
@@ -414,6 +437,9 @@ func restore(data: Variant) -> bool:
 	heroes = data.heroes.duplicate(true)
 	for profile: Dictionary in heroes.values():
 		profile.credits = int(profile.credits)
+		for field: String in ["hunger", "crust_wait"]:
+			if profile.has(field):
+				profile[field] = int(profile[field])
 		if profile.has("faces"):
 			for face: String in profile.faces:
 				profile.faces[face] = int(profile.faces[face])

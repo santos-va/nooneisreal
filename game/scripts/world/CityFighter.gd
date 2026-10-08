@@ -14,6 +14,10 @@ var lethal_pocket: bool = false
 ## «Заплутаність» (plan 2026-10-08-City-Events-Stage-1, step 4; T5 § 4.2): slower walking and braking and half the
 ## attack tracking while the city state lasts. Never inside a lethal pocket; Fighter and the duel never read it.
 var haze: CityHaze = null
+## The hunger scale (plan 2026-10-08-Survival-Hunger step 4; T5 § 3; Santos «Повний перенос»): the band's walk and dodge
+## refill — in the city and in a lethal pocket alike — and no wall steps from «famished» on. Fighter and the duel never
+## read it.
+var hunger: CityHunger = null
 
 @export var support_probe_depth: float = 64.0 # PLACEHOLDER district safety depth.
 const ParkourMotor = preload("res://scripts/world/CityParkourMotor.gd")
@@ -50,7 +54,38 @@ func _hazy() -> bool:
 	return haze != null and not lethal_pocket and haze.haze_active()
 
 func speed_mult() -> float:
-	return super.speed_mult() * (haze.walk_multiplier() if _hazy() else 1.0)
+	return super.speed_mult() * (haze.walk_multiplier() if _hazy() else 1.0) * (hunger.walk_multiplier() if hunger != null else 1.0)
+
+## Fighter._tick_dodge_stamina with the refill scaled by the hunger band (T5 § 3); the pause after a dodge, the cost and
+## the invulnerability stay exactly as they are.
+func _tick_dodge_stamina(delta: float) -> void:
+	if hunger == null:
+		super._tick_dodge_stamina(delta)
+		return
+	if control_locked or state == State.KO or dodging:
+		return
+	if _dodge_regen_wait > 0.0:
+		_dodge_regen_wait = maxf(0.0, _dodge_regen_wait - delta)
+		return
+	var previous: float = dodge_stamina
+	dodge_stamina = minf(dodge_stamina_max(), dodge_stamina + dodge_profile().stamina_regen * hunger.dodge_regen_multiplier() * delta)
+	if dodge_stamina != previous:
+		dodge_stamina_changed.emit(dodge_stamina, dodge_stamina_max())
+
+## CityParkourMotor asks before a vertical or side wall run (T5 § 3: none from «famished» on).
+func wall_run_allowed() -> bool:
+	return hunger == null or hunger.wall_run_allowed()
+
+## H = 0 (CityHunger): the body drops with the existing KO presentation — no damage, no blood, no knocked_out signal.
+## restart_at at the safe point clears it.
+func collapse_from_hunger() -> void:
+	if grapple.busy():
+		grapple.detach()
+	set_control(false)
+	velocity = Vector3(0.0, minf(velocity.y, 0.0), 0.0)
+	if GameState.use_ragdoll:
+		_spawn_ragdoll(Vector3.ZERO, false)
+	_set_state(State.KO)
 
 ## Fighter._walk_physics with the braking rate scaled by the state (T5: «ноги не слухаються»).
 func _walk_physics(delta: float, vx: float, vz: float = 0.0) -> void:

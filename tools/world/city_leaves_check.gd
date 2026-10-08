@@ -7,11 +7,13 @@ extends SceneTree
 ##   L1 Off: never starts (chance 1 for 3 s), try_start refuses;  L2 Full: five leaves above the head, constant turn;
 ##   L3 «Хто ти?»: his story, the question gone;  L4 «Ні, дякую»: progress, faces, residents' memory, state — unchanged;
 ##   L5 once a session;  L6 «Затягнутись»: the state starts, tokens unchanged, the gossip half gone;
-##   L7 Off in the middle: the passer-by and the state are gone at once;
+##   L7 Off in the middle: the passer-by and the state are gone at once; and through the real COMFORT row from the city
+##      pause (T8 06-UI-UX § «Випадки міста: COMFORT і HUD» п. 1): Off while he stands offering and the state lasts →
+##      no passer-by, no leaves, no vignette, no HAZE line, the base FOV, no HAZE LIFTING;
 ##   L8 content.cfg: damaged and unknown files keep their bytes (session: off); a file from before the key loads as ours
 ##      (drugs full) and the next save adds the key and keeps the others.
 ## Literals: 5 leaves (Santos), once a session (T7 В2 PLACEHOLDER).
-## --break=off|cfg|count|session|refuse are negative controls.
+## --break=off|cfg|count|session|refuse|row are negative controls (row: a DRUGS row that never calls set_drugs_mode).
 ## Sentinel: CITY_LEAVES_COMPLETE checks=N failures=M mutation=<m>; failures print "CITY_LEAVES: ...".
 const LEAVES := 5
 const MARKET := Vector3(0.0, 0.0, 20.0)
@@ -127,6 +129,33 @@ func _offer() -> Node:
 	var ok: bool = is_instance_valid(event) and events.dialogue.opened and event.phase == "talk"
 	_check(ok, "the real interact key opens his offer")
 	return event if ok else null
+
+
+## A started leaves event with the passer-by standing beside the hero, offering (the conversation not opened).
+func _offer_standing() -> Node:
+	await _clean()
+	_reset_clock()
+	events.leaves_count = 0
+	if not events.try_start("leaves"):
+		_check(false, "the leaves start at the market court (%s)" % events.block_reason("leaves"))
+		return null
+	var event: Node = events.active
+	event.person.global_position = world.player.global_position + Vector3(1.4, 0.0, 0.0)
+	event.person.stop()
+	await _until(func() -> bool: return is_instance_valid(event) and event.phase == "offer", 60)
+	return event if is_instance_valid(event) and event.phase == "offer" else null
+
+
+func _key(code: Key) -> void:
+	for down: bool in [true, false]:
+		var key := InputEventKey.new()
+		key.keycode = code
+		key.physical_keycode = code
+		key.pressed = down
+		Input.parse_input_event(key)
+		Input.flush_buffered_events()
+		await process_frame
+		await process_frame
 
 
 func _end() -> String:
@@ -263,12 +292,14 @@ func _l6() -> void:
 	var event: Node = await _offer()
 	if event == null:
 		return
-	var credits: int = progress.credits()
+	var before_progress: String = JSON.stringify(progress.snapshot())
+	var before_people: String = JSON.stringify(world.npc_director.population.relationships)
+	var before_content: String = content.call("drugs_mode")
 	await _press("Затягнутись")
 	_check(world.haze.haze_active() and world.haze.haze_remaining() > 80.0, "«Затягнутись» starts the state (%.1f s)" % world.haze.haze_remaining())
 	_check("…" in events.dialogue.body.text, "the gossip heard in the state is half gone")
 	var outcome: String = await _end()
-	_check(outcome == "leaves:smoked" and progress.credits() == credits, "no tokens change hands; no bonus (%s, %d)" % [outcome, progress.credits()])
+	_check(outcome == "leaves:smoked" and JSON.stringify(progress.snapshot()) == before_progress and JSON.stringify(world.npc_director.population.relationships) == before_people and content.call("drugs_mode") == before_content, "«Затягнутись»: no bonus — progress (tokens, faces, events), residents' memory and content unchanged (%s)" % outcome)
 
 
 ## L7: Off in the middle removes the event and the state.
@@ -281,6 +312,38 @@ func _l7() -> void:
 	await _ticks(2)
 	_check(events.active == null and _leaf_people() == 0 and String(events.outcomes.back()) == "leaves:abort_content", "Off in the middle: the passer-by and his leaves are gone at once (%s)" % events.outcomes.back())
 	_check(not world.haze.haze_active() and not world.haze_vignette.rect.visible, "Off clears the state and its vignette")
+	content.call("set_drugs_mode", "full")
+	# The same through the row: the city pause → COMFORT & CONTROLS → DRUGS Off, real keys, while he stands offering.
+	world.haze.begin()
+	await _ticks(200)   # past the ramp-in: a narrowed FOV to be put back
+	var standing: Node = await _offer_standing()
+	if standing == null:
+		_check(false, "L7 row: the passer-by stands offering")
+		return
+	var base_fov: float = world.haze.base_fov
+	_check(world.haze.haze_active() and world.camera_rig.camera.fov < base_fov - 0.5 and world.hud.haze_label.visible, "L7 row: the state lasts, the FOV narrowed (%.2f), HAZE line shown" % world.camera_rig.camera.fov)
+	await _key(KEY_ESCAPE)
+	var hud: Node = world.hud
+	_check(hud.paused_ui, "L7 row: Esc opens the city pause")
+	hud.comfort_button.pressed.emit()
+	await process_frame
+	var panel: Control = hud.comfort
+	if mutation == "row":
+		for connection: Dictionary in panel.drugs_choice.item_selected.get_connections():
+			panel.drugs_choice.item_selected.disconnect(connection.callable)
+	panel.drugs_choice.grab_focus()
+	await _key(KEY_ENTER)
+	await _key(KEY_DOWN)
+	await _key(KEY_ENTER)
+	_check(panel.visible and panel.drugs_choice.selected == 1, "L7 row: DRUGS shows Off")
+	await _key(KEY_ESCAPE)   # COMFORT → the pause
+	await _key(KEY_ESCAPE)   # the pause → the city
+	await _ticks(3)
+	_check(not hud.paused_ui and events.active == null and _leaf_people() == 0 and String(events.outcomes.back()) == "leaves:abort_content", "L7 row: Off in COMFORT removes the standing passer-by and his leaves (%s)" % events.outcomes.back())
+	_check(not world.haze.haze_active() and not world.haze_vignette.rect.visible and not world.hud.haze_label.visible and is_equal_approx(world.camera_rig.camera.fov, base_fov), "L7 row: no state, no vignette, no HAZE line, FOV back to %.1f (%.2f)" % [base_fov, world.camera_rig.camera.fov])
+	_check(not (world.hud.hint_label.visible and world.hud.hint_label.text.begins_with("HAZE LIFTING")), "L7 row: Off is not a fade — no HAZE LIFTING")
+	_reset_clock()
+	_check(not events.try_start("leaves"), "L7 row: with Off the event does not start again (%s)" % events.block_reason("leaves"))
 	content.call("set_drugs_mode", "full")
 
 

@@ -29,6 +29,8 @@ var lethal: CityLethalFight
 var haze: CityHaze
 var haze_vignette: CityHazeVignette
 var events: CityEventDirector
+## Plan 2026-10-08-Survival-Hunger step 4: the hunger scale (H, its bands, food, the collapse, the pocket transfer).
+var hunger: CityHunger
 @export var journey_save_enabled: bool = true
 var _prior_free_move: bool
 var _prior_profile: String
@@ -146,6 +148,13 @@ func _ready() -> void:
 	events.setup(self)
 	events.conversation_started.connect(camera_rig.begin_conversation)
 	events.conversation_ended.connect(camera_rig.end_conversation)
+	hunger = CityHunger.new()
+	hunger.name = "Hunger"
+	add_child(hunger)
+	hunger.setup(self)
+	player.hunger = hunger
+	npc_director.hunger = hunger
+	hud.bind_hunger(hunger)
 	_reset_observation()
 
 func _physics_process(delta: float) -> void:
@@ -329,7 +338,8 @@ func _update_lethal_entry() -> void:
 	if InputRouter.just_pressed(1, "interact"):
 		lethal.request_open()
 
-const HAZY_ENTRY_TEXT := "NOT IN THIS STATE · Wait until the haze passes"   # PLACEHOLDER words (T8 / T7)
+## T8 06-UI-UX § «Випадки міста: COMFORT і HUD» п. 2 (final words): the reason and both ways out; no key, no action.
+const HAZY_ENTRY_TEXT := "TOO HAZY TO FIGHT · Wait it out, or eat at «Шавлія» to clear it sooner"
 
 func _reset_observation() -> void:
 	_last_position = player.global_position
@@ -345,6 +355,8 @@ func recover_to_spawn() -> void:
 		events.abort_active("recover")
 	ropes.clear_match()
 	player.restart_at(journey.resume_position())
+	if hunger != null:
+		hunger.restore_city_hp()   # a fall refills nothing: the city hp stands (T5 § 4)
 	camera_rig.reset_view()
 	InputRouter.acquire_ui(self)
 	InputRouter.release_ui(self)

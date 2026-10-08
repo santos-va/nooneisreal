@@ -37,6 +37,9 @@ var active: bool = false
 var enemy_defeated: bool = false
 var held_residents: Array[int] = []
 var outcome: String = ""
+## Santos «Повний перенос» (ADR-025 п. 4): the hp the hero came in with from the city (CityHunger.pocket_entry_hp,
+## never below the floor); round 1 and every RETRY start with it. -1: hunger does not run — full hp, as before.
+var entry_hp: float = -1.0
 var _aftermath_left: float = -1.0
 var _prior_training: bool = false
 
@@ -139,6 +142,11 @@ func open() -> bool:
 	hud.retry_requested.connect(retry)
 	hud.return_requested.connect(retreat)
 	flow.setup(player, enemy)   # round 1 at full HP: (-3, 0, 0) hero, (3, 0, 0) enemy
+	var hunger: CityHunger = world.get("hunger")
+	entry_hp = hunger.pocket_entry_hp() if hunger != null else -1.0
+	hud.status_suffix = hunger.pocket_status() if hunger != null else ""
+	_apply_entry_hp()
+	hud.snap_trails()
 	_open_camera()   # after the round-1 placement: the lens starts behind the hero, no swing from the street
 	# The duel's hit feedback (Arena._on_hit / _on_ko): painted sheets, sparks, camera shake. It only watches.
 	fx = FxDirector.new()
@@ -214,7 +222,8 @@ func _on_match_over(winner: int, _p1_name: String, _p2_name: String) -> void:
 		_aftermath_left = AFTERMATH_SECONDS
 
 
-## RETRY FIGHT: a new match against the same enemy, both at full HP (MatchFlow.rematch, GDD 02 § Поразка героя).
+## RETRY FIGHT: a new match against the same enemy (MatchFlow.rematch, GDD 02 § Поразка героя) — the enemy at full HP,
+## the hero with the hp he came in with (ADR-025 п. 4: the transfer is not undone by the first defeat).
 func retry() -> void:
 	if not active or flow == null:
 		return
@@ -222,6 +231,13 @@ func retry() -> void:
 	if is_instance_valid(blood):
 		blood.reset_match()
 	flow.rematch()
+	_apply_entry_hp()
+	hud.snap_trails()
+
+
+func _apply_entry_hp() -> void:
+	if entry_hp >= 0.0:
+		player.set_round_hp(entry_hp)
 
 
 ## RETURN TO SAFE POINT: the fight ends without a death; the hero stands at the safe point in front of the pocket.

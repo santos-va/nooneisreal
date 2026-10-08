@@ -74,14 +74,46 @@ var comfort: ComfortPanel
 ## are open in the pocket, so only the enemy hook is still answered — with the pocket's own line.
 var fight_mode: bool = false
 ## «Заплутаність» (plan 2026-10-08-City-Events-Stage-1 step 4; T8 06-UI-UX § «Заплутаність» поруч зі шкалою): the last
-## line of the status card shows `HAZE m:ss` only while the state lasts; its end says HAZE FADES on the bottom line for
-## HAZE_FADES_SECONDS. Words PLACEHOLDER (T7 names the state). No new input action.
+## line of the status card shows `HAZE m:ss` only while the state lasts; its end says HAZE LIFTING on the bottom line for
+## HAZE_FADES_SECONDS. Words final (T8 06-UI-UX § «Випадки міста: COMFORT і HUD» п. 2); 2 s PLACEHOLDER. No new input.
 var haze_label: Label
 var _haze: CityHaze
 var _haze_fades_left: float = 0.0
-const HAZE_FADES_TEXT := "HAZE FADES"
+const HAZE_FADES_TEXT := "HAZE LIFTING · Steps and view come back"
 const HAZE_FADES_SECONDS: float = 2.0
 const POCKET_SEALED_HINT := "ENEMY HOOK SEALED IN THIS FIGHT"
+## The hunger scale (plan 2026-10-08-Survival-Hunger step 4; T8 06-UI-UX § «Шкала голоду в HUD міста», variant А): the
+## status card gets `FOOD n%[ · STATE]` with its own 8 px bar and notches at the T5 thresholds, under the stamina bar;
+## `HEALTH n%` + bar (a notch at the floor) only while hp < max or in FAINT; HAZE stays the card's last line. A band
+## crossed downwards says what changed for 3 s on the bottom line and plays `hunger_cue` once (again only after FOOD rose
+## 5 above it); FAINT repeats the cue every 30 s. Static: no pulse, no shake, no filter. Words PLACEHOLDER (T7/T8),
+## colours PLACEHOLDER (T6). The pocket hides the card; LethalHud carries the word there.
+var food_label: Label
+var food_bar: CityMeterBar
+var health_label: Label
+var health_bar: CityMeterBar
+var collapse_veil: ColorRect
+var _hunger: CityHunger
+var _food_shown: float = 1.0
+var _hint_armed: Dictionary = {}
+var _body_queue: Array[Dictionary] = []
+var _faint_cue_left: float = 0.0
+const FOOD_WORDS := {"sated": "", "hungry": "HUNGRY", "famished": "FAMISHED", "faint": "FAINT"}
+const FOOD_HINTS := {
+	"hungry": "HUNGRY · stamina recovers slower · food: «Шавлія»",
+	"famished": "FAMISHED · slower walk, no wall steps · eat soon",
+	"faint": "FAINT · health drains · at 0 you collapse and lose tokens",
+}
+const FOOD_COLORS := {"sated": Color("9fc7a6"), "hungry": Color("e5b178"), "famished": Color("d98a5f"), "faint": Color("e07a6a")}
+const HEALTH_COLOR := Color("e8d9b5")
+const HUNGER_HINT_SECONDS: float = 3.0     # PLACEHOLDER (T8)
+const COLLAPSE_HINT_SECONDS: float = 4.0   # PLACEHOLDER (T8)
+const COLLAPSE_HINT := "You collapsed from hunger · lost %d tokens"
+const HINT_HYSTERESIS: int = 500           # +5 FOOD before a band's hint fires again (PLACEHOLDER, T8)
+const FAINT_CUE_SECONDS: float = 30.0      # PLACEHOLDER (T8)
+const FOOD_RISE_SECONDS: float = 0.3       # T8: a full bar's rise takes at most this
+const HUNGER_CUE := "hunger_cue"           # PLACEHOLDER name; silent until a registered file exists (Sfx.gd:6)
+const HUNGER_CUE_DB: float = -8.0
 
 
 func setup(model: CityOnboarding) -> void:
@@ -126,6 +158,27 @@ func _ready() -> void:
 	_stamina_bar.custom_minimum_size.y = 5
 	_stamina_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_stamina_bar)
+	food_label = _label("", 18)
+	food_label.name = "FoodLine"
+	# The width of the longest state, so the word never changes the card's size (T8).
+	food_label.custom_minimum_size.x = food_label.get_theme_font("font").get_string_size("FOOD 100% · FAMISHED", HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+	food_label.hide()
+	column.add_child(food_label)
+	food_bar = CityMeterBar.new(8.0)
+	food_bar.name = "FoodBar"
+	food_bar.notches = [0.5, 0.25, 0.1]
+	food_bar.hide()
+	column.add_child(food_bar)
+	health_label = _label("", 18)
+	health_label.name = "HealthLine"
+	health_label.hide()
+	column.add_child(health_label)
+	health_bar = CityMeterBar.new(8.0)
+	health_bar.name = "HealthBar"
+	health_bar.fill_color = HEALTH_COLOR
+	health_bar.notches = [0.4]
+	health_bar.hide()
+	column.add_child(health_bar)
 	haze_label = _label("", 18)
 	haze_label.name = "HazeLine"
 	haze_label.hide()
@@ -164,6 +217,14 @@ func _ready() -> void:
 	# the pause panel built next stays above them.
 	_root.move_child(_hook_marker, -1)
 	_root.move_child(_aim_cue, -1)
+	# The collapse's dark (CityHunger.veil): over the city and its cards, under the pause built next.
+	collapse_veil = ColorRect.new()
+	collapse_veil.name = "CollapseVeil"
+	collapse_veil.color = Color(0.09, 0.07, 0.12, 0.0)
+	collapse_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	collapse_veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	collapse_veil.hide()
+	_root.add_child(collapse_veil)
 	_build_pause()
 	_refresh()
 
@@ -500,7 +561,9 @@ func exploration_help() -> String:
 	text += "Landing roll: hold %s / %s + move into a flat landing after a long drop.\n" % [InputRouter.binding_label(1, "crouch", false), InputRouter.binding_label(1, "crouch", true)]
 	text += "Detach: %s / B · Dodge: %s / X · Dash skill: %s / Y + X\n" % [InputRouter.binding_label(1, "grapple_detach", false), InputRouter.binding_label(1, "dodge", false), InputRouter.binding_label(1, "dash", false)]
 	text += "Strikes: %s; %s; %s; %s\n" % [InputRouter.binding_label(1, "left_hand", false), InputRouter.binding_label(1, "right_hand", false), InputRouter.binding_label(1, "left_leg", false), InputRouter.binding_label(1, "right_leg", false)]
-	text += "Sword: %s / R3 · Talk for tasks: %s / Y + D-pad Down\n" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
+	# T8 § Шкала голоду → Пауза: the food line would push the pause past 900 px, so it joins the talk line (the FOOD
+	# row itself shows HUNGRY / FAMISHED / FAINT).
+	text += "Sword: %s / R3 · Talk for tasks: %s / Y + D-pad Down · Food: Mira in «Шавлія»\n" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
 	text += "Sealed in the city, fights only: skills %s, %s · ultimate %s · enemy hook %s" % [InputRouter.binding_label(1, "skill1", false), InputRouter.binding_label(1, "skill2", false), InputRouter.binding_label(1, "ultimate", false), InputRouter.binding_label(1, "grapple_enemy", false)]
 	return text
 
@@ -634,6 +697,92 @@ func _refresh_haze() -> void:
 		haze_label.text = haze_text(_haze.haze_remaining())
 
 
+func bind_hunger(model: CityHunger) -> void:
+	_hunger = model
+	if not _hunger.collapsed.is_connected(_on_collapsed):
+		_hunger.collapsed.connect(_on_collapsed)
+	_food_shown = float(_hunger.centi) / float(CityHunger.FULL)
+	# A band the hero is already in (a loaded save) was not crossed now: only bands above FOOD wait for a crossing.
+	for threshold: int in _thresholds():
+		_hint_armed[threshold] = _hunger.centi > threshold
+	_refresh_hunger(0.0)
+
+
+func _on_collapsed(lost: int) -> void:
+	push_body_hint(COLLAPSE_HINT % lost, COLLAPSE_HINT_SECONDS)
+
+
+func _thresholds() -> Array[int]:
+	return [_hunger.hungry_at, _hunger.famished_at, _hunger.faint_at]
+
+
+## The bottom line's queue of two for hunger and the collapse (T8): FAINT is never pushed out.
+func push_body_hint(text: String, seconds: float) -> void:
+	var entry := {"text": text, "left": seconds, "faint": text.begins_with("FAINT")}
+	if _body_queue.size() >= 2:
+		_body_queue.remove_at(1)   # the shown one stays; the newest replaces the one still waiting
+	_body_queue.append(entry)
+
+
+func _body_hint() -> String:
+	if not _body_queue.is_empty() and bool(_body_queue[0].faint):
+		return String(_body_queue[0].text)
+	if _haze_fades_left > 0.0:
+		return HAZE_FADES_TEXT
+	return String(_body_queue[0].text) if not _body_queue.is_empty() else ""
+
+
+func _refresh_hunger(delta: float) -> void:
+	if food_label == null:
+		return
+	var on: bool = is_instance_valid(_hunger)
+	for node: Control in [food_label, food_bar]:
+		node.visible = on
+	if not on:
+		health_label.hide()
+		health_bar.hide()
+		return
+	var target: float = float(_hunger.centi) / float(CityHunger.FULL)
+	_food_shown = move_toward(_food_shown, target, delta / FOOD_RISE_SECONDS) if target > _food_shown else target
+	var band: String = _hunger.band()
+	var word: String = FOOD_WORDS[band]
+	food_label.text = "FOOD %d%%" % _hunger.percent() + ((" · " + word) if not word.is_empty() else "")
+	food_label.add_theme_color_override("font_color", FOOD_COLORS[band] if band != "sated" else Color(0.96, 0.94, 0.86))
+	food_bar.fill_color = FOOD_COLORS[band]
+	food_bar.framed = band == "faint"
+	food_bar.set_value(_food_shown)
+	food_bar.queue_redraw()
+	var maximum: float = _player.data.max_hp if is_instance_valid(_player) else 1.0
+	var hp: float = _player.hp if is_instance_valid(_player) else maximum
+	var hurt: bool = hp < maximum - 0.001 or band == "faint"
+	health_label.visible = hurt
+	health_bar.visible = hurt
+	if hurt:
+		health_label.text = "HEALTH %d%%" % ceili(hp / maxf(maximum, 0.001) * 100.0 - 0.0001)
+		health_bar.set_value(hp / maxf(maximum, 0.001))
+	collapse_veil.color.a = _hunger.veil()
+	collapse_veil.visible = collapse_veil.color.a > 0.0
+	if not _hunger.running:
+		return   # headless and fixtures without a clock: a fixed FOOD, no hint, no sound (T8 N5)
+	var thresholds: Array[int] = _thresholds()
+	for i: int in thresholds.size():
+		var threshold: int = thresholds[i]
+		var band_name: String = CityHunger.BANDS[i + 1]
+		if _hunger.centi <= threshold and bool(_hint_armed.get(threshold, true)):
+			_hint_armed[threshold] = false
+			push_body_hint(FOOD_HINTS[band_name], HUNGER_HINT_SECONDS)
+			Sfx.play(HUNGER_CUE, HUNGER_CUE_DB)
+			if band_name == "faint":
+				_faint_cue_left = FAINT_CUE_SECONDS
+		elif _hunger.centi > threshold + HINT_HYSTERESIS:
+			_hint_armed[threshold] = true
+	if band == "faint" and not paused_ui and not InputRouter.ui_suppressed() and not fight_mode:
+		_faint_cue_left -= delta
+		if _faint_cue_left <= 0.0:
+			_faint_cue_left = FAINT_CUE_SECONDS
+			Sfx.play(HUNGER_CUE, HUNGER_CUE_DB)
+
+
 ## Enter / leave the lethal pocket's HUD arrangement (CityLethalFight). Leaving shows the journal card again.
 func set_fight_mode(value: bool) -> void:
 	fight_mode = value
@@ -679,6 +828,11 @@ func _process(_delta: float) -> void:
 		_sealed_since += _delta
 		_denied_left = maxf(0.0, _denied_left - _delta)
 		_haze_fades_left = maxf(0.0, _haze_fades_left - _delta)
+		if not _body_queue.is_empty() and not fight_mode and _sealed_left <= 0.0 and _body_hint() == String(_body_queue[0].text):
+			_body_queue[0].left = float(_body_queue[0].left) - _delta
+			if float(_body_queue[0].left) <= 0.0:
+				_body_queue.pop_front()
+	_refresh_hunger(_delta)
 	_refresh_haze()
 	_refresh_traversal_hint()
 	_guide_elapsed += _delta
@@ -824,8 +978,9 @@ func _refresh_traversal_hint() -> void:
 		hint_label.text = POCKET_SEALED_HINT if fight_mode else SEALED_HINT
 		hint_label.show()
 		return
-	if _haze_fades_left > 0.0 and not fight_mode:
-		hint_label.text = HAZE_FADES_TEXT
+	var body: String = _body_hint()
+	if not body.is_empty() and not fight_mode:
+		hint_label.text = body
 		hint_label.show()
 		return
 	if not _story_prompt.is_empty():

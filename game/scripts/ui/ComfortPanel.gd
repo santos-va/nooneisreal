@@ -31,6 +31,11 @@ var _content_save_error: int = OK   # like graphics: content.cfg is written only
 var _comfort_save_error: int = OK
 const BLOOD_LABELS: Array[String] = ["Full — splashes and stains", "Muted — darker, shorter, no pools", "Ink — ink strokes instead of blood", "Off — only hit sparks"]
 const HIT_FLASH_LABELS: Array[String] = ["Full", "Reduced — half as bright and short"]
+## 06-UI-UX § «Випадки міста: COMFORT і HUD» п. 1 (T8, Д3): the city's five-leaves event and its state, stored by
+## ContentSettings (`drugs`). Order as ContentSettings.DRUGS_MODES. Full is a PLACEHOLDER default (Р4, until ratings).
+var drugs_choice: OptionButton
+const DRUGS_LABELS: Array[String] = ["Full — a passer-by may offer a smoke", "Off — no offer and no haze"]
+const DRUGS_HELP := "Off works at once, even mid-offer or mid-haze. CAMERA SHAKE at 0 stops the haze zoom; the dark edges stay."
 var _syncing := true
 
 func _ready() -> void:
@@ -112,6 +117,15 @@ func _ready() -> void:
 				_save())
 		slider.value_changed.emit(slider.value)
 	# Between CAMERA SHAKE and RESTORE: the established MASTER ↔ GRAPHICS and RESTORE → help steps stay as they were.
+	# T8 Д3: two groups — sensation (HIT FLASH right after CAMERA SHAKE), then content (BLOOD, DRUGS side by side).
+	content.add_child(_label("HIT FLASH", 32))
+	hit_flash_choice = _choice("HitFlash", HIT_FLASH_LABELS)
+	content.add_child(hit_flash_choice)
+	_focus_order.append(hit_flash_choice)
+	hit_flash_choice.item_selected.connect(func(index: int):
+		if not _syncing and _content.call("set_hit_flash", _content.HIT_FLASH_MODES[index]):
+			_content_save_error = _content.call("save_settings")
+			_save())
 	content.add_child(_label("BLOOD · LETHAL FIGHTS ONLY", 32))
 	blood_choice = _choice("BloodMode", BLOOD_LABELS)
 	content.add_child(blood_choice)
@@ -123,14 +137,18 @@ func _ready() -> void:
 	var blood_help := _label("Sparring between Choko and Skea never shows blood.", 24)
 	blood_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	content.add_child(blood_help)
-	content.add_child(_label("HIT FLASH", 32))
-	hit_flash_choice = _choice("HitFlash", HIT_FLASH_LABELS)
-	content.add_child(hit_flash_choice)
-	_focus_order.append(hit_flash_choice)
-	hit_flash_choice.item_selected.connect(func(index: int):
-		if not _syncing and _content.call("set_hit_flash", _content.HIT_FLASH_MODES[index]):
+	# Applies at once (the city's director drops the offer and the state on Off); RESTORE never resets it.
+	content.add_child(_label("DRUGS · CITY ONLY", 32))
+	drugs_choice = _choice("DrugsMode", DRUGS_LABELS)
+	content.add_child(drugs_choice)
+	_focus_order.append(drugs_choice)
+	drugs_choice.item_selected.connect(func(index: int):
+		if not _syncing and _content.call("set_drugs_mode", _content.DRUGS_MODES[index]):
 			_content_save_error = _content.call("save_settings")
 			_save())
+	var drugs_help := _label(DRUGS_HELP, 24)
+	drugs_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(drugs_help)
 	restore_button = _button("RESTORE SOUND & SHAKE DEFAULTS", func():
 		_settings.call("reset_defaults")
 		_sync_values()
@@ -208,6 +226,7 @@ func _sync_values() -> void:
 	_refresh_quality_help()
 	blood_choice.select(_content.BLOOD_MODES.find(_content.call("blood_mode")))
 	hit_flash_choice.select(_content.HIT_FLASH_MODES.find(_content.call("hit_flash")))
+	drugs_choice.select(_content.DRUGS_MODES.find(_content.call("drugs_mode")))
 	for key: String in sliders:
 		(sliders[key] as HSlider).value = float(_settings.call("get_value", key)) * 100
 	_syncing = false
@@ -227,7 +246,7 @@ func _status_text() -> String:
 
 func _choices() -> Array[OptionButton]:
 	var result: Array[OptionButton] = []
-	for choice: OptionButton in [display_choice, quality_choice, blood_choice, hit_flash_choice]:
+	for choice: OptionButton in [display_choice, quality_choice, hit_flash_choice, blood_choice, drugs_choice]:
 		if choice != null:
 			result.append(choice)
 	return result

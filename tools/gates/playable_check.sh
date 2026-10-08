@@ -120,6 +120,10 @@ cases = [
     ('city-leaves', 'tools/world/city_leaves_check.gd', r'CITY_LEAVES_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('city-haze', 'tools/world/city_haze_check.gd', r'CITY_HAZE_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('city-economy', 'tools/npc/city_economy_check.gd', r'CITY_ECONOMY_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    # T8 GAP 1–4 of the event menus (06-UI-UX § «Випадки міста: COMFORT і HUD» п. 3) and the hunger scale (plan
+    # 2026-10-08-Survival-Hunger step 4: T5 § 9, Santos «Повний перенос», the T8 HUD).
+    ('city-event-menus', 'tools/world/city_event_menus_check.gd', r'CITY_EVENT_MENUS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-hunger', 'tools/world/city_hunger_check.gd', r'CITY_HUNGER_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
 ]
 for mutation in ('portrait', 'icon', 'input'):
     cases.append(('ui-negative-' + mutation, 'tools/ui/layout_check.gd',
@@ -162,7 +166,8 @@ for mutation in ('sparring', 'carry', 'carry_none', 'retry_carry', 'death', 'ear
 # full strength, a card that is not remembered, a step back from the card that counts as seen, blood on a block, Off
 # that still bleeds, Ink that still drops, blood drawing the shared presentation RNG, a puddle from a late blow after
 # the round is decided, blood that changes the fight and blood that moves a fighter's RNG must each go red.
-for mutation in ('sparring', 'cfg', 'flash', 'notice', 'back', 'block', 'mode', 'ink', 'rng', 'late', 'state', 'rng_state'):
+# DRUGS (T8 Д3): a DRUGS row that never calls set_drugs_mode must go red too.
+for mutation in ('sparring', 'cfg', 'flash', 'notice', 'back', 'block', 'mode', 'ink', 'rng', 'late', 'state', 'rng_state', 'drugs_row'):
     cases.append(('blood-content-negative-' + mutation, 'tools/fx/blood_content_check.gd',
                   rf'BLOOD_CONTENT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
@@ -207,9 +212,14 @@ for mutation in ('signal', 'interval', 'comfort', 'focus'):
 for script, sentinel, prefix, mutations in (
         ('tools/world/city_event_director_check.gd', 'CITY_EVENT_DIRECTOR', 'city-event-director', ('headless', 'cooldown', 'pocket', 'empty', 'rng')),
         ('tools/world/city_alley_check.gd', 'CITY_ALLEY', 'city-alley', ('cap', 'memory', 'sword', 'people')),
-        ('tools/world/city_leaves_check.gd', 'CITY_LEAVES', 'city-leaves', ('off', 'cfg', 'count', 'session', 'refuse')),
+        ('tools/world/city_leaves_check.gd', 'CITY_LEAVES', 'city-leaves', ('off', 'cfg', 'count', 'session', 'refuse', 'row')),
         ('tools/world/city_haze_check.gd', 'CITY_HAZE', 'city-haze', ('pulse', 'layer', 'forget', 'pocket', 'end')),
-        ('tools/npc/city_economy_check.gd', 'CITY_ECONOMY', 'city-economy', ('price', 'save', 'refund'))):
+        ('tools/npc/city_economy_check.gd', 'CITY_ECONOMY', 'city-economy', ('price', 'save', 'refund')),
+        # Event menus: no guard, the call's timer behind its open menu, a trap label from before the tokens ran out.
+        ('tools/world/city_event_menus_check.gd', 'CITY_EVENT_MENUS', 'city-event-menus', ('arming', 'asktimer', 'zero')),
+        # Hunger: a wrong rate, a clock that runs in a conversation or the pocket, no floor, no token loss on the
+        # collapse, an uncapped haze drop, RETRY at full hp, the crust without its condition.
+        ('tools/world/city_hunger_check.gd', 'CITY_HUNGER', 'city-hunger', ('rate', 'gate', 'pocket_clock', 'floor', 'collapse', 'haze', 'retry', 'crust'))):
     for mutation in mutations:
         cases.append((prefix + '-negative-' + mutation, script,
                       rf'{sentinel}_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
@@ -290,7 +300,9 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('city-alley-negative-', 'ERROR: CITY_ALLEY: '),
                           ('city-leaves-negative-', 'ERROR: CITY_LEAVES: '),
                           ('city-haze-negative-', 'ERROR: CITY_HAZE: '),
-                          ('city-economy-negative-', 'ERROR: CITY_ECONOMY: ')):
+                          ('city-economy-negative-', 'ERROR: CITY_ECONOMY: '),
+                          ('city-event-menus-negative-', 'ERROR: CITY_EVENT_MENUS: '),
+                          ('city-hunger-negative-', 'ERROR: CITY_HUNGER: ')):
         if name.startswith(scope):
             assertion_prefix = prefix
     unexpected = [line for line in errors
