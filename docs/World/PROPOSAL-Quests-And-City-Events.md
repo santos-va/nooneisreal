@@ -456,7 +456,7 @@
   - T7 — журнал зустрічі після відповідей Santos і перенос кожного «так» у [[Lore]].
 
 ## Related
-- [[2026-10-07-Drug-And-Street-Crime-Rating]]
+- [[2026-10-07-Drug-And-Street-Crime-Rating]] · [[PROPOSAL-Food-Of-Cronshift]] (їжа й Міра для повної шкали голоду, 2026-10-08)
 
 - [[index]] · [[Lore]] · [[Cronshift]] · [[PROPOSAL-Story-Arc]] · [[PROPOSAL-First-Enemy]]
 - [[ADR-023-City-First-Exploration]] · [[ADR-024-Lethal-Fights-And-First-Enemy]] · [[ADR-019-Audit-And-Many-Views-Before-Decision]] · [[ADR-004-Physics-Is-Presentation]]
