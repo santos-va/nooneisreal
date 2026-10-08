@@ -6,6 +6,10 @@ const SAVE_PATH := "user://city_progress_v1.json"
 const CONTENT_PATH := "res://data/city/district.json"
 const HEROES: Array[String] = ["choko", "skea"]
 const EVENT_KINDS: Array[String] = ["meet", "resident", "visit", "deliver", "rope", "palette"]
+## Tokens are the city's money (ADR-025 п. 3): the save bound of credits, and the faces a hero remembers from the city
+## events (plan 2026-10-08-City-Events-Stage-1, step 2): face id → tokens that face took from this hero (0 = met only).
+const CREDIT_LIMIT: int = 10000
+const FACE_LIMIT: int = 16
 var hero_id: String = "choko"
 var heroes: Dictionary = {}
 var quests: Array[Dictionary] = []
@@ -290,6 +294,67 @@ func set_palette(id: String) -> bool:
 		return true
 	return false
 
+func credits() -> int:
+	return int(heroes[hero_id].credits)
+
+## Takes up to `amount` tokens (never below 0) and returns how many were taken. City events: a robbery, food.
+func spend_credits(amount: int) -> int:
+	var profile: Dictionary = heroes[hero_id]
+	var taken: int = mini(maxi(amount, 0), int(profile.credits))
+	if taken <= 0:
+		return 0
+	profile.credits = int(profile.credits) - taken
+	_changed()
+	return taken
+
+## Adds up to `amount` tokens within the save bound and returns how many were added. City events: small sources.
+func earn_credits(amount: int) -> int:
+	var profile: Dictionary = heroes[hero_id]
+	var added: int = mini(maxi(amount, 0), CREDIT_LIMIT - int(profile.credits))
+	if added <= 0:
+		return 0
+	profile.credits = int(profile.credits) + added
+	_changed()
+	return added
+
+## Food at «Шавлія» for exactly `price` tokens (plan step 5, `food_price` PLACEHOLDER). False when it cannot be paid.
+func buy_food(price: int) -> bool:
+	if price < 0 or credits() < price:
+		return false
+	if price == 0:
+		return true
+	return spend_credits(price) == price
+
+func face_known(face: String) -> bool:
+	return Dictionary(heroes[hero_id].get("faces", {})).has(face)
+
+func face_lost(face: String) -> int:
+	return int(Dictionary(heroes[hero_id].get("faces", {})).get(face, 0))
+
+## The hero remembers a face from a city event; `lost` adds the tokens that face took this time.
+func remember_face(face: String, lost: int = 0) -> bool:
+	if not _safe_id(face) or lost < 0:
+		return false
+	var profile: Dictionary = heroes[hero_id]
+	var faces: Dictionary = profile.get("faces", {})
+	if not faces.has(face) and faces.size() >= FACE_LIMIT:
+		return false
+	faces[face] = mini(int(faces.get(face, 0)) + lost, CREDIT_LIMIT)
+	profile.faces = faces
+	_changed()
+	return true
+
+## A robber who gives up returns what his face took from this hero before (never more). Returns the tokens returned.
+func refund_face(face: String) -> int:
+	var lost: int = face_lost(face)
+	if lost <= 0:
+		return 0
+	var added: int = earn_credits(lost)
+	var faces: Dictionary = heroes[hero_id].faces
+	faces[face] = lost - added
+	_changed()
+	return added
+
 func current_palette() -> Color:
 	for p: Dictionary in palettes:
 		if p.id == heroes[hero_id].palette:
@@ -306,7 +371,7 @@ func restore(data: Variant) -> bool:
 		if hero not in HEROES or not data.heroes[hero] is Dictionary:
 			return false
 		var p: Dictionary = data.heroes[hero]
-		if not NpcPopulation._integer(p.get("credits"), 0, 10000) or not p.get("accepted") is Array or not p.get("completed") is Array or not p.get("owned") is Array or not p.get("events") is Dictionary or not p.get("palette") is String:
+		if not NpcPopulation._integer(p.get("credits"), 0, CREDIT_LIMIT) or not p.get("accepted") is Array or not p.get("completed") is Array or not p.get("owned") is Array or not p.get("events") is Dictionary or not p.get("palette") is String:
 			return false
 		for field: String in ["accepted", "completed"]:
 			if p[field].size() > quests.size():
@@ -328,6 +393,13 @@ func restore(data: Variant) -> bool:
 						return false
 		if p.owned.size() > palettes.size() or p.palette not in p.owned:
 			return false
+		# Optional since the city events: an absent field is an old save; a present one must be exact.
+		if p.has("faces"):
+			if not p.faces is Dictionary or p.faces.size() > FACE_LIMIT:
+				return false
+			for face: Variant in p.faces:
+				if not face is String or not _safe_id(face) or not NpcPopulation._integer(p.faces[face], 0, CREDIT_LIMIT):
+					return false
 		for id: Variant in p.owned:
 			if not id is String or not palettes.any(func(v: Dictionary) -> bool: return v.id == id):
 				return false
@@ -342,6 +414,9 @@ func restore(data: Variant) -> bool:
 	heroes = data.heroes.duplicate(true)
 	for profile: Dictionary in heroes.values():
 		profile.credits = int(profile.credits)
+		if profile.has("faces"):
+			for face: String in profile.faces:
+				profile.faces[face] = int(profile.faces[face])
 	_ensure_hero()
 	return true
 

@@ -73,6 +73,14 @@ var comfort: ComfortPanel
 ## cards, the quest guide and the hook cue step aside. The pause stays here: CityHud is the only pause owner. Skills
 ## are open in the pocket, so only the enemy hook is still answered — with the pocket's own line.
 var fight_mode: bool = false
+## «Заплутаність» (plan 2026-10-08-City-Events-Stage-1 step 4; T8 06-UI-UX § «Заплутаність» поруч зі шкалою): the last
+## line of the status card shows `HAZE m:ss` only while the state lasts; its end says HAZE FADES on the bottom line for
+## HAZE_FADES_SECONDS. Words PLACEHOLDER (T7 names the state). No new input action.
+var haze_label: Label
+var _haze: CityHaze
+var _haze_fades_left: float = 0.0
+const HAZE_FADES_TEXT := "HAZE FADES"
+const HAZE_FADES_SECONDS: float = 2.0
 const POCKET_SEALED_HINT := "ENEMY HOOK SEALED IN THIS FIGHT"
 
 
@@ -118,6 +126,10 @@ func _ready() -> void:
 	_stamina_bar.custom_minimum_size.y = 5
 	_stamina_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_stamina_bar)
+	haze_label = _label("", 18)
+	haze_label.name = "HazeLine"
+	haze_label.hide()
+	column.add_child(haze_label)
 	_hook_marker = CityHookMarker.new()
 	_hook_marker.name = "HookMarker"
 	_root.add_child(_hook_marker)
@@ -602,6 +614,26 @@ func _on_stamina(value: float, maximum: float) -> void:
 	_refresh_resources()
 
 
+func bind_haze(model: CityHaze) -> void:
+	_haze = model
+	_haze.fading.connect(func() -> void: _haze_fades_left = HAZE_FADES_SECONDS)
+	_refresh_haze()
+
+
+static func haze_text(seconds: float) -> String:
+	var whole: int = ceili(maxf(seconds, 0.0))
+	return "HAZE %d:%02d" % [whole / 60, whole % 60]
+
+
+func _refresh_haze() -> void:
+	if haze_label == null:
+		return
+	var on: bool = is_instance_valid(_haze) and _haze.haze_active()
+	haze_label.visible = on
+	if on:
+		haze_label.text = haze_text(_haze.haze_remaining())
+
+
 ## Enter / leave the lethal pocket's HUD arrangement (CityLethalFight). Leaving shows the journal card again.
 func set_fight_mode(value: bool) -> void:
 	fight_mode = value
@@ -646,6 +678,8 @@ func _process(_delta: float) -> void:
 		_sealed_left = maxf(0.0, _sealed_left - _delta)
 		_sealed_since += _delta
 		_denied_left = maxf(0.0, _denied_left - _delta)
+		_haze_fades_left = maxf(0.0, _haze_fades_left - _delta)
+	_refresh_haze()
 	_refresh_traversal_hint()
 	_guide_elapsed += _delta
 	if paused_ui or InputRouter.ui_suppressed():
@@ -788,6 +822,10 @@ func _refresh_traversal_hint() -> void:
 		return
 	if _sealed_left > 0.0:
 		hint_label.text = POCKET_SEALED_HINT if fight_mode else SEALED_HINT
+		hint_label.show()
+		return
+	if _haze_fades_left > 0.0 and not fight_mode:
+		hint_label.text = HAZE_FADES_TEXT
 		hint_label.show()
 		return
 	if not _story_prompt.is_empty():

@@ -25,6 +25,10 @@ var journey: CityJourney
 @export var journey_save_path: String = CityJourney.SAVE_PATH
 ## ADR-024: the first lethal fight in the central_court pocket (entry at its safe point).
 var lethal: CityLethalFight
+## Plan 2026-10-08-City-Events-Stage-1: the city events (В1 alley, В2 leaves) and the «Заплутаність» state.
+var haze: CityHaze
+var haze_vignette: CityHazeVignette
+var events: CityEventDirector
 @export var journey_save_enabled: bool = true
 var _prior_free_move: bool
 var _prior_profile: String
@@ -125,6 +129,23 @@ func _ready() -> void:
 	lethal.name = "LethalFight"
 	add_child(lethal)
 	lethal.setup(self)
+	haze = CityHaze.new()
+	haze.name = "Haze"
+	add_child(haze)
+	haze.setup(camera_rig.camera)
+	haze_vignette = CityHazeVignette.new()
+	haze_vignette.name = "HazeVignette"
+	add_child(haze_vignette)
+	haze_vignette.bind(haze)
+	player.haze = haze
+	npc_director.haze = haze
+	hud.bind_haze(haze)
+	events = CityEventDirector.new()
+	events.name = "CityEvents"
+	add_child(events)
+	events.setup(self)
+	events.conversation_started.connect(camera_rig.begin_conversation)
+	events.conversation_ended.connect(camera_rig.end_conversation)
 	_reset_observation()
 
 func _physics_process(delta: float) -> void:
@@ -300,9 +321,15 @@ func _update_story_interaction() -> void:
 func _update_lethal_entry() -> void:
 	if not lethal.can_enter():
 		return
+	if haze != null and haze.haze_active():
+		# T5 розвилка 8 / T7 § 5.2: the pocket waits until the state has passed; the fight stays deterministic.
+		hud.set_story_prompt(HAZY_ENTRY_TEXT)
+		return
 	hud.set_story_prompt(lethal.prompt_text(camera_rig.aim.last_gamepad))
 	if InputRouter.just_pressed(1, "interact"):
 		lethal.request_open()
+
+const HAZY_ENTRY_TEXT := "NOT IN THIS STATE · Wait until the haze passes"   # PLACEHOLDER words (T8 / T7)
 
 func _reset_observation() -> void:
 	_last_position = player.global_position
@@ -314,6 +341,8 @@ func recover_to_spawn() -> void:
 	# Fall recovery resets runtime motion, but retains the last safe place.
 	if lethal != null and lethal.active:
 		lethal.close("abort")
+	if events != null:
+		events.abort_active("recover")
 	ropes.clear_match()
 	player.restart_at(journey.resume_position())
 	camera_rig.reset_view()
@@ -326,6 +355,8 @@ func restart_exploration() -> void:
 	hud.set_paused(false)
 	onboarding.restart()
 	journey.restart_walk()
+	if haze != null:
+		haze.clear()
 	recover_to_spawn()
 	for node: Node in get_node("FX").get_children():
 		node.queue_free()

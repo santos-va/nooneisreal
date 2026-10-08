@@ -113,6 +113,13 @@ cases = [
     ('city-geometry', 'tools/world/city_geometry_check.gd', r'CITY_GEOMETRY_COMPLETE checks=[1-9][0-9]* failures=0 meshes=[1-9][0-9]*', [], 0),
     ('city-runtime', 'tools/world/city_runtime_check.gd', r'CITY_RUNTIME_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-onboarding', 'tools/world/city_onboarding_check.gd', r'CITY_ONBOARDING_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
+    # City events, stage 1 (plan 2026-10-08-City-Events-Stage-1, steps 1–5): the director, the alley, the leaves and
+    # the drugs key, the haze state, tokens as money.
+    ('city-event-director', 'tools/world/city_event_director_check.gd', r'CITY_EVENT_DIRECTOR_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-alley', 'tools/world/city_alley_check.gd', r'CITY_ALLEY_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-leaves', 'tools/world/city_leaves_check.gd', r'CITY_LEAVES_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-haze', 'tools/world/city_haze_check.gd', r'CITY_HAZE_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-economy', 'tools/npc/city_economy_check.gd', r'CITY_ECONOMY_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
 ]
 for mutation in ('portrait', 'icon', 'input'):
     cases.append(('ui-negative-' + mutation, 'tools/ui/layout_check.gd',
@@ -191,6 +198,22 @@ for mutation in ('signal', 'interval', 'comfort', 'focus'):
     cases.append(('city-controls-negative-' + mutation, 'tools/ui/city_controls_check.gd',
                   rf'CITY_CONTROLS_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
+# City events, stage 1. Director: on in a scripted run, no alley cooldown, no pocket margin, no empty-street radius, the
+# seed ignored. Alley: a robbery above the cap, a face never remembered, robbers that never answer the sword, a chase
+# that does not end near people. Leaves: a content source that ignores Off, a damaged content.cfg saved over, four
+# leaves, twice a session, «Ні» that starts the state. Haze: no plateau, a vignette over the HUD, nothing forgotten, the
+# lethal pocket open in the state, a timer that stands. Economy: food at a wrong price, a damaged save written over, a
+# second refund. Each must go red.
+for script, sentinel, prefix, mutations in (
+        ('tools/world/city_event_director_check.gd', 'CITY_EVENT_DIRECTOR', 'city-event-director', ('headless', 'cooldown', 'pocket', 'empty', 'rng')),
+        ('tools/world/city_alley_check.gd', 'CITY_ALLEY', 'city-alley', ('cap', 'memory', 'sword', 'people')),
+        ('tools/world/city_leaves_check.gd', 'CITY_LEAVES', 'city-leaves', ('off', 'cfg', 'count', 'session', 'refuse')),
+        ('tools/world/city_haze_check.gd', 'CITY_HAZE', 'city-haze', ('pulse', 'layer', 'forget', 'pocket', 'end')),
+        ('tools/npc/city_economy_check.gd', 'CITY_ECONOMY', 'city-economy', ('price', 'save', 'refund'))):
+    for mutation in mutations:
+        cases.append((prefix + '-negative-' + mutation, script,
+                      rf'{sentinel}_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                      ['--', '--break=' + mutation], 1))
 @contextmanager
 def isolated_profile():
     # Linux has an OS-supported data root override. macOS does not: use Godot's
@@ -262,7 +285,12 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('display-auto-negative-', 'ERROR: DISPLAY_AUTO: '),
                           ('lethal-fight-negative-', 'ERROR: LETHAL_FIGHT: '),
                           ('blood-content-negative-', 'ERROR: BLOOD_CONTENT: '),
-                          ('match-lifecycle-negative-', 'ERROR: MATCH_LIFECYCLE: ')):
+                          ('match-lifecycle-negative-', 'ERROR: MATCH_LIFECYCLE: '),
+                          ('city-event-director-negative-', 'ERROR: CITY_EVENT_DIRECTOR: '),
+                          ('city-alley-negative-', 'ERROR: CITY_ALLEY: '),
+                          ('city-leaves-negative-', 'ERROR: CITY_LEAVES: '),
+                          ('city-haze-negative-', 'ERROR: CITY_HAZE: '),
+                          ('city-economy-negative-', 'ERROR: CITY_ECONOMY: ')):
         if name.startswith(scope):
             assertion_prefix = prefix
     unexpected = [line for line in errors

@@ -2,27 +2,35 @@ extends Node
 ## Content and flash preferences (ADR-024 п. 7; plan 2026-10-07-First-Enemy-Lethal-Fight step 4, T8 spec):
 ##   blood       full | muted | ink | off — how a lethal fight shows blood (a sparring never shows any);
 ##   notice_seen the blood card before the first lethal fight was confirmed;
-##   hit_flash   full | reduced — the white body flash and the hit light at half strength.
+##   hit_flash   full | reduced — the white body flash and the hit light at half strength;
+##   drugs       full | off — the city event with the five leaves and its «Заплутаність» state (ADR-025 п. 5, plan
+##               2026-10-08-City-Events-Stage-1 step 3). Off removes the event completely. Optional on reading: a file
+##               written before this key is still ours (the key is added on the next save); an unknown value is damage.
 ## Stored apart from comfort and graphics in user://content.cfg. A damaged file or an unknown value is never
 ## overwritten: this session falls back to blood "ink", hit flash "reduced" and an unseen card, and saving refuses
-## so the original bytes stay for recovery. Presentation only — nothing here touches the fight.
+## so the original bytes stay for recovery (drugs falls back to "off"). Nothing here touches the fight.
 signal changed(key: String, value: Variant)
 
 const SECTION := "content"
 const BLOOD_MODES: Array[String] = ["full", "muted", "ink", "off"]
 const HIT_FLASH_MODES: Array[String] = ["full", "reduced"]
+const DRUGS_MODES: Array[String] = ["full", "off"]
 ## Santos's word (ADR-024 п. 7): Full by default — PLACEHOLDER until the rating rows are grounded (plan step 7).
 const DEFAULT_BLOOD := "full"
 const DEFAULT_HIT_FLASH := "full"
+## ADR-025 Р4 «Як ти сказав»: the event exists by default — PLACEHOLDER until the rating rows are grounded (T3).
+const DEFAULT_DRUGS := "full"
 ## The fallback of an unreadable file: the most restrained presentation for this session.
 const DAMAGED_BLOOD := "ink"
 const DAMAGED_HIT_FLASH := "reduced"
+const DAMAGED_DRUGS := "off"
 ## T8: Reduced keeps the white flash's time and brightness and the hit light at ≤ half of Full.
 const REDUCED_FLASH_SCALE := 0.5
 var storage_path: String = "user://content.cfg"
 var _blood: String = DEFAULT_BLOOD
 var _hit_flash: String = DEFAULT_HIT_FLASH
 var _notice_seen: bool = false
+var _drugs: String = DEFAULT_DRUGS
 var _config := ConfigFile.new()
 var _load_error: Error = OK
 
@@ -43,6 +51,22 @@ func hit_flash() -> String:
 ## 1.0 for Full, REDUCED_FLASH_SCALE for Reduced: multiplies the flash time, its whiteness and the hit light.
 func hit_flash_scale() -> float:
 	return REDUCED_FLASH_SCALE if _hit_flash == "reduced" else 1.0
+
+
+func drugs_mode() -> String:
+	return _drugs
+
+
+func drugs_allowed() -> bool:
+	return _drugs == "full"
+
+
+func set_drugs_mode(value: Variant) -> bool:
+	if not value is String or not DRUGS_MODES.has(value):
+		return false
+	_drugs = value
+	changed.emit("drugs", _drugs)
+	return true
 
 
 func notice_seen() -> bool:
@@ -83,6 +107,7 @@ func load_settings(path: String = "") -> Error:
 	var blood: String = DEFAULT_BLOOD
 	var flash: String = DEFAULT_HIT_FLASH
 	var seen := false
+	var drugs: String = DEFAULT_DRUGS
 	if _load_error == ERR_FILE_NOT_FOUND:
 		_load_error = OK
 	elif _load_error == OK:
@@ -95,22 +120,28 @@ func load_settings(path: String = "") -> Error:
 		var raw_blood: Variant = _config.get_value(SECTION, "blood", DEFAULT_BLOOD)
 		var raw_flash: Variant = _config.get_value(SECTION, "hit_flash", DEFAULT_HIT_FLASH)
 		var raw_seen: Variant = _config.get_value(SECTION, "notice_seen", false)
-		if not (raw_blood is String and BLOOD_MODES.has(raw_blood)) or not (raw_flash is String and HIT_FLASH_MODES.has(raw_flash)) or not raw_seen is bool:
+		var raw_drugs: Variant = _config.get_value(SECTION, "drugs", DEFAULT_DRUGS)
+		if not (raw_blood is String and BLOOD_MODES.has(raw_blood)) or not (raw_flash is String and HIT_FLASH_MODES.has(raw_flash)) or not raw_seen is bool \
+				or not (raw_drugs is String and DRUGS_MODES.has(raw_drugs)):
 			_load_error = ERR_INVALID_DATA   # an unknown / future value: keep the file, not the guess
 		else:
 			blood = raw_blood
 			flash = raw_flash
 			seen = raw_seen
+			drugs = raw_drugs
 	if _load_error != OK:
 		blood = DAMAGED_BLOOD
 		flash = DAMAGED_HIT_FLASH
 		seen = false
+		drugs = DAMAGED_DRUGS
 	_blood = blood
 	_hit_flash = flash
 	_notice_seen = seen
+	_drugs = drugs
 	changed.emit("blood", _blood)
 	changed.emit("hit_flash", _hit_flash)
 	changed.emit("notice_seen", _notice_seen)
+	changed.emit("drugs", _drugs)
 	return _load_error
 
 
@@ -121,6 +152,7 @@ func save_settings() -> Error:
 	_config.set_value(SECTION, "blood", _blood)
 	_config.set_value(SECTION, "hit_flash", _hit_flash)
 	_config.set_value(SECTION, "notice_seen", _notice_seen)
+	_config.set_value(SECTION, "drugs", _drugs)
 	var temporary_path: String = storage_path + ".tmp"
 	var result: Error = _config.save(temporary_path)
 	if result != OK:

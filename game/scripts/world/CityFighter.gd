@@ -11,6 +11,9 @@ const SEALED_ACTIONS: Array[String] = ["skill1", "skill2", "ultimate", "grapple_
 ## the Printer stay off. Set only by CityLethalFight, together with the pocket's circle (arena_center/radius).
 const POCKET_SEALED_ACTIONS: Array[String] = ["grapple_enemy"]
 var lethal_pocket: bool = false
+## «Заплутаність» (plan 2026-10-08-City-Events-Stage-1, step 4; T5 § 4.2): slower walking and braking and half the
+## attack tracking while the city state lasts. Never inside a lethal pocket; Fighter and the duel never read it.
+var haze: CityHaze = null
 
 @export var support_probe_depth: float = 64.0 # PLACEHOLDER district safety depth.
 const ParkourMotor = preload("res://scripts/world/CityParkourMotor.gd")
@@ -42,6 +45,46 @@ func _physics_process(delta: float) -> void:
 ## The actions the city consumes right now: all four in exploration, only the enemy hook inside a lethal pocket.
 func sealed_actions() -> Array[String]:
 	return POCKET_SEALED_ACTIONS if lethal_pocket else SEALED_ACTIONS
+
+func _hazy() -> bool:
+	return haze != null and not lethal_pocket and haze.haze_active()
+
+func speed_mult() -> float:
+	return super.speed_mult() * (haze.walk_multiplier() if _hazy() else 1.0)
+
+## Fighter._walk_physics with the braking rate scaled by the state (T5: «ноги не слухаються»).
+func _walk_physics(delta: float, vx: float, vz: float = 0.0) -> void:
+	if not _hazy():
+		super._walk_physics(delta, vx, vz)
+		return
+	var cur := Vector2(velocity.x, velocity.z if _free() else 0.0)
+	var want := Vector2(vx, vz if _free() else 0.0)
+	var rate := data.ground_accel if want.length() > cur.length() - 0.001 else data.ground_decel * haze.decel_multiplier()
+	var h := cur.move_toward(want, rate * delta)
+	_ground_physics(delta, h.x, h.y)
+
+func _start_move(m: MoveData, slot: String = "") -> void:
+	super._start_move(m, slot)
+	if _hazy():
+		_track_left *= haze.tracking_multiplier()
+
+## В1, Choko's sword «Лякає» (ADR-025 п. 6): the event draws the sword from the back the way weapon_swap does, without
+## a key press; an already drawn sword stays as it is. False for Skea or when the body cannot draw now.
+func draw_sword_for_event() -> bool:
+	if data.id != "choko" or data.weapon_kind != "sword":
+		return false
+	if sword_drawn:
+		return true
+	if state not in [State.IDLE, State.WALK] or not on_ground() or grapple.busy():
+		return false
+	sword_swap_from = sword_hand
+	sword_swap_drawing = true
+	sword_swap_to = sword_hand
+	sword_swap_frame = 0
+	crouching = false
+	_set_state(State.SWAP)
+	_discard_swap_blocked_inputs()
+	return true
 
 func _tick_air(delta: float, intent: Dictionary) -> void:
 	if not parkour.tick(self, delta, intent):
