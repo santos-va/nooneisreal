@@ -2,7 +2,9 @@ class_name CityLowerGallery
 extends Node3D
 ## Upper-terrace archive, not an underground entrance. Geometry never awards story facts.
 ## Spatial/light values are PLACEHOLDER art and traversal tuning.
-const PLATE_CENTER := Vector3(-11.02, 5.45, -14.2)
+## D5 (docs/Audit/2026-10-08-City-Tidy-Technical-Audit.md): the plate's back is on the east wall (x −10.90); it used
+## to hang 6 cm in front of it with nothing holding it.
+const PLATE_CENTER := Vector3(-10.96, 5.45, -14.2)
 const LAMP_CENTER := Vector3(-13.65, 5.45, -14.2)
 var _materials: Dictionary
 var _points: Dictionary = {}
@@ -29,7 +31,7 @@ func _ready() -> void:
 	for x: float in [-13.6,-11.8]:
 		_box(self, "DeskLeg", Vector3(x,4.4,-16.55), Vector3(0.1,0.8,0.5), "iron", true)
 	_box(self, "PaperStack", Vector3(-12.3,4.9,-16.55), Vector3(0.65,0.06,0.45), "cloth_cream")
-	_box(self, "Charcoal", Vector3(-13,4.92,-16.55), Vector3(0.28,0.05,0.05), "ink")
+	_box(self, "Charcoal", Vector3(-13,4.895,-16.55), Vector3(0.28,0.05,0.05), "ink")   # on the desk top (4.87)
 	_build_plate()
 	_build_lamp()
 	_point("lamp", Vector3(-13.65,5.15,-14.48))
@@ -85,9 +87,10 @@ func _build_lamp() -> void:
 	_lamp.name = "InspectionLamp"
 	_lamp.position = LAMP_CENTER
 	add_child(_lamp)
-	_box(_lamp, "Hood", Vector3.ZERO, Vector3(0.38,0.32,0.38), "brass")
+	# D23: the hood hangs 0.13 m past its post at head height, so it is solid; it turns with the lamp.
+	_box(_lamp, "Hood", Vector3.ZERO, Vector3(0.38,0.32,0.38), "brass", true)
 	_box(_lamp, "Lens", Vector3(0,0,-0.2), Vector3(0.3,0.24,0.025), "warm_window")
-	_box(_lamp, "Handle", Vector3(0,0.22,0), Vector3(0.44,0.065,0.065), "iron")
+	_box(_lamp, "Handle", Vector3(0,0.19,0), Vector3(0.44,0.065,0.065), "iron")   # on the hood (top 0.16)
 	_spot = SpotLight3D.new()
 	_spot.name = "InspectionBeam"
 	_spot.position = Vector3(0,0,-0.24)
@@ -133,7 +136,7 @@ func _build_delivered_record() -> void:
 	var workshop: Vector3 = CityPlaces.shops()[2].door
 	_record = Node3D.new()
 	_record.name = "DeliveredRouteCopy"
-	_record.position = workshop + Vector3(1.55,1.8,7.73)
+	_record.position = workshop + Vector3(1.55,1.8,7.76)   # its back on the back wall's face (z 7.8)
 	add_child(_record)
 	_box(_record, "CopyBoard", Vector3.ZERO, Vector3(1.4,1.05,0.08), "wood")
 	_box(_record, "Paper", Vector3(0,0,-0.055), Vector3(1.24,0.88,0.02), "cloth_cream")

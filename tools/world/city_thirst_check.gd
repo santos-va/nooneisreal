@@ -23,6 +23,10 @@ extends SceneTree
 ##   T11 the pocket at H 80 + W 40: 22.5 / s, W stands, RETRY the same, after it W 40; the words for one scale and equal;
 ##   T12 the save: round trip; an old save → 100; a damaged W (10001, -1, 12.5, "abc") → not written over;
 ##   T13 the gate: no water source → W 100, the clock never moves it, the body takes H only, no WATER row;
+##   T14 one key, one prompt (plan 2026-10-09 step 4): at the spout the pedlar's or a resident's prompt is never shown
+##       together with the pump's, the press is theirs (no drink); with neither the pump's prompt is back;
+##   T15 the pump's form (T6 § Колонка, крок A): the lever's back end in the handle, its front end on the cap, the ladle
+##       clear of the column;
 ##   H1 (W1) WATER under FOOD, one rectangle at 100 / 45 / 22 / 8, card 390; H2 (W2) each crossing: word, one 3 s hint,
 ##      thirst_cue on that frame; H3 (W3) no extra effect; H4 (W4) both within 60 ticks → one hint, one cue; H5 (W5) B 3
 ##      from W: HEALTH, the cue every 30 s; H6 (W6) ±1 for 20 frames → one hint; H7 FAINT by B (a merged FAINT hint
@@ -31,6 +35,8 @@ extends SceneTree
 ## Literals (T5 § 2–6, T8): 12 frames, 97.50 / 50 / 25 / 10, 3.21 m/s, wake 30, −3, tea +25 / +30, the hint and pause words.
 ## --break=rate|gate|pocket_clock|ignore|source are negative controls (rate 14 frames; the conversation releases the UI
 ## token; the clock does not see the pocket; W counted as off for the body; the gate fed a fake source).
+## --break=prompt|lever|lever_flat|ladle: the pump's prompt as before the fix (shown over a street event's); the lever's
+## old −0.42 sign; a flat lever; the ladle back at x 0.15.
 ## Sentinel: CITY_THIRST_COMPLETE checks=N failures=M mutation=<m>; failures print "CITY_THIRST: ...".
 const FULL := 10000
 const CHOKO_HP := 1050.0
@@ -161,7 +167,7 @@ func _run() -> void:
 	await _t0()
 	if mutation == "rate":
 		thirst.decay_frames = 14
-	for scenario: Callable in [_t1, _h1, _h2, _h3, _h4, _h5, _h6, _h7, _h8, _t2, _t3, _t4, _t5, _t6, _t9, _t10, _t11, _t12, _t13]:
+	for scenario: Callable in [_t1, _h1, _h2, _h3, _h4, _h5, _h6, _h7, _h8, _t2, _t3, _t4, _t5, _t6, _t9, _t10, _t11, _t12, _t13, _t14, _t15]:
 		await _close_all()
 		await scenario.call()
 	await _close_all()
@@ -178,6 +184,7 @@ func _run() -> void:
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
 		OS.delay_msec(1)
+	print("CITY_THIRST_INFO engine frames %d of the 12000 the battery allows" % Engine.get_process_frames())
 	print("CITY_THIRST_COMPLETE checks=%d failures=%d mutation=%s" % [checks, failures, mutation])
 	quit(1 if failures else 0)
 
@@ -513,6 +520,130 @@ func _t13() -> void:
 	_check(thirst.centi == FULL and hunger.body_band_index() == 0 and absf(refill - 30.0) < 0.01 and not world.hud.water_label.visible, "T13 the real world with its pump taken away: W %.2f, B %d, refill %.1f, WATER row %s" % [thirst.value(), hunger.body_band_index(), refill, world.hud.water_label.visible])
 	thirst.source = pump
 	_level(FULL, FULL)
+
+
+## One frame of the three prompts on the interact key, read as the next physics step begins: the HUD's hint (drawn in
+## _process) and the two dialogue prompts (set in _physics_process) then belong to the same frame. --break=prompt puts
+## back the pump as it was before plan 2026-10-09 step 4: its prompt whenever the hero is at the spout and no resident
+## is near (the old _update_story_interaction / _update_pump), whatever a street event shows.
+func _prompts() -> Dictionary:
+	await process_frame
+	if mutation == "prompt" and npc.find_nearest() < 0 and thirst.can_drink(player):
+		world.hud.set_story_prompt(router.binding_label(1, "interact", false) + " · Drink water · free")
+	await physics_frame
+	var hint: Label = world.hud.hint_label
+	return {"pump": hint.is_visible_in_tree() and hint.text.ends_with("Drink water · free"),
+		"event": world.events.dialogue.prompt.is_visible_in_tree(), "resident": npc.dialogue.prompt.is_visible_in_tree()}
+
+
+## `frames` frames of the prompts: how many showed the pump, the other prompt, and both at once.
+func _watch_prompts(frames: int, other: String) -> Dictionary:
+	var seen: Dictionary = {"pump": 0, "other": 0, "both": 0}
+	for frame: int in frames:
+		var shown: Dictionary = await _prompts()
+		seen.pump += 1 if bool(shown.pump) else 0
+		seen.other += 1 if bool(shown[other]) else 0
+		seen.both += 1 if bool(shown.pump) and bool(shown[other]) else 0
+	return seen
+
+
+## T14 (plan 2026-10-09 step 4; T4 audit 2026-10-08 п. 3): one key, one prompt. At the spout, with the street pedlar's
+## «Поговорити з перехожим» or a resident's «Поговорити: …» on the same key, the pump's prompt is never shown with it and
+## the press is theirs (W unchanged); with neither the pump's prompt is back.
+func _t14() -> void:
+	var content: Node = root.get_node("ContentSettings")
+	content.call("set_drugs_mode", "full")
+	var events: Node = world.events
+	events.enable_for_test(2468)
+	events.start_chance = 0.0
+	player.restart_at(AT_PUMP)
+	player._set_forward(Vector3.LEFT)
+	await _ticks(30)
+	_level(FULL, 6000, CHOKO_HP, 3)
+	var alone: Dictionary = await _watch_prompts(10, "event")
+	_check(alone.pump == 10 and alone.other == 0, "T14 at the spout alone: the pump's prompt on all 10 frames (%d), no other (%d)" % [alone.pump, alone.other])
+	events.session_time = 1000.0
+	events.last_end_time = -INF
+	events.leaves_count = 0
+	events.vendor_count = 0
+	if not events.try_start("vendor"):
+		_check(false, "T14 the pedlar starts beside the spout (%s)" % events.block_reason("vendor"))
+		return
+	var event: Node = events.active
+	event.person.global_position = player.global_position + Vector3(1.4, 0.0, 0.0)
+	event.person.stop()
+	await _until(func() -> bool: return is_instance_valid(event) and event.phase == "offer" and events.dialogue.prompt.visible, 90)
+	var pedlar: Dictionary = await _watch_prompts(30, "event")
+	_check(pedlar.other == 30 and pedlar.both == 0, "T14 the pedlar's prompt at the spout: shown %d / 30 frames, with the pump's %d (pump alone %d)" % [pedlar.other, pedlar.both, pedlar.pump])
+	drank.clear()
+	await _tap_interact()
+	await _ticks(2)
+	_check(is_instance_valid(event) and events.dialogue.opened and drank.is_empty() and thirst.centi <= 6000, "T14 the press is the pedlar's: his menu %s, no drink (%s), W %.2f" % [events.dialogue.opened, drank, thirst.value()])
+	events.abort_active("fixture")
+	if events.dialogue.opened:
+		events.dialogue.close()
+	await _ticks(5)
+	# A resident beside the spout (the nearest actor, held still): «Поговорити: …» owns the key.
+	var nearest: int = -1
+	var best: float = INF
+	for index: int in npc.actors:
+		var gap: float = npc.actors[index].global_position.distance_to(player.global_position)
+		if gap < best:
+			best = gap
+			nearest = index
+	if nearest < 0:
+		_check(false, "T14 a resident is streamed in near the spout")
+		return
+	var actor: Node3D = npc.actors[nearest]
+	var kept: Dictionary = actor.motion_state()
+	actor.global_position = player.global_position + Vector3(0.9, 0.0, 0.5)
+	actor.pause_left = 1.0e6
+	await _ticks(2)
+	var resident: Dictionary = await _watch_prompts(30, "resident")
+	_check(resident.other == 30 and resident.both == 0, "T14 resident %d's prompt at the spout: shown %d / 30 frames, with the pump's %d" % [nearest, resident.other, resident.both])
+	actor.restore_motion(kept)
+	await _ticks(5)
+	var back: Dictionary = await _watch_prompts(10, "event")
+	_check(back.pump == 10, "T14 neither near: the pump's prompt is back (%d / 10 frames)" % back.pump)
+	player.restart_at(Vector3(0.0, 0.0, 20.0))
+	await _ticks(10)
+
+
+## T15 (T6 docs/Art/2026-10-08-Thirst-Items-Frames-Review.md § Колонка, крок A; plan 2026-10-09 step 4): the pump's form
+## as built, from its own nodes — the lever's back end in the wooden handle, its front end on the cap (inside its radius,
+## between the cap's foot and the knob's top), the ladle's rim clear of the column at the ladle's height.
+## --break=lever|lever_flat|ladle: the old −0.42 sign, a flat lever, the old ladle at x 0.15 (sunk 0.03 m).
+func _t15() -> void:
+	var pump: Node3D = thirst.source
+	var lever: MeshInstance3D = pump.get_node("Lever")
+	var handle: MeshInstance3D = pump.get_node("Handle")
+	var cap: MeshInstance3D = pump.get_node("Cap")
+	var knob: MeshInstance3D = pump.get_node("Knob")
+	var column: MeshInstance3D = pump.get_node("Column")
+	var ladle: MeshInstance3D = pump.get_node("Ladle")
+	if mutation == "lever":
+		lever.rotation.x = -CityWaterPump.LEVER_TILT
+	elif mutation == "lever_flat":
+		lever.rotation.x = 0.0
+	elif mutation == "ladle":
+		ladle.position.x = 0.15
+	var half: float = (lever.mesh as BoxMesh).size.z * 0.5
+	var back: Vector3 = pump.to_local(lever.global_transform * Vector3(0.0, 0.0, -half))
+	var front: Vector3 = pump.to_local(lever.global_transform * Vector3(0.0, 0.0, half))
+	var to_handle: float = back.distance_to(pump.to_local(handle.global_position))
+	var cap_mesh: CylinderMesh = cap.mesh
+	var cap_foot: float = cap.position.y - cap_mesh.height * 0.5
+	var knob_top: float = knob.position.y + (knob.mesh as CylinderMesh).height * 0.5
+	var cap_radius: float = lerpf(cap_mesh.bottom_radius, cap_mesh.top_radius, clampf((front.y - cap_foot) / cap_mesh.height, 0.0, 1.0))
+	var on_cap: bool = front.y >= cap_foot and front.y <= knob_top and Vector2(front.x, front.z).length() <= cap_radius
+	var column_mesh: CylinderMesh = column.mesh
+	var column_foot: float = column.position.y - column_mesh.height * 0.5
+	var at: Vector3 = ladle.position
+	var column_radius: float = lerpf(column_mesh.bottom_radius, column_mesh.top_radius, clampf((at.y - column_foot) / column_mesh.height, 0.0, 1.0))
+	var clear: float = Vector2(at.x, at.z).length() - (ladle.mesh as CylinderMesh).top_radius - column_radius
+	print("CITY_THIRST_INFO the pump: lever back end (y %.3f, z %.3f) — handle (y %.3f, z %.3f), %.3f m apart; front end (y %.3f, z %.3f) on the cap %s; the ladle's rim %.3f m off the column (r %.3f)" % [back.y, back.z, handle.position.y, handle.position.z, to_handle, front.y, front.z, on_cap, clear, column_radius])
+	_check(to_handle <= 0.02 and on_cap, "T15 the lever: its back end in the handle (%.3f m ≤ 0.02), its front end on the cap (y %.3f in %.2f–%.2f, r %.3f ≤ %.3f)" % [to_handle, front.y, cap_foot, knob_top, Vector2(front.x, front.z).length(), cap_radius])
+	_check(clear >= 0.0, "T15 the ladle hangs clear of the column (rim %.3f m off it)" % clear)
 
 
 ## H1 (W1): WATER under FOOD in the status card, one rectangle, the card's width.

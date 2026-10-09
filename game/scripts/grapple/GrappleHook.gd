@@ -2,6 +2,7 @@ class_name GrappleHook
 extends Node3D
 ## Charge-based swept harpoon: profiled windup, fixed flight, confirmed contact.
 ## Hold an attached anchor to hang; Space reels a bounded distance, movement pumps the pendulum.
+## The city parkour hook first pulls itself in to the swing length (rope V4); the duel keeps the contact length.
 ## Finite match inventory. Only recovery refunds; deployed ropes persist across rounds.
 ## Design: docs/GDD/04-Grapple-System.md
 
@@ -73,7 +74,22 @@ var range_m: float = 14.0
 @export var parkour_reel_speed: float = 3.6
 @export var parkour_steer_accel: float = 9.0
 @export var parkour_swing_drag: float = 0.30
+# Rope V4 (plan 2026-10-09-Rope-Pull-Jump-Arc-Substance-Momentum step 1; T5 Т1–Т7 in
+# docs/GDD/2026-10-09-Rope-Pull-And-Jump-Arc-Numbers.md, all PLACEHOLDER): after a city parkour attach the rope
+# pulls itself in to the swing length, never lets out; Space then reels reel_distance beyond it.
+@export var parkour_pull_speed: float = 8.0
+@export var parkour_swing_clearance: float = 0.5
+## The settled hang length Space reels from: the contact length, or for the city parkour hook the swing length the
+## pull reaches (min(contact, max(minimum_rope, anchor − floor − HAND − clearance)), floor = the higher support under
+## the anchor and under the hero at contact).
 var _hang_start_length: float = 0.0
+## This tick's shortening came from the pull, not from Space (read-only; presentation draws a hang, not a regrip).
+var pulling: bool = false
+## The colliders the hanging rope's own anchor stands on (its lamp post), from the anchor marker's
+## "support" meta; the hang's hand → anchor check skips them (T1, plan 2026-10-09 «Рішення T1 після кроків 1–4»: a
+## swing that carries the line behind the post it hangs from keeps the rope). Cornices, awnings and cover still cut.
+## Anchors without the meta (the duel's) skip nothing.
+var _own_support: Array[RID] = []
 var cone_deg: float = 30.0      # free movement only (docs/GDD/04-Grapple-System.md § Конус вибору в 3D)
 
 var attached: bool = false
@@ -248,7 +264,9 @@ func _attach_existing(existing: int) -> void:
 	registry.attach_user(existing, self)
 	anchor_point = record.anchor
 	rope_length = minf(record.length, (anchor_point - (fighter.global_position + HAND)).length())
-	_hang_start_length = rope_length
+	_hang_start_length = _swing_length(rope_length)
+	_own_support = _support_of(anchor_point)
+	pulling = false
 	attached = true
 	phase = Phase.HANG
 	_frames = 0
@@ -530,7 +548,9 @@ func _flight(delta: float, held: bool) -> void:
 			projectile_position = anchor_point
 			_begin_rewind()
 			return
-		_hang_start_length = rope_length
+		_hang_start_length = _swing_length(rope_length)
+		_own_support = _support_of(anchor_point)
+		pulling = false
 		_deployed_token = token
 		registry.attach_user(token, self)
 		token = 0
@@ -596,13 +616,33 @@ func _in_cone(to: Vector3, axis: Vector3) -> bool:
 ## The anchor fire() would pick right now (null = none); public for the smoke test.
 ## World geometry blocks selection, transfer, catches and loaded ropes alike.
 ## Fighter bodies/hurtboxes are excluded; solid city roofs and floors are not.
-func line_clear(from: Vector3, to: Vector3) -> bool:
+## `skip` — extra colliders the ray ignores (the hang passes its anchor's own support, _own_support).
+func line_clear(from: Vector3, to: Vector3, skip: Array[RID] = []) -> bool:
 	if not is_inside_tree():
 		return true
 	var q := PhysicsRayQueryParameters3D.create(from, to, ArenaLayout.COVER_LAYER | 1)
 	q.hit_from_inside = true
-	q.exclude = [fighter.get_rid(), fighter.hurtbox.get_rid()]
+	var exclude: Array[RID] = [fighter.get_rid(), fighter.hurtbox.get_rid()]
+	exclude.append_array(skip)
+	q.exclude = exclude
 	return fighter.get_world_3d().direct_space_state.intersect_ray(q).is_empty()
+
+
+## The colliders the anchor at `point` declares as its own support ("support" meta of its grapple_anchor marker;
+## CityDistrict sets it to the lamp post it builds; its brackets have no collider). Empty for anchors without it.
+func _support_of(point: Vector3) -> Array[RID]:
+	var rids: Array[RID] = []
+	if not is_inside_tree():
+		return rids
+	for n in get_tree().get_nodes_in_group("grapple_anchor"):
+		var marker := n as Node3D
+		if marker == null or marker.global_position.distance_to(point) > 0.01:
+			continue
+		for body in marker.get_meta("support", []):
+			var solid := body as CollisionObject3D
+			if is_instance_valid(solid):
+				rids.append(solid.get_rid())
+	return rids
 
 
 func best_anchor() -> Node3D:
@@ -640,7 +680,8 @@ func _best_anchor() -> Node3D:
 	return best
 
 
-## Inextensible pendulum: motor work comes only from bounded Space reeling.
+## Inextensible pendulum: motor work comes only from bounded Space reeling and, for the city parkour hook, the pull to
+## the swing length.
 ## Constraint displacement moves the body but is removed from stored radial momentum.
 func drive(delta: float, held: bool, reel_held: bool = false) -> void:
 	if delta <= 0.0:
@@ -684,9 +725,18 @@ func drive(delta: float, held: bool, reel_held: bool = false) -> void:
 	if f.control_locked:
 		wish = Vector3.ZERO
 		reel_held = false
+	# Т7: one tick shortens by the larger of the pull and Space, never their sum. The pull stops at the swing length,
+	# Space at reel_distance beyond it (reel_remaining); neither ever lets the rope out.
+	var pull_step := 0.0
+	if _responsive_traversal() and rope_length > _hang_start_length:
+		pull_step = minf(maxf(0.0, parkour_pull_speed * delta), rope_length - _hang_start_length)
+	var reel_step := 0.0
 	if reel_held:
 		var motor_speed := parkour_reel_speed if _responsive_traversal() else reel_speed
-		rope_length -= minf(maxf(0.0, motor_speed * delta), reel_remaining())
+		reel_step = minf(maxf(0.0, motor_speed * delta), reel_remaining())
+	pulling = pull_step > 0.0 and pull_step >= reel_step
+	if pull_step > 0.0 or reel_step > 0.0:
+		rope_length -= maxf(pull_step, reel_step)
 	f.velocity.y -= Fighter.GRAVITY * delta
 	# Pump below the anchor only; full gravity and drag oppose perpetual powered loops.
 	if radial.y > 0.35:
@@ -710,10 +760,32 @@ func drive(delta: float, held: bool, reel_held: bool = false) -> void:
 		# momentum after collision response instead of overwriting the constraint result.
 		var normal := (f.global_position + HAND - anchor_point).normalized()
 		f.velocity = f.velocity.slide(normal).limit_length(speed_limit)
-	if not line_clear(f.global_position + HAND, anchor_point):
+	# The anchor's own post / bracket never cuts its rope; every other solid on hand → anchor does (04 § Трос V4).
+	if not line_clear(f.global_position + HAND, anchor_point, _own_support):
 		_release(false)
 		return
 	_draw_rope(f.global_position + HAND, anchor_point)
+
+
+## Т3/Т4: the length whose lowest point keeps the hand parkour_swing_clearance above a standing hand on the higher of
+## the supports under the anchor and under the hero now. Only the city parkour hook pulls; the duel, the enemy hook and
+## a missing support keep `contact`. The outer min never lets the rope out.
+func _swing_length(contact: float) -> float:
+	if not _responsive_traversal() or not is_inside_tree():
+		return contact
+	var support := maxf(_support_below(anchor_point + Vector3.DOWN * 0.05), _support_below(fighter.global_position + Vector3.UP * 0.05))
+	if is_inf(support):
+		return contact
+	return minf(contact, maxf(minimum_rope, anchor_point.y - support - HAND.y - parkour_swing_clearance))
+
+
+## Height of the first solid world surface straight below `from` (-INF when there is none within 64 m). A read-only
+## query on the body layer; the fighter's own body and hurtbox are excluded.
+func _support_below(from: Vector3) -> float:
+	var q := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 64.0, 1)
+	q.exclude = [fighter.get_rid(), fighter.hurtbox.get_rid()]
+	var hit := fighter.get_world_3d().direct_space_state.intersect_ray(q)
+	return -INF if hit.is_empty() else float(hit.position.y)
 
 
 func _release(reached: bool) -> void:
@@ -755,6 +827,7 @@ func _finish_idle() -> void:
 	if _tip:
 		_tip.visible = false
 	attached = false
+	pulling = false
 	_frames = 0
 	if _rope:
 		_rope.visible = false

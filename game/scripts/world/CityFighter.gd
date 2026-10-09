@@ -105,14 +105,25 @@ func collapse_from_hunger() -> void:
 		_spawn_ragdoll(Vector3.ZERO, false)
 	_set_state(State.KO)
 
-## Fighter._walk_physics with the braking rate scaled by the state (T5: «ноги не слухаються»).
+## This body's walking pace without a city state: walk_speed × Fighter.speed_mult() (fatigue, the duel's own factors)
+## × the hunger band's walk — never the haze's walk × 0.85 (T5 docs/GDD/2026-10-09-Rope-Pull-And-Jump-Arc-Numbers.md
+## Х1, § 3.2: a hungry body is compared with a hungry body). The edge of variant A in _walk_physics.
+func sober_pace() -> float:
+	return data.walk_speed * super.speed_mult() * (hunger.walk_multiplier() if hunger != null else 1.0)
+
+## Fighter._walk_physics with the braking rate scaled by the state (T5: «ноги не слухаються») — below walking pace only.
+## Above sober_pace() (what is left of a dash or a landing) the full ground_decel brakes, exactly as without the state,
+## so neither «Хміль» nor «Заплутаність» carries momentum beyond a sober body (T4 audit 2026-10-08 RED п. 1; plan
+## 2026-10-09-Rope-Pull-Jump-Arc-Substance-Momentum step 3, variant A).
 func _walk_physics(delta: float, vx: float, vz: float = 0.0) -> void:
 	if not _hazy() and not _substance():
 		super._walk_physics(delta, vx, vz)
 		return
 	var cur := Vector2(velocity.x, velocity.z if _free() else 0.0)
 	var want := Vector2(vx, vz if _free() else 0.0)
-	var rate := data.ground_accel if want.length() > cur.length() - 0.001 else data.ground_decel * decel_scale()
+	var rate := data.ground_accel
+	if want.length() <= cur.length() - 0.001:
+		rate = data.ground_decel if cur.length() > sober_pace() else data.ground_decel * decel_scale()
 	var h := cur.move_toward(want, rate * delta)
 	_ground_physics(delta, h.x, h.y)
 

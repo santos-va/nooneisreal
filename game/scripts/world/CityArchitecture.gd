@@ -22,7 +22,8 @@ func _build(district: Node3D) -> void:
 			# Low bodies are explicitly terraces, framed with stone arcades and coping.
 			var center: Vector3 = spec.center
 			_facade(Vector3(center.x, 0, -9.99), 20, 3.8, 0, false)
-			_box(Vector3(center.x, 3.9, -9.96), Vector3(20, 0.2, 0.36), "stone")
+			# The coping stops 2 cm short of the terrace's corners: its ends shared the terrace sides' planes.
+			_box(Vector3(center.x, 3.9, -9.96), Vector3(19.96, 0.2, 0.36), "stone")
 	# Taller houses sit behind the upper walking court; its five-metre radius remains open.
 	_box(Vector3(20, 10, -28), Vector3(20, 12, 4), "brick", Basis.IDENTITY, true)
 	_building(Vector3(20, 10, -28), Vector3(20, 12, 4), 4.0)
@@ -32,7 +33,8 @@ func _build(district: Node3D) -> void:
 	_passage()
 	_bridge()
 	for x: float in [-20.0, 20.0]:
-		_box(Vector3(x, 4.003, -20), Vector3(20, 0.006, 20), "paving")
+		# 1 cm inside the terrace's edges: the paving's 6 mm sides shared the planes of the houses and parapets on it.
+		_box(Vector3(x, 4.003, -20), Vector3(19.98, 0.006, 19.98), "paving")
 	_flush()
 
 func _building(center: Vector3, size: Vector3, bottom: float) -> void:
@@ -115,6 +117,10 @@ func _balcony(origin: Vector3, basis: Basis, bottom: Vector3, width: float) -> v
 	for side: float in [-1.0, 1.0]:
 		_collider(origin + basis * (bottom + Vector3(side * width * 0.5, 0.45, 0.47)), Vector3(0.07, 0.9, 0.85), basis)
 		_local_box(origin, basis, bottom + Vector3(side * width * 0.5, 0.88, 0.47), Vector3(0.07, 0.08, 0.85), "iron")
+		# D19 (docs/Audit/2026-10-08-City-Tidy-Technical-Audit.md): balusters under the side rail, so the solid side of
+		# the balcony is a visible railing and not an invisible wall.
+		for z: float in [0.16, 0.39, 0.62]:
+			_local_box(origin, basis, bottom + Vector3(side * width * 0.5, 0.43, z), Vector3(0.045, 0.85, 0.045), "iron")
 		_box(origin + basis * (bottom + Vector3(side * width * 0.32, -0.2, 0.35)), Vector3(0.1, 0.48, 0.1), "iron", basis * Basis(Vector3.RIGHT, -0.7))
 
 func _mansard(center: Vector3, size: Vector3, top: float) -> void:
@@ -221,7 +227,7 @@ func _bridge() -> void:
 			_box(Vector3(-9.5 + float(index) * 0.5, 4.62, z), Vector3(0.035, 0.76, 0.045), "iron")
 		for x: float in [-8.0, -4.0, 4.0, 8.0]:
 			_box(Vector3(x, 4.62, z), Vector3(0.08, 0.8, 0.09), "iron")
-			_box(Vector3(x, 4.15, z), Vector3(0.18, 0.3, 0.22), "stone")
+			_box(Vector3(x, 4.14, z), Vector3(0.18, 0.32, 0.22), "stone")   # foot 2 cm under the rail's underside
 
 func _local_box(origin: Vector3, basis: Basis, center: Vector3, size: Vector3, material: String, solid: bool = false) -> void:
 	_box(origin + basis * center, size, material, basis, solid)

@@ -10,9 +10,13 @@ extends SceneTree
 ##   M3 the call's menu open for 60 s: still open, «Піти за ним» works;
 ##   M4 no token left when the trap springs: no «Віддати», the first, focused exit «Вивернути кишені · жетонів немає»,
 ##      pressing it ends the alley with nothing taken; caught with no token: nothing taken, the words say so.
+##   M5 (T4 audit 2026-10-08 «Інше», plan 2026-10-09 step 4) freeing the world with a menu open — the pedlar's, the
+##      leaves', the alley's call, its trap — reports nothing: 0 engine errors or warnings (OS.add_logger).
 ## Literals (T8, never read from the code): guard 0.35 s = 21 ticks (PLACEHOLDER), the call menu 60 s, «Тікати · Esc / B».
 ## --break=arming|asktimer|zero are negative controls: no guard at all; the call's hidden timer running behind its open
-## menu; a trap menu built before the tokens ran out and never counted again.
+## menu; a trap menu built before the tokens ran out and never counted again. --break=teardown replays the director's
+## old order (the menu closed after the event left the tree): its engine errors are the subject (playable_check allows
+## exactly those «!is_inside_tree()» lines in that one negative).
 ## Sentinel: CITY_EVENT_MENUS_COMPLETE checks=N failures=M mutation=<m>; failures print "CITY_EVENT_MENUS: ...".
 const GUARD_TICKS := 21
 const ASK_MENU_TICKS := 3600
@@ -203,6 +207,8 @@ func _run() -> void:
 	await _clean()
 	world.queue_free()
 	await _ticks(3)
+	await _m5()
+	print("CITY_EVENT_MENUS_INFO engine frames %d of the 12000 the battery allows" % Engine.get_process_frames())
 	for singleton: String in ["Sfx", "UltMusic", "Music"]:
 		if root.has_node(singleton):
 			root.get_node(singleton).queue_free()
@@ -302,3 +308,93 @@ func _m4() -> void:
 	var alive: bool = is_instance_valid(chased)
 	_check(alive and chased.pending_outcome == "caught" and chased.robbed == 0 and "порожньо" in events.dialogue.body.text, "M4 caught with no token: nothing taken (%s)" % (events.dialogue.body.text if events.dialogue.opened else "—"))
 	await _end()
+
+
+## Every error and warning the engine reports while it is attached (OS.add_logger), for M5.
+class EngineReports extends Logger:
+	var lines: Array[String] = []
+
+	func _log_error(_function: String, file: String, line: int, code: String, rationale: String, _editor_notify: bool, _error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
+		lines.append("%s:%d %s %s" % [file.get_file(), line, code, rationale])
+
+	func _log_message(_message: String, _error: bool) -> void:
+		pass
+
+
+## A fresh world for M5 (saves off, the director on with no random starts, tokens for the alley).
+func _open_city() -> void:
+	world = load("res://scenes/world/CityWorld.tscn").instantiate()
+	world.story_save_enabled = false
+	world.journey_save_enabled = false
+	world.lower_story_save_enabled = false
+	root.add_child(world)
+	current_scene = world
+	world.progress.save_enabled = false
+	world.npc_director.save_enabled = false
+	events = world.events
+	progress = world.progress
+	await _ticks(20)
+	events.enable_for_test(9753)
+	events.start_chance = 0.0
+	progress.earn_credits(10)
+
+
+## The pedlar's or the leaves' offer opened through the real interact key at the market court.
+func _offer(id: String) -> Node:
+	world.player.restart_at(Vector3(0.0, 0.0, 20.0))
+	await _ticks(30)
+	events.session_time = 1000.0
+	events.last_end_time = -INF
+	events.leaves_count = 0
+	events.vendor_count = 0
+	if not events.try_start(id):
+		_check(false, "M5 the %s starts at the market court (%s)" % [id, events.block_reason(id)])
+		return null
+	var event: Node = events.active
+	event.person.global_position = world.player.global_position + Vector3(1.4, 0.0, 0.0)
+	event.person.stop()
+	await _until(func() -> bool: return is_instance_valid(event) and event.phase == "offer" and events.dialogue.prompt.visible, 90)
+	await _tap_interact()
+	var ok: bool = is_instance_valid(event) and events.dialogue.opened and event.phase == "talk"
+	_check(ok, "M5 the real interact key opens the %s's menu" % id)
+	return event if ok else null
+
+
+## M5 (T4 audit 2026-10-08 «Інше»; plan 2026-10-09 step 4): the world freed with an event's menu open reports nothing —
+## the pedlar's offer, the leaves' offer, the alley's call and its trap. The engine's own reports are counted from the
+## free to three frames after (and an ERROR printed then is red in playable_check as well). --break=teardown replays
+## the order before the fix: the menu closed after the event and its people have left the tree, the event still running
+## — on the dialogue's tree_exiting, the director's first child and so the last to leave before the director's own
+## _exit_tree (children leave last-added first; a node is out of the tree once its own exit has run).
+func _m5() -> void:
+	var content: Node = root.get_node("ContentSettings")
+	var old_content: String = content.get("storage_path")
+	content.call("load_settings", "user://city_event_menus_content_%d.cfg" % OS.get_process_id())
+	content.call("mark_notice_seen")
+	content.call("set_drugs_mode", "full")
+	for spec: Array in [["vendor", "talk"], ["leaves", "talk"], ["alley", "ask"], ["alley", "trap"]]:
+		await _open_city()
+		var event: Node = null
+		if spec[0] == "alley":
+			event = await _ask("alley_c")
+			if event != null and spec[1] == "trap" and not await _spring(event):
+				_check(false, "M5 into the trap")
+				event = null
+		else:
+			event = await _offer(spec[0])
+		var open: bool = event != null and is_instance_valid(event) and event.phase == spec[1] and events.dialogue.opened
+		_check(open, "M5 the %s menu (%s) is open before the world goes" % [spec[0], spec[1]])
+		if mutation == "teardown":
+			var dialogue: Node = events.dialogue
+			var replay := func() -> void:
+				if dialogue.opened:
+					dialogue.close()
+			dialogue.tree_exiting.connect(replay, CONNECT_ONE_SHOT)
+		var reports := EngineReports.new()
+		OS.add_logger(reports)
+		world.queue_free()
+		await _ticks(3)
+		OS.remove_logger(reports)
+		_check(open and reports.lines.is_empty(), "M5 the world freed with the %s menu open (%s): %d engine reports %s" % [spec[0], spec[1], reports.lines.size(), reports.lines])
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(content.get("storage_path")))
+	content.call("load_settings", old_content)

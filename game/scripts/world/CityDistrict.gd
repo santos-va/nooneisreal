@@ -7,6 +7,13 @@ const Architecture = preload("res://scripts/world/CityArchitecture.gd")
 const Market = preload("res://scripts/world/CityMarket.gd")
 const Interiors = preload("res://scripts/world/CityInteriors.gd")
 const Backdrop = preload("res://scripts/world/CityBackdrop.gd")
+const Props = preload("res://scripts/world/CityProps.gd")
+## D1 (docs/Audit/2026-10-08-City-Tidy-Technical-Audit.md): the strut of a wall bracket starts 0.75 m under its arm,
+## which put eight struts through the window panes below them. Brackets over a window get a short strut that stays
+## above the window head (metres under the arm), and the three brackets only 0.15 m over a pane get a tie rod above
+## the arm instead (a negative drop). Keys are anchor indices of CityLayout.anchor_supports(); the anchors, their
+## points and mounts are unchanged. PLACEHOLDER metres.
+const BRACE_DROP: Dictionary = {6: 0.3, 7: 0.3, 9: 0.3, 16: 0.35, 17: 0.35, 22: -0.75, 23: -0.75, 24: -0.75}
 var materials: Dictionary = {}
 var geometry_count: int = 0
 var maintenance: CityMaintenance
@@ -26,6 +33,9 @@ func _ready() -> void:
 	add_child(Market.new())
 	add_child(Interiors.new())
 	add_child(Backdrop.new())
+	# Phase 0 of docs/Plans/2026-10-09-City-Tidy-And-Modern-Props.md: barrels, crates to vault, urns, the steam main and
+	# the steam vents — procedural, from the city's own materials.
+	add_child(Props.new())
 	_street_details()
 	_parkour_steps()
 	maintenance = CityMaintenance.new()
@@ -123,29 +133,32 @@ func _roofs_and_rails() -> void:
 		var infill: MeshInstance3D = parapet.get_child(0) as MeshInstance3D
 		(infill.mesh as BoxMesh).size.y = 0.24
 		infill.position.y = -0.38
-	# North edges are guarded, while the ramps and bridge mouths stay open.
-	for x: float in [-20.0, 20.0]:
-		_box("NorthParapet" + str(x), Vector3(x, 4.45, -30), Vector3(20, 0.9, 0.22), "slate", 9)
+	# North edges are guarded, while the ramps and bridge mouths stay open. D2/D13: the tall house (x 10–30) closes
+	# the whole north edge of the east terrace, so it has no parapet; the west one stops at x −18.25, short of the
+	# plaster house (x −18–−10) and its plinth, and guards the open edge west of it.
+	_box("NorthParapet-20", Vector3(-24.125, 4.45, -30), Vector3(11.75, 0.9, 0.22), "slate", 9)
 
 func _street_details() -> void:
-	# Shallow strips articulate street directions without introducing trip hazards.
-	for x: float in [-5.0, 5.0]:
-		_box("StreetSeam" + str(x), Vector3(x, 0.004, 0), Vector3(0.08, 0.008, 62), "ink")
-	for z: float in [-5.0, 5.0]:
-		_box("CrossStreetSeam" + str(z), Vector3(0, 0.006, z), Vector3(62, 0.008, 0.08), "ink")
+	# Н1 (T6): the four 62 m `ink` strips are gone — ink is the outline, not a street surface. No rails either: the
+	# tram is not decided (T7).
 	var supports: Array[Dictionary] = Layout.anchor_supports()
 	for index: int in range(supports.size()):
-		_anchor_support(index, supports[index])
+		var own: Array[Node] = _anchor_support(index, supports[index])
 		var anchor: Marker3D = Marker3D.new()
 		anchor.name = "StreetAnchor%d" % index
 		anchor.position = supports[index].point
 		anchor.set_meta("lamp", false)
+		# The anchor's own solid support (a lamp post; brackets have no collider): the hanging rope never breaks on it
+		# (GrappleHook._support_of, plan 2026-10-09 «Рішення T1 після кроків 1–4»).
+		anchor.set_meta("support", own)
 		anchor.add_to_group("grapple_anchor")
 		add_child(anchor)
 
 ## Visible support of one rope anchor (CityLayout.anchor_supports): the anchor sits 0.25 m under its ceramic cap, the cap
 ## under an arm, the arm on a post or fixed into the wall / slab at `mount`. PLACEHOLDER sizes; look and colour are T6's.
-func _anchor_support(index: int, spec: Dictionary) -> void:
+## Returns the solid bodies of this support (the post), which the anchor's rope ignores while hanging from it.
+func _anchor_support(index: int, spec: Dictionary) -> Array[Node]:
+	var own: Array[Node] = []
 	var point: Vector3 = spec.point
 	var mount: Vector3 = spec.mount
 	var kind: String = spec.kind
@@ -154,23 +167,28 @@ func _anchor_support(index: int, spec: Dictionary) -> void:
 		_box("AnchorBracket%d" % index, Vector3(point.x, (top + point.y + 0.25) * 0.5, point.z), Vector3(0.08, top - point.y - 0.25, 0.08), "iron")
 		_box("AnchorPlate%d" % index, Vector3(point.x, top - 0.03, point.z), Vector3(0.36, 0.06, 0.36), "iron")
 		_box("AnchorCeramic%d" % index, point + Vector3(0, 0.25, 0), Vector3(0.35, 0.15, 0.3), "marker")
-		return
+		return own
 	var arm_y: float = point.y + 0.3 if kind == "post" else mount.y
 	var flat: Vector3 = Vector3(point.x - mount.x, 0, point.z - mount.z)
 	var yaw: float = 0.0 if absf(flat.z) < 0.000001 else atan2(-flat.z, flat.x)
 	if kind == "post":
-		_box("AnchorPost%d" % index, Vector3(mount.x, (mount.y + arm_y) * 0.5, mount.z), Vector3(0.18, arm_y - mount.y, 0.18), "ink", 9)
-	var arm: Node3D = _box("AnchorArm%d" % index, Vector3((mount.x + point.x) * 0.5, arm_y, (mount.z + point.z) * 0.5), Vector3(flat.length() + 0.35, 0.15, 0.18), "brass")
+		own.append(_box("AnchorPost%d" % index, Vector3(mount.x, (mount.y + arm_y) * 0.5, mount.z), Vector3(0.18, arm_y - mount.y, 0.18), "ink", 9))
+	# D14: the arm is 2 cm narrower than the post (its sides used to share the post's planes) and ends 1 cm inside the
+	# ceramic cap (its end face used to share the cap's side plane).
+	var arm: Node3D = _box("AnchorArm%d" % index, Vector3((mount.x + point.x) * 0.5, arm_y, (mount.z + point.z) * 0.5), Vector3(flat.length() + 0.33, 0.15, 0.16), "brass")
 	arm.rotation.y = yaw
 	if kind == "bracket":
-		# Wall plate at the fixing and a strut from 0.9 m below it to the arm's middle.
-		var plate: Node3D = _box("AnchorPlate%d" % index, mount + Vector3(0, -0.3, 0), Vector3(0.12, 0.9, 0.36), "iron")
+		# Wall plate at the fixing and a strut from `drop` below it to the arm's middle (D1: a negative drop is a tie
+		# rod from above the arm). The plate spans the fixing and the strut's foot.
+		var drop: float = float(BRACE_DROP.get(index, 0.75))
+		var plate: Node3D = _box("AnchorPlate%d" % index, mount + Vector3(0, 0.075 - drop * 0.5 if drop > 0.0 else -0.075 - drop * 0.5, 0), Vector3(0.12, absf(drop) + 0.15, 0.36), "iron")
 		plate.rotation.y = yaw
-		var low: Vector3 = mount + Vector3(0, -0.75, 0)
-		var high: Vector3 = Vector3((mount.x + point.x) * 0.5, arm_y - 0.05, (mount.z + point.z) * 0.5)
+		var low: Vector3 = mount + Vector3(0, -drop, 0)
+		var high: Vector3 = Vector3((mount.x + point.x) * 0.5, arm_y + (-0.05 if drop > 0.0 else 0.05), (mount.z + point.z) * 0.5)
 		var strut: Node3D = _box("AnchorStrut%d" % index, (low + high) * 0.5, Vector3(0.08, 0.08, low.distance_to(high)), "iron")
 		strut.basis = Basis.looking_at((high - low).normalized(), Vector3.UP if absf((high - low).normalized().y) < 0.99 else Vector3.FORWARD)
 	_box("AnchorCeramic%d" % index, point + Vector3(0, 0.25, 0), Vector3(0.35, 0.15, 0.3), "marker")
+	return own
 
 func _markers() -> void:
 	var spawn: Marker3D = Marker3D.new()

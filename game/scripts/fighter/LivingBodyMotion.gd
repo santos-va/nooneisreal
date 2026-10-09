@@ -7,10 +7,14 @@ extends RefCounted
 ##   R7 — the get-up clip, from its first moving frame, fills getup_frames() instead of jumping into the stance;
 ##   R8 — a light blow on a heavy body («утримався») gives a small flinch and no squash on the hero, picture only;
 ##   J1 — a longer take-off (0.20 s) with a short stretch; a running jump takes NinjaJump_Start;
-##   J2 — apex (|v_y| < 2 m/s) NinjaJump_Idle, legs reaching for the support 6 frames before it, arms searching for
-##        balance after 0.6 s of falling (LiftAir_Fall_Air, arms only);
+##   J2 — one tuck (NinjaJump_Idle) per jump from the ground, legs reaching for the support 6 frames before it, arms
+##        searching for balance after 0.6 s of falling (LiftAir_Fall_Air, arms only);
 ##   J3 / P8 — three landings by impact speed: light < 14 m/s, normal 14–18 (deeper squash, a hand on the ground,
 ##        dust), heavy ≥ 18 (NinjaJump_Land, the trailing knee to the ground, a hand down, dust).
+## Jump arc С2 (plan docs/Plans/2026-10-09-Rope-Pull-Jump-Arc-Substance-Momentum.md step 2; T5 С1–С6 in
+## docs/GDD/2026-10-09-Rope-Pull-And-Jump-Arc-Numbers.md § 2, PLACEHOLDER): after a take-off the air is exactly
+## takeoff → apex (the tuck) → fall, the tuck from the end of the take-off until the ground is 0.31 s away and never one
+## shorter than 0.28 s; no `rise` after a take-off; blends of at least 0.12 s; the light landing plays Jump_Land ×6.
 ##
 ## Contract (docs/Fix/2026-10-07-Living-Body-Fix.md § Звірка, п. 1). SkeletalRig first draws the mannequin exactly as
 ## before. That pose is the authority: BoneRagdoll starts from it (BoneRagdoll.gd:52-57) and the fighter's position
@@ -47,12 +51,17 @@ const TAKEOFF_SECONDS: float = 0.20
 const NINJA_TAKEOFF: Vector2 = Vector2(0.08, 0.80)
 const JUMP_TAKEOFF_FROM: float = 0.45
 const STRETCH: float = 0.6 # PLACEHOLDER take-off stretch, the mirror of Fighter.SQUASH_HIT.
-const APEX_SPEED: float = 2.0
+const APEX_SPEED: float = 2.0 # only the long-fall arm clock (_fall_time) now; the tuck is timed (С1–С3)
+## С2: the tuck ends when the support is this many seconds away: 0.18 (fall blend) + 0.10 (REACH_FRAMES) + 0.03.
+const TUCK_EXIT_SECONDS: float = 0.31
+## С3: a tuck that would last less than this (0.18 + 0.10) is never started — a low jump does not flick into one.
+const TUCK_MIN_SECONDS: float = 0.28
 const REACH_FRAMES: float = 6.0
 const LONG_FALL_SECONDS: float = 0.6
 const NORMAL_LANDING: float = 14.0
 const HEAVY_LANDING: float = 18.0
-const LAND_RATE: float = 2.5 # Jump_Land ×2.5 instead of ×7.
+const LAND_RATE: float = 2.5 # Jump_Land ×2.5 instead of ×7: the normal landing.
+const LIGHT_LAND_RATE: float = 6.0 # С5: the light landing, Jump_Land ≈ 1.27 s → 0.21 s; standing again ≈ 8–9 ticks after.
 const HEAVY_LAND_FRAMES: float = 20.0 # P8: NinjaJump_Land ×3.8.
 const NORMAL_SQUASH: float = 1.4
 const KNEEL_BACK: float = 0.32 # PLACEHOLDER metres the trailing foot goes back so its knee meets the ground.
@@ -62,10 +71,22 @@ const NORMAL_LEAN: float = 0.80 # PLACEHOLDER radians the chest leans forward ov
 const HEAVY_LEAN: float = 0.80 # PLACEHOLDER, heavy landing.
 const HAND_HEIGHT: float = 0.04 # PLACEHOLDER metres: the wrist bone just above the ground.
 ## Blends between this layer's own modes, and the fade back into the authority pose.
-const MODE_BLEND: Dictionary = {"takeoff": 0.06, "apex": 0.08, "fall": 0.08, "rise": 0.10, "land_light": 0.05, "land_normal": 0.04, "land_heavy": 0.03}
+## С4: peak ≈ 12°/tick from the tuck to the straight pose (was 21–25° at 0.08–0.10 s). Take-off: T5's own fallback
+## 0.18 — at 0.15 the running take-off turned the sword hand 18.9° (Choko) / 22.2° (Skea) in a tick, above 17.1 / 22.1
+## before bf38d3e (G3, tools/animation/jump_arc_check.gd); at 0.18 it is 16.0 / 18.7.
+## Landings — T1's choice, T2 variant B (plan 2026-10-09 «Рішення T1 після кроків 1–4»): light 0.15, normal 0.08,
+## heavy 0.06. At T5's 0.12 the light landing kicked the legs ≥ 15° for a tick, the heavy one stayed shallower than the
+## normal one (G4), and the hand missed the ground on normal / heavy landings (living_body_check J3 / P8, ≤ 0.10 m).
+## B is the only tested set where both checks hold; the air modes keep T5's ≥ 0.12 s, and normal / heavy are still
+## twice as long as on 97675c7 (0.04 / 0.03). PLACEHOLDER until T5 / playtest.
+const MODE_BLEND: Dictionary = {"takeoff": 0.18, "apex": 0.18, "fall": 0.18, "rise": 0.12, "land_light": 0.15, "land_normal": 0.08, "land_heavy": 0.06}
 const EXIT_SECONDS: float = 0.15
 
 var enabled: bool = true
+## The С4/С5/С3 values as variables only so a check can put the 2026-10-08 ones back as negative controls.
+var mode_blend: Dictionary = MODE_BLEND
+var light_land_rate: float = LIGHT_LAND_RATE
+var tuck_min_seconds: float = TUCK_MIN_SECONDS
 ## Read-only for checks and captures.
 var mode: String = ""
 var clip: String = ""
@@ -129,6 +150,8 @@ var _pending_force: float = 1.0
 var _pending_held: bool = false
 var _pending_amplitude: float = 1.0
 var _takeoff_frames: int = 0
+enum Tuck { PENDING, ON, DONE }
+var _tuck: Tuck = Tuck.DONE
 var _landing_id: int = 0
 var _dust_id: int = -1
 
@@ -267,11 +290,19 @@ func observe(f: Fighter, rig: SkeletalRig, delta: float) -> void:
 			_takeoff_frames = 0
 			_takeoff = _prev_state in [Fighter.State.IDLE, Fighter.State.WALK, Fighter.State.CROUCH, Fighter.State.BLOCK] and f.velocity.y > 0.0
 			_takeoff_running = _ground_speed > AuthoredLocomotion.WALK_LIMIT * rig._gait_scale
+			# Only a jump from the ground tucks; a rope release, a second jump or a step off an edge is rise / fall.
+			_tuck = Tuck.PENDING if _takeoff else Tuck.DONE
 		else:
 			_air_time += maxf(delta, 0.0)
 			_takeoff_frames += 1
 		_fall_time = _fall_time + maxf(delta, 0.0) if f.velocity.y <= -APEX_SPEED else 0.0
 		_last_air_vy = f.velocity.y
+		if _tuck != Tuck.DONE and _takeoff_frames >= roundi(TAKEOFF_SECONDS * 60.0):
+			var to_ground: float = time_to_ground(f)
+			if _tuck == Tuck.PENDING:
+				_tuck = Tuck.ON if to_ground - TUCK_EXIT_SECONDS >= tuck_min_seconds else Tuck.DONE
+			elif to_ground <= TUCK_EXIT_SECONDS:
+				_tuck = Tuck.DONE
 	elif _prev_state == Fighter.State.JUMP and state in [Fighter.State.IDLE, Fighter.State.WALK] and f.on_ground():
 		# Fighter cleared velocity.y on contact; the last airborne value plus this tick's gravity is the impact.
 		impact_speed = maxf(0.0, -(_last_air_vy - Fighter.GRAVITY * f.data.fall_gravity_mult * maxf(delta, 0.0)))
@@ -317,8 +348,10 @@ func _choose(f: Fighter, rig: SkeletalRig) -> String:
 		Fighter.State.JUMP:
 			if _takeoff and _takeoff_frames < roundi(TAKEOFF_SECONDS * 60.0):
 				return "takeoff"
-			if absf(f.velocity.y) < APEX_SPEED:
+			if _tuck == Tuck.ON:
 				return "apex"
+			if _takeoff:
+				return "fall" # С1: no `rise` after a take-off — one arc
 			return "fall" if f.velocity.y < 0.0 else "rise"
 		Fighter.State.IDLE:
 			if rig.locomotion.moving():
@@ -327,7 +360,7 @@ func _choose(f: Fighter, rig: SkeletalRig) -> String:
 				"heavy":
 					return "land_heavy" if _landing_time < HEAVY_LAND_FRAMES / 60.0 else ""
 				"normal", "light":
-					return ("land_" + landing_tier) if _landing_time * LAND_RATE < clip_length("Jump_Land") else ""
+					return ("land_" + landing_tier) if _landing_time * _land_rate() < clip_length("Jump_Land") else ""
 	return ""
 
 
@@ -376,7 +409,7 @@ func draw(skeleton: Skeleton3D, hero: Node3D, f: Fighter, rig: SkeletalRig, delt
 	if wanted.is_empty():
 		weight = smoothstep(0.0, _exit_seconds, _exit_time - _exit_hold)
 	else:
-		var blend: float = float(MODE_BLEND.get(wanted, 0.0))
+		var blend: float = float(mode_blend.get(wanted, 0.0))
 		weight = 1.0 if blend <= 0.0 else smoothstep(0.0, blend, _mode_time)
 	var rotations: Array[Quaternion] = target[0]
 	var presented: Array[Quaternion] = []
@@ -510,7 +543,7 @@ func _target(wanted: String, f: Fighter, rig: SkeletalRig, skeleton: Skeleton3D)
 			return _fall_target(f)
 		"land_light", "land_normal":
 			clip = "Jump_Land"
-			clip_time = minf(_landing_time * LAND_RATE, clip_length(clip))
+			clip_time = minf(_landing_time * _land_rate(), clip_length(clip))
 			return sample(clip, clip_time)
 		"land_heavy":
 			clip = "NinjaJump_Land"
@@ -584,11 +617,7 @@ func _fall_target(f: Fighter) -> Array:
 	var rotations: Array[Quaternion] = _authority_rotation.duplicate()
 	var pelvis: Vector3 = _authority_position[_pelvis]
 	# J2: legs reach for the support it will meet within REACH_FRAMES (read-only floor query).
-	var height: float = maxf(f.global_position.y - f.floor_y(), 0.0)
-	var speed: float = maxf(-f.velocity.y, 0.0)
-	var gravity: float = Fighter.GRAVITY * f.data.fall_gravity_mult
-	var to_ground: float = (-speed + sqrt(speed * speed + 2.0 * gravity * height)) / gravity
-	reach_weight = clampf(1.0 - to_ground / (REACH_FRAMES / 60.0), 0.0, 1.0)
+	reach_weight = clampf(1.0 - time_to_ground(f) / (REACH_FRAMES / 60.0), 0.0, 1.0)
 	if reach_weight > 0.0 and _cache.has("Jump_Land"):
 		clip = "Jump_Land"
 		clip_time = 0.0
@@ -608,6 +637,24 @@ func _fall_target(f: Fighter) -> Array:
 			clip = "LiftAir_Fall_Air"
 			clip_time = fposmod(_fall_time - LONG_FALL_SECONDS, clip_length("LiftAir_Fall_Air"))
 	return [rotations, pelvis]
+
+
+## Seconds until the body meets the support below at its current vertical speed: up at Fighter.GRAVITY, down at
+## GRAVITY × fall_gravity_mult (Fighter._tick_air). A falling body gives the J2 reach formula exactly. Read-only.
+static func time_to_ground(f: Fighter) -> float:
+	var height: float = maxf(f.global_position.y - f.floor_y(), 0.0)
+	var down: float = Fighter.GRAVITY * f.data.fall_gravity_mult
+	var rising: float = 0.0
+	var speed: float = -f.velocity.y
+	if speed < 0.0:
+		rising = -speed / Fighter.GRAVITY
+		height += speed * speed / (2.0 * Fighter.GRAVITY)
+		speed = 0.0
+	return rising + (-speed + sqrt(speed * speed + 2.0 * down * height)) / down
+
+
+func _land_rate() -> float:
+	return light_land_rate if landing_tier == "light" else LAND_RATE
 
 
 ## Skeleton-space rotations of every bone for a set of local rotations (parents precede children in UAL).
