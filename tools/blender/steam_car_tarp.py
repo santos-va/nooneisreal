@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Catalogue No. 29 «Легковик-паровик під брезентом» — a steam passenger car under a canvas cover, standing prop.
 
 Canon of form: the left-hand vehicle of game/assets/sprites/sprite_steamcars_v1.png (registry `sprite-steamcars-v1`):
