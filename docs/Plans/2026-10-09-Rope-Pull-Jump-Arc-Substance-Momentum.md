@@ -90,6 +90,13 @@
 
 Немає блокувальних. T1 вибрав V4 за словами Santos 2026-10-08. Якщо він захоче, щоб тягнув лише Space, це одна змінна: швидкість тяги 0.
 
+**Рішення T1 після кроку 0** (числа T5 — [[2026-10-09-Rope-Pull-And-Jump-Arc-Numbers]]):
+- **Т4 — підлога для `L_ціль` — вища з двох: під якорем і під героєм.** З правилом «під якорем» 4 із 37 зачепів біля ліхтарів тераси не тягнуть (T5, `still_v1_*.log`).
+- **Гарди замінено на точніші (T5):**
+  - трос — «довжина доходить до `L_ціль`», а не «тяга > 1,2 м»: у 4/18 і 5/19 зачепів скорочення менше за 1,2;
+  - стрибок — G1–G4 замість «≤ 19 тиків»: 16 із 19 тиків «до» — це посадка в `Jog_Fwd`;
+  - «Хміль» — тотожність вище за швидкість ходи + стеля зайвого шляху на зупинку + «оптимальний ввід не далі», а не «той самий ввід → не далі». Після A лишається +0,314 / +0,343 м на зупинку — задумана ціна «ноги несуть».
+
 ## Кроки
 
 | # | хто | що (файли) | ризик | перевірка (команда → очікуваний вихід) |
@@ -110,4 +117,4 @@
 - WARNING рушія в позитивних логах (пропозиція 6 T4) — наступним планом, щоб не змінювати батарею посеред цієї хвилі.
 
 ## Related
-- [[state]] · [[constitution]] · [[ADR-019-Audit-And-Many-Views-Before-Decision]] · [[04-Grapple-System]] · [[ADR-026-Substances-Nutrition-And-Thirst]] · [[2026-10-08-Rope-Swing-And-Jump-Fix]] · [[2026-10-08-Thirst-Substances-Icons-Review]] · [[2026-10-08-Thirst-Items-Frames-Review]] · [[2026-10-08-Substances-And-Nutrition]] · [[recurring_class_register]] · [[2026-10-07-T1-Orchestration-Session]]
+- [[state]] · [[constitution]] · [[ADR-019-Audit-And-Many-Views-Before-Decision]] · [[2026-10-09-Rope-Pull-And-Jump-Arc-Numbers]] · [[04-Grapple-System]] · [[ADR-026-Substances-Nutrition-And-Thirst]] · [[2026-10-08-Rope-Swing-And-Jump-Fix]] · [[2026-10-08-Thirst-Substances-Icons-Review]] · [[2026-10-08-Thirst-Items-Frames-Review]] · [[2026-10-08-Substances-And-Nutrition]] · [[recurring_class_register]] · [[2026-10-07-T1-Orchestration-Session]]

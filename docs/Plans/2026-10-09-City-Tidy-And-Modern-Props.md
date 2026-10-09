@@ -1,6 +1,6 @@
 # План — порядок у кварталі й пропи «нестандартного реалізму модерну»
 
-**Дата:** 2026-10-09 · **Роль:** T1 Дедал · **Статус:** `approved` для фази 0 (0 кредитів); фази 1–2 чекають розвилок Santos ·
+**Дата:** 2026-10-09 · **Роль:** T1 Дедал · **Статус:** `approved` — фаза 0 виконується; розвилки закрито [[ADR-027-City-Modern-Props-Style-And-Path]]; кроки 1 і 3 (кредити) чекають `get_cost` і числа для Santos ·
 **Виріс з:**
 - технічний аудит T2 [[2026-10-08-City-Tidy-Technical-Audit]];
 - художній аудит і каталог T6 [[2026-10-08-City-Modern-Realism-Props]], промпти [[City-Props-Prompts]];
@@ -71,6 +71,14 @@
 
 ## Розвилки для Santos
 
+**Закрито 2026-10-09 відповідями Santos — [[ADR-027-City-Modern-Props-Style-And-Path]]:**
+- Р1 → **б**, «Аркуші + Meshy 3D»;
+- Р6 → **а**, зелено-бірюзовий;
+- М1 → **а**, стиль сецесії;
+- Р5 / М7 → **а**, стоять.
+
+Генерація чекає дозволу в середовищі сесії: `get_cost` відхилив класифікатор дозволів.
+
 | # | питання | варіанти | рекомендація |
 |---|---|---|---|
 | Р1 (T6) | Шлях до парових машин | а) 3 концепт-аркуші, ≈ 8,25 кр. за ціною 2026-10-08; б) + Meshy для паромобіля й крана, 7 запусків (ціна 3D не виміряна); в) 0 кр., T2 за словесним описом | **а** зараз, **б** — коли побачимо аркуші |
@@ -101,4 +109,4 @@
 - T1 — розвилки Р1, Р6, М1, Р5 до Santos; `get_cost` перед кроком 1.
 
 ## Related
-- [[state]] · [[constitution]] · [[ADR-019-Audit-And-Many-Views-Before-Decision]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-025-Street-Scuffle-And-City-Events]] · [[2026-10-08-City-Tidy-Technical-Audit]] · [[2026-10-08-City-Modern-Realism-Props]] · [[City-Props-Prompts]] · [[PROPOSAL-City-Machines-And-Objects]] · [[2026-10-08-Modern-Realism-And-Prop-Budget]] · [[2026-10-09-Rope-Pull-Jump-Arc-Substance-Momentum]] · [[2026-10-07-Tight-Station-Readability-Criteria]] · [[2026-10-07-Living-Body-Fix]] · [[Item-Sheets-Prompts]] · [[Textures-Registry]]
+- [[state]] · [[constitution]] · [[ADR-019-Audit-And-Many-Views-Before-Decision]] · [[ADR-027-City-Modern-Props-Style-And-Path]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[ADR-025-Street-Scuffle-And-City-Events]] · [[2026-10-08-City-Tidy-Technical-Audit]] · [[2026-10-08-City-Modern-Realism-Props]] · [[City-Props-Prompts]] · [[PROPOSAL-City-Machines-And-Objects]] · [[2026-10-08-Modern-Realism-And-Prop-Budget]] · [[2026-10-09-Rope-Pull-Jump-Arc-Substance-Momentum]] · [[2026-10-07-Tight-Station-Readability-Criteria]] · [[2026-10-07-Living-Body-Fix]] · [[Item-Sheets-Prompts]] · [[Textures-Registry]]
