@@ -609,9 +609,12 @@ func _refresh_quest_guide() -> void:
 
 
 func exploration_help() -> String:
-	var text := "Move: WASD / left stick · Look: RMB + drag / right stick\n"
-	text += "Jump / hold to reel (limited): %s / A · Hook: tap %s / L3 (or Y + LT), marked anchor only\n" % [InputRouter.binding_label(1, "jump", false), InputRouter.binding_label(1, "grapple_parkour", false)]
-	text += "Face anchor: hook / transfer · Finite hooks · Reuse rope within 0.70m of hand.\n"
+	# Rope V4 (04-Grapple-System § «Трос V4»): the city hook pulls the hero up to swing height by itself; Space reels up
+	# to 1.2 m beyond it. The pause holds 11 rows at 1600×900 (exit button 6 px from the bottom), so these three rows
+	# stay three; «reuse a rope within 0.70 m» lives in COMFORT & CONTROLS (ComfortPanel's HARPOON).
+	var text := "Move: WASD / left stick · Look: RMB + drag / right stick · Jump: %s / A\n" % InputRouter.binding_label(1, "jump", false)
+	text += "Hook (finite): tap %s / L3 (or Y + LT), marked anchor only · it pulls you up to swing height\n" % InputRouter.binding_label(1, "grapple_parkour", false)
+	text += "On the rope: move to swing · hold jump to reel 1.2 m higher · tap hook to transfer\n"
 	text += "Ledge: hold jump + move into edge; release, then press jump to climb.\n"
 	text += "Skea wall steps: hold jump + move into wall; release to drop.\n"
 	text += "Wall kick: near a wall, release jump; move away + press jump. Once per landing.\n"
@@ -1188,7 +1191,9 @@ func _refresh_traversal_hint() -> void:
 		_:
 			if _player.grapple.phase != GrappleHook.Phase.HANG:
 				return
-			hint_label.text = ("ROPE · Hold %s to reel · Steer to swing · %s to detach" % [jump, detach]) if _player.grapple.reel_remaining() > 0.001 else ("REEL LIMIT · Steer to swing · %s to detach" % detach)
+			# Rope V4: the hook pulls the hero up to a swing by itself; Space reels a short way higher (plan 2026-10-09).
+			var lead := "ROPE · Pulling you up" if _player.grapple.pulling else "ROPE · Steer to swing"
+			hint_label.text = ("%s · Hold %s to reel higher · %s to detach" % [lead, jump, detach]) if _player.grapple.reel_remaining() > 0.001 else ("REEL LIMIT · Steer to swing · %s to detach" % detach)
 	hint_label.show()
 
 

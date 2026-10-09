@@ -6,6 +6,9 @@ const CITY_FIGHTER := preload("res://scripts/world/CityFighter.gd")
 const DISTRICT_SCENE := preload("res://scenes/world/CityDistrict.tscn")
 
 var player: CityFighter
+## The script the hero's body runs: always CityFighter in the game. A fixture may hand a CityFighter subclass (a frozen
+## pre-fix copy or one deliberate mutation, tools/world/city_fighter_mutants.gd) before the world enters the tree.
+var fighter_script: Script = CITY_FIGHTER
 var camera_rig: CityCamera
 var district: Node3D
 var ropes: MatchRopes
@@ -71,7 +74,7 @@ func _ready() -> void:
 	fx.name = "FX"
 	add_child(fx)
 	var base_player := FIGHTER_SCENE.instantiate() as Fighter
-	base_player.set_script(CITY_FIGHTER)
+	base_player.set_script(fighter_script)
 	player = base_player as CityFighter
 	player.name = "Player"
 	player.data = GameState.load_character(GameState.p1_character)
@@ -347,10 +350,15 @@ func _update_story_interaction() -> void:
 		interact_story(selected)
 
 ## The water pump (plan 2026-10-08-Thirst-Substances-Icons step 1; T8 п. 2 «Колонка»): the existing `interact` at the
-## spout, prompted on the story line; no menu, free. True when the hero is at the spout (the prompt is shown).
+## spout, prompted on the story line; no menu, free. True when the hero is at the spout (the key is the pump's or an
+## event's: either way no other prompt is offered on it).
+## A street event's prompt on the same key wins: while it is shown the pump says nothing and takes no press (T4 audit
+## 2026-10-08 п. 3, plan 2026-10-09 step 4). A resident's prompt already wins in _update_story_interaction.
 func _update_pump() -> bool:
 	if thirst == null or not thirst.can_drink(player):
 		return false
+	if events != null and events.dialogue != null and events.dialogue.prompt.visible:
+		return true
 	hud.set_story_prompt(InputRouter.binding_label(1, "interact", camera_rig.aim.last_gamepad) + " · " + PUMP_PROMPT)
 	if InputRouter.just_pressed(1, "interact"):
 		thirst.drink_water("pump")

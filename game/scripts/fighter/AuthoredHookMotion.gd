@@ -95,7 +95,9 @@ func update(f: Fighter, skeleton: Skeleton3D, delta: float) -> void:
 	_phase = phase
 	_previous_token = active_token
 	_entry_elapsed += maxf(delta, 0.0)
-	_reeling = active and phase == GrappleHook.Phase.HANG and hook.attached and hook.rope_length < _previous_length - 0.00001
+	# Rope V4: the city hook pulling itself in is the rope carrying the body, drawn as a hang, never a hand-over-hand
+	# regrip (8 m/s would spin the cycle at 12 Hz). Only Space beyond the pull advances the cycle.
+	_reeling = active and phase == GrappleHook.Phase.HANG and hook.attached and hook.rope_length < _previous_length - 0.00001 and not hook.pulling
 	if _reeling:
 		# Compact alternating pulls follow real shortening, independently of the total reel budget.
 		reel_cycle += (_previous_length - hook.rope_length) / reel_stroke
@@ -135,7 +137,7 @@ func update(f: Fighter, skeleton: Skeleton3D, delta: float) -> void:
 		else:
 			source_clip = "Climb_Idle"
 			source_time = fposmod(_phase_elapsed, float(_lengths[source_clip]))
-			source_phase = "reel" if _reeling else "hang"
+			source_phase = "reel" if _reeling else ("pull" if hook.pulling else "hang")
 	else:
 		source_clip = ""
 		source_phase = "idle"

@@ -24,15 +24,43 @@ extends SceneTree
 ##       a conversation and the pocket;
 ##   B11 «Сила»: 36 / 27 per s in the city and the pocket, hang 4.0 s, after 54 000 frames 30 / s and 3.0 s with its end
 ##       words, a second dish gives the full timer and never × 1.44; the pocket's words `HUNGRY · THIRSTY · STRENGTH`;
+##   B12 the consequence (plan 2026-10-09 step 3; T4 audit 2026-10-08 п. 1; T5 2026-10-09 Numbers § 3.3): the same
+##       routes through the real keys with each state and sober, Choko and Skea — dashes with and without the stick, a
+##       dodge burst, the hang: above walking pace the same ground and frames; one stop adds at most the state's own
+##       slower braking from walking pace (B5, T5's ceiling); with the stick along the run never further, never sooner,
+##       never more left. B2 also samples W, the hang limit, the dodge bar's size and the walk physics each frame
+##       actually runs (acceleration from standing, braking from dash speed);
 ##   W7 the effects line above HazeLine, HazeLine last; W11 COMFORT → DRUGS Off in «Хміль» through real keys.
 ## --break=walk|decel|regen|stack|hangover are negative controls (a profile gives a gain; a state begins over another;
-## a drink keeps the hangover).
+## a drink keeps the hangover). --break=carry|accel|hang|dodges|water are product mutations T4 found alive (U1–U4) and
+## the product before the fix: the pre-fix _walk_physics that carries a dash on in a state; ground_accel × 1.5, the hang
+## + 1 s, the dodge bar × 1.25 in a state (tools/world/city_fighter_mutants.gd via CityWorld.fighter_script); W that
+## stands in «Задишка».
 ## Sentinel: CITY_SUBSTANCES_COMPLETE checks=N failures=M mutation=<m>; failures print "CITY_SUBSTANCES: ...".
 const FULL := 10000
 const DT := 1.0 / 60.0
 const SAFE_POINT := Vector3(0.0, 0.0, 9.5)
 const MARKET := Vector3(0.0, 0.0, 20.0)
 const AT_PUMP := Vector3(-1.25, 0.0, 17.8)
+## B12 (plan 2026-10-09 step 3): the open street from (0, 0, 30) down −z (T4's probes), 200 frames, dash taps on the
+## frames below (the first after 30 frames of walking off from standing; the last stop has time to end), the stick of
+## route A let go at STICK_RELEASE (one stop from walking pace); a dodge tap every 24 frames ten times, then an empty
+## bar and 30 quiet frames to refill it.
+const ROUTE_START := Vector3(0.0, 0.0, 30.0)
+const ROUTE_FRAMES := 200
+const ROUTE_TAPS: Array[int] = [30, 60, 90, 120]
+const STICK_RELEASE := 150
+const DODGE_TAPS := 10
+const DODGE_GAP := 24
+const DODGE_TAIL := 30
+const ROUTE_EPS := 0.001   # metres: the world's physics noise between two identical runs stays far below this
+## T5 docs/GDD/2026-10-09-Rope-Pull-And-Jump-Arc-Numbers.md § 3.3 (literals, never read from the code): the most one stop
+## may add in a state — its own slower braking from walking pace, v_walk² / 2a · (1/m − 1): «Хміль» 0.314 / 0.343 m,
+## «Заплутаність» 0.209 / 0.229 m (Choko / Skea); «Задишка» brakes as sober: 0.
+const STOP_CEILING := {"tipsy": {"choko": 0.314, "skea": 0.343}, "haze": {"choko": 0.209, "skea": 0.229}, "winded": {"choko": 0.0, "skea": 0.0}}
+const STOP_EPS := 0.001
+## --break=carry|accel|hang|dodges run the hero on tools/world/city_fighter_mutants.gd (CityWorld.fighter_script).
+const FIGHTER_MUTATIONS: Array[String] = ["carry", "accel", "hang", "dodges"]
 var checks: int = 0
 var failures: int = 0
 var mutation: String = "none"
@@ -192,13 +220,15 @@ func _run() -> void:
 	if mutation == "regen":
 		substances.winded_regen_scale = 1.05  # the negative: «Задишка» that refills faster
 	# B2 first: the guard must see the very first «Хміль» / «Задишка» of the session (a once-only gain would hide later).
-	for scenario: Callable in [_b2, _b1, _b3, _b4, _b5, _b6, _b7, _b8, _b9, _b10, _b11, _w7, _w11]:
+	for scenario: Callable in [_b2, _b1, _b3, _b4, _b5, _b6, _b7, _b8, _b9, _b10, _b11, _b12, _w7, _w11]:
 		await _close_all()
 		await scenario.call()
 	await _close_all()
 	await _close_world()
 	await _open_world("skea")
 	await _skea()
+	await _close_all()
+	await _b12()
 	await _close_world()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(content.get("storage_path")))
 	content.call("load_settings", old_content)
@@ -209,6 +239,8 @@ func _run() -> void:
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
 		OS.delay_msec(1)
+	# playable_check runs this with --quit-after 12000: the engine frames used, so the headroom stays visible.
+	print("CITY_SUBSTANCES_INFO engine frames %d of the 12000 the battery allows" % Engine.get_process_frames())
 	print("CITY_SUBSTANCES_COMPLETE checks=%d failures=%d mutation=%s" % [checks, failures, mutation])
 	quit(1 if failures else 0)
 
@@ -216,6 +248,8 @@ func _run() -> void:
 func _open_world(hero: String) -> void:
 	root.get_node("GameState").p1_character = hero
 	world = load("res://scenes/world/CityWorld.tscn").instantiate()
+	if mutation in FIGHTER_MUTATIONS:
+		world.fighter_script = load((get_script() as Script).resource_path.get_base_dir().path_join("city_fighter_mutants.gd"))
 	world.story_save_enabled = false
 	world.journey_save_enabled = false
 	world.lower_story_save_enabled = false
@@ -228,6 +262,8 @@ func _open_world(hero: String) -> void:
 	substances = world.substances
 	events = world.events
 	player = world.player
+	if mutation in FIGHTER_MUTATIONS:
+		player.set("mutation", mutation)
 	progress = world.progress
 	npc = world.npc_director
 	events.enable_for_test(2468)   # a scripted run keeps the director off; on, with no random starts
@@ -281,10 +317,51 @@ func _b1() -> void:
 	content.call("set_drugs_mode", "full")
 
 
-## Everything a state could give, sampled on the current frame.
+## Everything a state could give, sampled on the current frame: the multipliers, the scales, the hang it would allow,
+## the dodge bar's size and the walk physics it would actually run (_probe_walk).
 func _sample(base_walk: float, base_regen: float) -> Dictionary:
+	var walk_physics: Vector2 = _probe_walk()
 	return {"walk": player.speed_mult() / base_walk, "regen": player.dodge_regen_scale() / base_regen, "decel": player.decel_scale(),
-		"walls": player.wall_run_allowed(), "h": hunger.centi, "hp": hunger.city_hp}
+		"walls": player.wall_run_allowed(), "h": hunger.centi, "hp": hunger.city_hp, "w": thirst.centi,
+		"hang": player.parkour.hang_limit(player), "dodge_max": player.dodge_stamina_max(), "accel": walk_physics.x,
+		"brake": walk_physics.y}
+
+
+## The walk physics of this frame, read through the body's own _walk_physics and then put back (position, velocity):
+## x — the acceleration from standing toward walking pace along the street; y — the braking from dash speed with the
+## stick released, i.e. what is left of a dash above walking pace (m/s²). A state may brake less only below walking
+## pace (B5); above it a sober body's braking is the floor (plan 2026-10-09 step 3, variant A).
+func _probe_walk() -> Vector2:
+	var keep_position: Vector3 = player.global_position
+	var keep_velocity: Vector3 = player.velocity
+	var along := Vector3.FORWARD
+	var pace: float = player.data.walk_speed * player.speed_mult()
+	player.velocity = Vector3.ZERO
+	player._walk_physics(DT, along.x * pace, along.z * pace)
+	var accel: float = Vector2(player.velocity.x, player.velocity.z).length() / DT
+	player.global_position = keep_position
+	player.velocity = along * player.data.dash_speed
+	player._walk_physics(DT, 0.0, 0.0)
+	var brake: float = (player.data.dash_speed - Vector2(player.velocity.x, player.velocity.z).length()) / DT
+	player.global_position = keep_position
+	player.velocity = keep_velocity
+	return Vector2(accel, brake)
+
+
+## --break=water (U4): the product's thirst clock held back while «Задишка» lasts — W stands in the state.
+func _mutate_frame() -> void:
+	if mutation == "water" and substances.state == "winded" and substances.active():
+		thirst._decay_left = thirst.decay_frames
+
+
+## Starts `id` on its plateau (the full weight): "haze", "tipsy", "winded"; "" starts nothing (the sober run).
+func _begin_state(id: String) -> void:
+	if id == "haze":
+		world.haze.begin()
+		world.haze._elapsed = 10.0
+	elif not id.is_empty():
+		substances.begin(id)
+		substances._elapsed = 10.0
 
 
 ## The progress a state must never touch: everything but the scales' own fields.
@@ -311,6 +388,7 @@ func _no_gain(id: String, frames: int) -> void:
 				substances.begin(id)
 		var samples: Array = []
 		for frame: int in frames:
+			_mutate_frame()
 			hunger.step_frame()
 			if id == "haze":
 				world.haze._physics_process(DT)
@@ -324,6 +402,11 @@ func _no_gain(id: String, frames: int) -> void:
 	var walls_new: int = 0
 	var h_higher: int = 0
 	var hp_higher: int = 0
+	var w_higher: int = 0
+	var hang_more: float = 0.0
+	var bar_more: float = 0.0
+	var accel_more: float = 0.0
+	var brake_less: float = 0.0
 	for frame: int in frames:
 		for axis: String in ["walk", "regen", "decel"]:
 			worst[axis] = maxf(float(worst[axis]), float(within[frame][axis]))
@@ -333,8 +416,16 @@ func _no_gain(id: String, frames: int) -> void:
 			h_higher += 1
 		if float(within[frame].hp) > float(without[frame].hp) + 0.0001:
 			hp_higher += 1
+		if int(within[frame].w) > int(without[frame].w):
+			w_higher += 1
+		hang_more = maxf(hang_more, float(within[frame].hang) - float(without[frame].hang))
+		bar_more = maxf(bar_more, float(within[frame].dodge_max) - float(without[frame].dodge_max))
+		accel_more = maxf(accel_more, float(within[frame].accel) - float(without[frame].accel))
+		brake_less = maxf(brake_less, float(without[frame].brake) - float(within[frame].brake))
 	_check(float(worst.walk) <= 1.0 + 1e-6 and float(worst.regen) <= 1.0 + 1e-6 and float(worst.decel) <= 1.0 + 1e-6, "B2 %s, %d frames: walk ≤ 1 (max %.4f), dodge refill ≤ 1 (max %.4f), braking ≤ 1 (max %.4f)" % [id, frames, worst.walk, worst.regen, worst.decel])
 	_check(walls_new == 0 and h_higher == 0 and hp_higher == 0, "B2 %s: no new wall steps (%d frames), H never higher (%d), hp never higher (%d)" % [id, walls_new, h_higher, hp_higher])
+	_check(w_higher == 0 and hang_more <= 1e-6 and bar_more <= 1e-6, "B2 %s: W never higher (%d frames), the hang never longer (max +%.3f s), the dodge bar never larger (max +%.3f)" % [id, w_higher, hang_more, bar_more])
+	_check(accel_more <= 1e-3 and brake_less <= 1e-3, "B2 %s: the walk physics of every frame — acceleration never above the sober one (max +%.3f m/s²), braking from dash speed never below it (max −%.3f m/s²)" % [id, accel_more, brake_less])
 	_check(runs[1].ledger_after == runs[1].ledger and runs[1].tokens == 3, "B2 %s: tokens, faces, quests, palettes, trust and memory byte for byte" % id)
 
 
@@ -772,6 +863,139 @@ func _b11() -> void:
 		world.lethal.close("retreat")
 		await _ticks(3)
 	_level(FULL, FULL)
+
+
+## One scripted route through the real keys on a state's plateau (`id` "" = sober), from ROUTE_START facing down the
+## street: "stick" — forward held from the first frame to STICK_RELEASE, dash taps on ROUTE_TAPS (the optimal input:
+## the stick along the run); "free" — the same taps, the stick never touched; "dodge" — a full bar, a dodge tap every
+## DODGE_GAP frames DODGE_TAPS times, then an empty bar and DODGE_TAIL quiet frames to refill it.
+## Measures the distance frame by frame, the ground covered above the hero's walking pace (∫ max(0, v − walk) dt) and
+## the frames spent above it, the dashes and dodges actually started and what is left: charges, the bar, W, H and hp.
+func _route(kind: String, id: String) -> Dictionary:
+	await _close_all()
+	player.restart_at(ROUTE_START)
+	world.camera_rig.reset_view()
+	await _ticks(20)
+	_level(FULL, FULL)
+	_begin_state(id)
+	var walk: float = player.data.walk_speed
+	if kind == "dodge":
+		player.dodge_stamina = player.dodge_stamina_max()
+	var start: Vector3 = player.global_position
+	var frames: int = DODGE_TAPS * DODGE_GAP + DODGE_TAIL if kind == "dodge" else ROUTE_FRAMES
+	var trail: Array[float] = []
+	var carry: float = 0.0
+	var above: int = 0
+	var dashes: int = 0
+	var dodges: int = 0
+	var bar_burst: float = -1.0
+	for frame: int in frames:
+		router.v_set(1, "up", kind == "stick" and frame < STICK_RELEASE)
+		var tap: bool = (frame % DODGE_GAP == 0 and frame < DODGE_TAPS * DODGE_GAP) if kind == "dodge" else ROUTE_TAPS.has(frame)
+		router.v_set(1, "dodge" if kind == "dodge" else "dash", tap)
+		_mutate_frame()
+		var was_dash: bool = player.state == player.State.DASH and not player.dodging
+		var was_dodge: bool = player.dodging
+		await _ticks(1)
+		if player.state == player.State.DASH and not player.dodging and not was_dash:
+			dashes += 1
+		if player.dodging and not was_dodge:
+			dodges += 1
+		if frame == DODGE_TAPS * DODGE_GAP - 1:
+			# The burst is over: an empty bar, then the quiet tail measures the refill alone (a body that dodged less
+			# would otherwise keep more bar and refill over more frames — fewer actions, not a better body).
+			bar_burst = player.dodge_stamina
+			player.dodge_stamina = 0.0
+			player._dodge_regen_wait = 0.0
+		var speed: float = Vector2(player.velocity.x, player.velocity.z).length()
+		carry += maxf(0.0, speed - walk) * DT
+		if speed > walk + 0.001:
+			above += 1
+		trail.append(Vector2(player.global_position.x - start.x, player.global_position.z - start.z).length())
+	router.v_clear(1)
+	var result: Dictionary = {"distance": trail.back(), "trail": trail, "carry": carry, "above": above, "dashes": dashes,
+		"dodges": dodges, "charges": player.dash_charges_left, "bar": player.dodge_stamina, "bar_burst": bar_burst,
+		"w": thirst.centi, "h": hunger.centi, "hp": hunger.city_hp}
+	return result
+
+
+## The hang on the PracticeLedge on a state's plateau ("" = sober), in seconds (_hang_seconds).
+func _state_hang(id: String) -> float:
+	await _close_all()
+	_level(8000, FULL)
+	_begin_state(id)
+	return await _hang_seconds()
+
+
+## The first frame of a route whose distance reaches `metres` (the route's length + 1 when it never does).
+static func _frame_reaching(trail: Array, metres: float) -> int:
+	for frame: int in trail.size():
+		if float(trail[frame]) >= metres:
+			return frame
+	return trail.size() + 1
+
+
+## What each stop added in the state over the sober run of the same route: the distance covered between two bounds (a
+## dash tap, the stick let go, the route's end) with the state minus without it. Each stretch is one dash and its stop,
+## or one stop from walking pace; above walking pace the two runs are the same, so the difference is the stop's.
+static func _stop_extras(trail: Array, sober_trail: Array, bounds: Array) -> Array[float]:
+	var extras: Array[float] = []
+	for k: int in bounds.size() - 1:
+		var from: int = int(bounds[k]) - 1
+		var to: int = int(bounds[k + 1]) - 1
+		var mine: float = float(trail[to]) - (float(trail[from]) if from >= 0 else 0.0)
+		var theirs: float = float(sober_trail[to]) - (float(sober_trail[from]) if from >= 0 else 0.0)
+		extras.append(mine - theirs)
+	return extras
+
+
+## B12 (plan 2026-10-09-Rope-Pull-Jump-Arc-Substance-Momentum step 3; T4 audit 2026-10-08 п. 1, proposal 2; the guard
+## T5 asks for in docs/GDD/2026-10-09-Rope-Pull-And-Jump-Arc-Numbers.md § 3.3): the consequence, not the multiplier. The
+## same scripted routes through the real keys for «Заплутаність», «Хміль» and «Задишка» against the same routes sober:
+##   (а) the same input → the ground covered above walking pace and the frames spent above it are the sober ones (± 1
+##       frame): no momentum is carried, on A and on B;
+##   (б) what one stop adds in the state ≤ STOP_CEILING (its own slower braking from walking pace): each dash's stop on
+##       B, the stop from walking pace when A lets the stick go;
+##   (в) the optimal input (A, the stick along the run): distance ≤ sober and 90 % of it no sooner; B with the state never
+##       further than the sober body with the optimal input; dashes, charges, W, H, hp ≤ sober;
+##   C a dodge burst from a full bar: dodges started ≤ sober; then an empty bar refills no faster; W ≤ sober;
+##   D the hang on the PracticeLedge ≤ sober + one frame.
+func _b12() -> void:
+	var hero: String = player.data.id
+	var sober: Dictionary = {}
+	for kind: String in ["stick", "free", "dodge"]:
+		sober[kind] = await _route(kind, "")
+	var sober_hang: float = await _state_hang("")
+	var free_bounds: Array = ROUTE_TAPS.duplicate()
+	free_bounds.append(ROUTE_FRAMES)
+	for id: String in ["haze", "tipsy", "winded"]:
+		var stick: Dictionary = await _route("stick", id)
+		var free: Dictionary = await _route("free", id)
+		var dodge: Dictionary = await _route("dodge", id)
+		var hang: float = await _state_hang(id)
+		var s_stick: Dictionary = sober.stick
+		var s_free: Dictionary = sober.free
+		var s_dodge: Dictionary = sober.dodge
+		var ceiling: float = float(STOP_CEILING[id][hero])
+		var released: float = float(stick.trail[STICK_RELEASE - 1])
+		var s_released: float = float(s_stick.trail[STICK_RELEASE - 1])
+		var reach: float = 0.9 * s_released
+		var at: int = _frame_reaching(stick.trail, reach)
+		var s_at: int = _frame_reaching(s_stick.trail, reach)
+		var walk_stop: float = _stop_extras(stick.trail, s_stick.trail, [STICK_RELEASE, ROUTE_FRAMES])[0]
+		_check(absf(float(stick.carry) - float(s_stick.carry)) <= ROUTE_EPS and absi(int(stick.above) - int(s_stick.above)) <= 1 and released <= s_released + ROUTE_EPS and at >= s_at and walk_stop <= ceiling + STOP_EPS and int(stick.dashes) <= int(s_stick.dashes) and int(stick.charges) <= int(s_stick.charges) and int(stick.w) <= int(s_stick.w) and int(stick.h) <= int(s_stick.h) and float(stick.hp) <= float(s_stick.hp) + 0.0001,
+			"B12 %s %s, the stick along the run: above walking pace %.3f = sober %.3f m over %d = %d frames; %.3f m ≤ sober %.3f when it is let go, %.2f m reached at frame %d ≥ %d; that stop adds %+.3f ≤ %.3f m; dashes %d ≤ %d, charges left %d ≤ %d; W %d ≤ %d, H %d ≤ %d" % [hero, id, stick.carry, s_stick.carry, stick.above, s_stick.above, released, s_released, reach, at, s_at, walk_stop, ceiling, stick.dashes, s_stick.dashes, stick.charges, s_stick.charges, stick.w, s_stick.w, stick.h, s_stick.h])
+		var extras: Array[float] = _stop_extras(free.trail, s_free.trail, free_bounds)
+		var worst: float = -INF
+		for value: float in extras:
+			worst = maxf(worst, value)
+		var extra: float = float(free.distance) - float(s_free.distance)
+		print("CITY_SUBSTANCES_INFO B12 %s %s, dashes without the stick: %.3f m vs sober %.3f (%+.3f m, %+.1f %%), each stop %s ≤ %.3f; the stop from walking pace %+.3f; the sober body with the stick %.3f m" % [hero, id, free.distance, s_free.distance, extra, 100.0 * extra / maxf(float(s_free.distance), 0.001), extras.map(func(v: float) -> String: return "%+.3f" % v), ceiling, walk_stop, s_stick.distance])
+		_check(absf(float(free.carry) - float(s_free.carry)) <= ROUTE_EPS and absi(int(free.above) - int(s_free.above)) <= 1 and worst <= ceiling + STOP_EPS and float(free.distance) <= float(s_stick.distance) + ROUTE_EPS and int(free.dashes) <= int(s_free.dashes) and int(free.w) <= int(s_free.w),
+			"B12 %s %s, dashes without the stick: above walking pace %.3f = sober %.3f m over %d = %d frames; the most one stop adds %+.3f ≤ %.3f m; %.3f m ≤ the sober body with the stick %.3f; dashes %d ≤ %d; W %d ≤ %d" % [hero, id, free.carry, s_free.carry, free.above, s_free.above, worst, ceiling, free.distance, s_stick.distance, free.dashes, s_free.dashes, free.w, s_free.w])
+		_check(int(dodge.dodges) <= int(s_dodge.dodges) and float(dodge.bar) <= float(s_dodge.bar) + 0.001 and int(dodge.w) <= int(s_dodge.w),
+			"B12 %s %s, a dodge burst from a full bar: %d ≤ %d dodges (bar left %.2f / sober %.2f); an empty bar refills to %.2f ≤ %.2f in %d frames; W %d ≤ %d" % [hero, id, dodge.dodges, s_dodge.dodges, dodge.bar_burst, s_dodge.bar_burst, dodge.bar, s_dodge.bar, DODGE_TAIL, dodge.w, s_dodge.w])
+		_check(hang <= sober_hang + DT + 1e-6, "B12 %s %s, the hang: %.3f s ≤ sober %.3f" % [hero, id, hang, sober_hang])
 
 
 ## W7: the effects line above HazeLine; HazeLine the card's last line; the words.

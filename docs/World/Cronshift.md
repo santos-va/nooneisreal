@@ -61,3 +61,4 @@
 
 ## Related
 - [[Art/2026-10-04-City-Style-Match]] · [[Meetings/2026-10-04-T1-City-Style-Match]] · [[index]] · [[Stage-River]] · [[Stage-Bazaar]] · [[Stage-Fountain]] · [[Backgrounds]] · [[Style-Guide]] · [[Lore]] · [[04-Grapple-System]] · [[2026-10-03-Sprint-Arenas-VFX]]
+- [[PROPOSAL-City-Machines-And-Objects]] — машини й речі кварталу, порядок у місті (пропозиція Кліо, 2026-10-08; не канон)

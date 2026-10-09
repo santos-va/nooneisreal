@@ -23,8 +23,11 @@ func _ready() -> void:
 	for height: float in [-0.75, 0.75]:
 		_part(_gate, "GateStrap", Vector3(0, height, 0), Vector3(0.23, 0.1, 1.8), "iron")
 	_box("GateLintel", Vector3(-27.4, 6.4, -13.95), Vector3(0.4, 0.25, 2.5), "stone", true)
-	_box("LatchPlate", Vector3(-27.55, 5.2, -13.15), Vector3(0.14, 0.32, 0.35), "brass")
-	_latch = _box("LatchBar", Vector3(-27.64, 5.2, -13.45), Vector3(0.12, 0.1, 0.8), "iron")
+	# D23 (docs/Audit/2026-10-08-City-Tidy-Technical-Audit.md): the latch and the mechanism stand out of the wall
+	# 0.12–0.5 m at hand height, so each is solid with its own visible size. Inspection rays may end on the part they
+	# point at (CityWorld.can_inspect_story reads `interaction_body`).
+	_box("LatchPlate", Vector3(-27.55, 5.2, -13.15), Vector3(0.14, 0.32, 0.35), "brass", true)
+	_latch = _box("LatchBar", Vector3(-27.64, 5.2, -13.45), Vector3(0.12, 0.1, 0.8), "iron", true)
 	# Both heroes can walk continuously over the wall and descend inside.
 	_ramp("OuterServiceRamp", -19.0, 1.6, -11.0, -16.4, 4.0, 6.3)
 	_box("ServiceGallery", Vector3(-22.3, 6.15, -17.3), Vector3(8.2, 0.3, 1.8), "stone", true)
@@ -34,21 +37,28 @@ func _ready() -> void:
 	for x: float in [-26.35, -24.0, -21.5, -18.25]:
 		_box("GalleryPost", Vector3(x, 6.65, -18.15), Vector3(0.09, 0.7, 0.09), "iron", true)
 	# Visible mechanical evidence stays separate from the moving gate leaf.
-	_box("WeightGuide", Vector3(-27.15, 5.25, -12.0), Vector3(0.16, 2.2, 0.22), "iron")
-	_box("GuideWear", Vector3(-27.04, 5.25, -12.0), Vector3(0.03, 1.7, 0.07), "brass")
-	_weight = _box("Counterweight", Vector3(-26.96, 5.8, -12.0), Vector3(0.32, 0.45, 0.32), "brass")
-	_box("LeverMount", Vector3(-27.16, 5.0, -15.25), Vector3(0.24, 0.5, 0.4), "wood")
-	_lever = _box("ReleaseLever", Vector3(-26.97, 5.22, -15.25), Vector3(0.09, 0.6, 0.09), "brass")
+	# The guide is on the wall's face (x −27.3; it stood 7 cm off it), its wear strip on the guide, the weight in it.
+	_box("WeightGuide", Vector3(-27.22, 5.25, -12.0), Vector3(0.16, 2.2, 0.22), "iron", true)
+	_box("GuideWear", Vector3(-27.125, 5.25, -12.0), Vector3(0.03, 1.7, 0.07), "brass")
+	_weight = _box("Counterweight", Vector3(-27.03, 5.8, -12.0), Vector3(0.32, 0.45, 0.32), "brass", true)
+	_box("LeverMount", Vector3(-27.16, 5.0, -15.25), Vector3(0.24, 0.5, 0.4), "wood", true)
+	_lever = _box("ReleaseLever", Vector3(-26.995, 5.22, -15.25), Vector3(0.09, 0.6, 0.09), "brass", true)   # on its mount
 	_lever.rotation.x = -0.5
 	_box("MaintenanceBench", Vector3(-22.25, 4.75, -12.4), Vector3(1.3, 0.15, 2.1), "wood", true)
 	for z: float in [-13.1, -11.7]:
 		_box("BenchLeg", Vector3(-22.25, 4.35, z), Vector3(0.9, 0.7, 0.14), "iron", true)
 	_box("ToolChest", Vector3(-22.25, 5.0, -12.8), Vector3(0.8, 0.35, 0.55), "copper", true)
 	_sign("EntranceSign", "СЛУЖБОВИЙ ДВІР", Vector3(-27.65, 6.72, -13.95), -PI * 0.5)
-	_sign("BypassSign", "ОБХІД ›", Vector3(-19, 4.9, -10.25), 0.0)   # no arrows in the built-in font
+	# D22: the bypass plaque stands at waist height on the terrace, so it is solid, and its post stands on the terrace
+	# (y 4.0) instead of 0.3 m inside it. Solid, it would close the walk to the ramp along z −10.55 that heroes took
+	# through it, so it stands 2 m west, in the 0.6 m strip between the court's south wall and the terrace edge,
+	# still facing the street and pointing east to the ramp.
+	_sign("BypassSign", "ОБХІД ›", Vector3(-21, 4.9, -10.25), 0.0, 4.0)   # no arrows in the built-in font
 	_point("clue_a", Vector3(-27.66, 5.2, -13.15))
+	(_points.clue_a as Node3D).set_meta("interaction_body", _latch)
 	_point("clue_b", Vector3(-26.92, 5.25, -12.0))
 	_point("mechanism", Vector3(-26.85, 5.22, -15.25))
+	(_points.mechanism as Node3D).set_meta("interaction_body", _lever)
 	set_story_shortcut_open(_opened)
 
 func story_points() -> Dictionary:
@@ -138,10 +148,14 @@ func _ramp(id: String, x: float, width: float, low_z: float, high_z: float, low_
 	collision.shape = shape
 	body.add_child(collision)
 
-func _sign(id: String, title: String, point: Vector3, yaw: float) -> void:
-	var plaque := _box(id + "Plaque", point - Basis(Vector3.UP, yaw).z * 0.04, Vector3(2.7, 0.42, 0.08), "wood")
+## `floor_y` < 0: a plaque on a wall (no post: the old one hung 1.2 m down into the gateway at head height).
+## `floor_y` ≥ 0: a free-standing plaque, solid, its post standing on that floor up to the plaque.
+func _sign(id: String, title: String, point: Vector3, yaw: float, floor_y: float = -1.0) -> void:
+	var plaque := _box(id + "Plaque", point - Basis(Vector3.UP, yaw).z * 0.04, Vector3(2.7, 0.42, 0.08), "wood", floor_y >= 0.0)
 	plaque.rotation.y = yaw
-	_box(id + "Support", point + Vector3(0,-0.6,0), Vector3(0.08,1.2,0.08), "iron")
+	if floor_y >= 0.0:
+		var low: float = point.y - 0.21
+		_box(id + "Support", Vector3(point.x, (floor_y + low) * 0.5, point.z), Vector3(0.08, low - floor_y, 0.08), "iron")
 	var sign := Label3D.new()
 	sign.name = id
 	sign.text = title

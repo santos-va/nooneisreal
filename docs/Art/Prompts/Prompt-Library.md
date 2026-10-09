@@ -590,6 +590,43 @@ T2) або Meshy з картки 19c (ціну не перевірено). `rigg
 **Після генерації:** журнал запусків — сюди, під § 19; рядок у [[Asset-Manifest]]; файл у `game/assets/` — лише разом із рядком
 [[Textures-Registry]] (`python3 tools/gates/texture_registry_check.py` → rc0).
 
+## 20. Колонка з водою — `prop-water-pump-v1` (T6, 2026-10-08; `{PAINT}` заповнено 2026-10-09; **не запускалась**)
+
+**Навіщо.** Колонка на Ринковій площі (`CityWaterPump.gd`) процедурна. Приймання її кадру — RED
+([[2026-10-08-Thirst-Items-Frames-Review]] § `pump.png`). Спершу T2 виправляє її кодом (крок A, 0 кр.). Цей аркуш — крок B:
+канон форми й кольору, за яким T2 далі будує процедурну колонку. Запускати лише за словом Santos із числом.
+
+**Параметри.** `gpt_image_2_5`, `quality: high`, `resolution: 2k`, `16:9`, `count: 1`, `background` не задавати (плашку задає
+текст). Референс — канон річки `a2913501-694d-4bbc-9908-66892760bf7e` (палітра), повний UUID у `medias`. Ціна — 2.75 кр. за
+`get_cost` T1 2026-10-08 для цієї конфігурації з одним референсом (хвиля 2 [[Item-Sheets-Prompts]]). Перед запуском T1
+звіряє `get_cost` знову. 3D (Meshy) не плануємо: колонка займає 51–116 px висоти кадру.
+
+**`{PAINT}`** — фарбований чавун міста. Р6 закрито: Santos обрав зелено-бірюзовий
+([[ADR-027-City-Modern-Props-Style-And-Path]] п. 2). Відтінок — B `#577368` за A/B T6 2026-10-09
+([[2026-10-08-City-Modern-Realism-Props]] § A/B відтінку чавуну). Кандидат `#3F5A55` відкинуто: у тіні шейдера він має
+ΔE76 19,2 від лінії. Блок той самий, байт-у-байт, що в [[City-Props-Prompts]]:
+
+```
+a muted deep green-teal (close to #577368): a medium-dark greyish green with a slight teal cast, matte like old park-railing paint, clearly lighter and greener than the ink lines, never black, never bright emerald, never turquoise
+```
+
+У промпті нижче слот стоїть як `painted {PAINT}, with a few chipped edges showing darker iron` — кому додано 2026-10-09, щоб
+опис фарби не злипався з відколами. Аркуш можна запускати: слово Santos із числом і `get_cost` T1.
+
+```
+Prop design sheet for a game, on a flat muted mint-sage background (#B8CBB1), hand-drawn in a loose expressive western animation sketch style, not anime: lively plum-graphite inked lines with small line breaks, thicker outer contour and thinner inner lines, flat colors with a single magenta-violet cel shadow tone, no gradients, no gloss. One public hand water pump of the old European-industrial city of Cronshift, matching the architecture and dusk palette of the reference image, shown four times in a row at the same scale on one ground line: 1) front view with the spout toward the viewer, 2) side view with the spout to the right, 3) back view, 4) three-quarter view; plus two small circled detail insets: the lever hinge on top of the cap, and the ladle on its short chain. The pump: a cast-iron column about 1.3 m tall, painted {PAINT}, with a few chipped edges showing darker iron, a plain lower drum and two simple collar rings, a rounded cap with a small dull brass knob on top; a long gently curved iron lever hinged on top of the cap, clearly attached to it, rising toward the back and ending in a worn wooden handle; a short square spout toward the front, turned down at its end; a plain tin ladle hanging from a side hook on a short chain; under the spout a low rectangular stone trough standing on a square stone slab, a little flat graphic water in the trough with simple pale foam lines, a small iron drain grate in the slab. Plain and functional, no ornaments, no animal heads, no plaque, no water stream in the air. Small hand-written numbers by each view. No people, no hands, no letters or words on the pump, no logos, no watermark, no glow.
+```
+
+**Приймання (T6):**
+1. Важіль кріпиться до ковпака на всіх 4 видах.
+2. У сірому на 64 px силует читається як ручна колонка: колона, важіль, носик.
+3. Фарба — родина `{PAINT}`, не чорна: медіана плям чавуну має h 150–185°, L* ≥ 30, ΔE76 ≥ 20 від `#2B2230` (критерій А-4
+   [[2026-10-08-City-Modern-Realism-Props]]). Кров'яних тонів немає (кр. 4′, [[2026-10-08-Substances-And-Food-Items]] § Критерії).
+4. Немає літер і табличок. Корито є.
+
+Після відбору медіани кольорів кожного матеріалу йдуть T2 як альбедо, а job-id — сюди. У `game/assets/` аркуш не кладемо:
+це референс форми.
+
 ## Related
 - [[Style-Guide]] · [[Asset-Manifest]] · [[Higgsfield-Pipeline]] · [[Prompts]] · [[Choko]] · [[Skea]] · [[Stage-River]] · [[ADR-011-Diegetic-Grapple-Anchors]] · [[2026-10-03-Skea-Redesign]] · [[Lore]] · [[Palette-Remap]] · [[2026-10-03-Santos-Packs-Arenas]]
 - [[ADR-024-Lethal-Fights-And-First-Enemy]] · [[PROPOSAL-First-Enemy]] · [[2026-10-07-Blood-Visual-Language]] · [[2026-10-07-First-Enemy-Lethal-Fight]] · [[Cronshift]] · [[Menu-Skyline-Prompts]]

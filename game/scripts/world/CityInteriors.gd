@@ -9,6 +9,9 @@ func _ready() -> void:
 	for key: String in _materials:
 		_materials[key].set_shader_parameter("painted_fill", 0.28)
 		_materials[key].set_shader_parameter("key_gain", 1.65)
+	# D24: the street faces of the two end walls use the street (district) terracotta, like SouthWestRear next to them,
+	# not the interior variant of plaster.
+	_materials["exterior_terracotta"] = CityMaterials.palette()["terracotta"]
 	for shop: Dictionary in Places.shops():
 		_shop(shop)
 	_street_furniture()
@@ -16,23 +19,38 @@ func _ready() -> void:
 
 func _shop(shop: Dictionary) -> void:
 	var pose := Transform3D(Basis.IDENTITY, shop.door)
-	var accent: String = ["cloth_teal", "cloth_red", "copper"][int(shop.npc_index)]
+	var index: int = int(shop.npc_index)
+	var accent: String = ["cloth_teal", "cloth_red", "copper"][index]
 	var floor_material: String = "stone" if shop.id == "grocer" else "wood"
 	# No single box crosses the doorway. Side/back walls join the retained upper storey.
-	_box(pose, Vector3(-3.3, 2, 4), Vector3(0.2, 4, 8), "plaster", "ShopWall")
-	_box(pose, Vector3(3.3, 2, 4), Vector3(0.2, 4, 8), "plaster", "ShopWall")
+	for side: float in [-1.0, 1.0]:
+		# D16: neighbouring shops share one wall; the west neighbour builds it, so it is not built twice.
+		if side < 0.0 and index > 0:
+			continue
+		if (side < 0.0 and index == 0) or (side > 0.0 and index == Places.shops().size() - 1):
+			# D24: an end wall faces the street; its inner half is the room's plaster, its outer half the street's
+			# terracotta. One collider for the whole wall, as before.
+			_box(pose, Vector3(side * 3.25, 2, 4), Vector3(0.1, 4, 8), "plaster")
+			_box(pose, Vector3(side * 3.35, 2, 4), Vector3(0.1, 4, 8), "exterior_terracotta")
+			var wall := BoxShape3D.new()
+			wall.size = Vector3(0.2, 4, 8)
+			_solid("ShopWall", pose.translated_local(Vector3(side * 3.3, 2, 4)), wall)
+		else:
+			_box(pose, Vector3(side * 3.3, 2, 4), Vector3(0.2, 4, 8), "plaster", "ShopWall")
 	_box(pose, Vector3(0, 2, 7.9), Vector3(6.6, 4, 0.2), "plaster", "ShopBack")
 	_box(pose, Vector3(0, 3.6, 0), Vector3(6.6, 0.8, 0.3), accent, "ShopLintel")
 	for side: float in [-1.0, 1.0]:
 		# Open display bays above a low wall; centre opening remains 2.4m wide.
-		_box(pose, Vector3(side * 2.25, 0.47, 0), Vector3(2.1, 0.94, 0.28), accent, "ShopWindowBase")
+		# D11: the low wall ends inside the door jamb (x 1.2–1.32), so its end face no longer shares the jamb's plane.
+		_box(pose, Vector3(side * 2.3, 0.47, 0), Vector3(2.0, 0.94, 0.28), accent, "ShopWindowBase")
 		_box(pose, Vector3(side * 3.1, 2.1, 0), Vector3(0.18, 2.2, 0.25), "wood", "ShopJamb")
 		_box(pose, Vector3(side * 1.26, 1.6, -0.02), Vector3(0.12, 3.2, 0.34), "wood", "DoorJamb")
 		_box(pose, Vector3(side * 2.2, 2.15, 0), Vector3(0.06, 2.4, 0.08), "brass")
 		_box(pose, Vector3(side * 2.2, 2.5, 0), Vector3(1.8, 0.06, 0.08), "brass")
 	_box(pose, Vector3(0, 0.003, 4), Vector3(6.3, 0.006, 7.7), floor_material)
 	_box(pose, Vector3(0, 3.85, -0.52), Vector3(6.5, 0.18, 1.15), accent, "ShopAwning")
-	_box(pose, Vector3(0, 3.65, -1.04), Vector3(6.5, 0.3, 0.11), "cloth_cream")
+	# D12: the cream fascia stops at the awning's underside (y 3.76): their front faces no longer overlap in one plane.
+	_box(pose, Vector3(0, 3.63, -1.04), Vector3(6.5, 0.26, 0.11), "cloth_cream")
 	_sign(pose * Vector3(0, 3.56, -1.11), shop.title, 0.0067)
 	# Trim, beams and a welcome mat provide scale without obstructing body clearance.
 	_box(pose, Vector3(0, 0.012, 1.15), Vector3(2.1, 0.02, 1.25), accent)
@@ -86,7 +104,8 @@ func _shelf(pose: Transform3D, kind: String) -> void:
 				elif level == 1:
 					_jar(pose.translated_local(at), "terracotta" if item % 2 == 0 else "cloth_teal", 0.52)
 				else:
-					_loaf(pose.translated_local(at + Vector3(0, 0.13, 0)), 0.72)
+					# D9: the loaf lies on the board (top y + 0.045), not 3.9 cm over it.
+					_loaf(pose.translated_local(Vector3(at.x, y + 0.045 + 0.14 * 0.72, at.z)), 0.72)
 			elif kind == "tailor":
 				_cylinder(pose, at + Vector3(0, 0.21, 0), 0.16, 0.16, 0.42, ["cloth_red", "cloth_teal", "cloth_cream"][item % 3])
 			else:
@@ -106,19 +125,22 @@ func _grocer(pose: Transform3D) -> void:
 			fruit.height = 0.23
 			fruit.radial_segments = 8
 			fruit.rings = 4
-			_primitive(fruit, display.translated_local(Vector3(-0.4 + float(i % 3) * 0.4, 0.88, -0.2 + float(i / 3) * 0.36)), "cloth_red" if side < 0 else "marker")
-	_barrel(pose.translated_local(Vector3(2.65, 0, 3)))
+			# The fruit lies on the closed crate's lid (y 0.8), not 3.5 cm inside it.
+			_primitive(fruit, display.translated_local(Vector3(-0.4 + float(i % 3) * 0.4, 0.915, -0.2 + float(i / 3) * 0.36)), "cloth_red" if side < 0 else "marker")
+	_beer_barrel(pose.translated_local(Vector3(2.65, 0, 3)))
 	_box(pose, Vector3(-0.6, 1.085, 5.55), Vector3(1.8, 0.035, 0.82), "cloth_cream")
 	for index: int in 3:
 		_loaf(pose.translated_local(Vector3(-1.2 + float(index) * 0.55, 1.21, 5.55)), 0.85)
 	_jar(pose.translated_local(Vector3(0.5, 1.07, 5.6)), "cloth_teal", 0.7)
-	# A wall herb rack gives the otherwise clear aisle a readable shop-specific silhouette.
-	_box(pose, Vector3(3.04, 1.78, 3.35), Vector3(0.3, 0.08, 2.35), "wood")
+	# A wall herb rack gives the otherwise clear aisle a readable shop-specific silhouette. It hangs over head height
+	# (its underside at 1.86 m; at 1.74 m a hero's head went through it).
+	_box(pose, Vector3(3.04, 1.9, 3.35), Vector3(0.3, 0.08, 2.35), "wood")
 	for index: int in 4:
 		var z: float = 2.5 + float(index) * 0.55
-		_jar(pose.translated_local(Vector3(2.97, 1.83, z)), "terracotta", 0.55)
+		_jar(pose.translated_local(Vector3(2.97, 1.95, z)), "terracotta", 0.55)
+		# The sprigs stand in the jar's mouth (their foot 2 cm under its lip), not 4.5 cm over its shoulder.
 		for sprig: int in 3:
-			_cylinder(pose, Vector3(2.97, 2.35 + float(sprig % 2) * 0.12, z + float(sprig - 1) * 0.08), 0, 0.14, 0.46, "marker", 5)
+			_cylinder(pose, Vector3(2.97, 2.43 + float(sprig % 2) * 0.12, z + float(sprig - 1) * 0.08), 0, 0.14, 0.46, "marker", 5)
 	_sign(pose * Vector3(0, 2.7, 7.73), "ХЛІБ · ТРАВИ · ПРИПАСИ", 0.006)
 
 func _loaf(pose: Transform3D, size: float) -> void:
@@ -137,21 +159,40 @@ func _tailor(pose: Transform3D) -> void:
 	_cylinder(pose, Vector3(2.2, 0.7, 1), 0.055, 0.055, 1.25, "brass")
 	_cylinder(pose, Vector3(2.2, 1.36, 1), 0.25, 0.37, 0.85, "cloth_red")
 	_cylinder(pose, Vector3(2.2, 1.86, 1), 0.1, 0.25, 0.2, "cloth_red")
-	_table(pose.translated_local(Vector3(2.15, 0, 3.2)), Vector2(1.2, 1.8), "cloth_cream")
-	_box(pose, Vector3(2.16, 1.04, 3.15), Vector3(0.8, 0.035, 1.3), "cloth_teal")
+	# D21: the dress form is solid where it has volume — its foot and its torso.
+	var foot := CylinderShape3D.new()
+	foot.radius = 0.48
+	foot.height = 0.16
+	_solid("DressFormFoot", pose.translated_local(Vector3(2.2, 0.08, 1)), foot)
+	var torso := CylinderShape3D.new()
+	torso.radius = 0.37
+	torso.height = 1.05
+	_solid("DressFormTorso", pose.translated_local(Vector3(2.2, 1.435, 1)), torso)
+	# D17: the cutting table stands 0.25 m further from the counter aisle, so the service point (z 4.4) keeps a
+	# hero capsule of r 0.35 clear of it (its edge was 0.30 m away).
+	var cutting: Transform3D = pose.translated_local(Vector3(2.15, 0, 2.95))
+	_table(cutting, Vector2(1.2, 1.8), "cloth_cream")
+	# D10: the cloth lies on the top (y 1.0), not 2.2 cm over it.
+	_box(cutting, Vector3(0.01, 1.0175, -0.05), Vector3(0.8, 0.035, 1.3), "cloth_teal")
+	# D7: the three rolls lie on the counter top (y 1.07), not on steps of 3.5 and 7 cm over it.
 	for i: int in 3:
-		_box(pose, Vector3(-0.85 + float(i) * 0.52, 1.1 + float(i) * 0.035, 5.6), Vector3(0.42, 0.06, 0.62), ["cloth_red", "cloth_teal", "cloth_cream"][i])
-	# Two recognisable coats above the cutting table break the repeated stock-cylinder rhythm.
-	_rod(pose * Vector3(3.01, 2.9, 2.05), pose * Vector3(3.01, 2.9, 4.65), 0.035, "brass")
+		_box(pose, Vector3(-0.85 + float(i) * 0.52, 1.1, 5.6), Vector3(0.42, 0.06, 0.62), ["cloth_red", "cloth_teal", "cloth_cream"][i])
+	# Two recognisable coats above the cutting table break the repeated stock-cylinder rhythm. The rail is held off the
+	# wall by two brackets (it hung free 0.19 m from it), and both coats hang along the table, where no hero stands.
+	_rod(pose * Vector3(3.01, 2.9, 1.95), pose * Vector3(3.01, 2.9, 3.95), 0.035, "brass")
+	for z: float in [2.05, 3.85]:
+		_rod(pose * Vector3(3.01, 2.9, z), pose * Vector3(3.2, 2.9, z), 0.02, "brass")
 	for index: int in 2:
-		_hanging_coat(pose.translated_local(Vector3(2.99, 0, 2.65 + float(index) * 1.35)), "cloth_red" if index == 0 else "cloth_teal")
+		_hanging_coat(pose.translated_local(Vector3(2.99, 0, 2.35 + float(index) * 1.2)), "cloth_red" if index == 0 else "cloth_teal")
 	_sign(pose * Vector3(0, 2.7, 7.73), "КРІЙ · РЕМОНТ · ТКАНИНИ", 0.006)
 
 func _workshop(pose: Transform3D) -> void:
-	_table(pose.translated_local(Vector3(2.3, 0, 3.2)), Vector2(1.05, 1.8), "wood")
-	# Workbench vise, hanging tools, clock parts and a waiting stool.
-	_box(pose, Vector3(2.3, 1.22, 3.2), Vector3(0.5, 0.28, 0.4), "iron")
-	_rod(pose * Vector3(2, 1.28, 3.2), pose * Vector3(2.65, 1.28, 3.2), 0.035, "brass")
+	# D17: as in the atelier, the workbench keeps the service point (z 4.4) clear of a hero capsule of r 0.35.
+	var bench: Transform3D = pose.translated_local(Vector3(2.3, 0, 2.95))
+	_table(bench, Vector2(1.05, 1.8), "wood")
+	# Workbench vise, hanging tools, clock parts and a waiting stool. D6: the vise stands on the top (y 1.0).
+	_box(bench, Vector3(0, 1.14, 0), Vector3(0.5, 0.28, 0.4), "iron")
+	_rod(bench * Vector3(-0.3, 1.2, 0), bench * Vector3(0.35, 1.2, 0), 0.035, "brass")
 	_box(pose, Vector3(3.16, 2.17, 3.23), Vector3(0.065, 1.25, 2.45), "wood")
 	for row: int in 3:
 		for column: int in 9:
@@ -167,7 +208,8 @@ func _workshop(pose: Transform3D) -> void:
 		wheel.rings = 12
 		wheel.ring_segments = 4
 		_primitive(wheel, pose.translated_local(Vector3(-1.25 + float(i) * 0.65, 1.12, 5.6)), "brass")
-	_wall_clock(pose.translated_local(Vector3(2.55, 2.8, 7.72)).scaled_local(Vector3.ONE * 0.75))
+	# D10: the clock's back (0.11 m deep at scale 0.75) is on the back wall's face (z 7.8), not 3.9 cm off it.
+	_wall_clock(pose.translated_local(Vector3(2.55, 2.8, 7.8 - 0.055 * 0.75)).scaled_local(Vector3.ONE * 0.75))
 	_stool(pose.translated_local(Vector3(-2.2, 0, 1.15)))
 	_sign(pose * Vector3(0, 2.7, 7.73), "ГОДИННИКИ · МЕХАНІЗМИ", 0.006)
 
@@ -178,7 +220,7 @@ func _hanging_coat(pose: Transform3D, cloth: String) -> void:
 		_box(sleeve, Vector3.ZERO, Vector3(0.14, 0.49, 0.23), cloth)
 	_box(pose, Vector3(-0.06, 2.15, 0), Vector3(0.15, 0.86, 0.56), cloth)
 	_box(pose, Vector3(-0.06, 1.74, 0), Vector3(0.17, 0.13, 0.64), cloth)
-	_box(pose, Vector3(-0.145, 2.16, 0), Vector3(0.01, 0.75, 0.024), "brass")
+	_box(pose, Vector3(-0.145, 2.17, 0), Vector3(0.01, 0.72, 0.024), "brass")   # clear of the hem's face plane
 	for side: float in [-1.0, 1.0]:
 		_box(pose, Vector3(-0.15, 1.99, side * 0.18), Vector3(0.014, 0.11, 0.16), "cloth_cream")
 
@@ -229,7 +271,7 @@ func _sign(at: Vector3, text: String, pixel_size: float, yaw: float = PI) -> voi
 func _street_furniture() -> void:
 	# Wayfinding is visible from the player's south market approach; shop fronts face north.
 	var guide := Transform3D(Basis.IDENTITY, Vector3(-5.7, 0, 13.7))
-	_box(guide, Vector3(0, 1.9, 0), Vector3(0.13, 3.8, 0.13), "iron", "WayfindingPost")
+	_box(guide, Vector3(0, 1.9, 0), Vector3(0.11, 3.8, 0.11), "iron", "WayfindingPost")   # 1.5 cm inside the boards' faces
 	_box(guide, Vector3(0, 3.35, 0), Vector3(3.3, 0.58, 0.14), "cloth_teal")
 	_sign(guide * Vector3(0, 3.35, 0.085), "‹  КРАМНИЦІ", 0.0065, 0.0)   # no arrows in the built-in font
 	_box(guide, Vector3(0, 2.7, 0), Vector3(3.3, 0.5, 0.14), "wood")
@@ -238,13 +280,21 @@ func _street_furniture() -> void:
 	for shop: Dictionary in Places.shops():
 		var at: Vector3 = shop.door + Vector3(0, 2.72, 7.77)
 		_box(Transform3D.IDENTITY, at + Vector3(0, 0, 0.04), Vector3(3.7, 0.58, 0.06), "wood")
-	# A rest corner beside the west court preserves its five-metre playable circle.
-	for x: float in [-24.5, -14.0]:
+	# A rest corner beside the west court preserves its five-metre playable circle. The west bench stands 0.2 m
+	# further west than before: its east planter, now solid (D20), keeps a 0.35 m hero clear of the route along x −22.
+	for x: float in [-24.7, -14.0]:
 		var pose := Transform3D(Basis.IDENTITY, Vector3(x, 0, 8))
 		_box(pose, Vector3(0, 0.5, 0), Vector3(2.4, 0.14, 0.7), "wood", "StreetBench")
 		_box(pose, Vector3(0, 1, 0.28), Vector3(2.4, 0.62, 0.13), "wood", "BenchBack")
 		for side: float in [-1.0, 1.0]:
 			_box(pose, Vector3(side * 0.92, 0.22, 0), Vector3(0.13, 0.44, 0.55), "iron")
+			# Uprights from the seat to the back (the back floated 0.12 m over the seat).
+			_box(pose, Vector3(side * 0.92, 0.63, 0.28), Vector3(0.08, 0.14, 0.08), "iron")
 			_cylinder(pose, Vector3(side * 1.75, 0.3, 0), 0.4, 0.29, 0.6, "terracotta")
 			for sprig: int in 3:
 				_cylinder(pose, Vector3(side * 1.75 + float(sprig - 1) * 0.15, 0.85, 0), 0.0, 0.22, 0.7, "marker", 5)
+			# D20: the planter is solid (its pot widens from r 0.29 to 0.4; the collider takes the rim).
+			var planter := CylinderShape3D.new()
+			planter.radius = 0.4
+			planter.height = 0.6
+			_solid("BenchPlanter", pose.translated_local(Vector3(side * 1.75, 0.3, 0)), planter)

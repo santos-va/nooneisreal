@@ -324,6 +324,11 @@ func _on_content_changed(key: String, _value: Variant) -> void:
 			substances.call("clear")
 
 
+## Freeing the world with an event's menu open (T4 audit 2026-10-08 «Інше», plan 2026-10-09 step 4): the event and its
+## people have already left the tree (children exit first), so closing the menu first would call the event back into its
+## walk-away along a street that is gone — 3 ERROR for the pedlar and the leaves, 1 for the alley's call. The event ends
+## first (its own abort: no walk, no reward), then the menu closes with no event left to call.
 func _exit_tree() -> void:
+	abort_active("teardown")
 	if dialogue != null and dialogue.opened:
 		dialogue.close()

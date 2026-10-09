@@ -90,6 +90,10 @@ cases = [
     ('traversal', 'tools/grapple/traversal_check.gd', r'TRAVERSAL_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     # Aim-free rope (plan 2026-10-07-Aim-Free-Rope, T8 variant Г): the selection, the refusal and the district coverage.
     ('auto-hook', 'tools/grapple/auto_hook_check.gd', r'AUTO_HOOK_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    # Rope V4 and the jump arc С2 (plan 2026-10-09-Rope-Pull-Jump-Arc-Substance-Momentum steps 1–2): the city hook pulls
+    # the hero in to a swing; one arc per jump, T5 guards G1–G4.
+    ('rope-pull', 'tools/grapple/rope_pull_check.gd', r'ROPE_PULL_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none red=none', [], 0),
+    ('jump-arc', 'tools/animation/jump_arc_check.gd', r'JUMP_ARC_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none red=none', [], 0),
     ('anchor-coverage', 'tools/world/anchor_coverage.gd', r'ANCHOR_COVERAGE_COMPLETE checks=[1-9][0-9]* failures=0 anchors=[1-9][0-9]* t8=[0-9]+/[0-9]+ real=[0-9]+/[0-9]+ roofs=([0-9]+)/\1 supports=([0-9]+)/\2', [], 0),
     ('city-parkour', 'tools/parkour/city_parkour_check.gd', r'CITY_PARKOUR_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-tricks', 'tools/parkour/city_tricks_check.gd', r'CITY_TRICKS_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
@@ -111,6 +115,9 @@ cases = [
     ('npc-presentation', 'tools/npc/presentation_check.gd', r'NPC_PRESENTATION_COMPLETE checks=[1-9][0-9]* failures=0 max_parts=[1-9][0-9]* max_triangles=[1-9][0-9]*', [], 0),
     ('npc-chatter-mix', 'tools/npc/chatter_mix_check.gd', r'NPC_MIX_COMPLETE passed=true', [], 0),
     ('city-geometry', 'tools/world/city_geometry_check.gd', r'CITY_GEOMETRY_COMPLETE checks=[1-9][0-9]* failures=0 meshes=[1-9][0-9]*', [], 0),
+    # City tidy-up and the first props (plan 2026-10-09-City-Tidy-And-Modern-Props, phase 0): panes, support, z-fight,
+    # duplicates, solidity, the T6 places, real-key vaults of both heroes and the steam puffs.
+    ('city-tidy', 'tools/world/city_tidy_check.gd', r'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('city-runtime', 'tools/world/city_runtime_check.gd', r'CITY_RUNTIME_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-onboarding', 'tools/world/city_onboarding_check.gd', r'CITY_ONBOARDING_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     # City events, stage 1 (plan 2026-10-08-City-Events-Stage-1, steps 1–5): the director, the alley, the leaves and
@@ -185,9 +192,24 @@ for mutation in ('cfg', 'combat_key', 'migrate', 'headless_controller', 'upscale
                   ['--', '--break=' + mutation], 1))
 # Aim-free rope (N10): the base selection, a press that fires into empty air, a launch without the re-check and no
 # 0.25 s switch delay must each go red.
-for mutation in ('base', 'empty_shot', 'no_recheck', 'lock'):
+for mutation in ('base', 'empty_shot', 'no_recheck', 'lock', 'nopull'):
     cases.append(('auto-hook-negative-' + mutation, 'tools/grapple/auto_hook_check.gd',
                   rf'AUTO_HOOK_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# Rope V4: no pull (HEAD's contract), the rope at its target in one tick (V3), a rope let out, the pull and Space summed
+# in one tick must each go red in their own family. Own support (T1 after steps 1–4): the lamp post back in the hang's
+# check, the next lamp's post named instead, every solid within 6 m skipped. Help: the pull left out of the pause, a
+# wrong reel limit, the old «Get closer beneath an anchor for lift» back. Jump arc: the 2026-10-08 blends, no tuck,
+# the light landing at ×2.5.
+for mutation, family in (('nopull', 'target'), ('snap', 'step'), ('lengthen', 'lengthen'), ('sum', 'rate'),
+                         ('own', 'own'), ('wrong', 'own'), ('wide', 'cover'),
+                         ('help_nopull', 'help'), ('help_reel', 'help'), ('help_lift', 'help')):
+    cases.append(('rope-pull-negative-' + mutation, 'tools/grapple/rope_pull_check.gd',
+                  rf'ROPE_PULL_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z,]*\b{family}\b[a-z,]*',
+                  ['--', '--hero=choko', '--break=' + mutation], 1))
+for mutation, family in (('blend', 'G2'), ('tuck', 'G1'), ('land', 'G4depth')):
+    cases.append(('jump-arc-negative-' + mutation, 'tools/animation/jump_arc_check.gd',
+                  rf'JUMP_ARC_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[A-Za-z0-9,]*\b{family}\b[A-Za-z0-9,]*',
                   ['--', '--break=' + mutation], 1))
 # Living body: a presented pose left on the mannequin, a stun frame, a capsule-RNG draw or invulnerability leaked into
 # the fight, mirrored hit sides, a flinch clip that does not follow the hitstun, the get-up drawn by the authority alone,
@@ -220,25 +242,43 @@ for script, sentinel, prefix, mutations in (
         ('tools/world/city_leaves_check.gd', 'CITY_LEAVES', 'city-leaves', ('off', 'cfg', 'count', 'session', 'refuse', 'row')),
         ('tools/world/city_haze_check.gd', 'CITY_HAZE', 'city-haze', ('pulse', 'layer', 'forget', 'pocket', 'end')),
         ('tools/npc/city_economy_check.gd', 'CITY_ECONOMY', 'city-economy', ('price', 'save', 'refund')),
-        # Event menus: no guard, the call's timer behind its open menu, a trap label from before the tokens ran out.
-        ('tools/world/city_event_menus_check.gd', 'CITY_EVENT_MENUS', 'city-event-menus', ('arming', 'asktimer', 'zero')),
+        # Event menus: no guard, the call's timer behind its open menu, a trap label from before the tokens ran out; the
+        # director's old teardown order (plan 2026-10-09 step 4: the menu closed after its event left the tree).
+        ('tools/world/city_event_menus_check.gd', 'CITY_EVENT_MENUS', 'city-event-menus', ('arming', 'asktimer', 'zero', 'teardown')),
         # Hunger: a wrong rate, a clock that runs in a conversation or the pocket, no floor, no token loss on the
         # collapse, an uncapped haze drop, RETRY at full hp, the crust without its condition.
         ('tools/world/city_hunger_check.gd', 'CITY_HUNGER', 'city-hunger', ('rate', 'gate', 'pocket_clock', 'floor', 'collapse', 'haze', 'retry', 'crust')),
         # Thirst: a wrong rate, a clock that runs in a conversation or the pocket, W not counted for the body, the scale
-        # running with no water source.
-        ('tools/world/city_thirst_check.gd', 'CITY_THIRST', 'city-thirst', ('rate', 'gate', 'pocket_clock', 'ignore', 'source')),
+        # running with no water source; the pump's prompt over a street event's, the lever's old sign, a flat lever, the
+        # ladle sunk in the column (plan 2026-10-09 step 4).
+        ('tools/world/city_thirst_check.gd', 'CITY_THIRST', 'city-thirst', ('rate', 'gate', 'pocket_clock', 'ignore', 'source', 'prompt', 'lever', 'lever_flat', 'ladle')),
         # Substance states: a profile that walks, brakes or refills better; a state begun over another; a drink that keeps
-        # the hangover.
-        ('tools/world/city_substances_check.gd', 'CITY_SUBSTANCES', 'city-substances', ('walk', 'decel', 'regen', 'stack', 'hangover')),
-        # Glyphs: a `✓` literal, a `→` in data, a `◇` in a triple-quoted string, a font that claims every character.
-        ('tools/ui/glyph_coverage_check.gd', 'GLYPH_COVERAGE', 'glyph-coverage', ('inject_gd', 'inject_json', 'inject_triple', 'font')),
+        # the hangover. Plan 2026-10-09 step 3 (T4 U1–U4 and the product before the fix): a dash carried on above walking
+        # pace, ground_accel × 1.5, the hang + 1 s, the dodge bar × 1.25 in a state, W that stands in «Задишка».
+        ('tools/world/city_substances_check.gd', 'CITY_SUBSTANCES', 'city-substances', ('walk', 'decel', 'regen', 'stack', 'hangover', 'carry', 'accel', 'hang', 'dodges', 'water')),
+        # Glyphs: a `✓` literal, a `→` in data, a `◇` in a triple-quoted string, a font that claims every character; a
+        # character built at run time by `%c` (G1), String.chr (G2) or char().
+        ('tools/ui/glyph_coverage_check.gd', 'GLYPH_COVERAGE', 'glyph-coverage', ('inject_gd', 'inject_json', 'inject_triple', 'font', 'inject_format', 'inject_chr', 'inject_char')),
         # Item icons: icons stretched to the button's height, text centred, no stand-in for a row without an icon.
         ('tools/ui/item_icons_check.gd', 'ITEM_ICONS', 'item-icons', ('expand', 'center', 'blank'))):
     for mutation in mutations:
         cases.append((prefix + '-negative-' + mutation, script,
                       rf'{sentinel}_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                       ['--', '--break=' + mutation], 1))
+# City tidy (phase 0): each class with the returned audit defect and another form of it — a bracket strut and the
+# market wire in a pane; a barrel and a loaf floating, a crate sunk, the archive plate off its wall; the fascia and the
+# door jamb in one plane; a wall and a drum built twice; a planter, the dress form and the bypass plaque without their
+# colliders; the atelier table back in the service point; a prop near the court centre, under an anchor, in a resident
+# lane, the steam main out of the passage wall; a 1.5 m high and a 1.2 m deep obstacle; a puff over the hero and at
+# 10 frames a second, a 62 m ink seam back on the street — each must go red. After the merge (T1, plan 2026-10-09): the
+# pump's spout or lever without a collider, or both on a cover-only body the hero never meets, must go red too.
+for mutation in ('pane_strut', 'pane_wire', 'float_barrel', 'float_loaf', 'sink_crate', 'float_plate', 'zfight_fascia',
+                 'zfight_jamb', 'dup_wall', 'dup_barrel', 'solid_planter', 'solid_dressform', 'solid_sign', 'service',
+                 'court', 'anchor', 'passage', 'lane', 'ink_strip', 'vault_high', 'vault_deep', 'steam_hero', 'steam_flash',
+                 'pump_spout', 'pump_lever', 'pump_layer'):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
 @contextmanager
 def isolated_profile():
     # Linux has an OS-supported data root override. macOS does not: use Godot's
@@ -307,6 +347,8 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('living-body-negative-', 'ERROR: LIVING_BODY: '),
                           ('parkour-moves-negative-', 'ERROR: PARKOUR_MOVES: '),
                           ('auto-hook-negative-', 'ERROR: AUTO_HOOK: '),
+                          ('rope-pull-negative-', 'ERROR: ROPE_PULL: '),
+                          ('jump-arc-negative-', 'ERROR: JUMP_ARC: '),
                           ('display-auto-negative-', 'ERROR: DISPLAY_AUTO: '),
                           ('lethal-fight-negative-', 'ERROR: LETHAL_FIGHT: '),
                           ('blood-content-negative-', 'ERROR: BLOOD_CONTENT: '),
@@ -321,11 +363,17 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('city-thirst-negative-', 'ERROR: CITY_THIRST: '),
                           ('city-substances-negative-', 'ERROR: CITY_SUBSTANCES: '),
                           ('glyph-coverage-negative-', 'ERROR: GLYPH_COVERAGE: '),
-                          ('item-icons-negative-', 'ERROR: ITEM_ICONS: ')):
+                          ('item-icons-negative-', 'ERROR: ITEM_ICONS: '),
+                          ('city-tidy-negative-', 'ERROR: CITY_TIDY: ')):
         if name.startswith(scope):
             assertion_prefix = prefix
+    # One negative replays an engine fault on purpose: the director's old teardown order, whose «!is_inside_tree()»
+    # reads are exactly what its case counts (plan 2026-10-09 step 4). Only that line, only in that negative.
+    replayed = ('ERROR: Condition "!is_inside_tree()" is true. Returning: Transform3D()',) \
+        if name == 'city-event-menus-negative-teardown' else ()
     unexpected = [line for line in errors
-                  if expected_rc == 0 or assertion_prefix is None or not line.startswith(assertion_prefix)]
+                  if expected_rc == 0 or assertion_prefix is None
+                  or not (line.startswith(assertion_prefix) or line in replayed)]
     ok = rc == expected_rc and complete and not unexpected and 'SCRIPT ERROR' not in output
     print(f'PLAYABLE {name}: {"PASS" if ok else "FAIL"} rc={rc} log={path}', flush=True)
     if not ok:

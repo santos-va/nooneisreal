@@ -7,17 +7,32 @@ var _builders: Dictionary = {}
 var _authored_triangles: Dictionary = {}
 var visual_parts: int = 0
 var solid_count: int = 0
+## Н6 (docs/Art/2026-10-08-City-Modern-Realism-Props.md): the four stalls are no longer one stall four times. Each has
+## a state and its own seed; the seed only turns and nudges the goods, so every run builds the same market. The counter
+## and the frame of every stall stay exactly as they were; canopies are the first thing under anchors 4–7 (D18 of
+## docs/Audit/2026-10-08-City-Tidy-Technical-Audit.md).
+## «rolled» (a rolled-up awning, the fourth T6 state) is the east z 25 stall, under anchor 5 (8.6, 6.7, 24.6): T1's
+## decision after rope V4 (plan 2026-10-09-Rope-Pull-Jump-Arc-Substance-Momentum «Рішення T1 після кроків 1–4»). Its
+## spread canopy put a cloth edge on the swing of that anchor's rope and cut it (Choko, tick 47); rolled, the rope
+## falls to the street. Its goods are the full stall's.
+## Order: west z 18, west z 25, east z 18, east z 25. PLACEHOLDER composition, T6 accepts it on frames.
+const STALL_STATES: Array[String] = ["full", "trestle", "half", "rolled"]
+const STALL_SEEDS: Array[int] = [41017, 52361, 63029, 74411]
 
 
 func _ready() -> void:
 	name = "CityMarket"
 	_materials = CityMaterials.palette()
+	var slot: int = 0
 	for side: float in [-1.0, 1.0]:
 		for index: int in 2:
 			var center := Vector3(side * 8.5, 0, 18.0 + float(index) * 7.0)
 			var pose := Transform3D(Basis(Vector3.UP, -side * PI * 0.5), center)
-			_stall(pose, "cloth_red" if (index == 0) == (side < 0) else "cloth_teal")
-	for z: float in [15.2, 28.0]:
+			_stall(pose, "cloth_red" if (index == 0) == (side < 0) else "cloth_teal", STALL_STATES[slot], STALL_SEEDS[slot])
+			slot += 1
+	# D4: the south wire ran at z 28 into the arched window of bay z 28.2; z 27 sits between that window's frame
+	# (from z 27.45) and the pilaster at z 26.4 on the west facade. The east wall has no window at the wire's height.
+	for z: float in [15.2, 27.0]:
 		_wire(Vector3(-10, 6.2, z), Vector3(10, 6.2, z), 0.65)
 	_flush_batches()
 
@@ -44,7 +59,7 @@ func _flush_batches() -> void:
 	_builders.clear()
 
 
-func _stall(pose: Transform3D, cloth: String) -> void:
+func _stall(pose: Transform3D, cloth: String, state: String = "full", goods_seed: int = 0) -> void:
 	var marker := Marker3D.new()
 	marker.name = "MarketStall"
 	marker.transform = pose
@@ -72,16 +87,46 @@ func _stall(pose: Transform3D, cloth: String) -> void:
 		_quad(cloth, pose * Vector3(left, 1.1, 1.075), pose * Vector3(right, 1.1, 1.075),
 			pose * Vector3(right, 0.34 + 0.08 * absf(right), 1.1 + 0.025 * sin(float(fold + 1) * 2.0)),
 			pose * Vector3(left, 0.34 + 0.08 * absf(left), 1.1 + 0.025 * sin(float(fold) * 2.0)))
-	_canopy(pose, cloth)
-	_crate(pose.translated_local(Vector3(-1.14, 0, -0.45)), Vector3(0.78, 0.72, 0.72))
-	_crate(pose.translated_local(Vector3(-1.1, 0.73, -0.42)), Vector3(0.68, 0.55, 0.62))
-	_barrel(pose.translated_local(Vector3(1.05, 0, -0.45)))
-	for index: int in 3:
-		_jar(pose.translated_local(Vector3(-0.9 + float(index) * 0.85, 1.1, 0.6)),
-			"terracotta" if index != 1 else "cloth_teal", 0.8 + float(index) * 0.12)
+	if state == "rolled":
+		_rolled_canopy(pose, cloth)
+	else:
+		_canopy(pose, cloth)
+	_stall_goods(pose, state, goods_seed)
 	_lantern(pose * Vector3(1.3, 2.34, 0.72), 0.65)
 	_rod(pose * Vector3(1.3, 2.73, 1.12), pose * Vector3(1.3, 2.73, 0.72), 0.018, "iron")
 	_rod(pose * Vector3(1.3, 2.73, 0.72), pose * Vector3(1.3, 2.6, 0.72), 0.018, "iron")
+
+
+## The goods of one stall (Н6). Behind the counter the stall is free from local x −1.5 to 1.5 and z −0.95 to 0.1; the
+## counter top is at y 1.1. `goods_seed` turns and nudges each piece by a few centimetres (its own generator, never the
+## global one), so two stalls in the same state still differ and every run builds the same market.
+func _stall_goods(pose: Transform3D, state: String, goods_seed: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = goods_seed
+	var jars: int = 3
+	match state:
+		"half":
+			_crate(_nudged(pose, Vector3(-1.1, 0, -0.45), rng, 0.04, 0.12), Vector3(0.78, 0.72, 0.72))
+			jars = 1
+		"trestle":
+			_trestle_barrel(_nudged(pose, Vector3(0.62, 0, -0.55), rng, 0.03, 0.05))
+			_crate(_nudged(pose, Vector3(-1.14, 0, -0.45), rng, 0.03, 0.10), Vector3(0.78, 0.72, 0.72))
+			jars = 2
+		_:
+			var low: Transform3D = _nudged(pose, Vector3(-1.14, 0, -0.45), rng, 0.03, 0.10)
+			_crate(low, Vector3(0.78, 0.72, 0.72))
+			_crate(low.translated_local(Vector3(0.04, 0.72, 0.03)).rotated_local(Vector3.UP, rng.randf_range(-0.12, 0.12)), Vector3(0.68, 0.55, 0.62))
+			_beer_barrel(_nudged(pose, Vector3(1.0, 0, -0.5), rng, 0.04, 0.6))
+	for index: int in jars:
+		var at := Vector3(-0.9 + float(index) * 0.85 + rng.randf_range(-0.06, 0.06), 1.1, 0.6 + rng.randf_range(-0.04, 0.04))
+		_jar(pose.translated_local(at).rotated_local(Vector3.UP, rng.randf_range(-0.4, 0.4)),
+			"terracotta" if index != 1 else "cloth_teal", 0.8 + float(index) * 0.12)
+
+
+## `at` in `pose`, moved by up to `offset` metres on the floor and turned by up to `yaw` radians, from `rng`.
+func _nudged(pose: Transform3D, at: Vector3, rng: RandomNumberGenerator, offset: float, yaw: float) -> Transform3D:
+	var shift := Vector3(rng.randf_range(-offset, offset), 0, rng.randf_range(-offset, offset))
+	return pose.translated_local(at + shift).rotated_local(Vector3.UP, rng.randf_range(-yaw, yaw))
 
 
 func _canopy(pose: Transform3D, color: String) -> void:
@@ -118,6 +163,25 @@ func _canopy(pose: Transform3D, color: String) -> void:
 	_solid("ClothCanopy", Transform3D.IDENTITY, roof)
 
 
+## Н6 «rolled»: the same eight stripes rolled up over the back rail (local z −1.07, top y 3.295) — each stripe a band of
+## the roll, Ø 0.24 m (2.5 m of cloth × 2.2 cm), resting on the rail clear of the post tops (3.28), tied in three places.
+## One collider for the roll. PLACEHOLDER sizes; look and colour are T6's.
+func _rolled_canopy(pose: Transform3D, color: String) -> void:
+	var radius: float = 0.12
+	var axis: Transform3D = pose.translated_local(Vector3(0, 3.295 + radius, -1.07)).rotated_local(Vector3.BACK, PI * 0.5)
+	for stripe: int in 8:
+		var key: String = "cloth_cream" if stripe % 2 == 0 else color
+		var x0: float = -1.78 + float(stripe) * 0.445
+		# The roll's axis is its local y; rotated_local(BACK, π/2) points it along the stall's −x.
+		_cylinder(axis, Vector3(0, -(x0 + 0.2225), 0), radius, radius, 0.445, key, 16)
+	for x: float in [-1.1, 0.0, 1.1]:
+		_cylinder(axis, Vector3(0, -x, 0), radius + 0.008, radius + 0.008, 0.04, "wood", 16)
+	var shape := CylinderShape3D.new()
+	shape.radius = radius
+	shape.height = 3.56
+	_solid("RolledCanopy", axis, shape)
+
+
 func _cloth_point(x: float, t: float) -> Vector3:
 	var sag: float = 0.13 * sin(t * PI) + 0.12 * (1.0 - pow(absf(x) / 1.78, 2.0))
 	return Vector3(x, 3.3 - 0.56 * t - sag, lerpf(-1.25, 1.25, t))
@@ -130,34 +194,87 @@ func _crate(pose: Transform3D, size: Vector3) -> void:
 			_box(pose, Vector3(0, y, side * (size.z * 0.5 + 0.012)), Vector3(size.x + 0.05, 0.09, 0.05), "wood")
 		for x: float in [-size.x * 0.38, size.x * 0.38]:
 			_box(pose, Vector3(x, size.y * 0.5, side * (size.z * 0.5 + 0.035)), Vector3(0.085, size.y, 0.05), "wood")
+	# Iron bands between the two straps: on a 0.55 m crate the top band's underside shared the strap's plane.
 	for row: int in 3:
-		_box(pose, Vector3(0, size.y * float(row + 1) / 4.0, size.z * 0.5 + 0.008), Vector3(size.x, 0.015, 0.012), "iron")
+		_box(pose, Vector3(0, 0.145 + (size.y - 0.29) * float(row + 1) / 4.0, size.z * 0.5 + 0.008), Vector3(size.x, 0.015, 0.012), "iron")
 	var diagonal := pose.translated_local(Vector3(0, size.y * 0.5, size.z * 0.5 + 0.052)).rotated_local(Vector3.FORWARD, 0.6)
 	_box(diagonal, Vector3.ZERO, Vector3(size.x * 1.03, 0.07, 0.045), "wood")
 
 
-func _barrel(pose: Transform3D) -> void:
-	_cylinder(pose, Vector3(0, 0.28, 0), 0.46, 0.35, 0.5, "wood")
-	_cylinder(pose, Vector3(0, 0.77, 0), 0.35, 0.46, 0.5, "wood")
-	for y: float in [0.16, 0.5, 0.86]:
-		var hoop := TorusMesh.new()
-		hoop.inner_radius = 0.38 if y != 0.5 else 0.444
-		hoop.outer_radius = hoop.inner_radius + 0.033
-		hoop.rings = 12
-		hoop.ring_segments = 4
-		_primitive(hoop, pose.translated_local(Vector3(0, y, 0)), "iron")
-	_cylinder(pose, Vector3(0, 1.025, 0), 0.348, 0.348, 0.04, "wood")
+# Three barrel kinds instead of one (T6 catalog № 1–3, Б1/Б7). All stand on the floor at the pose: the staves start
+# at y 0 (D8: the old barrel's staves began at y 0.03). Hoop caps keep ≥ 6 mm off every other cap, so nothing
+# z-fights. Each has one collider of its own size. PLACEHOLDER sizes from the catalog (Ш × Г × В).
+
+## № 1: an oak beer barrel, Ø 0.6 × 0.9 m, bellied staves and three iron hoops.
+func _beer_barrel(pose: Transform3D) -> void:
+	_cylinder(pose, Vector3(0, 0.225, 0), 0.3, 0.255, 0.45, "wood")
+	_cylinder(pose, Vector3(0, 0.675, 0), 0.255, 0.3, 0.45, "wood")
+	for hoop: Vector2 in [Vector2(0.09, 0.272), Vector2(0.45, 0.31), Vector2(0.80, 0.275)]:
+		_cylinder(pose, Vector3(0, hoop.x, 0), hoop.y, hoop.y, 0.05, "iron")
 	var shape := CylinderShape3D.new()
-	shape.radius = 0.46
-	shape.height = 1.04
-	_solid("HoopedBarrel", pose.translated_local(Vector3(0, 0.52, 0)), shape)
+	shape.radius = 0.3
+	shape.height = 0.9
+	_solid("BeerBarrel", pose.translated_local(Vector3(0, 0.45, 0)), shape)
+
+
+## № 1 on trestles (Н6): the barrel on its side on two trestles, a brass tap on its head (brass is for what a hand
+## touches, П6). 1.0 × 0.6 × 0.86 m over all.
+func _trestle_barrel(pose: Transform3D) -> void:
+	for x: float in [-0.34, 0.34]:
+		_box(pose, Vector3(x, 0.31, 0), Vector3(0.08, 0.06, 0.6), "wood")
+		for z: float in [-0.24, 0.24]:
+			_box(pose, Vector3(x, 0.14, z), Vector3(0.06, 0.28, 0.06), "wood")
+	var lying: Transform3D = pose.translated_local(Vector3(0, 0.6, 0)).rotated_local(Vector3.BACK, PI * 0.5)
+	_cylinder(lying, Vector3(0, -0.2, 0), 0.26, 0.22, 0.4, "wood")
+	_cylinder(lying, Vector3(0, 0.2, 0), 0.22, 0.26, 0.4, "wood")
+	for hoop: Vector2 in [Vector2(-0.33, 0.235), Vector2(0.0, 0.27), Vector2(0.33, 0.235)]:
+		_cylinder(lying, Vector3(0, hoop.x, 0), hoop.y, hoop.y, 0.04, "iron")
+	_rod(pose * Vector3(0.4, 0.5, 0), pose * Vector3(0.49, 0.5, 0), 0.025, "brass")
+	_rod(pose * Vector3(0.49, 0.5, 0), pose * Vector3(0.49, 0.42, 0), 0.02, "brass")
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(0.98, 0.86, 0.6)
+	_solid("TrestleBarrel", pose.translated_local(Vector3(0.04, 0.43, 0)), shape)
+
+
+## № 2: a rainwater butt under a downpipe — wooden, with a lid and **no ladle**, so it is never read as the water
+## pump. Ø 0.7 × 0.8 m staves, the lid and its grip up to 0.84 m.
+func _water_butt(pose: Transform3D) -> void:
+	_cylinder(pose, Vector3(0, 0.38, 0), 0.34, 0.31, 0.76, "wood")
+	for hoop: Vector2 in [Vector2(0.1, 0.322), Vector2(0.42, 0.335), Vector2(0.68, 0.345)]:
+		_cylinder(pose, Vector3(0, hoop.x, 0), hoop.y, hoop.y, 0.045, "iron")
+	_cylinder(pose, Vector3(0, 0.78, 0), 0.36, 0.36, 0.04, "wood")
+	_box(pose, Vector3(0, 0.82, 0), Vector3(0.3, 0.04, 0.05), "wood")
+	var shape := CylinderShape3D.new()
+	shape.radius = 0.36
+	shape.height = 0.84
+	_solid("WaterButt", pose.translated_local(Vector3(0, 0.42, 0)), shape)
+
+
+## № 3: a steel tar drum, Ø 0.6 × 0.9 m, a riveted seam, two rolling hoops and a bung; the tar runs are brown-plum
+## (brick), never black and never blood-red (П6).
+func _tar_barrel(pose: Transform3D) -> void:
+	_cylinder(pose, Vector3(0, 0.45, 0), 0.29, 0.29, 0.9, "slate")
+	_cylinder(pose, Vector3(0, 0.03, 0), 0.3, 0.3, 0.06, "iron")
+	_cylinder(pose, Vector3(0, 0.86, 0), 0.3, 0.3, 0.04, "iron")
+	for y: float in [0.3, 0.6]:
+		_cylinder(pose, Vector3(0, y, 0), 0.305, 0.305, 0.04, "iron")
+	_box(pose, Vector3(0, 0.45, 0.29), Vector3(0.05, 0.86, 0.02), "iron")
+	for run: Vector3 in [Vector3(0.9, 0.78, 0.22), Vector3(-1.3, 0.73, 0.32)]:
+		var on_side: Transform3D = pose.rotated_local(Vector3.UP, run.x)
+		_box(on_side, Vector3(0, run.y, 0.29), Vector3(0.07, run.z, 0.02), "brick")
+	_cylinder(pose, Vector3(0.14, 0.91, 0.05), 0.045, 0.045, 0.02, "iron")
+	var shape := CylinderShape3D.new()
+	shape.radius = 0.3
+	shape.height = 0.9
+	_solid("TarBarrel", pose.translated_local(Vector3(0, 0.45, 0)), shape)
 
 
 func _jar(pose: Transform3D, color: String, scale_factor: float) -> void:
 	_cylinder(pose, Vector3(0, 0.18 * scale_factor, 0), 0.2 * scale_factor, 0.12 * scale_factor, 0.36 * scale_factor, color)
 	_cylinder(pose, Vector3(0, 0.4 * scale_factor, 0), 0.09 * scale_factor, 0.2 * scale_factor, 0.09 * scale_factor, color)
 	_cylinder(pose, Vector3(0, 0.46 * scale_factor, 0), 0.11 * scale_factor, 0.1 * scale_factor, 0.05 * scale_factor, color)
-	_cylinder(pose, Vector3(0, 0.488 * scale_factor, 0), 0.075 * scale_factor, 0.075 * scale_factor, 0.006, "iron")
+	# The lid sits on the mouth (top 0.485 × scale) and rises 8 mm over it, not within 6 mm of the mouth's plane.
+	_cylinder(pose, Vector3(0, 0.485 * scale_factor + 0.004, 0), 0.075 * scale_factor, 0.075 * scale_factor, 0.008, "iron")
 	var shape := CylinderShape3D.new()
 	shape.radius = 0.2 * scale_factor
 	shape.height = 0.49 * scale_factor

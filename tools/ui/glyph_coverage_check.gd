@@ -13,12 +13,20 @@ extends SceneTree
 ## except a literal whose statement is a console call (print*, push_error, push_warning, assert) and the smoke harness
 ## SmokeTest.gd, which only prints to the console; every string of res://data/**/*.json; the display_name of every
 ## CharacterData in res://data/characters/; every `text = "…"` of res://scenes/**/*.tscn.
+## Static (T4 audit 2026-10-08 п. 5, plan 2026-10-09 step 4): a character made at run time is never seen by the font
+## check, so screen code may not make one — no `String.chr(`, no global `char(` outside a console call, no `%c` directive
+## in a screen literal (`git grep -nE 'String\.chr\(|[^_.a-zA-Z0-9]char\(|%c' -- game/scripts` stays empty but for
+## console lines).
 ## --break=inject_gd|inject_json|inject_triple|font are negative controls (a `✓` literal, a `→` in data, a `◇` in a
-## triple-quoted string, a font that claims every character).
+## triple-quoted string, a font that claims every character); --break=inject_format|inject_chr|inject_char are G1
+## (`" %c" % 0x2713`), G2 (`String.chr(0x2192)`) and `char(0x2713)` in a screen line.
 ## Sentinel: GLYPH_COVERAGE_COMPLETE checks=N failures=M mutation=<m> (the form playable_check.sh expects of a negative),
 ## after GLYPH_COVERAGE_INFO literals=L chars=C; failures print "GLYPH_COVERAGE: ...".
 const SINKS: Array[String] = ["print", "prints", "printt", "printerr", "printraw", "print_rich", "print_debug", "push_error", "push_warning", "assert"]
 const CONSOLE_ONLY: Array[String] = ["res://scripts/core/SmokeTest.gd"]
+## Calls that make a character at run time, out of the literal scan's sight (T4 audit 2026-10-08 п. 5, G1/G2).
+const BUILT_CALLS: Array[String] = ["String.chr(", "char("]
+var built: Array[String] = []   # screen code that builds a character at run time: path:line and what
 var checks: int = 0
 var failures: int = 0
 var mutation: String = "none"
@@ -92,6 +100,14 @@ func _run() -> void:
 			_scan_json("res://data/fixture_inject.json", "{\"lines\": [\"двір → сходи\"]}")
 		"inject_triple":
 			_scan_gd("res://scripts/fixture_inject.gd", "const HELP := \"\"\"first line\n\t◇ second line\"\"\"\n")
+		"inject_format":
+			_scan_gd("res://scripts/fixture_inject.gd", "func _x() -> void:\n\tlabel.text = \"READY\" + (\" %c\" % 0x2713)\n")
+		"inject_chr":
+			_scan_gd("res://scripts/fixture_inject.gd", "func _x() -> void:\n\tlabel.text = \"двір \" + String.chr(0x2192) + \" сходи\"\n")
+		"inject_char":
+			_scan_gd("res://scripts/fixture_inject.gd", "func _x() -> void:\n\tlabel.text = \"READY \" + char(0x2713)\n")
+	# Static: no screen string builds a character at run time (the font check above only sees what is written down).
+	_check(built.is_empty(), "no screen code builds a character at run time (String.chr, char(), a %c format): " + ", ".join(built))
 	_check(literals > 100, "the scan reached the game's strings (%d literals)" % literals)
 	print("GLYPH_COVERAGE_INFO literals=%d chars=%d" % [literals, seen.size()])
 	print("GLYPH_COVERAGE_COMPLETE checks=%d failures=%d mutation=%s" % [checks, failures, mutation])
@@ -166,8 +182,34 @@ func _scan_gd(path: String, text: String) -> void:
 			i += quote.length()
 			if not _console(text, i):
 				_scan_text("%s:%d" % [path, start_line], body)
+				if _format_c(body):
+					built.append("%s:%d «%s» (%%c)" % [path, start_line, body.substr(0, 60)])
 			continue
+		# A glyph made at run time never reaches _scan_text: String.chr(…) / char(…) in code outside a console call.
+		for call: String in BUILT_CALLS:
+			if text.substr(i, call.length()) == call and (i == 0 or not _identifier_char(text[i - 1])) and not _console(text, i):
+				built.append("%s:%d %s…)" % [path, line, call])
 		i += 1
+
+
+## A `%c` directive in a format string (an odd run of `%` before the `c`; `%%c` is a literal percent and a c).
+static func _format_c(body: String) -> bool:
+	var at: int = body.find("%c")
+	while at >= 0:
+		var run: int = 0
+		var k: int = at
+		while k >= 0 and body[k] == "%":
+			run += 1
+			k -= 1
+		if run % 2 == 1:
+			return true
+		at = body.find("%c", at + 2)
+	return false
+
+
+## Part of a longer name or a member access: `has_char(`, `font.char(` are not the global char().
+static func _identifier_char(c: String) -> bool:
+	return c == "_" or c == "." or (c >= "a" and c <= "z") or (c >= "A" and c <= "Z") or (c >= "0" and c <= "9")
 
 
 ## True when the literal ending at `at` belongs to a console call (its statement starts with one of SINKS).

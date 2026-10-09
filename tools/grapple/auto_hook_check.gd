@@ -9,7 +9,8 @@ extends SceneTree
 ##      TOO FAR, grey ring), HUD ring / edge arrow / windup fill / reason line / rate limit / tutorial / help.
 ## Thresholds are the spec's literals: switch 0.25 s, behind −0.2, TOO FAR ≤ 1.5 × range, reason 1.5 s, sound gap 0.3 s.
 ## --break=base|empty_shot|no_recheck|lock are negative controls (N10): the base selection, a press that fires into
-## empty air (no T8 flag), a launch without the re-check, and no 0.25 s switch delay must each go red.
+## empty air (no T8 flag), a launch without the re-check, and no 0.25 s switch delay must each go red. --break=nopull
+## (rope V4, plan 2026-10-09): a route HANG whose rope never pulls in (HEAD's contract) must go red too.
 ## Sentinel: AUTO_HOOK_COMPLETE checks=N failures=M mutation=<m>; failures print "AUTO_HOOK: ...".
 const SWITCH_SECONDS: float = 0.25
 const REASON_SECONDS: float = 1.5
@@ -690,6 +691,9 @@ func _district(hero: String) -> void:
 	var hangs := 0
 	var refusals := 0
 	var rewinds := 0
+	var bodies := 0
+	if mutation == "nopull":
+		hero_node.grapple.parkour_pull_speed = 0.0
 	var route: Array[Vector3] = Layout.route_points()
 	for leg: int in route.size() - 1:
 		var from: Vector3 = route[leg]
@@ -720,15 +724,54 @@ func _district(hero: String) -> void:
 				_check(false, tag + "P11 route press at %s rewound" % at)
 			elif hero_node.grapple.phase == Hook.Phase.HANG:
 				hangs += 1
+				if await _body_after_hang(world, tag + "P11 route press at %s: " % at):
+					bodies += 1
 			elif city_denials.size() == 1 and hero_node.grapple.charges == stock:
 				refusals += 1
 			else:
 				_check(false, tag + "P11 route press at %s neither hung nor was refused once (%s, phase %d)" % [at, city_denials, hero_node.grapple.phase])
-	print("AUTO_HOOK route %s presses=%d hangs=%d refusals=%d rewinds=%d" % [hero, presses, hangs, refusals, rewinds])
+	print("AUTO_HOOK route %s presses=%d hangs=%d refusals=%d rewinds=%d lifted=%d" % [hero, presses, hangs, refusals, rewinds, bodies])
 	_check(presses >= 10 and rewinds == 0 and hangs > presses / 2, tag + "P11 route: %d presses, %d hangs, %d refusals, %d rewinds" % [presses, hangs, refusals, rewinds])
 	world.queue_free()
 	current_scene = null
 	await _ticks(3)
+
+
+## Class 5: a HANG is not the promise by itself. Rope V4 (plan 2026-10-09-Rope-Pull-Jump-Arc-Substance-Momentum step 1,
+## T5 Т3/Т4): after the hook holds, the rope pulls in to the swing length min(L0, max(2.0, anchor − floor − 1.25 − 0.5))
+## (floor = the higher support under the anchor and under the hero, from this check's own rays) and the body leaves the
+## floor — unless solid geometry cuts the rope first, which this check's own ray must confirm. True when the body lifted.
+func _body_after_hang(world: Node, tag: String) -> bool:
+	var hero_node: CharacterBody3D = world.player
+	var hook: Node = hero_node.grapple
+	var anchor: Vector3 = hook.anchor_point
+	var contact: float = hook.rope_length
+	var support := maxf(_support_y(hero_node, anchor + Vector3.DOWN * 0.05), _support_y(hero_node, hero_node.global_position + Vector3.UP * 0.05))
+	var target := contact if is_inf(support) else minf(contact, maxf(2.0, anchor.y - support - 1.25 - 0.5))
+	var pull_ticks := ceili((contact - target) / (8.0 / 60.0) - 0.0001)
+	var lifted := false
+	for tick: int in pull_ticks + 12:
+		await _ticks(1)
+		if hook.phase != Hook.Phase.HANG:
+			var hand: Vector3 = hero_node.global_position + Vector3(0, 1.25, 0)
+			var query := PhysicsRayQueryParameters3D.create(hand, anchor, 8 | 1) # the rope rule: ArenaLayout.COVER_LAYER | body
+			query.hit_from_inside = true
+			query.exclude = [hero_node.get_rid()]
+			_check(not hero_node.get_world_3d().direct_space_state.intersect_ray(query).is_empty(), tag + "the hang ended on tick %d with a clear line to the anchor" % (tick + 1))
+			return false
+		lifted = lifted or not hero_node.is_on_floor()
+		if lifted and tick >= pull_ticks:
+			break
+	_check(absf(hook.rope_length - target) < 0.002, tag + "the rope pulled in to the swing length %.3f from %.3f (now %.3f)" % [target, contact, hook.rope_length])
+	_check(lifted, tag + "the body left the floor on the rope")
+	return lifted
+
+
+func _support_y(hero_node: CharacterBody3D, from: Vector3) -> float:
+	var query := PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 64.0, 1)
+	query.exclude = [hero_node.get_rid()]
+	var hit := hero_node.get_world_3d().direct_space_state.intersect_ray(query)
+	return -INF if hit.is_empty() else float(hit.position.y)
 
 
 func _anchor_name(world: Node, point: Vector3) -> String:

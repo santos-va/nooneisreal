@@ -6,7 +6,8 @@ extends SceneTree
 ## fade while every option, price, quest and story line stays whole; it ends with time or food at «Шавлія», and then
 ## everything is exactly as before.
 ##   H1 haze_active()/haze_remaining();  H2 ramp, a constant plateau, the vignette layer < 19 and its strength;
-##   H3 FOV 65 → 55 at the default CAMERA SHAKE, 65 at 0;  H4 walk × 0.85, braking × 0.6, tracking × 0.5 — none of it in
+##   H3 FOV 65 → 55 at the default CAMERA SHAKE, 65 at 0;  H4 walk × 0.85, braking × 0.6 below the sober walking pace
+##   and the full braking above it (plan 2026-10-09 step 3), tracking × 0.5 — none of it in
 ##   a lethal pocket, Fighter has no such field;  H5 Mira's conversation: the same options and prices as without the
 ##   state, the reply half gone after 2 s, «Тобі б поїсти», a quest offer and its acceptance whole, the meeting recorded;
 ##   H6 food: −1 token, at most the 10 s fade left, HAZE LIFTING · Steps and view come back;  H7 the HAZE m:ss line is
@@ -150,10 +151,19 @@ func _run() -> void:
 
 	# H4 ------------------------------------------------------------------------------------------------------------
 	_check(is_equal_approx(player.speed_mult(), base_speed * WALK), "H4 walking × %.2f (%.4f of %.4f)" % [WALK, player.speed_mult(), base_speed])
-	player.velocity = Vector3(5.0, 0.0, 0.0)
+	# The braking scale holds below the walking pace of the body without the state (5.6 m/s for Choko, never the hazy
+	# 4.76: T5 2026-10-09-Rope-Pull-And-Jump-Arc-Numbers Х1) — 5.2 lies between the two; above it, what is left of a dash,
+	# the full ground_decel brakes, as without the state (plan 2026-10-09 step 3, variant A; T4 audit RED п. 1).
+	var pace: float = player.data.walk_speed * (player.speed_mult() / WALK)
+	var probe: float = pace - 0.4
+	player.velocity = Vector3(probe, 0.0, 0.0)
 	player._walk_physics(1.0 / 60.0, 0.0, 0.0)
-	var braked: float = 5.0 - Vector2(player.velocity.x, player.velocity.z).length()
-	_check(is_equal_approx(braked, player.data.ground_decel * DECEL / 60.0), "H4 braking × %.1f (%.4f m/s in a tick)" % [DECEL, braked])
+	var braked: float = probe - Vector2(player.velocity.x, player.velocity.z).length()
+	_check(probe > player.data.walk_speed * player.speed_mult() and is_equal_approx(braked, player.data.ground_decel * DECEL / 60.0), "H4 braking × %.1f below the walking pace without the state (%.4f m/s in a tick from %.2f, above the hazy %.2f)" % [DECEL, braked, probe, player.data.walk_speed * player.speed_mult()])
+	player.velocity = Vector3(player.data.dash_speed, 0.0, 0.0)
+	player._walk_physics(1.0 / 60.0, 0.0, 0.0)
+	var carried: float = player.data.dash_speed - Vector2(player.velocity.x, player.velocity.z).length()
+	_check(is_equal_approx(carried, player.data.ground_decel / 60.0), "H4 above the walking pace the full braking (%.4f m/s in a tick from %.1f)" % [carried, player.data.dash_speed])
 	player._start_move(player.data.light, "light")
 	_check(is_equal_approx(player._track_left, deg_to_rad(player.data.light.tracking_deg) * TRACK), "H4 attack tracking × %.1f" % TRACK)
 	player.lethal_pocket = true
