@@ -17,6 +17,9 @@ var _serial: int = 0
 var _feet_serial: int = -1
 var _plants: Dictionary = {}
 var _frame_feet: Dictionary = {}
+var _frame_weights: Dictionary = {}
+## The wall-run plant point of a foot in stance, including its take and let-go (_plants: only full contact).
+var _held: Dictionary = {}
 var _kick_source: String = "WallRun_Jump_R"
 var _hero_id: String = ""
 var _gear_serial: int = -1
@@ -25,6 +28,39 @@ var accessory_lift: float = 0.0
 var roll_support = preload("res://scripts/fighter/RollGroundSupport.gd").new()
 ## Seconds into the looping side-run / shimmy clip: they play at their authored rate while the body travels.
 var _loop_time: float = 0.0
+## ── Plan 2026-10-09-Animation-Feel-Landing-Rope-Stop-Wall step 5 (branch B). Every value is a PLACEHOLDER art value.
+## --break controls of tools/animation/anim_traversal_check.gd: false draws the product of main 595490d.
+var wall_living: bool = true
+var ledge_living: bool = true
+var roll_tuck: bool = true
+## Wall run: the feet step WALL_STEP_STRIDE metres of wall per Climb_Up cycle and the arms play it at most WALL_ARM_RATE
+## times its authored rate (T6: at WALL_STRIDE Climb_Up ran ~9x its rate at 5 m/s and the arms flailed 40-73 deg/tick).
+const WALL_STEP_STRIDE: float = 1.2
+const WALL_ARM_RATE: float = 2.0
+## A foot stays planted for this share of the cycle (0.34 m of wall at WALL_STEP_STRIDE, as the 0.36 m of a half cycle at
+## WALL_STRIDE: further up the leg cannot reach its plant and the shoe floats off the wall), then swings; both feet are
+## off the wall between plants, as in a run. Take and let-go each last WALL_PLANT_RAMP of the cycle.
+const WALL_STANCE: float = 0.28
+const WALL_PLANT_RAMP: float = 0.06
+var _arm_cycle: float = 0.0
+var _climb_up_seconds: float = 1.267
+## Ledge hang: Climb_Idle plays, and the body swings from its grip -- the grab's swing decays to a breathing sway --
+## while it turns about the vertical a quarter period later, so the hang never stands still (T6: 22 ticks at 0 deg).
+const HANG_SWING: float = 5.0 # degrees added at the grab
+const HANG_SWAY: float = 1.5 # degrees, what stays
+const HANG_DECAY: float = 0.8 # seconds
+const HANG_PERIOD: float = 1.6 # seconds
+## Mantle: the drawn body rises on an ease-in-out arc over the motor's straight hang -> apex line (a pull, then a
+## press; T6: "a lift"), and the ClimbLedge wrist flip at 0.32 s (55 deg/tick authored) is spread over MANTLE_WRIST.
+const MANTLE_RISE: float = 1.455 # CityParkourProfile hang_height + clearance: the motor's hang -> apex rise
+const MANTLE_WRIST: Vector2 = Vector2(0.26, 0.42)
+## Landing roll: the tucked body turns once forward about its centre, finishing when the motor's roll is expected to stop
+## (T6: "a plank, then a headstand"). The limbs take the Roll clip at ROLL_TUCK_AT, its tightest tuck (thighs 15-27 deg
+## off the spine, hands at the knees); the clip's own orientation and its 1.15 m dive are dropped.
+const ROLL_TUCK_AT: float = 0.72
+## The turn is complete at this share of the roll; the rest of it unfolds the tuck upright.
+const ROLL_TURN_DONE: float = 0.85
+var _roll_turn: float = 0.0
 
 func update(f: Fighter, velocity: Vector3, delta: float, discontinuous: bool) -> void:
 	_serial += 1
@@ -41,12 +77,22 @@ func update(f: Fighter, velocity: Vector3, delta: float, discontinuous: bool) ->
 		_elapsed = 0.0
 		cycle = 0.0
 		_loop_time = 0.0
+		_arm_cycle = 0.0
+		_roll_turn = 0.0
 		_plants.clear()
+		_held.clear()
 		_frame_feet.clear()
 	_elapsed += maxf(delta, 0.0)
 	if phase == "wall_run" and not discontinuous:
 		# Actual 3D displacement: vertical wall travel advances feet; a blocked body does not.
-		cycle = fposmod(cycle + velocity.length() * maxf(delta, 0.0) / WALL_STRIDE, 1.0)
+		var stride: float = WALL_STEP_STRIDE if wall_living else WALL_STRIDE
+		var steps: float = velocity.length() * maxf(delta, 0.0) / stride
+		cycle = fposmod(cycle + steps, 1.0)
+		_arm_cycle = fposmod(_arm_cycle + minf(steps, WALL_ARM_RATE * maxf(delta, 0.0) / _climb_up_seconds), 1.0)
+	if phase == "landing_roll" and not discontinuous:
+		# The share of the roll behind the body: linear in time when the motor stops where it is expected to.
+		var behind: float = float(_snapshot.get("progress", 0.0)) * float(_snapshot.get("duration", 0.0))
+		_roll_turn = maxf(_roll_turn, clampf(behind / (behind + _roll_remaining(f)), 0.0, 1.0))
 	if phase == "wall_kick" and previous != phase:
 		_kick_source = "WallRun_Jump_L" if Vector3(_snapshot.wall_normal).dot(f.forward.cross(Vector3.UP)) < 0.0 else "WallRun_Jump_R"
 	source_clip = {"hang": "Climb_Idle", "mantle": "ClimbLedge", "wall_run": "Climb_Up", "wall_kick": _kick_source, "landing_roll": "Roll", "vault": "SafetyVault"}.get(phase, "")
@@ -84,16 +130,29 @@ func apply_source(source: Skeleton3D, clips: AuthoredHookMotion) -> void:
 	if source_clip.is_empty() or not clips._cache.has(source_clip):
 		return
 	_base = AuthoredLocomotion._poses(source)
+	if phase == "landing_roll" and roll_tuck:
+		_apply_tuck(source, clips)
+		return
 	var progress: float = clampf(float(_snapshot.get("progress", 0.0)), 0.0, 1.0)
 	var length: float = float(clips._lengths[source_clip])
 	var at: float = (cycle if phase == "wall_run" else (0.35 if phase == "hang" else progress)) * length
+	if phase == "hang" and ledge_living:
+		at = fposmod(0.35 * length + _elapsed, length)
+	var arms_at: float = at
+	if phase == "wall_run":
+		_climb_up_seconds = length
+		if wall_living:
+			arms_at = _arm_cycle * length
 	if source_clip in ["WallRun_L", "WallRun_R", "Climb_Left", "Climb_Right"]:
 		at = fposmod(_loop_time, length)
+		arms_at = at
 	var weight: float = smoothstep(0.0, ENTRY_SECONDS, _elapsed)
 	if phase in ["wall_kick", "landing_roll"]:
 		weight *= 1.0 - smoothstep(0.80, 1.0, progress)
 	for bone: int in source.get_bone_count():
-		var pose: Transform3D = clips._pose(source_clip, at, bone)
+		var pose: Transform3D = clips._pose(source_clip, arms_at if _upper(source.get_bone_name(bone)) else at, bone)
+		if phase == "mantle" and ledge_living and source.get_bone_name(bone) in ["hand_l", "hand_r"] and at > MANTLE_WRIST.x and at < MANTLE_WRIST.y:
+			pose = clips._pose(source_clip, MANTLE_WRIST.x, bone).interpolate_with(clips._pose(source_clip, MANTLE_WRIST.y, bone), smoothstep(MANTLE_WRIST.x, MANTLE_WRIST.y, at))
 		# Rotations only: no imported wall-root translation or limb scaling.
 		var target: Quaternion = pose.basis.orthonormalized().get_rotation_quaternion()
 		if _hero_id == "choko" and phase in ["landing_roll", "wall_kick"] and (source.get_bone_name(bone).begins_with("spine_") or source.get_bone_name(bone).begins_with("clavicle_")):
@@ -121,6 +180,8 @@ func apply_source(source: Skeleton3D, clips: AuthoredHookMotion) -> void:
 func apply_contacts(hero: Skeleton3D, f: Fighter) -> void:
 	grip_error = 0.0
 	if phase == "landing_roll":
+		if roll_tuck:
+			_turn_roll(hero)
 		roll_support.apply(hero, f.skeletal.hero_mesh, _snapshot, _serial)
 		return
 	if phase == "wall_run":
@@ -131,6 +192,13 @@ func apply_contacts(hero: Skeleton3D, f: Fighter) -> void:
 	# The motor's ledge points are the authority. Never substitute a nearby fake grip.
 	# Mantling releases the ledge as the body clears it, avoiding arms bent behind the back.
 	var progress: float = clampf(float(_snapshot.get("progress", 0.0)), 0.0, 1.0)
+	if ledge_living:
+		if phase == "hang":
+			_sway_hang(hero)
+		else:
+			var rise: float = minf(progress * 2.0, 1.0)
+			var hips: int = hero.find_bone("Hips")
+			hero.set_bone_pose_position(hips, hero.get_bone_pose_position(hips) + hero.global_basis.inverse() * (Vector3.UP * MANTLE_RISE * (smoothstep(0.0, 1.0, rise) - rise)))
 	var weight: float = 1.0 - smoothstep(0.22, 0.48, progress) if phase == "mantle" else 1.0
 	_align_ledge_support(hero, weight)
 	for side: String in ["Left", "Right"]:
@@ -184,29 +252,47 @@ func _apply_wall_feet(hero: Skeleton3D, f: Fighter) -> void:
 	var wall: Vector3 = _snapshot.wall_point
 	if _feet_serial != _serial:
 		_frame_feet.clear()
+		_frame_weights.clear()
 		for side: String in ["Left", "Right"]:
 			var foot: int = hero.find_bone(side + "Foot")
 			var phase_offset: float = cycle + (0.5 if side == "Right" else 0.0)
-			var stance: bool = fposmod(phase_offset, 1.0) < 0.5
+			var stance: bool = fposmod(phase_offset, 1.0) < (WALL_STANCE if wall_living else 0.5)
 			if not stance:
 				_plants.erase(side)
+				_held.erase(side)
 				continue
 			var ankle: Vector3 = hero.global_transform * hero.get_bone_global_pose(foot).origin
-			var point: Vector3 = _plants.get(side, ankle)
+			var point: Vector3 = _held.get(side, ankle)
 			var contact: Dictionary = _shoe_contact(hero, f, side, ankle, point, normal, wall)
 			if contact.is_empty():
 				_plants.erase(side)
+				_held.erase(side)
 				continue
 			# Tangential coordinates stay planted; normal clearance follows the actual
 			# animated shoe footprint, including protrusions missed by the ankle ray.
-			_plants[side] = contact.point
-			_frame_feet[side] = _plants[side]
+			_held[side] = contact.point
+			_frame_feet[side] = contact.point
+			# A plant takes and lets go of the foot over WALL_PLANT_RAMP of the cycle each instead of in one tick; only a
+			# foot in full contact counts as planted.
+			var stance_at: float = fposmod(phase_offset, 1.0)
+			var weight: float = smoothstep(0.0, WALL_PLANT_RAMP, stance_at) * (1.0 - smoothstep(WALL_STANCE - WALL_PLANT_RAMP, WALL_STANCE, stance_at)) if wall_living else 1.0
+			_frame_weights[side] = weight
+			if weight >= 0.999:
+				_plants[side] = contact.point
+			else:
+				_plants.erase(side)
 		_feet_serial = _serial
 	for side: String in _frame_feet:
 		var a: int = hero.find_bone(side + "UpLeg")
 		var b: int = hero.find_bone(side + "Leg")
 		var end: int = hero.find_bone(side + "Foot")
+		var original: Array[Quaternion] = [hero.get_bone_pose_rotation(a), hero.get_bone_pose_rotation(b), hero.get_bone_pose_rotation(end)]
 		AuthoredCombatMotion._solve_chain(hero, a, b, end, hero.global_transform.affine_inverse() * Vector3(_frame_feet[side]))
+		var plant: float = float(_frame_weights.get(side, 1.0))
+		if plant < 1.0:
+			for index: int in 3:
+				var bone: int = [a, b, end][index]
+				hero.set_bone_pose_rotation(bone, original[index].slerp(hero.get_bone_pose_rotation(bone), plant))
 
 func _shoe_contact(hero: Skeleton3D, f: Fighter, side: String, ankle: Vector3, plant: Vector3, normal: Vector3, wall: Vector3) -> Dictionary:
 	var tangent: Vector3 = normal.cross(Vector3.UP).normalized()
@@ -281,3 +367,80 @@ func finish_roll_support(f: Fighter) -> bool:
 	var hips: int = hero.find_bone("Hips")
 	hero.set_bone_pose_position(hips, hero.get_bone_pose_position(hips) + hero.global_basis.inverse() * (Vector3.UP * accessory_lift))
 	return true
+
+## Upper body: what the wall-run arm clock drives (the AuthoredHookMotion mask: spine, neck, head, shoulders, arms, hands).
+static func _upper(name: String) -> bool:
+	return name.begins_with("spine_") or name.begins_with("neck_") or name == "Head" or name.begins_with("clavicle_") or name.begins_with("upperarm_") or name.begins_with("lowerarm_") or name.begins_with("hand_") or name.contains("thumb") or name.contains("index") or name.contains("middle") or name.contains("ring") or name.contains("pinky")
+
+## Seconds the motor's roll still has (CityParkourMotor.tick_ground: it decelerates to a quarter of roll_min_speed, or
+## stops at roll_seconds), read-only from the actor's own profile; 0.3 s when the actor has none.
+func _roll_remaining(f: Fighter) -> float:
+	var motor: Variant = f.get("parkour")
+	var profile: Resource = motor.profile if motor != null and "profile" in motor else null
+	if profile == null:
+		return 0.3
+	var speed: float = float(_snapshot.get("speed", 0.0))
+	var by_speed: float = (speed - float(profile.roll_min_speed) * 0.25) / maxf(float(profile.roll_deceleration), 0.001)
+	var by_clock: float = float(profile.roll_seconds) * (1.0 - float(_snapshot.get("progress", 0.0)))
+	return maxf(minf(by_speed, by_clock), 1.0 / 60.0)
+
+func _tuck_weight() -> float:
+	return smoothstep(0.0, 0.20, _roll_turn) * (1.0 - smoothstep(0.55, 1.0, _roll_turn))
+
+## The roll's tuck on the mannequin: the Roll clip's limbs at ROLL_TUCK_AT; the pelvis keeps the stance's orientation and
+## height (the turn and the floor contact are drawn on the hero, _turn_roll and RollGroundSupport).
+func _apply_tuck(source: Skeleton3D, clips: AuthoredHookMotion) -> void:
+	var weight: float = _tuck_weight()
+	var pelvis: int = source.find_bone("pelvis")
+	for bone: int in source.get_bone_count():
+		var name: String = source.get_bone_name(bone)
+		if bone == pelvis or name.begins_with("hand_"):
+			continue # the hands keep the stance's wrists: the tuck's wrists flip across 180° on the way back
+		var target: Quaternion = clips._pose("Roll", ROLL_TUCK_AT, bone).basis.orthonormalized().get_rotation_quaternion()
+		if _hero_id == "choko" and (name.begins_with("spine_") or name.begins_with("clavicle_")):
+			# Keep the compact hero's chest shell from folding through itself (as the authored roll does).
+			var rest: Quaternion = source.get_bone_rest(bone).basis.orthonormalized().get_rotation_quaternion()
+			target = rest.slerp(target, 0.20 if name.begins_with("spine_") else 0.0)
+		if _hero_id == "choko" and (name.begins_with("neck_") or name == "Head"):
+			var rest: Quaternion = source.get_bone_rest(bone).basis.orthonormalized().get_rotation_quaternion()
+			target = rest.slerp(target, 0.25)
+		source.set_bone_pose_rotation(bone, _base[bone].basis.orthonormalized().get_rotation_quaternion().slerp(target, weight))
+
+## One forward turn of the whole hero about its centre (the mean of its bones) while it rolls along the floor.
+func _turn_roll(hero: Skeleton3D) -> void:
+	var direction: Vector3 = Vector3(_snapshot.direction)
+	direction.y = 0.0
+	if direction.length_squared() < 0.0001:
+		return
+	var axis: Vector3 = (hero.global_basis.inverse() * Vector3.UP.cross(direction.normalized())).normalized()
+	_turn_about(hero, axis, _centre(hero), TAU * smoothstep(0.0, ROLL_TURN_DONE, _roll_turn))
+
+## The hang's swing from the grip: about the ledge line through the grips, then about the vertical, a quarter apart.
+func _sway_hang(hero: Skeleton3D) -> void:
+	var grip: Vector3 = (Vector3(_snapshot.left_hand) + Vector3(_snapshot.right_hand)) * 0.5
+	var outward: Vector3 = Vector3(_snapshot.get("wall_normal", Vector3.ZERO))
+	outward.y = 0.0
+	if outward.length_squared() < 0.0001:
+		return
+	var along: Vector3 = outward.normalized().cross(Vector3.UP).normalized()
+	var phase_angle: float = TAU * _elapsed / HANG_PERIOD
+	var swing: float = deg_to_rad(HANG_SWING * exp(-_elapsed / HANG_DECAY) + HANG_SWAY) * sin(phase_angle)
+	var pivot: Vector3 = hero.global_transform.affine_inverse() * grip
+	_turn_about(hero, (hero.global_basis.inverse() * along).normalized(), pivot, swing)
+	_turn_about(hero, (hero.global_basis.inverse() * Vector3.UP).normalized(), pivot, deg_to_rad(HANG_SWAY) * cos(phase_angle))
+
+static func _centre(hero: Skeleton3D) -> Vector3:
+	var sum: Vector3 = Vector3.ZERO
+	for bone: int in hero.get_bone_count():
+		sum += hero.get_bone_global_pose(bone).origin
+	return sum / float(maxi(hero.get_bone_count(), 1))
+
+## Turns the whole hero (its root, Hips) by `angle` about `axis` through `pivot`, all in skeleton space.
+static func _turn_about(hero: Skeleton3D, axis: Vector3, pivot: Vector3, angle: float) -> void:
+	if absf(angle) < 0.000001 or axis.length_squared() < 0.5:
+		return
+	var hips: int = hero.find_bone("Hips")
+	var turn: Quaternion = Quaternion(axis, angle)
+	hero.set_bone_pose_rotation(hips, (turn * hero.get_bone_pose_rotation(hips)).normalized())
+	hero.set_bone_pose_position(hips, pivot + turn * (hero.get_bone_pose_position(hips) - pivot))
+

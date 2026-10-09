@@ -33,9 +33,9 @@ func _ready() -> void:
 	_box("ServiceGallery", Vector3(-22.3, 6.15, -17.3), Vector3(8.2, 0.3, 1.8), "stone", true)
 	_ramp("InnerServiceRamp", -25.0, 1.6, -11.5, -16.4, 4.0, 6.3)
 	# Rails have exactly matching visible and solid bars, with open entry mouths.
-	_box("GalleryNorthRail", Vector3(-22.3, 6.95, -18.15), Vector3(8.2, 0.14, 0.12), "iron", true)
+	_box("GalleryNorthRail", Vector3(-22.3, 6.95, -18.15), Vector3(8.2, 0.14, 0.12), "iron_paint", true)
 	for x: float in [-26.35, -24.0, -21.5, -18.25]:
-		_box("GalleryPost", Vector3(x, 6.65, -18.15), Vector3(0.09, 0.7, 0.09), "iron", true)
+		_box("GalleryPost", Vector3(x, 6.65, -18.15), Vector3(0.09, 0.7, 0.09), "iron_paint", true)
 	# Visible mechanical evidence stays separate from the moving gate leaf.
 	# The guide is on the wall's face (x −27.3; it stood 7 cm off it), its wear strip on the guide, the weight in it.
 	_box("WeightGuide", Vector3(-27.22, 5.25, -12.0), Vector3(0.16, 2.2, 0.22), "iron", true)

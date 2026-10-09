@@ -111,17 +111,17 @@ func _rectangular_window(origin: Vector3, basis: Basis, bottom: Vector3, width: 
 func _balcony(origin: Vector3, basis: Basis, bottom: Vector3, width: float) -> void:
 	_box(origin + basis * (bottom + Vector3(0, 0, 0.43)), Vector3(width, 0.16, 0.9), "stone", basis, true)
 	_collider(origin + basis * (bottom + Vector3(0, 0.45, 0.88)), Vector3(width, 0.9, 0.07), basis)
-	_local_box(origin, basis, bottom + Vector3(0, 0.88, 0.88), Vector3(width, 0.08, 0.08), "iron")
+	_local_box(origin, basis, bottom + Vector3(0, 0.88, 0.88), Vector3(width, 0.08, 0.08), "iron_paint")
 	for index: int in 7:
-		_local_box(origin, basis, bottom + Vector3(-width * 0.5 + float(index) * width / 6.0, 0.43, 0.88), Vector3(0.045, 0.85, 0.045), "iron")
+		_local_box(origin, basis, bottom + Vector3(-width * 0.5 + float(index) * width / 6.0, 0.43, 0.88), Vector3(0.045, 0.85, 0.045), "iron_paint")
 	for side: float in [-1.0, 1.0]:
 		_collider(origin + basis * (bottom + Vector3(side * width * 0.5, 0.45, 0.47)), Vector3(0.07, 0.9, 0.85), basis)
-		_local_box(origin, basis, bottom + Vector3(side * width * 0.5, 0.88, 0.47), Vector3(0.07, 0.08, 0.85), "iron")
+		_local_box(origin, basis, bottom + Vector3(side * width * 0.5, 0.88, 0.47), Vector3(0.07, 0.08, 0.85), "iron_paint")
 		# D19 (docs/Audit/2026-10-08-City-Tidy-Technical-Audit.md): balusters under the side rail, so the solid side of
 		# the balcony is a visible railing and not an invisible wall.
 		for z: float in [0.16, 0.39, 0.62]:
-			_local_box(origin, basis, bottom + Vector3(side * width * 0.5, 0.43, z), Vector3(0.045, 0.85, 0.045), "iron")
-		_box(origin + basis * (bottom + Vector3(side * width * 0.32, -0.2, 0.35)), Vector3(0.1, 0.48, 0.1), "iron", basis * Basis(Vector3.RIGHT, -0.7))
+			_local_box(origin, basis, bottom + Vector3(side * width * 0.5, 0.43, z), Vector3(0.045, 0.85, 0.045), "iron_paint")
+		_box(origin + basis * (bottom + Vector3(side * width * 0.32, -0.2, 0.35)), Vector3(0.1, 0.48, 0.1), "iron_paint", basis * Basis(Vector3.RIGHT, -0.7))
 
 func _mansard(center: Vector3, size: Vector3, top: float) -> void:
 	# Closed truncated hip: trapezoid facets meet at the same corners, without raised horns.
@@ -222,11 +222,11 @@ func _passage() -> void:
 
 func _bridge() -> void:
 	for z: float in [-22.0, -18.0]:
-		_box(Vector3(0, 5.0, z), Vector3(20, 0.045, 0.085), "iron")
+		_box(Vector3(0, 5.0, z), Vector3(20, 0.045, 0.085), "iron_paint")
 		for index: int in 39:
-			_box(Vector3(-9.5 + float(index) * 0.5, 4.62, z), Vector3(0.035, 0.76, 0.045), "iron")
+			_box(Vector3(-9.5 + float(index) * 0.5, 4.62, z), Vector3(0.035, 0.76, 0.045), "iron_paint")
 		for x: float in [-8.0, -4.0, 4.0, 8.0]:
-			_box(Vector3(x, 4.62, z), Vector3(0.08, 0.8, 0.09), "iron")
+			_box(Vector3(x, 4.62, z), Vector3(0.08, 0.8, 0.09), "iron_paint")
 			_box(Vector3(x, 4.14, z), Vector3(0.18, 0.32, 0.22), "stone")   # foot 2 cm under the rail's underside
 
 func _local_box(origin: Vector3, basis: Basis, center: Vector3, size: Vector3, material: String, solid: bool = false) -> void:

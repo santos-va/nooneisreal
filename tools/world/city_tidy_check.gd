@@ -28,7 +28,18 @@ extends SceneTree
 ##   V          — Choko and Skea vault every obstacle from each side with a free run-up, by real key events (W, Space):
 ##                vault_seconds of the shipped profile ± 1 tick, no hang, landing beyond at the take-off level;
 ##   S          — each steam vent puffs (≤ 0.8 opacity), changes frame under 3 times a second, never jumps in opacity
-##                by more than 0.1 a frame, stays ≤ 1.0 × 1.5 m and is gone while a hero stands at the vent.
+##                by more than 0.1 a frame, stays ≤ 1.0 × 1.5 m and is gone while a hero stands at the vent;
+##   M          — the steam vehicles (CityProps.VEHICLES, Blender GLBs; docs/Fix/2026-10-09-City-Vehicles-And-Iron-Paint
+##                -Fix.md). For every vehicle: M1 one visible mesh, its imported hulls are city solids (layer 9, mask 0)
+##                with a live shape each; M2 every surface is the city material its GLB names; M3 it rests on a level
+##                floor within 2 cm, neither floating nor sunk; M4 no visible face in the hero band stands 0.1 m out of
+##                every collider (a free hero capsule there would walk into the mesh, the C5 rule per face); M5 out of
+##                every anchor's 0.75 m column, and a free swing on every rope (T5: L = max(2, y_a − y_floor − 1.25 −
+##                0.5), feet 1.25 under the hand, body r 0.35) passes ≥ 0.3 m over it; M6 ≥ 8 m from the court centre,
+##                out of every pocket, ≥ 1 m from every resident lane; M7 out of both run-ups of every vault obstacle;
+##                M8 the camera arm keeps ≥ 3 m for a hero 1.2 m off each open side facing the vehicle and on its roof
+##                facing each way; V-M both heroes run at each open side with W and Space: no vault (deeper than any
+##                obstacle: no false promise, К7), never left inside its footprint below its top.
 ## Literals: docs/Audit/2026-10-08-City-Tidy-Technical-Audit.md § 2 (2 cm, 0.3 m, 20 %, 6 mm, 2 cm², 0.1 m, 1 mm, r 0.32,
 ## 0.12–1.8 m, 13/27, 0.08 m, 0.4 l); docs/Art/2026-10-08-City-Modern-Realism-Props.md (П4 0.1 m, К4 0.2 m, К6 8 m / 1 m,
 ## Н7 0.25 m / 3.2 m, К8 5 / 3); the plan (obstacles 0.9–1.1 m, ≤ 0.8 m); 2026-10-07-Tight-Station-Readability-Criteria
@@ -42,6 +53,21 @@ const GEOMETRY_BREAKS := ["pane_strut", "pane_wire", "float_barrel", "float_loaf
 const PLACE_BREAKS := ["court", "anchor", "passage", "lane", "ink_strip"]
 const VAULT_BREAKS := ["vault_high", "vault_deep"]
 const STEAM_BREAKS := ["steam_hero", "steam_flash"]
+## Vehicle negatives (M): the truck 5 cm up, the car 5 cm down, the truck's boiler hull gone, the truck's mesh 0.3 m off
+## its hulls, both vehicles' hulls on the cover layer only, one surface back to the GLB's own material, the truck under
+## anchor 9, the car in resident 10's lane, the truck on crates_east's north run-up, the car 1.7 m off the ramp (a
+## camera station with the ramp behind it); the parkour profile allowed 3 m deep vaults (a vault over a vehicle).
+const VEHICLE_BREAKS := ["vehicle_float", "vehicle_sink", "vehicle_nocollider", "vehicle_shift", "vehicle_layer",
+	"vehicle_material", "vehicle_anchor", "vehicle_lane", "vehicle_runup", "vehicle_gap"]
+const VEHICLE_RUN_BREAKS := ["vehicle_vault"]
+const VEHICLE_LAYER: int = 1 | 8   # CityMarket._solid: walking and the camera, cover
+const SWING_CLEAR: float = 0.3
+const SWING_HAND: float = 1.25     # T5 Т3 (rope_pull_check HAND_Y): the hand over the feet
+const SWING_FLOOR_GAP: float = 0.5 # T5 Т2 (rope_pull_check CLEARANCE)
+const SWING_MIN_ROPE: float = 2.0  # T5 Т6
+const FIGHTER_R: float = 0.35      # Fighter.tscn BodyShape radius
+const STATION_GAP: float = 1.2     # tight_station_probe: start this far from the face
+const RUN_UP: Vector2 = Vector2(1.05, 5.35)   # _vaults: the run-up samples from depth/2 + 1.05 to depth/2 + 5.35
 const PANE_DEPTH: float = 0.02
 const SUPPORT_GAP: float = 0.02
 const SUPPORT_WINDOW: float = 0.3
@@ -78,7 +104,7 @@ const ANCHOR_FLOOR: Array[float] = [0.0, 0.0, 0.0, 0.0, 2.8109, 0.0, 2.8109, 2.8
 	0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]
 const ANCHOR_COLUMN: float = 0.75
 const HEX := {"8a8581": "paving", "9d9385": "stone", "9f7b73": "brick", "a9847b": "terracotta", "b6aa92": "plaster",
-	"607078": "slate", "61717b": "roof_slate", "748075": "copper", "998162": "brass", "3b353c": "iron", "2b2230": "ink",
+	"607078": "slate", "61717b": "roof_slate", "748075": "copper", "998162": "brass", "3b353c": "iron", "577368": "iron_paint", "2b2230": "ink",
 	"4d6b70": "glass", "b79a60": "warm_window", "756454": "wood", "b9ad96": "cloth_cream", "98685e": "cloth_red",
 	"617b79": "cloth_teal", "a6b79e": "marker"}
 const DISTRICT_STRUCTURE := ["Ground", "NorthWestRoof", "NorthEastRoof", "SouthWestBlock", "SouthWestRear",
@@ -266,9 +292,9 @@ func _phase(name: String) -> bool:
 		"geometry":
 			return mutation == "none" or mutation in GEOMETRY_BREAKS
 		"places":
-			return mutation == "none" or mutation in PLACE_BREAKS
+			return mutation == "none" or mutation in PLACE_BREAKS or mutation in VEHICLE_BREAKS
 		"vault":
-			return mutation == "none" or mutation in VAULT_BREAKS
+			return mutation == "none" or mutation in VAULT_BREAKS or mutation in VEHICLE_RUN_BREAKS
 		"steam":
 			return mutation == "none" or mutation in STEAM_BREAKS
 	return false
@@ -1309,6 +1335,307 @@ func _steam() -> void:
 		vent.set_process(true)
 
 
+# --- M: the steam vehicles ---------------------------------------------------------------------------------------
+## Each vehicle of CityProps.VEHICLES as built in the live world: its node, visible meshes, hulls and footprint.
+func _vehicles() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for spec: Dictionary in props_node.get_meta("vehicles", []):
+		var node: Node3D = props_node.get_node_or_null("Vehicle_" + String(spec.id))
+		var meshes: Array[MeshInstance3D] = []
+		var bodies: Array[StaticBody3D] = []
+		var box := AABB()
+		if node != null:
+			for n: Node in node.find_children("*", "MeshInstance3D", true, false):
+				var mesh := n as MeshInstance3D
+				if mesh.mesh == null or not mesh.is_visible_in_tree():
+					continue
+				var world_box: AABB = mesh.global_transform * mesh.get_aabb()
+				box = world_box if meshes.is_empty() else box.merge(world_box)
+				meshes.append(mesh)
+			for n: Node in node.find_children("*", "StaticBody3D", true, false):
+				bodies.append(n as StaticBody3D)
+		var rids: Array[RID] = []
+		for body: StaticBody3D in bodies:
+			rids.append(body.get_rid())
+		# The street level the vehicle stands on: the floor under its footprint centre, its own hulls excluded.
+		var level: float = 0.0
+		if not meshes.is_empty():
+			var at := Vector3(box.get_center().x, box.position.y + 1.0, box.get_center().z)
+			var query := PhysicsRayQueryParameters3D.create(at, at - Vector3.UP * 3.0, 1)
+			query.exclude = rids
+			var hit: Dictionary = space.intersect_ray(query)
+			level = float(hit.position.y) if not hit.is_empty() else box.position.y
+		out.append({"id": String(spec.id), "node": node, "meshes": meshes, "bodies": bodies, "rids": rids, "box": box,
+			"foot": Rect2(Vector2(box.position.x, box.position.z), Vector2(box.size.x, box.size.z)), "level": level})
+	return out
+
+
+static func _rect_point(r: Rect2, p: Vector2) -> float:
+	var dx: float = maxf(0.0, maxf(r.position.x - p.x, p.x - r.end.x))
+	var dz: float = maxf(0.0, maxf(r.position.y - p.y, p.y - r.end.y))
+	return sqrt(dx * dx + dz * dz)
+
+
+static func _rect_rect(a: Rect2, b: Rect2) -> float:
+	var dx: float = maxf(0.0, maxf(a.position.x - b.end.x, b.position.x - a.end.x))
+	var dz: float = maxf(0.0, maxf(a.position.y - b.end.y, b.position.y - a.end.y))
+	return sqrt(dx * dx + dz * dz)
+
+
+func _m_vehicles() -> void:
+	var vehicles: Array[Dictionary] = _vehicles()
+	_check(vehicles.size() == 2, "M the two steam vehicles are listed (%d)" % vehicles.size())
+	var supports: Array[Dictionary] = CityLayout.anchor_supports()
+	var director: Script = load("res://scripts/npc/CityNpcDirector.gd")
+	for v: Dictionary in vehicles:
+		var id: String = v.id
+		var meshes: Array[MeshInstance3D] = v.meshes
+		var bodies: Array[StaticBody3D] = v.bodies
+		_check(v.node != null and meshes.size() == 1, "M1 %s has one visible mesh (%d)" % [id, meshes.size()])
+		_check(not bodies.is_empty(), "M1 %s has its hulls (%d bodies)" % [id, bodies.size()])
+		if meshes.is_empty():
+			continue
+		for body: StaticBody3D in bodies:
+			var shapes: int = 0
+			for child: Node in body.get_children():
+				if child is CollisionShape3D and not (child as CollisionShape3D).disabled and (child as CollisionShape3D).shape != null:
+					shapes += 1
+			_check(body.collision_layer == VEHICLE_LAYER and body.collision_mask == 0 and shapes >= 1,
+				"M1 %s/%s is a city solid: layer %d (%d), mask %d (0), %d live shapes" % [id, body.name, body.collision_layer, VEHICLE_LAYER, body.collision_mask, shapes])
+		# M2: one manner with the district — the city shader material of the very name the GLB gave the surface.
+		var surfaces: int = 0
+		var wrong: Array[String] = []
+		for mesh: MeshInstance3D in meshes:
+			for surface: int in mesh.mesh.get_surface_count():
+				surfaces += 1
+				var source: Material = mesh.mesh.surface_get_material(surface)
+				var want: String = source.resource_name if source != null else "?"
+				var override: Material = mesh.get_surface_override_material(surface)
+				var got: String = _material_key(override) if override != null else "none"
+				if not override is ShaderMaterial or got != want:
+					wrong.append("%d:%s→%s" % [surface, want, got])
+		_check(surfaces > 0 and wrong.is_empty(), "M2 %s: every one of %d surfaces is the city material it names (%s)" % [id, surfaces, ", ".join(wrong)])
+		# M3: a level floor under the footprint, the bottom on it within 2 cm.
+		var box: AABB = v.box
+		var foot: Rect2 = v.foot
+		var floors: Array[float] = []
+		for f: Vector2 in [Vector2(0.1, 0.1), Vector2(0.9, 0.1), Vector2(0.1, 0.9), Vector2(0.9, 0.9), Vector2(0.5, 0.5)]:
+			var at := Vector3(foot.position.x + foot.size.x * f.x, box.position.y + 1.0, foot.position.y + foot.size.y * f.y)
+			var query := PhysicsRayQueryParameters3D.create(at, at - Vector3.UP * 3.0, 1)
+			query.exclude = v.rids
+			var hit: Dictionary = space.intersect_ray(query)
+			floors.append(float(hit.position.y) if not hit.is_empty() else -INF)
+		var floor_high: float = floors.max()
+		var floor_low: float = floors.min()
+		var gap: float = box.position.y - floor_high
+		_check(floor_low > -INF and floor_high - floor_low <= SUPPORT_GAP, "M3 %s stands on a level floor (%.3f…%.3f)" % [id, floor_low, floor_high])
+		_check(absf(gap) <= SUPPORT_GAP, "M3 %s %s %.3f m (bottom %.3f, floor %.3f)" % [id, "rests within" if absf(gap) <= SUPPORT_GAP else ("floats" if gap > 0.0 else "sinks"), absf(gap), box.position.y, floor_high])
+		# M4: a visible face in the hero band 0.1 m out of every collider — a free hero capsule would walk into it.
+		var examined: int = 0
+		var bare: Array[String] = []
+		var reach: float = HERO_R - PASS_THROUGH
+		for mesh: MeshInstance3D in meshes:
+			var faces: PackedVector3Array = mesh.mesh.get_faces()
+			var xf: Transform3D = mesh.global_transform
+			for i: int in range(0, faces.size(), 3):
+				var a: Vector3 = xf * faces[i]
+				var b: Vector3 = xf * faces[i + 1]
+				var c: Vector3 = xf * faces[i + 2]
+				var centre: Vector3 = (a + b + c) / 3.0
+				if centre.y < floor_high + BAND.x or centre.y > floor_high + BAND.y:
+					continue
+				var normal: Vector3 = (b - a).cross(c - a)
+				if normal.length() < 0.000001:
+					continue
+				normal = normal.normalized()
+				if absf(normal.y) > 0.7:
+					continue
+				examined += 1
+				var flat := Vector3(normal.x, 0, normal.z).normalized()
+				for side: float in [1.0, -1.0]:
+					var axis: Vector3 = centre + flat * side * reach
+					var hit: Dictionary = _floor_under(Vector3(axis.x, floor_high + 0.5, axis.z), 1.0)
+					if hit.is_empty() or absf(float(hit.position.y) - floor_high) > SUPPORT_WINDOW:
+						continue
+					if _capsule_free(Vector3(axis.x, float(hit.position.y), axis.z)):
+						if bare.size() < 6:
+							bare.append(_v(centre))
+						else:
+							bare.append("")
+						break
+		_check(examined > 100, "M4 %s: the hero-band faces were found (%d)" % [id, examined])
+		_check(bare.is_empty(), "M4 %s: no visible face in the hero band stands %.2f m out of every collider (%d: %s)" % [id, PASS_THROUGH, bare.size(), " ".join(bare.slice(0, 6))])
+		print("CITY_TIDY_INFO M %s box=%s floor=%.3f faces=%d bare=%d bodies=%d" % [id, box, floor_high, examined, bare.size(), bodies.size()])
+		# M5: out of every anchor's column; a free swing on every rope clears the top by 0.3 m.
+		var worst: float = INF
+		var worst_index: int = -1
+		var column_bad: int = 0
+		for index: int in mini(supports.size(), ANCHOR_FLOOR.size()):
+			var point: Vector3 = supports[index].point
+			var d: float = _rect_point(foot, Vector2(point.x, point.z))
+			if d < ANCHOR_COLUMN and box.position.y < point.y:
+				column_bad += 1
+				_check(false, "M5 %s stands in anchor %d's column (%.2f m < %.2f)" % [id, index, d, ANCHOR_COLUMN])
+			var rope: float = maxf(SWING_MIN_ROPE, point.y - ANCHOR_FLOOR[index] - SWING_HAND - SWING_FLOOR_GAP)
+			if d >= rope + FIGHTER_R:
+				continue
+			var s: float = maxf(0.0, d - FIGHTER_R)
+			var feet: float = point.y - sqrt(maxf(0.0, rope * rope - s * s)) - SWING_HAND
+			if feet - box.end.y < worst:
+				worst = feet - box.end.y
+				worst_index = index
+		_check(column_bad == 0, "M5 %s stands out of every anchor column (%d)" % [id, column_bad])
+		_check(worst >= SWING_CLEAR, "M5 %s: every free rope swing passes ≥ %.1f m over it (worst %s, anchor %d)" % [id, SWING_CLEAR, "none in reach" if worst == INF else "%.2f m" % worst, worst_index])
+		# M6: the court, the pockets, the resident lanes.
+		var court: float = _rect_point(foot, Vector2.ZERO)
+		_check(court >= COURT_CLEAR, "M6 %s stands %.2f m from the court centre (≥ %.0f)" % [id, court, COURT_CLEAR])
+		for pocket: Dictionary in CityLayout.combat_pockets():
+			var edge: float = _rect_point(foot, Vector2(pocket.center.x, pocket.center.z)) - float(pocket.radius)
+			_check(edge >= 0.0, "M6 %s stays out of the %s pocket (%.2f m from its edge)" % [id, pocket.id, edge])
+		var lane_min: float = INF
+		var lane_who: int = -1
+		for resident: int in range(3, 12):
+			var lane: Array = director.lane(resident)
+			var r := Rect2(Vector2(lane[0].x, lane[0].z), Vector2.ZERO)
+			for corner: Vector3 in lane:
+				r = r.expand(Vector2(corner.x, corner.z))
+			var d: float = _rect_rect(foot, r)
+			if d < lane_min:
+				lane_min = d
+				lane_who = resident
+		_check(lane_min >= LANE_CLEAR, "M6 %s keeps %.0f m from every resident lane (%.2f m from lane %d)" % [id, LANE_CLEAR, lane_min, lane_who])
+		# M7: both run-ups of every vault obstacle stay free of it.
+		var taken: Array[String] = []
+		for spec: Dictionary in props_node.get_meta("obstacles", []):
+			var run: Vector3 = spec.run
+			var depth: float = absf((spec.size as Vector3).dot(run))
+			var centre: Vector3 = spec.center
+			for side: float in [1.0, -1.0]:
+				var near: Vector3 = centre - run * side * (depth * 0.5 + RUN_UP.x)
+				var far: Vector3 = centre - run * side * (depth * 0.5 + RUN_UP.y)
+				var r := Rect2(Vector2(near.x, near.z), Vector2.ZERO).expand(Vector2(far.x, far.z)).grow(HERO_R)
+				if r.intersects(foot):
+					taken.append("%s %+.0f" % [spec.id, side])
+		_check(taken.is_empty(), "M7 %s takes no run-up of a vault obstacle (%s)" % [id, ", ".join(taken)])
+		print("CITY_TIDY_INFO M %s court=%.2f lane=%.2f(%d) swing_margin=%s anchor=%d runups_taken=%d" % [id, court, lane_min, lane_who, "inf" if worst == INF else "%.2f" % worst, worst_index, taken.size()])
+
+
+## M8: the camera near each vehicle — a hero 1.2 m off each open side facing it, and on its roof facing each way.
+func _m_camera() -> void:
+	var player: Node3D = world.player
+	var rig: Node3D = world.camera_rig
+	world.npc_director.process_mode = Node.PROCESS_MODE_DISABLED
+	for v: Dictionary in _vehicles():
+		if (v.meshes as Array).is_empty():
+			continue
+		var box: AABB = v.box
+		var centre := Vector3(box.get_center().x, 0, box.get_center().z)
+		var stations: Array[Array] = []
+		for out: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD]:
+			var reach: float = absf(out.x) * box.size.x * 0.5 + absf(out.z) * box.size.z * 0.5 + STATION_GAP
+			var at: Vector3 = centre + out * reach
+			var hit: Dictionary = _floor_under(at + Vector3(0, 0.5, 0), 1.0)
+			if hit.is_empty() or absf(float(hit.position.y) - float(v.level)) > 0.05 or not _capsule_free(Vector3(at.x, float(hit.position.y), at.z)):
+				print("CITY_TIDY_INFO M8 %s side %s: no hero stands there" % [v.id, _v(out)])
+				continue
+			stations.append([Vector3(at.x, float(hit.position.y), at.z), -out, "side " + _v(out)])
+		_check(not stations.is_empty(), "M8 %s has an open side to stand at" % v.id)
+		var roof := Vector3(centre.x, 0, centre.z)
+		var top: Dictionary = _floor_under(Vector3(roof.x, box.end.y + 0.5, roof.z), box.size.y)
+		if not top.is_empty() and float(top.position.y) > float(v.level) + 1.0:
+			for face: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD]:
+				stations.append([Vector3(roof.x, float(top.position.y), roof.z), face, "roof facing " + _v(face)])
+		for station: Array in stations:
+			var face: Vector3 = station[1]
+			player.restart_at(station[0])
+			player._set_forward(face)
+			rig.reset_view()   # first: it resets the yaw; then the lens goes behind the hero, as in _vault_run
+			rig.aim.yaw_offset = atan2(-face.x, -face.z)
+			await _ticks(20)
+			var arm: float = rig.arm.get_hit_length()
+			_check(arm >= CAMERA_SPACE, "M8 %s: the camera arm at %s (%s) keeps ≥ %.0f m (%.2f m)" % [v.id, _v(station[0]), station[2], CAMERA_SPACE, arm])
+			print("CITY_TIDY_INFO M8 %s %s at %s arm=%.2f" % [v.id, station[2], _v(player.global_position), arm])
+	world.npc_director.process_mode = Node.PROCESS_MODE_INHERIT
+
+
+## V-M (К7): both heroes run at each open side of each vehicle with W and Space, as at a vault obstacle. A vehicle is
+## deeper than any obstacle, so the motor must never vault it; the hero ends on the floor or on top, never inside.
+func _vehicle_runs(hero: String) -> void:
+	world.npc_director.process_mode = Node.PROCESS_MODE_DISABLED
+	for v: Dictionary in _vehicles():
+		if (v.meshes as Array).is_empty():
+			continue
+		var box: AABB = v.box
+		var centre := Vector3(box.get_center().x, 0, box.get_center().z)
+		var runs: int = 0
+		for out: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD]:
+			world.player.restart_at(CityLayout.spawn_position())   # the hero's own capsule is no run-up obstacle
+			await _ticks(2)
+			var depth: float = absf(out.x) * box.size.x + absf(out.z) * box.size.z
+			var start: Vector3 = centre + out * (depth * 0.5 + 5.0)
+			var clear: bool = true
+			var s: float = 0.0
+			while s <= 4.3:
+				var at: Vector3 = start - out * s
+				var hit: Dictionary = _floor_under(at + Vector3(0, 0.5, 0), 1.0)
+				clear = clear and not hit.is_empty() and absf(float(hit.position.y) - float(v.level)) < 0.05 and _capsule_free(at)
+				s += 0.5
+			if not clear:
+				continue
+			runs += 1
+			var result: Dictionary = await _vehicle_run(start, -out, centre, depth)
+			var end: Vector3 = result.end
+			var inside: bool = absf(end.x - centre.x) < box.size.x * 0.5 - 0.05 and absf(end.z - centre.z) < box.size.z * 0.5 - 0.05 and end.y < box.end.y - 0.3
+			_check(int(result.vault) == 0, "V-M %s: no vault over %s from %s (%d vault ticks)" % [hero, v.id, _v(start), result.vault])
+			_check(not inside, "V-M %s is not left inside %s after the run from %s (end %s)" % [hero, v.id, _v(start), _v(end)])
+			var under: Dictionary = _floor_under(end + Vector3(0, 0.3, 0), 1.0)
+			var stood: String = "nothing" if under.is_empty() else "%s %s" % [String((under.collider as Node).get_parent().name) + "/" if String((under.collider as Node).get_parent().name).begins_with("Vehicle_") else "", (under.collider as Node).name]
+			print("CITY_TIDY_INFO V-M %s %s from %s: phases=%s end=%s on=%s" % [hero, v.id, _v(start), ",".join(result.phases), _v(end), stood])
+		_check(runs >= 1, "V-M %s: %s has a free run-up from at least one side (%d)" % [hero, v.id, runs])
+	world.npc_director.process_mode = Node.PROCESS_MODE_INHERIT
+
+
+func _vehicle_run(start: Vector3, run: Vector3, centre: Vector3, depth: float) -> Dictionary:
+	var player: Node3D = world.player
+	_key(KEY_W, false)
+	_key(KEY_SPACE, false)
+	player.restart_at(start)
+	player._set_forward(run)
+	world.camera_rig.reset_view()
+	world.camera_rig.aim.yaw_offset = atan2(-run.x, -run.z)
+	await _ticks(10)
+	var out: Dictionary = {"vault": 0, "phases": PackedStringArray(), "end": start}
+	_key(KEY_W, true)
+	var jumped: bool = false
+	var held: int = 0
+	var last: String = ""
+	var phases := PackedStringArray()   # a value type: kept local, stored in `out` at the end
+	for tick: int in 150:
+		var along: float = (player.global_position - centre).dot(run)
+		if not jumped and along >= -depth * 0.5 - 1.15 and player.is_on_floor():
+			jumped = true
+			_key(KEY_SPACE, true)
+		await _ticks(1)
+		if jumped:
+			held += 1
+			if held == 2:
+				_key(KEY_SPACE, false)
+		var phase: String = player.parkour.phase
+		if phase == "vault":
+			out.vault = int(out.vault) + 1
+		if phase != last:
+			phases.append(phase if not phase.is_empty() else "-")
+			last = phase
+		if jumped and held > 60 and phase.is_empty() and player.is_on_floor():
+			break
+	_key(KEY_W, false)
+	_key(KEY_SPACE, false)
+	await _ticks(4)
+	out.end = player.global_position
+	out.phases = phases
+	return out
+
+
 # --- mutations ---------------------------------------------------------------------------------------------------
 ## Breaks applied to the live scene, before anything is measured.
 func _break_scene() -> void:
@@ -1375,6 +1702,46 @@ func _break_scene() -> void:
 			var drum: StaticBody3D = props_node.find_children("TarBarrel*", "StaticBody3D", false, false)[0]
 			var point: Vector3 = CityLayout.anchor_supports()[2].point
 			drum.global_position = Vector3(point.x, 0.45, point.z)
+		"vehicle_float":
+			(props_node.get_node("Vehicle_steam_truck") as Node3D).position.y += 0.05
+		"vehicle_sink":
+			(props_node.get_node("Vehicle_steam_car_tarp") as Node3D).position.y -= 0.05
+		"vehicle_nocollider":
+			props_node.get_node("Vehicle_steam_truck/TruckFront").free()
+		"vehicle_shift":
+			(props_node.get_node("Vehicle_steam_truck/SteamTruck") as Node3D).position.x += 0.3
+		"vehicle_layer":
+			for body: Node in props_node.find_children("*", "StaticBody3D", true, false):
+				if String(body.get_parent().name).begins_with("Vehicle_"):
+					(body as StaticBody3D).collision_layer = 8
+		"vehicle_material":
+			(props_node.get_node("Vehicle_steam_car_tarp/SteamCarTarp") as MeshInstance3D).set_surface_override_material(3, null)
+		"vehicle_anchor":
+			# Under anchor 9 (28, 8.6, 10.6): its rope would fall on the cargo.
+			(props_node.get_node("Vehicle_steam_truck") as Node3D).position = Vector3(28.0, 0, 9.0)
+		"vehicle_lane":
+			(props_node.get_node("Vehicle_steam_car_tarp") as Node3D).position = Vector3(25.6, 0, 4.0)
+		"vehicle_runup":
+			# On crates_east's north run-up (x 30.4, z −5.35…−1.05), clear of the crates themselves.
+			(props_node.get_node("Vehicle_steam_truck") as Node3D).position = Vector3(30.6, 0, -5.6)
+		"vehicle_gap":
+			# The car 1.7 m off the ramp's west side: a strip between them where a hero stands with the ramp at his back.
+			(props_node.get_node("Vehicle_steam_car_tarp") as Node3D).position.x -= 1.6
+		"vehicle_vault":
+			# A vehicle the motor would vault. The shipped one cannot be: its tarp hull's top slopes at the edges (the
+			# vault wants a flat top, normal·up ≥ 0.95) and it stands 2.75 m high, 2 m deep. Here the cargo hull is a flat
+			# box of the same bounds, the profile allows 3 m high, 2.5 m deep vaults, and the truck stands in the open
+			# street (level floor on both long sides), so a run across its width can clear its roof.
+			world.player.parkour.profile = (world.player.parkour.profile as Resource).duplicate()
+			world.player.parkour.profile.set("vault_max_height", 3.0)
+			world.player.parkour.profile.set("vault_max_depth", 2.5)
+			var truck: Node3D = props_node.get_node("Vehicle_steam_truck")
+			truck.position = Vector3(27.0, 0, 3.0)
+			var flat := BoxShape3D.new()
+			flat.size = Vector3(2.0, 2.75, 4.07)
+			var cargo: CollisionShape3D = truck.get_node("TruckBody").get_child(0)
+			cargo.shape = flat
+			cargo.position = Vector3(0, 1.375, 0.785)
 		"vault_high", "vault_deep":
 			var body: StaticBody3D = props_node.get_node("VaultObstacle_crates_east")
 			var shape := ((body.get_child(0) as CollisionShape3D).shape as BoxShape3D).duplicate() as BoxShape3D
@@ -1449,7 +1816,7 @@ func _break_parts() -> void:
 
 func _run() -> void:
 	await process_frame
-	if mutation != "none" and not (mutation in GEOMETRY_BREAKS or mutation in PLACE_BREAKS or mutation in VAULT_BREAKS or mutation in STEAM_BREAKS):
+	if mutation != "none" and not (mutation in GEOMETRY_BREAKS or mutation in PLACE_BREAKS or mutation in VAULT_BREAKS or mutation in STEAM_BREAKS or mutation in VEHICLE_BREAKS or mutation in VEHICLE_RUN_BREAKS):
 		push_error("CITY_TIDY: unknown --break=" + mutation)
 		quit(2)
 		return
@@ -1477,15 +1844,19 @@ func _run() -> void:
 		_triangles()
 	if _phase("places"):
 		await _k_places()
+		_m_vehicles()
+		await _m_camera()
 	if _phase("steam"):
 		await _steam()
 	if _phase("vault"):
 		await _vaults("choko")
+		await _vehicle_runs("choko")
 		await _close_world()
 		await _open_world("skea")
 		_break_scene()
 		await _ticks(2)
 		await _vaults("skea")
+		await _vehicle_runs("skea")
 	await _close_world()
 	for singleton: String in ["Sfx", "UltMusic", "Music"]:
 		if root.has_node(singleton):

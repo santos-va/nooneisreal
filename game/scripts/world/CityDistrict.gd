@@ -172,7 +172,7 @@ func _anchor_support(index: int, spec: Dictionary) -> Array[Node]:
 	var flat: Vector3 = Vector3(point.x - mount.x, 0, point.z - mount.z)
 	var yaw: float = 0.0 if absf(flat.z) < 0.000001 else atan2(-flat.z, flat.x)
 	if kind == "post":
-		own.append(_box("AnchorPost%d" % index, Vector3(mount.x, (mount.y + arm_y) * 0.5, mount.z), Vector3(0.18, arm_y - mount.y, 0.18), "ink", 9))
+		own.append(_box("AnchorPost%d" % index, Vector3(mount.x, (mount.y + arm_y) * 0.5, mount.z), Vector3(0.18, arm_y - mount.y, 0.18), "iron_paint", 9))
 	# D14: the arm is 2 cm narrower than the post (its sides used to share the post's planes) and ends 1 cm inside the
 	# ceramic cap (its end face used to share the cap's side plane).
 	var arm: Node3D = _box("AnchorArm%d" % index, Vector3((mount.x + point.x) * 0.5, arm_y, (mount.z + point.z) * 0.5), Vector3(flat.length() + 0.33, 0.15, 0.16), "brass")
