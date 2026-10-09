@@ -590,7 +590,7 @@ T2) або Meshy з картки 19c (ціну не перевірено). `rigg
 **Після генерації:** журнал запусків — сюди, під § 19; рядок у [[Asset-Manifest]]; файл у `game/assets/` — лише разом із рядком
 [[Textures-Registry]] (`python3 tools/gates/texture_registry_check.py` → rc0).
 
-## 20. Колонка з водою — `prop-water-pump-v1` (T6, 2026-10-08, **не запускалась**)
+## 20. Колонка з водою — `prop-water-pump-v1` (T6, 2026-10-08; `{PAINT}` заповнено 2026-10-09; **не запускалась**)
 
 **Навіщо.** Колонка на Ринковій площі (`CityWaterPump.gd`) процедурна. Приймання її кадру — RED
 ([[2026-10-08-Thirst-Items-Frames-Review]] § `pump.png`). Спершу T2 виправляє її кодом (крок A, 0 кр.). Цей аркуш — крок B:
@@ -601,17 +601,27 @@ T2) або Meshy з картки 19c (ціну не перевірено). `rigg
 `get_cost` T1 2026-10-08 для цієї конфігурації з одним референсом (хвиля 2 [[Item-Sheets-Prompts]]). Перед запуском T1
 звіряє `get_cost` знову. 3D (Meshy) не плануємо: колонка займає 51–116 px висоти кадру.
 
-**`{PAINT}`** — родина фарбованого чавуну міста; рішення — розвилка Р6 (A/B на кадрі, Santos). Варіанти:
-`dull deep green-teal` (кандидат `#3F5A55`) або `dull slate blue` (`#4A5C73`). Аркуш запускається після рішення, а не до.
+**`{PAINT}`** — фарбований чавун міста. Р6 закрито: Santos обрав зелено-бірюзовий
+([[ADR-027-City-Modern-Props-Style-And-Path]] п. 2). Відтінок — B `#577368` за A/B T6 2026-10-09
+([[2026-10-08-City-Modern-Realism-Props]] § A/B відтінку чавуну). Кандидат `#3F5A55` відкинуто: у тіні шейдера він має
+ΔE76 19,2 від лінії. Блок той самий, байт-у-байт, що в [[City-Props-Prompts]]:
 
 ```
-Prop design sheet for a game, on a flat muted mint-sage background (#B8CBB1), hand-drawn in a loose expressive western animation sketch style, not anime: lively plum-graphite inked lines with small line breaks, thicker outer contour and thinner inner lines, flat colors with a single magenta-violet cel shadow tone, no gradients, no gloss. One public hand water pump of the old European-industrial city of Cronshift, matching the architecture and dusk palette of the reference image, shown four times in a row at the same scale on one ground line: 1) front view with the spout toward the viewer, 2) side view with the spout to the right, 3) back view, 4) three-quarter view; plus two small circled detail insets: the lever hinge on top of the cap, and the ladle on its short chain. The pump: a cast-iron column about 1.3 m tall, painted {PAINT} with a few chipped edges showing darker iron, a plain lower drum and two simple collar rings, a rounded cap with a small dull brass knob on top; a long gently curved iron lever hinged on top of the cap, clearly attached to it, rising toward the back and ending in a worn wooden handle; a short square spout toward the front, turned down at its end; a plain tin ladle hanging from a side hook on a short chain; under the spout a low rectangular stone trough standing on a square stone slab, a little flat graphic water in the trough with simple pale foam lines, a small iron drain grate in the slab. Plain and functional, no ornaments, no animal heads, no plaque, no water stream in the air. Small hand-written numbers by each view. No people, no hands, no letters or words on the pump, no logos, no watermark, no glow.
+a muted deep green-teal (close to #577368): a medium-dark greyish green with a slight teal cast, matte like old park-railing paint, clearly lighter and greener than the ink lines, never black, never bright emerald, never turquoise
+```
+
+У промпті нижче слот стоїть як `painted {PAINT}, with a few chipped edges showing darker iron` — кому додано 2026-10-09, щоб
+опис фарби не злипався з відколами. Аркуш можна запускати: слово Santos із числом і `get_cost` T1.
+
+```
+Prop design sheet for a game, on a flat muted mint-sage background (#B8CBB1), hand-drawn in a loose expressive western animation sketch style, not anime: lively plum-graphite inked lines with small line breaks, thicker outer contour and thinner inner lines, flat colors with a single magenta-violet cel shadow tone, no gradients, no gloss. One public hand water pump of the old European-industrial city of Cronshift, matching the architecture and dusk palette of the reference image, shown four times in a row at the same scale on one ground line: 1) front view with the spout toward the viewer, 2) side view with the spout to the right, 3) back view, 4) three-quarter view; plus two small circled detail insets: the lever hinge on top of the cap, and the ladle on its short chain. The pump: a cast-iron column about 1.3 m tall, painted {PAINT}, with a few chipped edges showing darker iron, a plain lower drum and two simple collar rings, a rounded cap with a small dull brass knob on top; a long gently curved iron lever hinged on top of the cap, clearly attached to it, rising toward the back and ending in a worn wooden handle; a short square spout toward the front, turned down at its end; a plain tin ladle hanging from a side hook on a short chain; under the spout a low rectangular stone trough standing on a square stone slab, a little flat graphic water in the trough with simple pale foam lines, a small iron drain grate in the slab. Plain and functional, no ornaments, no animal heads, no plaque, no water stream in the air. Small hand-written numbers by each view. No people, no hands, no letters or words on the pump, no logos, no watermark, no glow.
 ```
 
 **Приймання (T6):**
 1. Важіль кріпиться до ковпака на всіх 4 видах.
 2. У сірому на 64 px силует читається як ручна колонка: колона, важіль, носик.
-3. Фарба — родина `{PAINT}`, не чорна. Кров'яних тонів немає (кр. 4′, [[2026-10-08-Substances-And-Food-Items]] § Критерії).
+3. Фарба — родина `{PAINT}`, не чорна: медіана плям чавуну має h 150–185°, L* ≥ 30, ΔE76 ≥ 20 від `#2B2230` (критерій А-4
+   [[2026-10-08-City-Modern-Realism-Props]]). Кров'яних тонів немає (кр. 4′, [[2026-10-08-Substances-And-Food-Items]] § Критерії).
 4. Немає літер і табличок. Корито є.
 
 Після відбору медіани кольорів кожного матеріалу йдуть T2 як альбедо, а job-id — сюди. У `game/assets/` аркуш не кладемо:

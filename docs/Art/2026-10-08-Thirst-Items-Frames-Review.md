@@ -300,6 +300,12 @@
      лише тоді, коли проходять M-P1…M-P3 на кадрі: `iron` (59, 53, 60) у `pump.png` дає (16, 10, 15), тобто в 3,7–5,3 раза
      темніше за альбедо. Чому саме — світло чи шейдер, — я не з'ясовував. Вибір родини — за Р6 (A/B на
      кадрі, Santos). Мірила нижче від відтінку не залежать.
+   - **Оновлення 2026-10-09 (T6).** Р6 закрито: родина зелено-бірюзова ([[ADR-027-City-Modern-Props-Style-And-Path]]).
+     Відтінок — **`#577368`** за A/B на кадрі колонки й стовпа-якоря ([[2026-10-08-City-Modern-Realism-Props]] § A/B
+     відтінку чавуну). На кадрі з точки `pump.png` медіана тіла `#2F5341`: M-P1 0,0 %, M-P2 1,77 : 1, M-P3 2,56 : 1 — усі три
+     пройдено. Причину темряви з'ясовано — це шейдер: `city_surface.gdshader:119–120` множить на альбедо, а рушій після
+     `light()` множить ще раз, тож у кадрі виходить альбедо². Замір дає `iron` (16, 10, 15) на світлі — та сама цифра, що в
+     `pump.png`. Таблиця вище з множником `#B07AA6` була спрощенням, формулі шейдера вона не відповідає.
    - Латунна шишка й дерев'яна ручка лишаються.
 3. **Ковш:** бляха `#B9BDC0` (тінь `#805A7D`), r 0,07, на x 0,21, щоб не тонув у колоні. Ланцюжок лишається залізним.
 4. **A2 (за бажанням T2):** низьке кам'яне корито під носиком, ≈ 0,46 × 0,16 × 0,30 м, матеріал `stone`.
@@ -322,7 +328,7 @@
 
 **Крок B — аркуш-референс, лише за словом Santos.** Промпт `prop-water-pump-v1` — [[Prompt-Library]] § 20:
 - модель `gpt_image_2_5`, high, 2k, 16:9, `count: 1`, референс — канон річки;
-- слот `{PAINT}` заповнюється після розвилки Р6, тож аркуш іде після рішення про родину чавуну, а не до;
+- слот `{PAINT}` заповнено 2026-10-09 (`#577368`, [[Prompt-Library]] § 20), тож аркуш можна запускати;
 - ціна 2.75 кр. (`get_cost` T1 2026-10-08 для тієї самої конфігурації з одним референсом); T1 звіряє знову;
 - після відбору T2 будує процедурну колонку за аркушем, 0 кр.
 
@@ -377,8 +383,9 @@ pump_drink	2	slosh	*aluminum,canteen*	-2	900	600	743,978	5
 
 ## Відкрите
 
-1. **Колонка RED** — крок A (T2), потім нові кадри й мірила M-P1…M-P5 (T6). Родина фарбованого чавуну — розвилка Р6
-   паралельного draft `docs/Art/2026-10-08-City-Modern-Realism-Props.md` (A/B на `pump.png`, Santos). Аркуш B — слово Santos.
+1. **Колонка RED** — крок A (T2), потім нові кадри й мірила M-P1…M-P5 (T6). Фарбований чавун — `#577368` (A/B 2026-10-09,
+   [[2026-10-08-City-Modern-Realism-Props]]); на кадрі A/B M-P1…M-P3 пройдено, M-P4 (важіль) і M-P5 (ковш) — справа кроку A.
+   Аркуш B — слово Santos.
 2. **Плашка під іконками** (`#B8CBB1`, α 0,25–0,35) — рішення T8, А/Б на M3.
 3. **Фокус на «Ні, дякую»** в пропозиціях речовин — T8 (специфікація), T2 (код).
 4. **Репліка Label3D у розмові** ширша за екран — T2/T8.
@@ -401,7 +408,7 @@ pump_drink	2	slosh	*aluminum,canteen*	-2	900	600	743,978	5
 
 ## Related
 
-- [[Style-Guide]] · [[2026-10-08-Substances-And-Food-Items]] · [[Item-Sheets-Prompts]] · [[Prompt-Library]] · [[Textures-Registry]] · [[Higgsfield-Pipeline]] · [[Asset-Manifest]] · [[Pack-Review]]
+- [[Style-Guide]] · [[ADR-027-City-Modern-Props-Style-And-Path]] · [[2026-10-08-City-Modern-Realism-Props]] · [[2026-10-08-Substances-And-Food-Items]] · [[Item-Sheets-Prompts]] · [[Prompt-Library]] · [[Textures-Registry]] · [[Higgsfield-Pipeline]] · [[Asset-Manifest]] · [[Pack-Review]]
 - [[06-UI-UX]] · [[2026-10-08-Thirst-Substances-Icons]] · [[2026-10-08-Thirst-Substances-Icons-Fix]] · [[2026-10-08-Thirst-Numbers]] · [[2026-10-08-Substances-And-Nutrition]] · [[2026-10-08-Hunger-Numbers]] · [[PROPOSAL-Substances-And-Healthy-Food]]
 - [[ADR-025-Street-Scuffle-And-City-Events]] · [[ADR-026-Substances-Nutrition-And-Thirst]] · [[ADR-007-Art-Style-Sketch-Cel]] · [[ADR-013-License-Check-At-Release]] · [[ADR-016-Player-Decides-What-Body-Decides-How]] · [[ADR-019-Audit-And-Many-Views-Before-Decision]]
 - [[07-Audio]] · [[2026-10-03-Sound-Library]] · [[Procedural-Water-Audio]] · [[Character-Voice-Recording]] · [[2026-10-07-Drug-And-Street-Crime-Rating]] · [[2026-10-08-Alcohol-Tobacco-Rating]] · [[2026-10-07-Blood-Visual-Language]] · [[2026-10-07-Tricks-Moves-And-Street-Encounters]] · [[2026-10-07-M3-Acceptance-Checklist]] · [[Cronshift]]
