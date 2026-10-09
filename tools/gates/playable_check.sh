@@ -271,11 +271,16 @@ for script, sentinel, prefix, mutations in (
 # colliders; the atelier table back in the service point; a prop near the court centre, under an anchor, in a resident
 # lane, the steam main out of the passage wall; a 1.5 m high and a 1.2 m deep obstacle; a puff over the hero and at
 # 10 frames a second, a 62 m ink seam back on the street — each must go red. After the merge (T1, plan 2026-10-09): the
-# pump's spout or lever without a collider, or both on a cover-only body the hero never meets, must go red too.
+# pump's spout or lever without a collider, or both on a cover-only body the hero never meets, must go red too. The
+# steam vehicles (docs/Fix/2026-10-09-City-Vehicles-And-Iron-Paint-Fix.md): one floating or sunk, a hull gone, the mesh
+# off its hulls, hulls on the cover layer only, a surface off the city material, a vehicle under an anchor, in a lane,
+# on a run-up, a camera station behind one, and a flat-roofed one vaulted with a relaxed profile — each red.
 for mutation in ('pane_strut', 'pane_wire', 'float_barrel', 'float_loaf', 'sink_crate', 'float_plate', 'zfight_fascia',
                  'zfight_jamb', 'dup_wall', 'dup_barrel', 'solid_planter', 'solid_dressform', 'solid_sign', 'service',
                  'court', 'anchor', 'passage', 'lane', 'ink_strip', 'vault_high', 'vault_deep', 'steam_hero', 'steam_flash',
-                 'pump_spout', 'pump_lever', 'pump_layer'):
+                 'pump_spout', 'pump_lever', 'pump_layer', 'vehicle_float', 'vehicle_sink', 'vehicle_nocollider',
+                 'vehicle_shift', 'vehicle_layer', 'vehicle_material', 'vehicle_anchor', 'vehicle_lane', 'vehicle_runup',
+                 'vehicle_gap', 'vehicle_vault'):
     cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
                   rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))

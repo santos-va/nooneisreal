@@ -52,7 +52,7 @@ python3.13 -m venv ~/.venvs/bpy
   у Godot масштаб об'єктів 1, тож Jolt не скаржиться на масштабовані тіла.
 - **Матеріали.** Імена — ключі `game/scripts/world/CityMaterials.gd`, hex береться з того самого файлу
   (`prop_kit.city_palette()`). Гра може замінити кожну поверхню міським шейдером `city_surface` за `resource_name`.
-  `iron_paint` = `#577368` (фарбований чавун ADR-027) додано в `prop_kit.EXTRA_KEYS`, доки ключа немає в `CityMaterials.gd`.
+  `iron_paint` = `#577368` (фарбований чавун ADR-027) — ключ `CityMaterials.gd` з 2026-10-09; `prop_kit.EXTRA_KEYS` порожній.
 - **Колізія.** Окремі об'єкти `<Name>-convcolonly`. Імпортер сцен Godot 4.7 робить з кожного `StaticBody3D` з одним
   `ConvexPolygonShape3D` і прибирає видимий меш (`editor/import/3d/resource_importer_scene.cpp`,
   `_teststr(name, "convcolonly")`). Шар тіла — типовий 1. Шар міста ставить код розміщення.

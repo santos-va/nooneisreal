@@ -16,6 +16,10 @@ static func palette() -> Dictionary:
 	result["copper"] = _material("748075", 0)
 	result["brass"] = _material("998162", 0)
 	result["iron"] = _material("3b353c", 0)
+	# Painted cast iron (ADR-027, T6 A/B choice B; docs/Art/2026-10-08-City-Modern-Realism-Props.md Н2–Н3): anchor
+	# posts, the pump's body, bench frames, railings and the steam vehicles. `iron` stays for small fittings (hoops,
+	# straps, rims), where a near-outline dark is the point.
+	result["iron_paint"] = _material("577368", 0)
 	result["ink"] = _material("2b2230", 0)
 	result["glass"] = _material("4d6b70", 0)
 	result["warm_window"] = _material("b79a60", 0)
