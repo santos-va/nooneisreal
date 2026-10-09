@@ -33,6 +33,7 @@ const GroundMotion = preload("res://scripts/fighter/AuthoredLocomotion.gd")
 const DodgeSource = preload("res://scripts/fighter/AuthoredDodgeMotion.gd")
 const LandingSource = preload("res://scripts/fighter/AuthoredLandingMotion.gd")
 const LivingBody = preload("res://scripts/fighter/LivingBodyMotion.gd")
+const Traversal = preload("res://scripts/fighter/TraversalBlend.gd")
 
 const MANNEQUIN := "res://assets/animations/ual/UAL1.glb"
 const EXTRA_LIBRARY := "res://assets/animations/ual/UAL2.glb"
@@ -120,6 +121,8 @@ var gear: Node3D
 var face_presentation = FacePresentation.new()
 ## Plan 2026-10-07-Living-Body: flinch, get-up, jump and landing drawn over the authoritative mannequin for the hero only.
 var living_body = LivingBody.new()
+## Plan 2026-10-09-Animation-Feel branch B: the city rope / ledge / wall run / roll transitions blend from the drawn pose.
+var traversal_blend = Traversal.new()
 
 
 func setup(f: Fighter) -> void:
@@ -267,6 +270,10 @@ func retarget() -> void:
 	if not rolling:
 		authored_landing.apply(hero_skeleton, locomotion.moving_landing_phase())
 		foot_contact.apply(_fighter, ragdoll)
+		# Step 2 of plan 2026-10-09: pivot and land over planted feet.
+		ground_contact.hold_enabled = body_motion.pivot_enabled   # a hero walking the city (see city_walk)
+		ground_contact.hold_landing = body_motion.pivot_enabled and locomotion.moving_landing_phase() >= 0.0
+		ground_contact.hold_low = ground_contact.hold_landing or (body_motion.pivot_enabled and body_motion.turning())
 		ground_contact.apply(_fighter, skeleton, clip, clip_pos, body_motion._dt, ragdoll)
 	else:
 		ground_contact.reset()
@@ -277,6 +284,12 @@ func retarget() -> void:
 		living_body.apply_hero_contacts(hero_skeleton, _fighter)
 	if not rolling:
 		body_motion.apply_gaze(hero_skeleton, skeleton, _fighter, ragdoll)
+	if ragdoll == null:
+		body_motion.finish_pose(hero_skeleton, _fighter)   # the wall kick's crossfade (step 3 of plan 2026-10-09)
+		# Merge of branches A and B: the wall kick is A's transition, so TraversalBlend hands it over (Traversal.handed), and
+		# the kick remembers the pose actually drawn — after TraversalBlend's own blend.
+		traversal_blend.apply(hero_skeleton, body_motion.serial, body_motion._dt, Traversal.signature(_fighter, parkour_motion.phase, parkour_motion.source_clip, authored_hook.source_phase), Traversal.throwing(_fighter, parkour_motion.phase), Traversal.handed(parkour_motion.phase))
+		body_motion.remember_pose(hero_skeleton, _fighter)
 	living_body.keep_hero(hero_skeleton)   # only while the living pose is laid on the mannequin
 
 
@@ -419,11 +432,18 @@ func _physics_process(delta: float) -> void:
 		face_presentation.reset()
 		ground_contact.reset()
 		living_body.reset()
+		traversal_blend.reset()
 		_last_state = _fighter.state
 		_state_frames = 0
 		_crouch_exit_frames = -1
 		_attack_return_source.clear()
 		_attack_return_base.clear()
+	# Step 2 of plan 2026-10-09 changes what the mannequin plays (the guard's weight, the leg clip for the drawn body).
+	# The mannequin seeds BoneRagdoll and so the fighter's position after a knockdown: those changes are for walking the
+	# city only — never the duel or a lethal pocket, whose positions stay bit for bit (living_body_check --dump).
+	var city_walk: bool = _fighter.has_method("parkour_snapshot") and not bool(_fighter.get("lethal_pocket"))
+	idle_presence.ramp_enabled = city_walk
+	body_motion.pivot_enabled = city_walk
 	body_motion.update(_fighter, delta, motion_signals.actual_velocity, motion_signals.acceleration)
 	face_presentation.update(_fighter, delta, body_motion.serial)
 	ground_contact.begin_frame(delta)
@@ -455,7 +475,7 @@ func _physics_process(delta: float) -> void:
 		if exit_clip == "" or float(_crouch_exit_frames) * delta >= player.get_animation(exit_clip).length:
 			_crouch_exit_frames = -1
 	var distance: float = motion_signals.distance
-	locomotion.update(_fighter, distance, delta, _gait_scale, ragdoll == null and not RigAnimator.levitating(_fighter) and _crouch_exit_frames < 0)
+	locomotion.update(_fighter, distance, delta, _gait_scale, ragdoll == null and not RigAnimator.levitating(_fighter) and _crouch_exit_frames < 0, body_motion.drawn_forward() if body_motion.pivot_enabled else Vector3.ZERO)
 	var source: Dictionary = AuthoredCombat.resolve(_fighter.current_move, _fighter.data.id) if _fighter.state == Fighter.State.ATTACK else {}
 	var want := clip_name(state_clip(_fighter))
 	if want == "":
@@ -519,6 +539,8 @@ func _physics_process(delta: float) -> void:
 		MotionFallback.apply(skeleton, _fighter.animator)
 	if ragdoll == null and parkour_motion.phase.is_empty() and not recovering and not RigAnimator.levitating(_fighter) and not locomotion.moving():
 		idle_presence.apply(skeleton, _fighter, delta)
+	elif locomotion.moving():
+		idle_presence.fade(delta)   # step 2 of plan 2026-10-09: the guard comes back over RAMP_SECONDS once the body stops
 	_apply_attack_return(delta)
 	if parkour_motion.phase != "landing_roll":
 		body_motion.apply_source(skeleton)

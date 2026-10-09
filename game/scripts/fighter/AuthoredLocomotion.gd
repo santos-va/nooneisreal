@@ -32,8 +32,15 @@ var _last_output: Array[Transform3D] = []
 var _blend_source: Array[Transform3D] = []
 var _base: Array[Transform3D] = []
 var _blend_elapsed: float = BLEND_SECONDS
+## Plan docs/Plans/2026-10-09-Animation-Feel-Landing-Rope-Stop-Wall.md step 2 (T6 review on 595490d: on a reverse the
+## legs played Jog_Bwd relative to the new course while the drawn body still faced the old one, and the feet slid
+## 357–397 mm a tick). With `drawn_forward` (HeroBodyMotion.drawn_forward(), the heading the body is drawn at) the
+## directional clip is chosen for that body, in whose frame the legs are drawn; ZERO keeps the gameplay course.
+const SECTOR_HOLD: float = 10.0  # PLACEHOLDER degrees past a sector edge before the clip changes
+const SECTOR_STILL: float = 0.5  # PLACEHOLDER m/s: below it the clip keeps its sector
+var _sector: int = -1
 
-func update(f: Fighter, distance: float, delta: float, leg_scale: float, permitted: bool = true) -> void:
+func update(f: Fighter, distance: float, delta: float, leg_scale: float, permitted: bool = true, drawn_forward: Vector3 = Vector3.ZERO) -> void:
 	var previous_speed: float = speed
 	var previous_gait: Gait = gait
 	special_clip = ""
@@ -89,7 +96,18 @@ func update(f: Fighter, distance: float, delta: float, leg_scale: float, permitt
 	elif acceleration < -0.5:
 		transition = "decelerate"
 	var forward: Vector3 = f.forward if GameState.free_move else Vector3(float(f.facing), 0.0, 0.0)
+	var drawn: bool = GameState.free_move and drawn_forward.length_squared() > 0.25
+	if drawn:
+		forward = drawn_forward
 	var index: int = Cadence.sector(f.velocity, forward)
+	if drawn and _sector >= 0 and index != _sector:
+		# A turning body sweeps the travel across sector edges: keep the clip until the travel is SECTOR_HOLD past the
+		# edge, and while the body barely moves its direction is noise (a reverse passes through 0 m/s).
+		var right: Vector3 = forward.cross(Vector3.UP)
+		var off: float = absf(wrapf(atan2(f.velocity.dot(right), f.velocity.dot(forward)) - float(_sector) * PI / 4.0, -PI, PI))
+		if off < PI / 8.0 + deg_to_rad(SECTOR_HOLD) or Vector2(f.velocity.x, f.velocity.z).length() < SECTOR_STILL:
+			index = _sector
+	_sector = index
 	source_clip = "" if gait == Gait.IDLE else (Cadence.WALK[index] if gait == Gait.WALK else Cadence.JOG[index])
 	if gait == Gait.RUN and index == 0:
 		source_clip = "Sprint_Loop"

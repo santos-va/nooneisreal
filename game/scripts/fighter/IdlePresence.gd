@@ -4,20 +4,45 @@ extends RefCounted
 ## Pelvis stays authored; one foot at a time lifts through a bounded analytic two-bone solve.
 ## Angles below are provisional art amplitudes in degrees, never combat tuning.
 
+## Plan docs/Plans/2026-10-09-Animation-Feel-Landing-Rope-Stop-Wall.md step 2 (T6 review on 595490d: Choko's arms
+## snapped into the guard 103–112°/tick on the first idle tick after a walk or a run). The overlay's weight falls to 0
+## while the body travels or is in the air (the overlay is not drawn then) and comes back over RAMP_SECONDS once it
+## stands; every other state keeps the weight it has, so a guard after an attack or a block is drawn as before.
+const RAMP_SECONDS: float = 0.20 # PLACEHOLDER art duration (12 ticks)
+## A variable only so a check can put the product of 595490d back (anim_ground_check --break=guard): 0 = full weight.
+var ramp_seconds: float = RAMP_SECONDS
+## SkeletalRig sets it each tick: only a hero walking the city ramps (this layer is on the mannequin, which seeds the
+## ragdoll); everywhere else the guard keeps its full weight, as on 595490d.
+var ramp_enabled: bool = false
+var weight: float = 1.0
 var phase: float = 0.0
 var _bones: Dictionary = {}
 var _skeleton: Skeleton3D
 var _base_poses: Dictionary = {}
+var _gain: float = 1.0
+
+
+## SkeletalRig calls this on the ticks it does not draw the overlay because the body travels on the ground.
+func fade(delta: float) -> void:
+	weight = move_toward(weight, 0.0, maxf(delta, 0.0) / ramp_seconds) if ramp_enabled and ramp_seconds > 0.0 else 1.0
 
 
 func apply(skeleton: Skeleton3D, fighter: Fighter, delta: float) -> void:
 	var transfer: bool = fighter.state == Fighter.State.SWAP and fighter.data.id == "choko"
+	if fighter.state == Fighter.State.JUMP and fighter.frozen_frames <= 0 and fighter.hitstop_frames <= 0:
+		fade(delta)
 	if (fighter.state != Fighter.State.IDLE and not transfer) or fighter.frozen_frames > 0 or fighter.hitstop_frames > 0:
 		return
 	if fighter.is_inside_tree() and fighter.get_tree().paused:
 		return
 	if fighter.data.id not in ["choko", "skea"]:
 		return
+	if not ramp_enabled or ramp_seconds <= 0.0:
+		weight = 1.0
+	elif not transfer:
+		weight = move_toward(weight, 1.0, maxf(delta, 0.0) / ramp_seconds)
+	# The sword transfer (SWAP) keeps its exact authored pose.
+	_gain = 1.0 if transfer else smoothstep(0.0, 1.0, weight)
 	if _skeleton != skeleton:
 		_skeleton = skeleton
 		_bones.clear()
@@ -33,7 +58,7 @@ func apply(skeleton: Skeleton3D, fighter: Fighter, delta: float) -> void:
 		phase += maxf(delta, 0.0)
 	# Local clock and analytic harmonics: neither global RNG nor the fighter's replay RNG is touched.
 	var t: float = 0.0 if transfer else phase + float(fighter.player_index) * 0.731
-	var gain: float = 1.0 - 0.65 * clampf(fighter.fatigue, 0.0, 1.0)
+	var gain: float = (1.0 - 0.65 * clampf(fighter.fatigue, 0.0, 1.0)) * _gain
 	if fighter.data.id == "choko":
 		var shift: float = sin(t * 2.8)
 		var breath: float = sin(t * 1.7)
@@ -133,6 +158,9 @@ func _guard_arm(side: String, fighter: Fighter, shift: float, breath: float) -> 
 	var upper: float = a.distance_to(b)
 	var lower: float = b.distance_to(c)
 	var length: float = upper + lower
+	if _gain <= 0.0:
+		return
+	var source: Array[Quaternion] = [_skeleton.get_bone_pose_rotation(shoulder), _skeleton.get_bone_pose_rotation(elbow), _skeleton.get_bone_pose_rotation(hand)]
 	if minf(upper, lower) < 0.00001:
 		return
 	var up: Vector3 = (_skeleton.global_basis.inverse() * Vector3.UP).normalized()
@@ -159,6 +187,11 @@ func _guard_arm(side: String, fighter: Fighter, shift: float, breath: float) -> 
 	_set_global_rotation(elbow, Quaternion((moved_hand - moved_elbow).normalized(), (target - moved_elbow).normalized()) * _global_rotation(elbow))
 	# Neutral anatomical wrist relative to the forearm, rather than the source sword-grip bend.
 	_skeleton.set_bone_pose_rotation(hand, _skeleton.get_bone_rest(hand).basis.orthonormalized().get_rotation_quaternion())
+	if _gain < 1.0:
+		# Step 2 of plan 2026-10-09: the guard gains its weight over RAMP_SECONDS (local rotations, parents first).
+		var bones: Array[int] = [shoulder, elbow, hand]
+		for index: int in bones.size():
+			_skeleton.set_bone_pose_rotation(bones[index], source[index].slerp(_skeleton.get_bone_pose_rotation(bones[index]), _gain).normalized())
 
 
 func _collect_posture(fighter: Fighter) -> void:
@@ -168,14 +201,14 @@ func _collect_posture(fighter: Fighter) -> void:
 	var right: Vector3 = forward.cross(up).normalized()
 	# Provisional 6-degree thorax opening leaves the authored pelvis and support untouched.
 	var chest: int = _bones["spine_03"]
-	_set_global_rotation(chest, Quaternion(right, deg_to_rad(6.0)) * _global_rotation(chest))
+	_set_global_rotation(chest, Quaternion(right, deg_to_rad(6.0) * _gain) * _global_rotation(chest))
 	var head: int = _bones["Head"]
 	var rest: Quaternion = _skeleton.get_bone_global_rest(head).basis.orthonormalized().get_rotation_quaternion()
 	# UAL faces +Z in skeleton space (SkeletalRig.MODEL_YAW). Correct pitch only, keeping its yaw.
 	var gaze: Vector3 = (_global_rotation(head) * rest.inverse()) * Vector3.BACK
 	var pitch: float = asin(clampf(gaze.dot(up), -1.0, 1.0))
 	# Choko retarget adds a measured ~15-degree downward gaze offset; +4 donor gives ~-11 hero.
-	var correction: float = clampf(deg_to_rad(4.0) - pitch, deg_to_rad(-30.0), deg_to_rad(30.0))
+	var correction: float = clampf(deg_to_rad(4.0) - pitch, deg_to_rad(-30.0), deg_to_rad(30.0)) * _gain
 	var neck: int = _bones["neck_01"]
 	_set_global_rotation(neck, Quaternion(right, correction * 0.4) * _global_rotation(neck))
 	_set_global_rotation(head, Quaternion(right, correction * 0.6) * _global_rotation(head))

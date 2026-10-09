@@ -81,12 +81,31 @@ const HAND_HEIGHT: float = 0.04 # PLACEHOLDER metres: the wrist bone just above 
 ## twice as long as on 97675c7 (0.04 / 0.03). PLACEHOLDER until T5 / playtest.
 const MODE_BLEND: Dictionary = {"takeoff": 0.18, "apex": 0.18, "fall": 0.18, "rise": 0.12, "land_light": 0.15, "land_normal": 0.08, "land_heavy": 0.06}
 const EXIT_SECONDS: float = 0.15
+## Landing into the stance (plan docs/Plans/2026-10-09-Animation-Feel-Landing-Rope-Stop-Wall.md step 1; T6 review on
+## 595490d: the hips rose 0.85 → 1.00 → 0.855 m, the pose held 7 ticks at 0.0°/tick, the heavy landing turned bones
+## 62–67°/tick and slid the trailing foot 131 + 175 mm). Every tier now: the descent plays the clip to its deepest
+## crouch at the tier's rate, never in fewer than LAND_DESCENT_MIN on a normal or heavy landing; the bottom keeps the
+## clip to LAND_BOTTOM; then the body rises from that crouch straight into the stance clip at the authority's own clip
+## time, never through the clip's straight end; the layer stays until the authority has left Jump_Land
+## (AuthoredLocomotion.LAND_SECONDS + BLEND_SECONDS) and fades into it with no hold. Clip seconds are measured on UAL
+## Jump_Land / NinjaJump_Land (see apply_hero_contacts); the durations are PLACEHOLDER until T5 / T6.
+const LAND_DEEPEST: float = 0.21
+const LAND_BOTTOM: float = 0.32
+const LAND_STAND: float = 0.85
+const LAND_DESCENT_MIN: float = 0.20 # PLACEHOLDER: 12 ticks into a normal / heavy crouch (it was 3.3–5; at 6 / 9 ticks 33–40 / 31–34°/tick)
+const LAND_BLEND_MIN: float = 0.10   # PLACEHOLDER: the normal / heavy entry blend (variant B's 0.08 / 0.06 spiked)
+const KNEEL_LIFT: float = 0.12       # PLACEHOLDER metres: the trailing foot steps back through the air, not along the ground
 
 var enabled: bool = true
 ## The С4/С5/С3 values as variables only so a check can put the 2026-10-08 ones back as negative controls.
 var mode_blend: Dictionary = MODE_BLEND
 var light_land_rate: float = LIGHT_LAND_RATE
 var tuck_min_seconds: float = TUCK_MIN_SECONDS
+## Step 1 of plan 2026-10-09 as variables only so a check can put the product of 595490d back (anim_ground_check
+## --break=land / kneel): false plays the clip to its straight end and holds, or slides the kneeling foot.
+var land_settle: bool = true
+var kneel_step: bool = true
+var _contact_envelope: float = 0.0
 ## Read-only for checks and captures.
 var mode: String = ""
 var clip: String = ""
@@ -172,7 +191,8 @@ func setup(player: AnimationPlayer, skeleton: Skeleton3D, f: Fighter) -> void:
 		"Jump_Start", "Jump_Land", "NinjaJump_Start", "NinjaJump_Idle", "NinjaJump_Land", "LiftAir_Fall_Air", _getup_clip]
 	for source: String in sources:
 		_sample_clip(player, skeleton, source, false)
-	_sample_clip(player, skeleton, _idle_clip, true)
+	# The whole stance loop: a landing rises into it at the authority's own clip time (step 1 of plan 2026-10-09).
+	_sample_clip(player, skeleton, _idle_clip, false)
 	player.stop()
 	skeleton.reset_bone_poses()
 
@@ -356,6 +376,8 @@ func _choose(f: Fighter, rig: SkeletalRig) -> String:
 		Fighter.State.IDLE:
 			if rig.locomotion.moving():
 				return ""
+			if land_settle and landing_tier in ["light", "normal", "heavy"]:
+				return ("land_" + landing_tier) if _landing_time < float(_land_times().settled) else ""
 			match landing_tier:
 				"heavy":
 					return "land_heavy" if _landing_time < HEAVY_LAND_FRAMES / 60.0 else ""
@@ -386,7 +408,9 @@ func draw(skeleton: Skeleton3D, hero: Node3D, f: Fighter, rig: SkeletalRig, delt
 			_exit_seconds = EXIT_SECONDS if f.state in [Fighter.State.IDLE, Fighter.State.WALK, Fighter.State.JUMP] and _allowed(f, rig) else 0.0
 			# Standing, the authority itself still blends out of the clip it drew (AuthoredLocomotion.BLEND_SECONDS);
 			# fading into that blend would dip the body back into the old pose. Hold, then fade into the settled stance.
-			_exit_hold = AuthoredLocomotion.BLEND_SECONDS if f.state == Fighter.State.IDLE and not rig.locomotion.moving() else 0.0
+			# A settled landing (step 1 of plan 2026-10-09) leaves only after the authority's blend has ended: no hold.
+			var settled_landing: bool = land_settle and mode.begins_with("land_")
+			_exit_hold = AuthoredLocomotion.BLEND_SECONDS if f.state == Fighter.State.IDLE and not rig.locomotion.moving() and not settled_landing else 0.0
 			_exit_time = 0.0
 			_from = _presented.duplicate()
 			_from_pelvis = _presented_pelvis
@@ -410,6 +434,8 @@ func draw(skeleton: Skeleton3D, hero: Node3D, f: Fighter, rig: SkeletalRig, delt
 		weight = smoothstep(0.0, _exit_seconds, _exit_time - _exit_hold)
 	else:
 		var blend: float = float(mode_blend.get(wanted, 0.0))
+		if land_settle and wanted in ["land_normal", "land_heavy"]:
+			blend = maxf(blend, LAND_BLEND_MIN)
 		weight = 1.0 if blend <= 0.0 else smoothstep(0.0, blend, _mode_time)
 	var rotations: Array[Quaternion] = target[0]
 	var presented: Array[Quaternion] = []
@@ -504,6 +530,7 @@ func _finish(hero: Node3D) -> void:
 	arm_weight = 0.0
 	hand_clearance = INF
 	knee_clearance = INF
+	_contact_envelope = 0.0
 	hero_scale = Vector3.ONE
 	if hero != null:
 		hero.scale = _hero_base_scale
@@ -541,15 +568,60 @@ func _target(wanted: String, f: Fighter, rig: SkeletalRig, skeleton: Skeleton3D)
 			return [_authority_rotation.duplicate(), _authority_position[_pelvis]]
 		"fall":
 			return _fall_target(f)
-		"land_light", "land_normal":
+		"land_light", "land_normal", "land_heavy":
+			if land_settle:
+				return _land_target()
+			if wanted == "land_heavy":
+				clip = "NinjaJump_Land"
+				clip_time = clip_length(clip) * clampf(_landing_time / (HEAVY_LAND_FRAMES / 60.0), 0.0, 1.0)
+				return sample(clip, clip_time)
 			clip = "Jump_Land"
 			clip_time = minf(_landing_time * _land_rate(), clip_length(clip))
 			return sample(clip, clip_time)
-		"land_heavy":
-			clip = "NinjaJump_Land"
-			clip_time = clip_length(clip) * clampf(_landing_time / (HEAVY_LAND_FRAMES / 60.0), 0.0, 1.0)
-			return sample(clip, clip_time)
 	return [_authority_rotation.duplicate(), _authority_position[_pelvis]]
+
+
+## Clip seconds per second of each tier: light Jump_Land ×6 (С5), normal ×2.5, heavy NinjaJump_Land in 20 frames (P8).
+func _land_clip_rate() -> float:
+	if landing_tier == "heavy":
+		return clip_length("NinjaJump_Land") / (HEAVY_LAND_FRAMES / 60.0)
+	return _land_rate()
+
+
+## Seconds after the contact: the deepest crouch, the end of the bottom, standing in the stance, the authority settled.
+func _land_times() -> Dictionary:
+	var rate: float = maxf(_land_clip_rate(), 0.0001)
+	var descent: float = LAND_DEEPEST / rate
+	if landing_tier != "light":
+		descent = maxf(descent, LAND_DESCENT_MIN)
+	var bottom: float = descent + (LAND_BOTTOM - LAND_DEEPEST) / rate
+	var stand: float = bottom + (LAND_STAND - LAND_BOTTOM) / rate
+	return {"rate": rate, "descent": descent, "bottom": bottom, "stand": stand,
+		"settled": maxf(stand, AuthoredLocomotion.LAND_SECONDS + AuthoredLocomotion.BLEND_SECONDS)}
+
+
+## The descent into the clip's deepest crouch, its bottom, then a rise from that crouch into the stance clip at the
+## authority's clip time (SkeletalRig loops the stance from the state change, which is the contact tick).
+func _land_target() -> Array:
+	clip = "NinjaJump_Land" if landing_tier == "heavy" else "Jump_Land"
+	var times: Dictionary = _land_times()
+	var t: float = _landing_time
+	if t < float(times.descent):
+		clip_time = LAND_DEEPEST * t / maxf(float(times.descent), 0.0001)
+	else:
+		clip_time = minf(LAND_DEEPEST + (t - float(times.descent)) * float(times.rate), LAND_BOTTOM)
+	var crouch: Array = sample(clip, clip_time)
+	var rise: float = smoothstep(float(times.bottom), float(times.stand), t)
+	_contact_envelope = smoothstep(0.0, float(times.descent), t) * (1.0 - rise)
+	if rise <= 0.0 or not _cache.has(_idle_clip):
+		return crouch
+	var stance: Array = sample(_idle_clip, fposmod(t, clip_length(_idle_clip)))
+	var from: Array[Quaternion] = crouch[0]
+	var to: Array[Quaternion] = stance[0]
+	var rotations: Array[Quaternion] = []
+	for bone: int in _bone_count:
+		rotations.append(from[bone].slerp(to[bone], rise) if rise < 1.0 else to[bone])
+	return [rotations, Vector3(crouch[1]).lerp(stance[1], rise)]
 
 
 func _flinch_target(f: Fighter, skeleton: Skeleton3D) -> Array:
@@ -676,7 +748,14 @@ func _scale_hero(hero: Node3D, f: Fighter, wanted: String) -> void:
 			var stretch: float = maxf(0.0, STRETCH - Fighter.SQUASH_DECAY * float(_takeoff_frames))
 			hero_scale = Vector3(1.0 - 0.08 * stretch, 1.0 + 0.14 * stretch, 1.0 - 0.08 * stretch)
 		"land_normal":
-			var deeper: Vector3 = _squash_scale(maxf(0.0, NORMAL_SQUASH - Fighter.SQUASH_DECAY * float(_landing_frames)))
+			var frames: float = float(_landing_frames)
+			if land_settle:
+				# The deeper squash runs on the clip's clock, so the body is as squashed at the (later) bottom as before.
+				var times: Dictionary = _land_times()
+				var deepest: float = LAND_DEEPEST / float(times.rate)
+				var t: float = _landing_time
+				frames = 60.0 * (deepest * t / float(times.descent) if t < float(times.descent) else deepest + t - float(times.descent))
+			var deeper: Vector3 = _squash_scale(maxf(0.0, NORMAL_SQUASH - Fighter.SQUASH_DECAY * frames))
 			hero_scale = Vector3(deeper.x / current.x, deeper.y / current.y, deeper.z / current.z)
 		"flinch":
 			if held:
@@ -712,6 +791,9 @@ func apply_hero_contacts(hero: Skeleton3D, f: Fighter) -> void:
 		return
 	# Jump_Land and NinjaJump_Land reach the deepest crouch at ~0.21 s (pelvis 0.43 m) and stand again by ~0.85 s.
 	var envelope: float = smoothstep(0.0, 0.14, clip_time) * (1.0 - smoothstep(0.32, 0.72, clip_time))
+	if land_settle:
+		# In with the descent, out with the rise into the stance (_land_target), in seconds rather than clip time.
+		envelope = _contact_envelope
 	if envelope <= 0.0:
 		return
 	var heavy: bool = mode == "land_heavy"
@@ -727,8 +809,11 @@ func apply_hero_contacts(hero: Skeleton3D, f: Fighter) -> void:
 	var hips: int = hero.find_bone("Hips")
 	var drop: float = (HEAVY_DROP if heavy else NORMAL_DROP) * envelope
 	hero.set_bone_pose_position(hips, hero.get_bone_pose_position(hips) + hero.global_basis.inverse() * (Vector3.DOWN * drop))
-	# The lead leg keeps its foot; the trailing one keeps it too, or kneels back on a heavy landing.
+	# The lead leg keeps its foot; the trailing one keeps it too, or kneels back on a heavy landing. That foot steps
+	# back and returns through the air (KNEEL_LIFT at mid-step), so it never slides along the ground.
 	var trail_target: Vector3 = Vector3(feet["Right"]) - forward * (KNEEL_BACK * envelope if heavy else 0.0)
+	if heavy and kneel_step:
+		trail_target += Vector3.UP * (KNEEL_LIFT * sin(PI * clampf(envelope, 0.0, 1.0)))
 	for side: String in ["Left", "Right"]:
 		var target: Vector3 = trail_target if side == "Right" else Vector3(feet[side])
 		AuthoredCombatMotion._solve_chain(hero, hero.find_bone(side + "UpLeg"), hero.find_bone(side + "Leg"), hero.find_bone(side + "Foot"), to_local * target)

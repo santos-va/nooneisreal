@@ -8,6 +8,28 @@ const MAX_HORIZONTAL: float = 0.40
 const TELEPORT_DISTANCE: float = 0.8
 const RAY_ABOVE: float = 0.35
 const RAY_BELOW: float = 0.55
+## Plan docs/Plans/2026-10-09-Animation-Feel-Landing-Rope-Stop-Wall.md step 2 (T6 review on 595490d: a stance toe let
+## go of its anchor and jumped 358–422 mm in one tick on a stop). A planted foot that lets go farther than STEP_MIN
+## from its authored place steps there instead: its target moves from where it was drawn to the authored foot, lifted
+## STEP_LIFT at mid-step, never through a leg longer than it is. A step lasts its length over STEP_SPEED, between
+## STEP_SECONDS and STEP_LONGEST, so a long stop step is not a kick. PLACEHOLDER art values.
+const STEP_SECONDS: float = 0.15
+const STEP_STOP_SECONDS: float = 0.28
+const STEP_SPEED: float = 2.4
+const STEP_LONGEST: float = 0.35
+const STEP_LIFT: float = 0.10
+const STEP_MIN: float = 0.03
+const STEP_REACH: float = 0.995
+## The step's lift leads its travel: the foot moves along the ground only between these shares of the step, when it is
+## already lifted (sin(π·0.15) ≈ 0.45 of STEP_LIFT), so a low foot never skates.
+const STEP_TRAVEL: Vector2 = Vector2(0.15, 0.85)
+## While `hold_low` is set (SkeletalRig, a hero walking the city: the drawn body still turning toward its course, or
+## the first AuthoredLocomotion.LAND_SECONDS of a moving landing — `hold_landing`) a foot whose sole is within HOLD_LOW
+## of the ground is held where it was drawn, and stays held until its clip lifts it: the body pivots or lands over its
+## feet and they step (above) instead of sweeping round with the hips or skimming the ground. A turn catches only the
+## feet already down when it begins; a landing catches any foot that comes down. A foot a step puts down is held the
+## same way (`hold_enabled`). PLACEHOLDER metres.
+const HOLD_LOW: float = 0.04
 const FootSamples = preload("res://scripts/fighter/HeroFootContact.gd")
 static var _profiles: Dictionary = {}
 static var _profiles_loaded: bool = false
@@ -23,6 +45,15 @@ var sample_count: int = 0
 var pose_reads: int = 0
 var history_updates: int = 0
 var rejected_targets: int = 0
+var steps: int = 0
+## A variable only so a check can put the product of 595490d back (anim_ground_check --break=foot): 0 = let go at once.
+var step_seconds: float = STEP_SECONDS
+var hold_low: bool = false
+var hold_enabled: bool = false
+var hold_landing: bool = false
+var _hold_before: bool = false
+var _standing: bool = false
+var _drawn: Dictionary = {}
 var _rig: Skeleton3D
 var _indices: Dictionary = {}
 var _rest_poles: Dictionary = {}
@@ -128,6 +159,8 @@ func begin_frame(delta: float) -> void:
 
 func reset() -> void:
 	_state.clear()
+	_drawn.clear()
+	_hold_before = false
 	_planes.clear()
 	_final_rotations.clear()
 	_body_valid = false
@@ -174,6 +207,7 @@ func apply(fighter: Fighter, source: Skeleton3D, clip: String, clip_time: float,
 			reset()
 			return
 	var poses: Array[Transform3D] = _poses()
+	_standing = fighter.state == Fighter.State.IDLE and Vector2(fighter.velocity.x, fighter.velocity.z).length() < 0.08
 	for side: String in _indices:
 		var ids: Array = _indices[side]
 		var ankle: Vector3 = _rig.global_transform * poses[ids[2]].origin
@@ -186,24 +220,71 @@ func apply(fighter: Fighter, source: Skeleton3D, clip: String, clip_time: float,
 			continue
 		var minimum: float = _sole_clearance(side, poses, plane)
 		var stance: bool = _stance(fighter, source, side, clip, clip_time)
+		if not stance and hold_low and step_seconds > 0.0 and fighter.state in [Fighter.State.IDLE, Fighter.State.WALK]:
+			# Turning, only a foot already down when the hold begins is caught (one that swings down later lands by its
+			# clip); landing, any foot that comes down.
+			stance = bool(_state.get(side, {}).get("planted", false)) or ((hold_landing or not _hold_before) and minimum < HOLD_LOW)
+		# A foot a step has put down stays down until its clip lifts it (step 2 of plan 2026-10-09).
+		if not stance and bool(_state.get(side, {}).get("held", false)):
+			stance = true
+		var stepping: bool = false
 		if fresh:
 			history_updates += 1
 			var previous: Dictionary = _state.get(side, {})
-			if not stance or minimum > 0.13:
-				_state[side] = {"planted": false}
+			var landed: bool = false
+			if previous.has("step_from"):
+				var elapsed: float = float(previous.step_elapsed) + _frame_delta
+				if step_seconds > 0.0 and elapsed < float(previous.step_seconds):
+					_state[side] = previous.duplicate()
+					_state[side].step_elapsed = elapsed
+					stepping = true
+				else:
+					landed = hold_enabled and minimum < HOLD_LOW and fighter.state in [Fighter.State.IDLE, Fighter.State.WALK]
+					var spot: Vector3 = previous.get("step_land", toe)
+					previous = {"planted": false}
+					_state[side] = previous
+					if landed:
+						target_captures += 1
+						_state[side] = {"planted": true, "anchor": Vector3(spot.x, toe.y, spot.z), "held": true}
+			if stepping or landed:
+				pass
+			elif not stance or minimum > 0.13:
+				stepping = _release(side, toe, previous)
 			elif not bool(previous.get("planted", false)):
 				target_captures += 1
-				_state[side] = {"planted": true, "anchor": toe}
+				var anchor: Vector3 = toe
+				if hold_low and step_seconds > 0.0 and _drawn.has(side):
+					# Held where it was drawn on the tick before, not where this tick's turn of the hips swept it.
+					var drawn: Vector3 = _drawn[side]
+					if Vector2(drawn.x - toe.x, drawn.z - toe.z).length() < MAX_HORIZONTAL:
+						anchor = Vector3(drawn.x, toe.y, drawn.z)
+				_state[side] = {"planted": true, "anchor": anchor}
 		var planted: bool = bool(_state.get(side, {}).get("planted", false))
 		var shift := Vector3.ZERO
 		if planted:
 			var anchor: Vector3 = _state[side].anchor
 			shift = Vector3(anchor.x - toe.x, 0.0, anchor.z - toe.z)
 			if shift.length() > MAX_HORIZONTAL:
-				_state[side] = {"planted": false}
+				planted = false
+				stepping = _release(side, toe, _state[side])
 				shift = Vector3.ZERO
+		var step_rise: float = 0.0
+		if stepping:
+			# From where the foot was drawn to the authored foot, through the air (step 2 of plan 2026-10-09): lifted
+			# first, then travelling (STEP_TRAVEL), never below the authored foot.
+			var step: Dictionary = _state[side]
+			var progress: float = clampf(float(step.step_elapsed) / float(step.step_seconds), 0.0, 1.0)
+			var from: Vector3 = step.step_from
+			shift = Vector3(from.x - toe.x, 0.0, from.z - toe.z) * (1.0 - smoothstep(STEP_TRAVEL.x, STEP_TRAVEL.y, progress))
+			if progress >= STEP_TRAVEL.y:
+				# The travel is done: the foot comes down on the spot it reached instead of riding a moving clip foot.
+				if not step.has("step_land"):
+					step["step_land"] = toe
+				var spot: Vector3 = step.step_land
+				shift = Vector3(spot.x - toe.x, 0.0, spot.z - toe.z)
+			step_rise = maxf(0.0, CLEARANCE + STEP_LIFT * sin(PI * progress) - minimum)
 		# Lift only penetration during swing; never drag an authored raised foot down.
-		var vertical: float = CLEARANCE - minimum
+		var vertical: float = step_rise if stepping else CLEARANCE - minimum
 		if not plane.water:
 			var normal: Vector3 = plane.normal
 			vertical -= (normal.x * shift.x + normal.z * shift.z) / normal.y
@@ -216,11 +297,23 @@ func apply(fighter: Fighter, source: Skeleton3D, clip: String, clip_time: float,
 		shift.y = vertical
 		if shift.length_squared() < 0.00000001:
 			continue
-		if not _solve(side, ankle + shift):
-			rejected_targets += 1
+		if stepping and not _solve(side, _reachable(side, ankle + shift)):
+			stepping = false
 			_state[side] = {"planted": false}
-			# A stance target can exceed reach during a turn/stop. Release its XZ
-			# anchor, while still correcting reachable vertical penetration.
+			shift = Vector3.UP * maxf(0.0, CLEARANCE - minimum)
+			if shift.y <= 0.0 or not _solve(side, ankle + shift):
+				continue
+		elif not stepping and not _solve(side, ankle + shift):
+			rejected_targets += 1
+			# A stance target can exceed reach during a turn/stop. Release its XZ anchor — through a step from where it
+			# was drawn (step 2 of plan 2026-10-09) — while still correcting reachable vertical penetration.
+			if planted and _release(side, toe, _state[side]):
+				var from: Vector3 = _state[side].step_from
+				if _solve(side, _reachable(side, ankle + Vector3(from.x - toe.x, 0.0, from.z - toe.z) + Vector3.UP * maxf(0.0, CLEARANCE - minimum))):
+					continue
+				_state[side] = {"planted": false}
+			else:
+				_state[side] = {"planted": false}
 			var lift: float = maxf(0.0, CLEARANCE - minimum)
 			if lift <= 0.0 or not _solve(side, ankle + Vector3.UP * lift):
 				continue
@@ -232,9 +325,41 @@ func apply(fighter: Fighter, source: Skeleton3D, clip: String, clip_time: float,
 			_solve(side, corrected + Vector3.UP * remainder)
 			poses = _poses()
 
-	for ids: Array in _indices.values():
+	for side: String in _indices:
+		var ids: Array = _indices[side]
 		for bone: int in [ids[0], ids[1], ids[2]]:
 			_final_rotations[bone] = _rig.get_bone_pose_rotation(bone)
+		# Where each toe was drawn this tick: a later release steps from here (step 2 of plan 2026-10-09).
+		_drawn[side] = _rig.global_transform * _rig.get_bone_global_pose(ids[3]).origin
+	_hold_before = hold_low
+
+## Lets a foot go. A planted one drawn farther than STEP_MIN from its authored place steps there; true when it does.
+func _release(side: String, toe: Vector3, previous: Dictionary) -> bool:
+	if step_seconds > 0.0 and bool(previous.get("planted", false)) and _drawn.has(side):
+		var from: Vector3 = _drawn[side]
+		var length: float = Vector2(from.x - toe.x, from.z - toe.z).length()
+		if length > STEP_MIN:
+			steps += 1
+			# Standing still, the authored stance is still gathering the feet (a stop): that step takes its time.
+			var shortest: float = STEP_STOP_SECONDS if _standing else maxf(step_seconds, STEP_SECONDS)
+			_state[side] = {"planted": false, "step_from": from, "step_elapsed": 0.0,
+				"step_seconds": clampf(length / STEP_SPEED, shortest, STEP_LONGEST)}
+			return true
+	_state[side] = {"planted": false}
+	return false
+
+## A step target the leg can reach: pulled toward the hip onto STEP_REACH of the leg's length.
+func _reachable(side: String, world_target: Vector3) -> Vector3:
+	var ids: Array = _indices[side]
+	# Skeleton space, where _solve measures the chain.
+	var hip: Vector3 = _rig.get_bone_global_pose(ids[0]).origin
+	var knee: Vector3 = _rig.get_bone_global_pose(ids[1]).origin
+	var ankle: Vector3 = _rig.get_bone_global_pose(ids[2]).origin
+	var reach: float = (hip.distance_to(knee) + knee.distance_to(ankle)) * STEP_REACH
+	var offset: Vector3 = _rig.global_transform.affine_inverse() * world_target - hip
+	if offset.length() <= reach:
+		return world_target
+	return _rig.global_transform * (hip + offset.normalized() * reach)
 
 func _stance(fighter: Fighter, _source: Skeleton3D, side: String, clip: String, time: float) -> bool:
 	if fighter.state in [Fighter.State.ATTACK, Fighter.State.HITSTUN, Fighter.State.BLOCKSTUN, Fighter.State.STUMBLE]:

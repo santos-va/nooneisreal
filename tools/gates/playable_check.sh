@@ -94,6 +94,13 @@ cases = [
     # the hero in to a swing; one arc per jump, T5 guards G1–G4.
     ('rope-pull', 'tools/grapple/rope_pull_check.gd', r'ROPE_PULL_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none red=none', [], 0),
     ('jump-arc', 'tools/animation/jump_arc_check.gd', r'JUMP_ARC_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none red=none', [], 0),
+    # Animation feel, branch B (plan 2026-10-09-Animation-Feel-Landing-Rope-Stop-Wall steps 0, 4, 5): the rope, Skea's
+    # wall run, the ledge and the roll of both heroes on the T6 stations. Two items stay open and pinned: the post contact
+    # (geometry, back with T1) and the light landing after the mantle (LivingBodyMotion landings, branch A).
+    ('anim-traversal', 'tools/animation/anim_traversal_check.gd', r'ANIM_TRAVERSAL_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none red=none open=ledge_land,rope_post', [], 0),
+    # Animation feel, branch A (plan 2026-10-09-Animation-Feel-Landing-Rope-Stop-Wall steps 0–3): stops, reverse, turn,
+    # landings and the wall kick on the ground and in transitions — bone ≤ 30°/tick, planted foot ≤ 50 mm, no frozen pose.
+    ('anim-ground', 'tools/animation/anim_ground_check.gd', r'ANIM_GROUND_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none red=none', [], 0),
     ('anchor-coverage', 'tools/world/anchor_coverage.gd', r'ANCHOR_COVERAGE_COMPLETE checks=[1-9][0-9]* failures=0 anchors=[1-9][0-9]* t8=[0-9]+/[0-9]+ real=[0-9]+/[0-9]+ roofs=([0-9]+)/\1 supports=([0-9]+)/\2', [], 0),
     ('city-parkour', 'tools/parkour/city_parkour_check.gd', r'CITY_PARKOUR_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-tricks', 'tools/parkour/city_tricks_check.gd', r'CITY_TRICKS_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
@@ -207,9 +214,33 @@ for mutation, family in (('nopull', 'target'), ('snap', 'step'), ('lengthen', 'l
     cases.append(('rope-pull-negative-' + mutation, 'tools/grapple/rope_pull_check.gd',
                   rf'ROPE_PULL_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z,]*\b{family}\b[a-z,]*',
                   ['--', '--hero=choko', '--break=' + mutation], 1))
+# Animation feel, branch B: the product of main 595490d, and each change switched back alone — no transition blend, the
+# duel's 0.28 rope lean, the camera arm stopped by the anchor's own post, the old wall-run clock, a still hang and a
+# lifted mantle, the authored roll — must each go red in its own family.
+cases.append(('anim-traversal-negative-main', 'tools/animation/anim_traversal_check.gd',
+              r'ANIM_TRAVERSAL_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation=main red='
+              + ''.join(rf'(?=[a-z_,]*\b{family}\b)' for family in ('rope_turn', 'rope_lean', 'rope_arm', 'ledge_turn',
+                                                                     'ledge_frozen', 'ledge_lift', 'wall_turn', 'roll_turn'))
+              + r'[a-z_,]* open=ledge_land,rope_post', ['--', '--break=main'], 1))
+for mutation, family in (('blend', 'ledge_turn'), ('lean', 'rope_lean'), ('camera', 'rope_arm'), ('wall', 'wall_turn'),
+                         ('ledge', 'ledge_lift'), ('roll', 'roll_turn')):
+    cases.append(('anim-traversal-negative-' + mutation, 'tools/animation/anim_traversal_check.gd',
+                  rf'ANIM_TRAVERSAL_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z_,]*\b{family}\b[a-z_,]* open=ledge_land,rope_post',
+                  ['--', '--break=' + mutation], 1))
 for mutation, family in (('blend', 'G2'), ('tuck', 'G1'), ('land', 'G4depth')):
     cases.append(('jump-arc-negative-' + mutation, 'tools/animation/jump_arc_check.gd',
                   rf'JUMP_ARC_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[A-Za-z0-9,]*\b{family}\b[A-Za-z0-9,]*',
+                  ['--', '--break=' + mutation], 1))
+# Animation feel, branch A: the product of 595490d put back one part at a time must go red in its own family — the
+# landing played to its straight end with the hold (hips), the heavy landing's sliding kneel (foot), the guard at full
+# weight on the first idle tick (bone), the stance foot let go in one tick (foot), the legs chosen for the gameplay
+# course with the 420°/s turn (legs), the wall-kick heading in one tick (wall). The merge of A and B, one seam at a time:
+# TraversalBlend blending the kick's first tick while the node flips, the kick remembering the pose before TraversalBlend
+# drew it (the early kick), TraversalBlend handing the kick over without following the drawn pose — each red in wall.
+for mutation, family in (('land', 'hips'), ('kneel', 'foot'), ('guard', 'bone'), ('foot', 'foot'), ('legs', 'legs'), ('kick', 'wall'),
+                         ('yield', 'wall'), ('memory', 'wall'), ('follow', 'wall')):
+    cases.append(('anim-ground-negative-' + mutation, 'tools/animation/anim_ground_check.gd',
+                  rf'ANIM_GROUND_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z,]*\b{family}\b[a-z,]*',
                   ['--', '--break=' + mutation], 1))
 # Living body: a presented pose left on the mannequin, a stun frame, a capsule-RNG draw or invulnerability leaked into
 # the fight, mirrored hit sides, a flinch clip that does not follow the hitstun, the get-up drawn by the authority alone,
@@ -354,6 +385,8 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('auto-hook-negative-', 'ERROR: AUTO_HOOK: '),
                           ('rope-pull-negative-', 'ERROR: ROPE_PULL: '),
                           ('jump-arc-negative-', 'ERROR: JUMP_ARC: '),
+                          ('anim-traversal-negative-', 'ERROR: ANIM_TRAVERSAL: '),
+                          ('anim-ground-negative-', 'ERROR: ANIM_GROUND: '),
                           ('display-auto-negative-', 'ERROR: DISPLAY_AUTO: '),
                           ('lethal-fight-negative-', 'ERROR: LETHAL_FIGHT: '),
                           ('blood-content-negative-', 'ERROR: BLOOD_CONTENT: '),
