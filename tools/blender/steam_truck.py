@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Catalogue No. 9 «Паромобіль-вантажівка» — steam cargo truck, a standing city prop (ADR-027).
 
 Canon of form: the right-hand vehicle of game/assets/sprites/sprite_steamcars_v1.png (registry `sprite-steamcars-v1`)

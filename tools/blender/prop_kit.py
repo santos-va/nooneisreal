@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Shared helpers for Cronshift city props built with Blender as a Python module (bpy 5.2.2 LTS).
 
 Deterministic by construction: no random numbers, no time, no dependence on the user's Blender preferences
