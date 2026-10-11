@@ -9,8 +9,8 @@ Conventions (see tools/blender/README.md):
   The glTF exporter turns +Y forward into Godot -Z (Node3D forward), +Z up into Godot +Y.
 - Metres, real scale. Every transform is applied before export (no object scale: Jolt warns on scaled bodies).
 - Materials are named after the keys of game/scripts/world/CityMaterials.gd and carry the same hex, so the game can
-  swap each surface for the city shader by name. `iron_paint` (#577368) is ADR-027's painted cast iron; it is added here
-  until CityMaterials.gd grows the key (the parser picks the file's value once it exists).
+  swap each surface for the city shader by name. `iron_paint` (#577368, ADR-027's painted cast iron) is a key of
+  CityMaterials.gd since 2026-10-09; EXTRA_KEYS stays empty unless a prop needs a colour before the game has it.
 - Collision: separate objects named `<Name>-convcolonly`. Godot 4.7's scene importer turns each into a StaticBody3D
   with one ConvexPolygonShape3D and drops the visible mesh (editor/import/3d/resource_importer_scene.cpp,
   `_teststr(name, "convcolonly")`).
@@ -30,8 +30,8 @@ from mathutils import Vector
 
 REPO = Path(__file__).resolve().parents[2]
 CITY_MATERIALS = REPO / "game" / "scripts" / "world" / "CityMaterials.gd"
-# ADR-027 (amendment 2026-10-09): painted cast iron, T6 A/B choice B.
-EXTRA_KEYS = {"iron_paint": "577368"}
+# Keys a prop may use before CityMaterials.gd has them (the file's value wins). Empty: `iron_paint` is in the file.
+EXTRA_KEYS: dict[str, str] = {}
 AUTO_SMOOTH_DEG = 40.0  # faces meeting at less than this share normals: 10+ sided cylinders and cloth read smooth
 TAU = math.tau
 X = Vector((1.0, 0.0, 0.0))

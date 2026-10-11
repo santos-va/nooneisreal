@@ -57,14 +57,15 @@ func build(materials: Dictionary) -> void:
 	grip_shape.position = HANDLE_LOCAL
 	body.add_child(grip_shape)
 	_box(materials, "stone", Vector3(0, 0.06, 0), Vector3(0.56, 0.12, 0.56))
-	_cylinder(materials, "iron", Vector3(0, 0.62, 0), 0.115, 0.13, 1.0).name = "Column"
+	# The body is painted cast iron (ADR-027, Н3: `iron_paint`); the two hoops, the ladle and its chain stay bare `iron`.
+	_cylinder(materials, "iron_paint", Vector3(0, 0.62, 0), 0.115, 0.13, 1.0).name = "Column"
 	for y: float in [0.3, 0.95]:
 		_cylinder(materials, "iron", Vector3(0, y, 0), 0.145, 0.145, 0.05)
-	_cylinder(materials, "iron", Vector3(0, 1.16, 0), 0.07, 0.16, 0.08).name = "Cap"
+	_cylinder(materials, "iron_paint", Vector3(0, 1.16, 0), 0.07, 0.16, 0.08).name = "Cap"
 	_cylinder(materials, "brass", Vector3(0, 1.23, 0), 0.05, 0.05, 0.06).name = "Knob"
 	# The spout: a short square pipe toward the street, turned down at its end.
-	_box(materials, "iron", Vector3(0, 0.9, 0.2), Vector3(0.07, 0.07, 0.3))
-	_box(materials, "iron", Vector3(0, 0.86, 0.34), Vector3(0.075, 0.1, 0.075))
+	_box(materials, "iron_paint", Vector3(0, 0.9, 0.2), Vector3(0.07, 0.07, 0.3))
+	_box(materials, "iron_paint", Vector3(0, 0.86, 0.34), Vector3(0.075, 0.1, 0.075))
 	# The lever: up and back from the cap, a knob at its end. Turned about X by +LEVER_TILT its front end sits in the cap
 	# (y 1.144, z 0.033) and its back end in the wooden handle (y 1.396, z −0.533 against 1.40, −0.53): T6
 	# docs/Art/2026-10-08-Thirst-Items-Frames-Review.md § Колонка, крок A1 (the old −0.42 left both ends in the air).
@@ -73,15 +74,15 @@ func build(materials: Dictionary) -> void:
 	var lever_mesh := BoxMesh.new()
 	lever_mesh.size = Vector3(0.045, 0.045, LEVER_LENGTH)
 	lever.mesh = lever_mesh
-	lever.material_override = materials.get("iron")
+	lever.material_override = materials.get("iron_paint")
 	lever.position = Vector3(0, 1.27, -0.25)
 	lever.rotation.x = LEVER_TILT
 	add_child(lever)
 	_cylinder(materials, "wood", HANDLE_LOCAL, 0.035, 0.035, 0.12).name = "Handle"
 	# The ladle on its chain, hanging from a short hook off the upper ring; at x 0.21 its rim clears the column (r ≈ 0.122
 	# at its height) by 0.037 m instead of sinking 0.020 m into it at x 0.15 (city_thirst_check T15; T6 крок A3, the
-	# position only: T6's tin #B9BDC0 would be a new palette key, an art call left to T6/T1; the cast iron's colour is
-	# Santos's fork Р6).
+	# position only: T6's tin #B9BDC0 would be a new palette key, an art call left to T6/T1; the painted body's colour is
+	# Santos's fork Р6, closed by ADR-027 as #577368).
 	_box(materials, "iron", Vector3(0.17, 0.94, 0.06), Vector3(0.09, 0.02, 0.02)).name = "LadleHook"
 	_box(materials, "iron", Vector3(LADLE_X, 0.82, 0.06), Vector3(0.02, 0.24, 0.02)).name = "LadleChain"
 	_cylinder(materials, "iron", Vector3(LADLE_X, 0.66, 0.06), LADLE_RADIUS, 0.045, 0.08).name = "Ladle"

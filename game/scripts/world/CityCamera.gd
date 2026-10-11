@@ -27,6 +27,12 @@ var _conversation_goal: Dictionary = {}
 var _conversation_weight: float = 0.0
 var _normal_arm_position := Vector3.ZERO
 var _arm_tracked: bool = false
+## Plan 2026-10-09-Animation-Feel step 4: while the hero hangs from a rope, the anchor's own support (its lamp post,
+## GrappleHook._own_support — the colliders the hanging rope already passes) never shortens the arm; T6 measured
+## 0.21–0.58 m with the post between the lens and the hero. Every other solid still does. false is the product of
+## main 595490d (the --break control of tools/animation/anim_traversal_check.gd).
+var ignore_own_support: bool = true
+var _ignored_support: Array[RID] = []
 
 func begin_conversation(actor: Node3D) -> void:
 	if not is_instance_valid(actor) or player == null:
@@ -90,6 +96,7 @@ func reset_view() -> void:
 func _physics_process(delta: float) -> void:
 	if player == null:
 		return
+	_sync_own_support()
 	aim.step(delta)
 	var previous := _yaw
 	var previous_pitch := _pitch
@@ -152,7 +159,7 @@ func _update_shoulder(delta: float) -> void:
 		query.transform = Transform3D(Basis.IDENTITY, global_position)
 		query.motion = motion
 		query.collision_mask = arm.collision_mask
-		query.exclude = [player.get_rid()]
+		query.exclude = _sweep_exclude()
 		var fractions := get_world_3d().direct_space_state.cast_motion(query)
 		if not fractions.is_empty():
 			offset *= fractions[0]
@@ -169,7 +176,7 @@ func _update_close_framing(delta: float) -> void:
 	query.transform.origin = global_position + global_basis.x * arm.position.x
 	query.motion = Vector3.UP * lift
 	query.collision_mask = arm.collision_mask
-	query.exclude = [player.get_rid()]
+	query.exclude = _sweep_exclude()
 	if lift > 0.0001:
 		var fractions: PackedFloat32Array = get_world_3d().direct_space_state.cast_motion(query)
 		if not fractions.is_empty():
@@ -183,6 +190,27 @@ func _process(delta: float) -> void:
 		proximity.update(camera, delta)
 	else:
 		proximity.reset()
+
+func _sync_own_support() -> void:
+	var wanted: Array[RID] = []
+	var hook: GrappleHook = player.grapple
+	if ignore_own_support and hook != null and hook.attached and hook.phase == GrappleHook.Phase.HANG:
+		wanted = hook._own_support
+	if wanted == _ignored_support:
+		return
+	for rid: RID in _ignored_support:
+		if rid not in wanted:
+			arm.remove_excluded_object(rid)
+	for rid: RID in wanted:
+		if rid not in _ignored_support:
+			arm.add_excluded_object(rid)
+	_ignored_support = wanted.duplicate()
+
+## The pivot sweeps see what the arm sees: the hero, and while it hangs, its own anchor's support.
+func _sweep_exclude() -> Array[RID]:
+	var exclude: Array[RID] = [player.get_rid()]
+	exclude.append_array(_ignored_support)
+	return exclude
 
 func _publish_basis() -> void:
 	InputRouter.set_view_basis(player.player_index, Vector3(-sin(_yaw), 0.0, -cos(_yaw)))

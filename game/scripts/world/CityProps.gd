@@ -9,7 +9,10 @@ extends CityMarket
 ##   № 15 — steam vents in the paving, puffing the painted vfx_steam_puff_v1 (CitySteamVent);
 ##   № 16, Н7 — a steam main on the east wall of the southeast passage: ≥ 3.2 m up, ≤ 0.25 m out of the wall, no
 ##            collider anywhere, so the passage keeps its 4 m, its axis and the camera keeps its arm;
-##   № 22 — urns by the benches.
+##   № 22 — urns by the benches;
+##   № 9, № 29 — the steam truck and the tarped steam car, built by Blender scripts (tools/blender/, ADR-027 «Blender
+##            замість Meshy»): the imported GLB with every surface swapped for the city material of its name and its
+##            convex colliders on the city's solid layer (docs/Fix/2026-10-09-City-Vehicles-And-Iron-Paint-Fix.md).
 ## Nothing stands under a rope anchor, within 8 m of the court centre, in a fight pocket or within 1 m of a resident
 ## lane (К6; tools/world/city_tidy_check.gd measures it). PLACEHOLDER metres; T6 accepts the look on frames.
 
@@ -30,6 +33,21 @@ const MAIN_WALL_X: float = 22.0
 const MAIN_X: float = 21.88
 const MAIN_Y: float = 3.6
 const MAIN_Z: Vector2 = Vector2(12.4, 29.6)
+## The steam vehicles (№ 9, № 29): they stand (ADR-027 п. 4) — decor, cover and a parkour support. `center` is the
+## footprint centre on the floor, `yaw` turns the GLB's front (Godot −Z) about Y. Variant V2 of the journal: the two
+## flank the east ramp like a loading place — the truck along its east side, boiler toward the terrace, 0.48 m off it
+## (no hero fits); the car along its west side, bonnet to the street, 0.1 m off it. From the street both stand against
+## the ramp's light stone, not the slate boundary wall: the catalog's (30.5, 0, 0) is the crates_east obstacle and its
+## run-ups since phase 0, and the car's boundary corner (V3) gives 1.1–1.2 : 1. Nose to tail on one side (V1) left a
+## 0.5 m slot in which a hero wedged. The truck's z keeps rope hooks taken off its roof inside T5's per-tick step: at
+## z 0 a run off the roof's east edge swung into the terrace facade (0.40 m in a tick), at z 3 the pull alone made 0.33.
+## PLACEHOLDER metres; T6 picks between the framed variants V1–V3.
+const STEAM_TRUCK: PackedScene = preload("res://assets/props/city/prop_steam_truck_v1.glb")
+const STEAM_CAR_TARP: PackedScene = preload("res://assets/props/city/prop_steam_car_tarp_v1.glb")
+const VEHICLES: Array[Dictionary] = [
+	{"id": "steam_truck", "kind": "steam_truck", "center": Vector3(21.5, 0, -2.5), "yaw": 0.0},
+	{"id": "steam_car_tarp", "kind": "steam_car_tarp", "center": Vector3(15.0, 0, 1.5), "yaw": PI},
+]
 var props: Array[Dictionary] = []
 
 
@@ -46,8 +64,11 @@ func _ready() -> void:
 	for spec: Dictionary in VENTS:
 		_steam_vent(spec)
 	_flush_batches()
+	for spec: Dictionary in VEHICLES:
+		_vehicle(spec)
 	set_meta("props", props.duplicate(true))
 	set_meta("obstacles", OBSTACLES.duplicate(true))
+	set_meta("vehicles", VEHICLES.duplicate(true))
 
 
 func _note(kind: String, at: Vector3, radius: float) -> void:
@@ -139,17 +160,18 @@ func _coal_bunker(pose: Transform3D, size: Vector3) -> void:
 		_box(pose, Vector3(0, 0.22, side * (size.z * 0.5 + 0.015)), Vector3(0.5, 0.3, 0.03), "iron")
 
 
-## № 22: a cast-iron litter basket with a lid, Ø 0.45 × 0.92 m, solid.
+## № 22: a cast-iron litter basket with a lid, Ø 0.45 × 0.92 m, solid. Foot, bars and lid are painted cast iron
+## (ADR-027 Н3); the two hoops stay bare `iron`.
 func _urn(pose: Transform3D) -> void:
-	_cylinder(pose, Vector3(0, 0.05, 0), 0.15, 0.17, 0.1, "iron")
+	_cylinder(pose, Vector3(0, 0.05, 0), 0.15, 0.17, 0.1, "iron_paint")
 	_cylinder(pose, Vector3(0, 0.435, 0), 0.2, 0.18, 0.67, "slate")
 	for y: float in [0.13, 0.76]:
 		_cylinder(pose, Vector3(0, y, 0), 0.225, 0.225, 0.05, "iron")
 	for index: int in 4:
 		var bar: Transform3D = pose.rotated_local(Vector3.UP, float(index) * PI * 0.5 + PI * 0.25)
-		_box(bar, Vector3(0, 0.445, 0.205), Vector3(0.05, 0.58, 0.03), "iron")
-	_cylinder(pose, Vector3(0, 0.84, 0), 0.06, 0.235, 0.1, "iron")
-	_cylinder(pose, Vector3(0, 0.905, 0), 0.03, 0.03, 0.03, "iron")
+		_box(bar, Vector3(0, 0.445, 0.205), Vector3(0.05, 0.58, 0.03), "iron_paint")
+	_cylinder(pose, Vector3(0, 0.84, 0), 0.06, 0.235, 0.1, "iron_paint")
+	_cylinder(pose, Vector3(0, 0.905, 0), 0.03, 0.03, 0.03, "iron_paint")
 	var shape := CylinderShape3D.new()
 	shape.radius = 0.225
 	shape.height = 0.92
@@ -217,3 +239,40 @@ func _steam_vent(spec: Dictionary) -> void:
 	vent.position = at
 	add_child(vent)
 	_note("steam_vent", at, 0.42)
+
+
+## № 9 / № 29: one imported Blender GLB. Every surface becomes the city material named by the GLB's material (one
+## manner with the rest of the district: the city shader, its outline and its shadow tint); a name the palette does not
+## know is an error, not a silent stand-in. The importer turns each `-convcolonly` hull into its own StaticBody3D; each
+## goes on the layer of the city's solids (1 walking and the camera, 8 cover), like `_solid`.
+func _vehicle(spec: Dictionary) -> void:
+	var scene: PackedScene = STEAM_TRUCK if String(spec.kind) == "steam_truck" else STEAM_CAR_TARP
+	var vehicle: Node3D = scene.instantiate()
+	vehicle.name = "Vehicle_" + String(spec.id)
+	vehicle.transform = Transform3D(Basis(Vector3.UP, float(spec.yaw)), spec.center)
+	add_child(vehicle)
+	var box := AABB()
+	var first: bool = true
+	for node: Node in vehicle.find_children("*", "MeshInstance3D", true, false):
+		var mesh := node as MeshInstance3D
+		for surface: int in mesh.mesh.get_surface_count():
+			var source: Material = mesh.mesh.surface_get_material(surface)
+			var key: String = source.resource_name if source != null else ""
+			if not _materials.has(key):
+				push_error("CITY_PROPS: %s surface %d asks for «%s», which is not a city material" % [vehicle.name, surface, key])
+				continue
+			mesh.set_surface_override_material(surface, _materials[key])
+		var to_vehicle := Transform3D.IDENTITY
+		var walk: Node = mesh
+		while walk != vehicle:
+			to_vehicle = (walk as Node3D).transform * to_vehicle
+			walk = walk.get_parent()
+		var local: AABB = to_vehicle * mesh.get_aabb()
+		box = local if first else box.merge(local)
+		first = false
+	for node: Node in vehicle.find_children("*", "StaticBody3D", true, false):
+		var body := node as StaticBody3D
+		body.collision_layer = 1 | 8
+		body.collision_mask = 0
+		solid_count += 1
+	_note(String(spec.kind), spec.center, Vector2(box.size.x, box.size.z).length() * 0.5)

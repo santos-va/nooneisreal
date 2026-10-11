@@ -271,7 +271,7 @@ func _sign(at: Vector3, text: String, pixel_size: float, yaw: float = PI) -> voi
 func _street_furniture() -> void:
 	# Wayfinding is visible from the player's south market approach; shop fronts face north.
 	var guide := Transform3D(Basis.IDENTITY, Vector3(-5.7, 0, 13.7))
-	_box(guide, Vector3(0, 1.9, 0), Vector3(0.11, 3.8, 0.11), "iron", "WayfindingPost")   # 1.5 cm inside the boards' faces
+	_box(guide, Vector3(0, 1.9, 0), Vector3(0.11, 3.8, 0.11), "iron_paint", "WayfindingPost")   # 1.5 cm inside the boards' faces
 	_box(guide, Vector3(0, 3.35, 0), Vector3(3.3, 0.58, 0.14), "cloth_teal")
 	_sign(guide * Vector3(0, 3.35, 0.085), "‹  КРАМНИЦІ", 0.0065, 0.0)   # no arrows in the built-in font
 	_box(guide, Vector3(0, 2.7, 0), Vector3(3.3, 0.5, 0.14), "wood")
@@ -287,9 +287,9 @@ func _street_furniture() -> void:
 		_box(pose, Vector3(0, 0.5, 0), Vector3(2.4, 0.14, 0.7), "wood", "StreetBench")
 		_box(pose, Vector3(0, 1, 0.28), Vector3(2.4, 0.62, 0.13), "wood", "BenchBack")
 		for side: float in [-1.0, 1.0]:
-			_box(pose, Vector3(side * 0.92, 0.22, 0), Vector3(0.13, 0.44, 0.55), "iron")
+			_box(pose, Vector3(side * 0.92, 0.22, 0), Vector3(0.13, 0.44, 0.55), "iron_paint")
 			# Uprights from the seat to the back (the back floated 0.12 m over the seat).
-			_box(pose, Vector3(side * 0.92, 0.63, 0.28), Vector3(0.08, 0.14, 0.08), "iron")
+			_box(pose, Vector3(side * 0.92, 0.63, 0.28), Vector3(0.08, 0.14, 0.08), "iron_paint")
 			_cylinder(pose, Vector3(side * 1.75, 0.3, 0), 0.4, 0.29, 0.6, "terracotta")
 			for sprig: int in 3:
 				_cylinder(pose, Vector3(side * 1.75 + float(sprig - 1) * 0.15, 0.85, 0), 0.0, 0.22, 0.7, "marker", 5)

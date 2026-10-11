@@ -116,19 +116,31 @@ func run() -> void:
 		f.position.x = 0.0
 		f.motion_revision += 1
 		f.set_meta("parkour_presentation", {"phase": "wall_run", "wall_point": Vector3(0.43, 0, 0), "wall_normal": Vector3.LEFT, "progress": 0.0})
-		for frame: int in 24:
+		var advanced: float = 0.0 # the feet cycle, summed over its wraps
+		for frame: int in 48:
+			if frame >= 24 and (id != "skea" or not f.skeletal.parkour_motion._plants.is_empty()):
+				break
 			f.position.y += 0.05
+			var cycle_before: float = f.skeletal.parkour_motion.cycle
 			present(f)
+			advanced += fposmod(f.skeletal.parkour_motion.cycle - cycle_before, 1.0)
 			if id == "skea" and frame % 6 == 0:
 				cloth(f, id + "/wall/" + str(frame))
+			if id == "skea":
+				# Every planted shoe touches the wall on every frame, not only on the last one. A foot taking or leaving
+				# its plant (plan 2026-10-09-Animation-Feel step 5) is not planted yet; the run stops on a planted frame
+				# after the last cloth sample, and runs on past 24 frames (at most 48) until one comes, so the strip test
+				# below always has a planted foot.
+				for side: String in f.skeletal.parkour_motion._plants:
+					var points: PackedVector3Array = shoe_points(f, side)
+					var nearest: float = -INF
+					for point: Vector3 in points:
+						nearest = maxf(nearest, point.x)
+					check(nearest <= 0.432 and nearest >= 0.41, "actual skinned shoe contacts wall without penetration or floating")
+				if frame >= 18 and not f.skeletal.parkour_motion._plants.is_empty():
+					break
 		if id == "skea":
 			check(not f.skeletal.parkour_motion._plants.is_empty(), "wall feet plant only after real solid rays")
-			for side: String in f.skeletal.parkour_motion._plants:
-				var points: PackedVector3Array = shoe_points(f, side)
-				var nearest: float = -INF
-				for point: Vector3 in points:
-					nearest = maxf(nearest, point.x)
-				check(nearest <= 0.432 and nearest >= 0.41, "actual skinned shoe contacts wall without penetration or floating")
 			# A thin raised strip intersects the shoe edge while missing its ankle ray.
 			var planted: String = f.skeletal.parkour_motion._plants.keys()[0]
 			var foot: Vector3 = hero.global_transform * hero.get_bone_global_pose(hero.find_bone(planted + "Foot")).origin
@@ -161,7 +173,7 @@ func run() -> void:
 				for bone: int in hero.get_bone_count():
 					check(wall_pose[bone].is_equal_approx(hero.get_bone_pose(bone)), "footprint contacts reuse exact cached physics pose")
 			pillar.free()
-			check(f.skeletal.parkour_motion.cycle > 0.1, "vertical wall displacement advances quick feet")
+			check(advanced > 0.1, "vertical wall displacement advances quick feet")
 			var cycle: float = f.skeletal.parkour_motion.cycle
 			for frame: int in 12:
 				present(f)
