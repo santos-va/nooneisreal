@@ -376,6 +376,22 @@ for mutation, family in (('air5_behind', 'air'), ('air5_front', 'air'), ('air5_c
 cases.append(('rope-choice-negative-blocker_name', 'tools/grapple/rope_choice_check.gd',
               r'ROPE_CHOICE_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation=blocker_name part=1/5 anchors=[0-9]+/[0-9]+ presses=[0-9]+ hangs=[0-9]+ cut_first=[0-9]+ open=[0-9]+ rewinds=[0-9]+ red=[a-z,]*\bcut\b[a-z,]*',
               ['--', '--hero=choko', '--part=1/5', '--break=blocker_name'], 1))
+# Plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB step 4 (T2-A): the steam crane № 10 and the steam winch № 11 on the NE
+# terrace (docs/Fix/2026-10-14-Steam-Crane-Winch-Fix.md). Each machine guard of city_tidy_check must go red on its own
+# negative: hulls on the cover layer only, a surface off its city material, a brass crane surface, a machine up or down
+# 5 cm, the winch's body hull gone, the crane's mesh off its hulls, the winch under anchor 24, the crane by anchor 12, the
+# winch in the terrace pocket and in a resident's lane, a hull over the street, the crane between the S3 hero and the
+# lens and its hook (no hull) across that line, a camera station with the facade behind, a 0.5 m slot to the terrace's
+# edge, the winch's triangles doubled, its
+# listed step moved, and a flat-topped winch vaulted with a relaxed profile.
+for mutation in ('machine_layer', 'machine_material', 'machine_brass', 'machine_float', 'machine_sink',
+                 'machine_nocollider', 'machine_shift', 'machine_column', 'machine_anchor', 'machine_pocket',
+                 'machine_lane', 'machine_street_hull', 'machine_cross', 'machine_occlude', 'machine_gap', 'machine_slot',
+                 'machine_budget',
+                 'machine_step', 'machine_vault'):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
 @contextmanager
 def isolated_profile():
     # Linux has an OS-supported data root override. macOS does not: use Godot's
