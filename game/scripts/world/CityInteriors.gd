@@ -2,6 +2,12 @@ class_name CityInteriors
 extends CityMarket
 ## Walk-in shops: collidable shell, broad clear aisles and reused batched market kit.
 const Places = preload("res://scripts/world/CityPlaces.gd")
+## Shops whose awning is rolled up (the Н6 «rolled» state of the market stalls, docs/Art/2026-10-08-City-Modern-Realism-
+## Props.md). The grocer's spread awning (x −29.85…−23.35, y 3.76–3.94, out to z 10.905) lay under anchor 16
+## (−24, 6.8, 10.6): a line chosen as clear cut on the first hanging tick (ShopAwning@(−26.74, 3.76, 11.09), docs/Fix/
+## 2026-10-09-Rope-Pull-And-Jump-Arc-Fix.md). T1's choice Т1, plan 2026-10-14-Quality-Debt-Posts-Awning-Guards step 2;
+## the tailor's and the workshop's stay spread. PLACEHOLDER; T6 accepts the frame.
+const ROLLED_AWNINGS: Array[String] = ["grocer"]
 
 func _ready() -> void:
 	name = "CityInteriors"
@@ -48,10 +54,13 @@ func _shop(shop: Dictionary) -> void:
 		_box(pose, Vector3(side * 2.2, 2.15, 0), Vector3(0.06, 2.4, 0.08), "brass")
 		_box(pose, Vector3(side * 2.2, 2.5, 0), Vector3(1.8, 0.06, 0.08), "brass")
 	_box(pose, Vector3(0, 0.003, 4), Vector3(6.3, 0.006, 7.7), floor_material)
-	_box(pose, Vector3(0, 3.85, -0.52), Vector3(6.5, 0.18, 1.15), accent, "ShopAwning")
-	# D12: the cream fascia stops at the awning's underside (y 3.76): their front faces no longer overlap in one plane.
-	_box(pose, Vector3(0, 3.63, -1.04), Vector3(6.5, 0.26, 0.11), "cloth_cream")
-	_sign(pose * Vector3(0, 3.56, -1.11), shop.title, 0.0067)
+	if String(shop.id) in ROLLED_AWNINGS:
+		_rolled_awning(pose, accent, shop.title)
+	else:
+		_box(pose, Vector3(0, 3.85, -0.52), Vector3(6.5, 0.18, 1.15), accent, "ShopAwning")
+		# D12: the cream fascia stops at the awning's underside (y 3.76): their front faces no longer overlap in one plane.
+		_box(pose, Vector3(0, 3.63, -1.04), Vector3(6.5, 0.26, 0.11), "cloth_cream")
+		_sign(pose * Vector3(0, 3.56, -1.11), shop.title, 0.0067)
 	# Trim, beams and a welcome mat provide scale without obstructing body clearance.
 	_box(pose, Vector3(0, 0.012, 1.15), Vector3(2.1, 0.02, 1.25), accent)
 	for z: float in [1.8, 5.3, 7.6]:
@@ -80,6 +89,26 @@ func _shop(shop: Dictionary) -> void:
 	marker.set_meta("shop_id", shop.id)
 	marker.set_meta("walk_in", true)
 	add_child(marker)
+
+## A shop awning rolled up (ROLLED_AWNINGS): the same accent cloth as one roll Ø 0.24 m (the Н6 stall roll's size) along
+## the lintel, 1 cm off its face (local z −0.15) at the spread awning's height (y 3.85), tied in three places; the cream
+## valance hangs from the roll's front edge with the shop's name on it, as the front bar of a retracted awning. One
+## collider for the roll, none for the valance (as the spread fascia). PLACEHOLDER sizes; look and colour are T6's.
+func _rolled_awning(pose: Transform3D, accent: String, title: String) -> void:
+	var radius: float = 0.12
+	var axis: Transform3D = pose.translated_local(Vector3(0, 3.85, -0.15 - radius - 0.01)).rotated_local(Vector3.BACK, PI * 0.5)
+	# The roll's axis is its local y; rotated_local(BACK, π/2) points it along the shop's −x.
+	_cylinder(axis, Vector3.ZERO, radius, radius, 6.5, accent, 16)
+	for x: float in [-2.2, 0.0, 2.2]:
+		_cylinder(axis, Vector3(0, -x, 0), radius + 0.008, radius + 0.008, 0.04, "wood", 16)
+	var shape := CylinderShape3D.new()
+	shape.radius = radius
+	shape.height = 6.5
+	_solid("RolledAwning", axis, shape)
+	# The valance's back face (z −0.345) cuts the roll's lower front, so it hangs from the roll, not beside it. It ends
+	# 3 cm inside each end of the roll, so its ends never share the roll's end planes.
+	_box(pose, Vector3(0, 3.66, -0.40), Vector3(6.44, 0.26, 0.11), "cloth_cream")
+	_sign(pose * Vector3(0, 3.59, -0.47), title, 0.0067)
 
 func _counter(pose: Transform3D, accent: String) -> void:
 	_box(pose, Vector3(0, 0.48, 0), Vector3(3.6, 0.96, 0.86), accent, "ShopCounter")

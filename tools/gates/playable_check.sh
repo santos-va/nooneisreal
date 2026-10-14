@@ -215,6 +215,30 @@ for mutation, family in (('nopull', 'target'), ('snap', 'step'), ('lengthen', 'l
     cases.append(('rope-pull-negative-' + mutation, 'tools/grapple/rope_pull_check.gd',
                   rf'ROPE_PULL_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z,]*\b{family}\b[a-z,]*',
                   ['--', '--hero=choko', '--break=' + mutation], 1))
+# Plan 2026-10-14-Quality-Debt-Posts-Awning-Guards step 2 (T2-A): «chosen — not cut» — for every anchor and the positions
+# it is picked from, a real E press hangs and the first hanging tick keeps the rope. Both heroes; the 12000-frame budget
+# split in five parts (the route in part 1); the OPEN first-tick cuts are pinned in the fixture. Negatives: the grocer's
+# spread awning back, a plate across the line on the contact tick, the projectile at a quarter of its speed.
+for hero in ('choko', 'skea'):
+    for part in range(1, 6):
+        cases.append((f'rope-choice-{hero}-{part}', 'tools/grapple/rope_choice_check.gd',
+                      rf'ROPE_CHOICE_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none part={part}/5 anchors=([0-9]+)/\1 presses=[1-9][0-9]* hangs=[1-9][0-9]* cut_first=[0-9]+ open=[0-9]+ rewinds=[0-9]+ red=none',
+                      ['--', f'--hero={hero}', f'--part={part}/5'], 0))
+for mutation, family in (('awning', 'cut'), ('late_wall', 'cut'), ('flight', 'cut')):
+    cases.append(('rope-choice-negative-' + mutation, 'tools/grapple/rope_choice_check.gd',
+                  rf'ROPE_CHOICE_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} part=1/5 anchors=[0-9]+/[0-9]+ presses=[0-9]+ hangs=[0-9]+ cut_first=[0-9]+ open=[0-9]+ rewinds=[0-9]+ red=[a-z,]*\b{family}\b[a-z,]*',
+                  ['--', '--hero=choko', '--part=1/5', '--break=' + mutation], 1))
+# Step 3: R3 — every anchor skips every lamp post, so the foreign post on the line holds the rope; «in the air» — a
+# counter and a wall the swing on anchor 0 comes to rest against.
+for mutation, family in (('all_posts', 'foreign'), ('counter', 'air'), ('wall', 'air')):
+    cases.append(('rope-pull-negative-' + mutation, 'tools/grapple/rope_pull_check.gd',
+                  rf'ROPE_PULL_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z,]*\b{family}\b[a-z,]*',
+                  ['--', '--hero=choko', '--break=' + mutation], 1))
+# Step 4: V+ — an unlisted 1.0 m crate, one at the band's bottom 0.6 m, and a listed step moved 0.3 m must each go red.
+for mutation in ('step_new', 'step_low', 'step_moved'):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
 # Animation feel, branch B: the product of main 595490d, and each change switched back alone — no transition blend, the
 # duel's 0.28 rope lean, the camera arm stopped by the anchor's own post, the old wall-run clock, a still hang and a
 # lifted mantle, the authored roll — must each go red in its own family.
@@ -404,6 +428,7 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('parkour-moves-negative-', 'ERROR: PARKOUR_MOVES: '),
                           ('auto-hook-negative-', 'ERROR: AUTO_HOOK: '),
                           ('rope-pull-negative-', 'ERROR: ROPE_PULL: '),
+                          ('rope-choice-negative-', 'ERROR: ROPE_CHOICE: '),
                           ('jump-arc-negative-', 'ERROR: JUMP_ARC: '),
                           ('anim-traversal-negative-', 'ERROR: ANIM_TRAVERSAL: '),
                           ('anim-ground-negative-', 'ERROR: ANIM_GROUND: '),

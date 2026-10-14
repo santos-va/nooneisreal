@@ -27,6 +27,10 @@ extends SceneTree
 ##                per material and no light in the props;
 ##   V          — Choko and Skea vault every obstacle from each side with a free run-up, by real key events (W, Space):
 ##                vault_seconds of the shipped profile ± 1 tick, no hang, landing beyond at the take-off level;
+##   V+         — every solid body that stands on the floor with a flat top 0.6–1.3 m over it (a stack counts by its
+##                top) is either a vault obstacle (vaulted in V) or a step listed in STEP_PROPS, which T6 accepts (T4 audit
+##                2026-10-09 proposal 8, plan 2026-10-14-Quality-Debt-Posts-Awning-Guards step 4); a listed step that is
+##                no longer there fails too;
 ##   S          — each steam vent puffs (≤ 0.8 opacity), changes frame under 3 times a second, never jumps in opacity
 ##                by more than 0.1 a frame, stays ≤ 1.0 × 1.5 m and is gone while a hero stands at the vent;
 ##   M          — the steam vehicles (CityProps.VEHICLES, Blender GLBs; docs/Fix/2026-10-09-City-Vehicles-And-Iron-Paint
@@ -60,6 +64,50 @@ const STEAM_BREAKS := ["steam_hero", "steam_flash"]
 const VEHICLE_BREAKS := ["vehicle_float", "vehicle_sink", "vehicle_nocollider", "vehicle_shift", "vehicle_layer",
 	"vehicle_material", "vehicle_anchor", "vehicle_lane", "vehicle_runup", "vehicle_gap"]
 const VEHICLE_RUN_BREAKS := ["vehicle_vault"]
+## V+ negatives: a new unlisted 1.0 m crate on the street, one at the bottom literal 0.6 m, a listed step moved 0.3 m.
+const STEP_BREAKS := ["step_new", "step_low", "step_moved"]
+## V+: the height band of the T4 audit's proposal 8 («пропи 0,6–1,3 м із пласким верхом»), inclusive to 5 mm.
+const STEP_HEIGHT := Vector2(0.6, 1.3)
+const STEP_TOLERANCE: float = 0.005
+## Bodies that are the district's structure, never props: the architecture's colliders, the anchors' posts, parapets,
+## the clock tower's drum on its roof (y 16).
+const STEP_SKIP_PREFIX := ["ArchitectureSolid", "Anchor", "BridgeParapet", "NorthParapet", "TowerDrum"]
+## V+ steps: «<module>@(x, top, z)» of a floor-standing flat-topped body (its stack's top) → what it is. A step is climbed
+## or stepped round, never vaulted; the list is for T6 to accept (docs/Fix/2026-10-14-Lamp-Posts-Awning-Anchor-5-Fix.md
+## § 4). PLACEHOLDER until T6 accepts it.
+const STEP_PROPS: Dictionary = {
+	"CityMarket@(-8.93, 1.27, 19.09)": "west z 18 stall, goods behind the counter: a stack of two crates",
+	"CityMarket@(-8.98, 0.90, 16.98)": "west z 18 stall, goods behind the counter: a beer barrel",
+	"CityMarket@(-9.06, 0.86, 24.34)": "west z 25 stall: the barrel on its trestles",
+	"CityMarket@(-8.92, 0.72, 26.16)": "west z 25 stall, goods behind the counter: a crate",
+	"CityMarket@(8.98, 0.72, 16.86)": "east z 18 stall, goods behind the counter: a crate",
+	"CityMarket@(8.92, 1.27, 23.90)": "east z 25 stall, goods behind the counter: a stack of two crates",
+	"CityMarket@(8.97, 0.90, 26.04)": "east z 25 stall, goods behind the counter: a beer barrel",
+	"CityInteriors@(-26.80, 0.96, 17.60)": "the grocer's counter, indoors",
+	"CityInteriors@(-28.85, 0.80, 12.62)": "the grocer's west display crate inside the shop front",
+	"CityInteriors@(-24.35, 0.80, 12.62)": "the grocer's east display crate inside the shop front",
+	"CityInteriors@(-23.95, 0.90, 15.00)": "the grocer's beer barrel, indoors",
+	"CityInteriors@(-20.20, 0.96, 17.60)": "the tailor's counter, indoors",
+	"CityInteriors@(-17.85, 1.00, 14.95)": "the tailor's cutting table, indoors",
+	"CityInteriors@(-13.60, 0.96, 17.60)": "the workshop's counter, indoors",
+	"CityInteriors@(-11.10, 1.00, 14.95)": "the workshop's bench, indoors",
+	"CityInteriors@(-15.60, 0.62, 13.15)": "the tailor's waiting stool, indoors",
+	"CityInteriors@(-26.45, 0.60, 8.00)": "a street bench's planter in front of the grocer (west)",
+	"CityInteriors@(-22.95, 0.60, 8.00)": "a street bench's planter in front of the grocer (east)",
+	"CityInteriors@(-15.75, 0.60, 8.00)": "a street bench's planter in front of the workshop (west)",
+	"CityInteriors@(-12.25, 0.60, 8.00)": "a street bench's planter in front of the workshop (east)",
+	"CityProps@(-9.55, 0.84, 22.20)": "market street, west: a water butt",
+	"CityProps@(-9.35, 0.90, 21.35)": "market street, west: a beer barrel",
+	"CityProps@(9.35, 0.84, 22.20)": "market street, east: a water butt",
+	"CityProps@(9.30, 0.90, 21.35)": "market street, east: a beer barrel",
+	"CityProps@(14.45, 0.90, -4.00)": "east street by the ramp: a tar barrel",
+	"CityProps@(14.60, 0.90, -4.72)": "east street by the ramp: a tar barrel",
+	"CityProps@(15.18, 0.90, -4.30)": "east street by the ramp: a tar barrel",
+	"CityProps@(-27.20, 0.92, 8.25)": "west street: a street urn",
+	"CityProps@(-11.45, 0.92, 8.25)": "west street: a street urn",
+	"CityMaintenance@(-22.25, 5.18, -12.80)": "the maintenance yard: the tool chest on the work bench",
+	"CityMaintenance@(-22.25, 4.82, -12.40)": "the maintenance yard: the work bench",
+}
 const VEHICLE_LAYER: int = 1 | 8   # CityMarket._solid: walking and the camera, cover
 const SWING_CLEAR: float = 0.3
 const SWING_HAND: float = 1.25     # T5 Т3 (rope_pull_check HAND_Y): the hand over the feet
@@ -102,6 +150,11 @@ const PUFF_SIZE := Vector2(1.0, 1.5)
 ## canopies and their 97675c7 floors; every other anchor is unchanged.
 const ANCHOR_FLOOR: Array[float] = [0.0, 0.0, 0.0, 0.0, 2.8109, 0.0, 2.8109, 2.8023, 0.0, 0.0, 0.0, 3.83, 3.83, 3.83,
 	0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]
+## PLACEHOLDER (T5). The column around an anchor's vertical that a new prop or vehicle must stay out of (K anchors, M5).
+## No plan or audit literal behind it: T2 set it in cd8f5dd and the T4 audit
+## docs/Audit/2026-10-09-Rope-Jump-Momentum-Tidy-Steamcars-Review.md (§ П. 5, proposal 8) found it sourceless. The same
+## 0.75 m is the radius of the support cylinder under an anchor in that audit's proposal 2a («циліндром r ≈ 0,75 м») and
+## in plan 2026-10-14-Quality-Debt-Posts-Awning-Guards step 3 («r 0,75 м (PLACEHOLDER, T5)»); T5 owns the number.
 const ANCHOR_COLUMN: float = 0.75
 const HEX := {"8a8581": "paving", "9d9385": "stone", "9f7b73": "brick", "a9847b": "terracotta", "b6aa92": "plaster",
 	"607078": "slate", "61717b": "roof_slate", "748075": "copper", "998162": "brass", "3b353c": "iron", "577368": "iron_paint", "2b2230": "ink",
@@ -292,7 +345,7 @@ func _phase(name: String) -> bool:
 		"geometry":
 			return mutation == "none" or mutation in GEOMETRY_BREAKS
 		"places":
-			return mutation == "none" or mutation in PLACE_BREAKS or mutation in VEHICLE_BREAKS
+			return mutation == "none" or mutation in PLACE_BREAKS or mutation in VEHICLE_BREAKS or mutation in STEP_BREAKS
 		"vault":
 			return mutation == "none" or mutation in VAULT_BREAKS or mutation in VEHICLE_RUN_BREAKS
 		"steam":
@@ -1241,6 +1294,121 @@ func _vaults(hero: String) -> void:
 	world.npc_director.process_mode = Node.PROCESS_MODE_INHERIT
 
 
+## V+ (see the header). Every solid body of the district but its structure: its world box from its shapes; the floor
+## under its centre (the body itself excluded); a body standing on that floor (its foot within 5 cm) starts a stack —
+## itself and whatever rests on it, touching within 3 cm. The stack's top body is a candidate when it is 0.6–1.3 m over
+## the floor, at least as wide as the hero's body radius both ways (FIGHTER_R: narrower is a leg or a post, nothing to
+## vault or stand on) and flat (the top shape a box or a cylinder standing upright, or a convex hull with three corners
+## level within 1 cm). One candidate per top body, keyed by it.
+func _step_candidates() -> Array[Dictionary]:
+	var boxes: Array[Dictionary] = []
+	for node: Node in district.find_children("*", "StaticBody3D", true, false):
+		var body := node as StaticBody3D
+		var path: PackedStringArray = String(district.get_path_to(body)).split("/")
+		var module: String = path[0] if path.size() > 1 else "CityDistrict"
+		var name: String = String(body.name)
+		var skip: bool = (module == "CityDistrict" and name in DISTRICT_STRUCTURE) or (module == "CityMaintenance" and name in MAINTENANCE_STRUCTURE) or (module == "CityLowerGallery" and name in GALLERY_STRUCTURE)
+		for prefix: String in STEP_SKIP_PREFIX:
+			skip = skip or name.begins_with(prefix)
+		var box := AABB()
+		var top_shape: CollisionShape3D = null
+		for child: Node in body.get_children():
+			var shape := child as CollisionShape3D
+			if shape == null or shape.shape == null or shape.disabled:
+				continue
+			var world_box: AABB = shape.global_transform * shape.shape.get_debug_mesh().get_aabb()
+			if top_shape == null or world_box.end.y > box.end.y:
+				top_shape = shape
+			box = world_box if box.size == Vector3.ZERO else box.merge(world_box)
+		if top_shape == null:
+			continue
+		boxes.append({"body": body, "module": module, "name": name, "skip": skip, "box": box, "flat": _flat_top(top_shape),
+			"vault": name.begins_with("VaultObstacle_")})
+	var out: Array[Dictionary] = []
+	var keys: Dictionary = {}
+	for entry: Dictionary in boxes:
+		if entry.skip:
+			continue
+		var box: AABB = entry.box
+		var centre := box.get_center()
+		var query := PhysicsRayQueryParameters3D.create(Vector3(centre.x, box.position.y + 0.05, centre.z), Vector3(centre.x, box.position.y - 0.5, centre.z), 1)
+		query.exclude = [(entry.body as StaticBody3D).get_rid()]
+		var hit: Dictionary = space.intersect_ray(query)
+		if hit.is_empty() or absf(float(hit.position.y) - box.position.y) > 0.05:
+			continue
+		var floor_y: float = hit.position.y
+		# The stack: bodies resting on the top (their foot within 3 cm of it, overlapping it on the ground plane).
+		var top: float = box.end.y
+		var flat: bool = entry.flat
+		var top_entry: Dictionary = entry
+		var grown := true
+		var stacked: Array[String] = []
+		while grown:
+			grown = false
+			for other: Dictionary in boxes:
+				var ob: AABB = other.box
+				if other.body == entry.body or ob.end.y <= top + 0.001 or absf(ob.position.y - top) > 0.03:
+					continue
+				if ob.position.x < box.end.x and ob.end.x > box.position.x and ob.position.z < box.end.z and ob.end.z > box.position.z:
+					top = ob.end.y
+					flat = other.flat
+					top_entry = other
+					stacked.append(String(other.name))
+					grown = true
+		var height: float = top - floor_y
+		var top_box: AABB = top_entry.box
+		if height < STEP_HEIGHT.x - STEP_TOLERANCE or height > STEP_HEIGHT.y + STEP_TOLERANCE or not flat:
+			continue
+		if minf(top_box.size.x, top_box.size.z) < FIGHTER_R:
+			continue
+		var key := "%s@(%.2f, %.2f, %.2f)" % [top_entry.module, top_box.get_center().x, top, top_box.get_center().z]
+		if keys.has(key):
+			continue
+		keys[key] = true
+		out.append({"key": key, "body": top_entry.body, "name": top_entry.name, "module": top_entry.module, "height": height,
+			"vault": entry.vault, "stacked": stacked, "size": top_box.size, "base": entry.name})
+	return out
+
+
+## A collision shape with a level top: an upright box or cylinder, or a convex hull with ≥ 3 points level with its top.
+func _flat_top(shape: CollisionShape3D) -> bool:
+	var up: Vector3 = shape.global_transform.basis.y.normalized()
+	if shape.shape is BoxShape3D or shape.shape is CylinderShape3D:
+		return up.dot(Vector3.UP) > 0.999
+	if shape.shape is ConvexPolygonShape3D:
+		var points: PackedVector3Array = (shape.shape as ConvexPolygonShape3D).points
+		var high: float = -INF
+		for point: Vector3 in points:
+			high = maxf(high, (shape.global_transform * point).y)
+		var level: int = 0
+		for point: Vector3 in points:
+			level += int(absf((shape.global_transform * point).y - high) <= 0.01)
+		return level >= 3
+	return false
+
+
+func _v_steps() -> void:
+	var candidates: Array[Dictionary] = _step_candidates()
+	var seen: Dictionary = {}
+	var steps: int = 0
+	var vaults: int = 0
+	for c: Dictionary in candidates:
+		var label := "%s «%s» %.2f m high, top %.2f × %.2f m%s" % [c.key, c.name, c.height, c.size.x, c.size.z, (" on " + c.base) if not (c.stacked as Array).is_empty() else ""]
+		if c.vault:
+			vaults += 1
+			print("CITY_TIDY_INFO V+ vault %s" % label)
+			continue
+		if STEP_PROPS.has(c.key):
+			steps += 1
+			seen[c.key] = true
+			print("CITY_TIDY_INFO V+ step %s — %s" % [label, STEP_PROPS[c.key]])
+			continue
+		_check(false, "V+ %s has a flat top 0.6–1.3 m over the floor: neither a vault obstacle nor a listed step" % label)
+	for key: String in STEP_PROPS:
+		_check(seen.has(key), "V+ the listed step %s (%s) is no longer a floor body with a flat top 0.6–1.3 m" % [key, STEP_PROPS[key]])
+	print("CITY_TIDY_INFO V+ candidates=%d vaults=%d steps=%d listed=%d" % [candidates.size(), vaults, steps, STEP_PROPS.size()])
+
+
 func _vault_run(start: Vector3, run: Vector3, center: Vector3, depth: float) -> Dictionary:
 	var player: Node3D = world.player
 	_key(KEY_W, false)
@@ -1640,6 +1808,26 @@ func _vehicle_run(start: Vector3, run: Vector3, centre: Vector3, depth: float) -
 ## Breaks applied to the live scene, before anything is measured.
 func _break_scene() -> void:
 	match mutation:
+		"step_new", "step_low":
+			# V+: a crate nobody listed — 1.0 m, or the band's bottom 0.6 m — on the open street east of the spawn.
+			var crate := StaticBody3D.new()
+			crate.name = "Crate"   # no skipped prefix: the check must judge it as any prop
+			crate.collision_layer = 1 | 8
+			crate.collision_mask = 0
+			var shape := CollisionShape3D.new()
+			var box := BoxShape3D.new()
+			var height: float = 1.0 if mutation == "step_new" else STEP_HEIGHT.x
+			box.size = Vector3(0.8, height, 0.6)
+			shape.shape = box
+			crate.add_child(shape)
+			props_node.add_child(crate)
+			crate.global_position = Vector3(3.0, height * 0.5, 13.5)
+		"step_moved":
+			# V+: a listed step moved 0.3 m, so the list names a place where it no longer stands.
+			for c: Dictionary in _step_candidates():
+				if STEP_PROPS.has(c.key):
+					(c.body as Node3D).global_position.x += 0.3
+					break
 		"pane_strut":
 			# D1 returned: anchor 22's strut from 0.75 m under its arm, as before the fix.
 			var spec: Dictionary = CityLayout.anchor_supports()[22]
@@ -1771,9 +1959,10 @@ func _break_parts() -> void:
 		"sink_crate":
 			_move(_select("CityMarket", "crate@"), Vector3(0, -0.03, 0))
 		"zfight_fascia":
-			# D12 returned: the fascia 0.30 m high again, its front over the awning's.
+			# D12 returned: the fascia 0.30 m high again, its front over the awning's. The tailor's: the grocer's awning is
+			# rolled since plan 2026-10-14 step 2 and its valance hangs from the roll, not over an awning front.
 			for p: Dictionary in parts:
-				if p.module == "CityInteriors" and p.ctx == "shop:grocer" and p.mat == "cloth_cream" and absf(float(p.half.y) - 0.13) < 0.001:
+				if p.module == "CityInteriors" and p.ctx == "shop:tailor" and p.mat == "cloth_cream" and absf(float(p.half.y) - 0.13) < 0.001:
 					p.local = AABB(Vector3(-3.25, -0.15, -0.055), Vector3(6.5, 0.3, 0.11))
 					var xf: Transform3D = p.xf
 					xf.origin.y = 3.65
@@ -1816,7 +2005,7 @@ func _break_parts() -> void:
 
 func _run() -> void:
 	await process_frame
-	if mutation != "none" and not (mutation in GEOMETRY_BREAKS or mutation in PLACE_BREAKS or mutation in VAULT_BREAKS or mutation in STEAM_BREAKS or mutation in VEHICLE_BREAKS or mutation in VEHICLE_RUN_BREAKS):
+	if mutation != "none" and not (mutation in GEOMETRY_BREAKS or mutation in PLACE_BREAKS or mutation in VAULT_BREAKS or mutation in STEAM_BREAKS or mutation in VEHICLE_BREAKS or mutation in VEHICLE_RUN_BREAKS or mutation in STEP_BREAKS):
 		push_error("CITY_TIDY: unknown --break=" + mutation)
 		quit(2)
 		return
@@ -1846,6 +2035,7 @@ func _run() -> void:
 		await _k_places()
 		_m_vehicles()
 		await _m_camera()
+		_v_steps()
 	if _phase("steam"):
 		await _steam()
 	if _phase("vault"):

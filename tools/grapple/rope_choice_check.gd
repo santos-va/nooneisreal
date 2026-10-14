@@ -1,0 +1,448 @@
+extends SceneTree
+## Plan docs/Plans/2026-10-14-Quality-Debt-Posts-Awning-Guards.md step 2 (T2-A): the consistency guard «chosen — not cut».
+## Subject: for every rope anchor A and every sampled position P from which the product's traversal selection picks A
+## (the camera's HarpoonAim packet, GrappleHook._assist_ready at the press and at the launch), a real keyboard E press
+## shoots at A, makes contact (HANG on A, never a rewind), and the hang is not ended on its first hanging tick by solid
+## geometry on hand → anchor (the hang's GrappleHook.line_clear; the anchor's own lamp post excepted).
+## The cut is attributed by this check's own ray on the product's rope rule (body layer and cover), the own post found
+## from CityLayout.anchor_supports() (a `post` body centred on its `mount`), never from the product's meta.
+## Positions, in the production CityWorld (residents still, events off):
+##   route — the P11 route of rope_pull_check / auto_hook_check: W along the leg for 12 ticks, then E (part 1 only);
+##   ring  — around every anchor, RINGS m × BEARINGS bearings, on every standing floor of that column (a 0.6 m patch
+##           with 1.8 m of headroom) whose hand is within the hook's range of the anchor, 1.5 m under it, on a clear
+##           line: pressed standing (facing the anchor, the camera on it) and on the run (W for 12 ticks along the
+##           tangent, alternately left and right).
+## Whatever anchor the product picks from a position is the one evaluated; every anchor of the part must be picked.
+## «On the first tick» is the plan's literal («обрив на першому тику біля цього якоря → 0»; «без обриву на першому тику
+## після контакту»). A cut later in the swing is the cover rule (04-Grapple-System § Трос V4), not this guard's.
+## OPEN (KNOWN_CUTS): the class is wider than the grocer's awning — 11 presses (Choko 4, Skea 7; 10 first-tick cuts and
+## one rewind past range) whose contact the selection does not foresee, found by this guard on 2026-10-14 and left to
+## Santos with his M3 feedback (the plan's variant Т2, a selection that also checks the line from the hand at contact,
+## is deferred; selection code is not changed). Each is printed as «ROPE_CHOICE OPEN …» and is not a failure, under a
+## negative too; a cut or rewind not in the list fails (`cut`, `rewind`), and on the product a listed one that no longer
+## happens fails too (`open`), so any change to the class has to be looked at.
+##   --hero=choko|skea (default both) · --part=K/N (default 1/1): the rings of the anchors whose index % N == K − 1,
+##     and the route in part 1, so the battery splits the 12000-frame budget.
+##   --break=awning|late_wall|flight — negative controls, each must go red in `cut` (a negative stops pressing at its
+##     first failure): the grocer's spread awning back (its collider as before step 2, layer 1 | 8); a thin plate put
+##     across hand → anchor on the contact tick; the parkour projectile at a quarter of its speed, so the hand moves
+##     four times as far between the choice and the contact.
+## Sentinel: ROPE_CHOICE_COMPLETE checks=N failures=M mutation=<m> part=K/N anchors=a/A presses=p hangs=h cut_first=c
+## open=o rewinds=r red=<families|none>; failures print "ROPE_CHOICE: ...".
+const RINGS: Array[float] = [2.5, 5.0, 8.0, 11.0]
+const BEARINGS: int = 8
+const HAND_Y: float = 1.25          # GrappleHook.HAND
+const ABOVE: float = 1.5            # T8 hard filter: the anchor 1.5 m over the hand (HarpoonAim, anchor_coverage)
+const CLEARANCE: float = 1.8
+const PATCH: float = 0.3
+const COVER_LAYER := 8              # ArenaLayout.COVER_LAYER: the product's line_clear mask is COVER_LAYER | 1
+const RUN_TICKS: int = 12           # rope_pull_check / auto_hook_check P11
+const SETTLE_TICKS: int = 4         # a restart lands in 1–2 ticks; HarpoonAim.reset clears the target lock
+const HANG := 3
+const FLIGHT := 2
+const REWIND := 4
+## The grocer's awning as it stood before step 2 (CityInteriors: shop door (−26.6, 0, 12), box (0, 3.85, −0.52) of
+## 6.5 × 0.18 × 1.15) — the `awning` negative.
+const GROCER_AWNING := Vector3(-26.6, 3.85, 11.48)
+const GROCER_AWNING_SIZE := Vector3(6.5, 0.18, 1.15)
+## OPEN first-tick cuts (see the header): "<hero>|<press label>|<anchor hung on>" → what cuts it. Measured on the tree of
+## plan 2026-10-14 step 2 (the grocer's awning rolled), docs/Fix/2026-10-14-Lamp-Posts-Awning-Anchor-5-Fix.md § 2.
+const KNOWN_CUTS: Dictionary = {
+	"choko|anchor 5 ring 5.0/5 y0.0 run|4": "anchor 4, the east z 18 stall's canopy; the line at contact was clear",
+	"choko|anchor 17 ring 11.0/4 y0.0 run|16": "anchor 16, the grocer's lintel: the run ends in the shop door",
+	"choko|anchor 22 ring 5.0/0 y0.0 run|22": "anchor 22, the plaster house's facade; the line at contact was clear",
+	"choko|anchor 23 ring 11.0/4 y0.0 run|rewind": "anchor 23, the hand 14.32 m from it at contact (range 14): rewound",
+	"skea|anchor 3 ring 11.0/2 y2.7 run|3": "anchor 3, PracticeLedge under the line",
+	"skea|anchor 5 ring 5.0/5 y0.0 run|4": "anchor 4, the east z 18 stall's canopy",
+	"skea|anchor 14 ring 8.0/0 y0.0 run|14": "anchor 14, RoofBridge: the run ends under the bridge",
+	"skea|anchor 14 ring 11.0/0 y0.0 run|15": "anchor 15, RoofBridge: the run ends under the bridge",
+	"skea|anchor 15 ring 8.0/4 y0.0 run|15": "anchor 15, RoofBridge: the run ends under the bridge",
+	"skea|anchor 17 ring 11.0/4 y0.0 run|16": "anchor 16, the grocer's lintel: the run ends in the shop door",
+	"skea|anchor 22 ring 5.0/0 y0.0 run|22": "anchor 22, the plaster house's facade",
+}
+var checks: int = 0
+var failures: int = 0
+var mutation: String = "none"
+var only_hero: String = ""
+var part: int = 1
+var parts: int = 1
+var red: Dictionary = {}
+var router: Node
+var supports: Array[Dictionary] = []
+var anchors: Array[Vector3] = []
+var picked: Dictionary = {}         # anchor index -> presses that hung on it (all heroes)
+var totals := {"presses": 0, "hangs": 0, "cut_first": 0, "open": 0, "rewinds": 0, "denied": 0, "none": 0}
+var seen_open: Dictionary = {}
+var late_plate: StaticBody3D
+
+
+func _initialize() -> void:
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--break="):
+			mutation = argument.trim_prefix("--break=")
+		elif argument.begins_with("--hero="):
+			only_hero = argument.trim_prefix("--hero=")
+		elif argument.begins_with("--part="):
+			var split := argument.trim_prefix("--part=").split("/")
+			part = int(split[0])
+			parts = maxi(1, int(split[1]))
+	_run.call_deferred()
+
+
+func _check(ok: bool, family: String, label: String) -> void:
+	checks += 1
+	if not ok:
+		failures += 1
+		red[family] = true
+		push_error("ROPE_CHOICE: [%s] %s" % [family, label])
+
+
+func _ticks(count: int) -> void:
+	for tick: int in count:
+		await physics_frame
+		await process_frame
+
+
+func _key(code: Key, down: bool) -> void:
+	var event := InputEventKey.new()
+	event.keycode = code
+	event.physical_keycode = code
+	event.pressed = down
+	Input.parse_input_event(event)
+	Input.flush_buffered_events()
+
+
+func _run() -> void:
+	await process_frame
+	router = root.get_node("InputRouter")
+	supports = load("res://scripts/world/CityLayout.gd").anchor_supports()
+	for spec: Dictionary in supports:
+		anchors.append(spec.point)
+	var state: Node = root.get_node("GameState")
+	state.set_free_move(true)
+	state.water = null
+	var heroes: Array[String] = []
+	for hero: String in ["choko", "skea"]:
+		if only_hero.is_empty() or only_hero == hero:
+			heroes.append(hero)
+			await _district(hero)
+	for singleton: String in ["Sfx", "UltMusic", "Music"]:
+		var node := root.get_node_or_null(singleton)
+		if node != null:
+			node.queue_free()
+	var deadline: int = Time.get_ticks_msec() + 250
+	while Time.get_ticks_msec() < deadline:
+		await process_frame
+		OS.delay_msec(1)
+	var sampled: Array[int] = []
+	var missing: Array[int] = []
+	for index: int in anchors.size():
+		if index % parts == part - 1:
+			sampled.append(index)
+			if int(picked.get(index, 0)) == 0:
+				missing.append(index)
+	var counts: PackedStringArray = []
+	for index: int in anchors.size():
+		counts.append("%d:%d" % [index, int(picked.get(index, 0))])
+	print("ROPE_CHOICE picked %s" % " ".join(counts))
+	print("ROPE_CHOICE totals %s" % str(totals))
+	# Non-vacuous: every anchor of this part was picked from some sampled position and evaluated (on the product; a
+	# negative stops at its first failure).
+	if mutation == "none":
+		_check(missing.is_empty(), "count", "anchors of part %d/%d never picked from a sampled position: %s" % [part, parts, missing])
+		_check(int(totals.hangs) >= sampled.size(), "count", "%d hangs for %d anchors" % [totals.hangs, sampled.size()])
+	# Every OPEN cut of the heroes and the part that ran still happens (only on the product: a negative changes the world).
+	if mutation == "none":
+		for key: String in KNOWN_CUTS:
+			if _expected(key, heroes):
+				_check(seen_open.has(key), "open", "the OPEN first-tick cut «%s» (%s) no longer happens: look at it and unpin it" % [key, KNOWN_CUTS[key]])
+	var families: Array = red.keys()
+	families.sort()
+	print("ROPE_CHOICE frames=%d (the playable harness quits after 12000)" % Engine.get_process_frames())
+	print("ROPE_CHOICE_COMPLETE checks=%d failures=%d mutation=%s part=%d/%d anchors=%d/%d presses=%d hangs=%d cut_first=%d open=%d rewinds=%d red=%s" % [
+		checks, failures, mutation, part, parts, sampled.size() - missing.size(), sampled.size(), totals.presses, totals.hangs,
+		totals.cut_first, totals.open, totals.rewinds, ",".join(families) if not families.is_empty() else "none"])
+	quit(1 if failures else 0)
+
+
+## A KNOWN_CUTS key belongs to this run: its hero ran, and its press is the route (part 1) or a ring of this part.
+func _expected(key: String, heroes: Array[String]) -> bool:
+	var fields := key.split("|")
+	if not heroes.has(fields[0]):
+		return false
+	var label: String = fields[1]
+	if label.begins_with("route"):
+		return part == 1
+	return int(label.get_slice(" ", 1)) % parts == part - 1
+
+
+func _district(hero: String) -> void:
+	var state: Node = root.get_node("GameState")
+	state.p1_character = hero
+	router.apply_profile("solo", false)
+	var world: Node = load("res://scenes/world/CityWorld.tscn").instantiate()
+	world.story_save_enabled = false
+	world.journey_save_enabled = false
+	world.lower_story_save_enabled = false
+	root.add_child(world)
+	current_scene = world
+	world.progress.save_enabled = false
+	world.npc_director.save_enabled = false
+	world.npc_director.process_mode = Node.PROCESS_MODE_DISABLED
+	await _ticks(40)
+	world.onboarding.skip()
+	_break_scene(world)
+	var space: PhysicsDirectSpaceState3D = world.get_world_3d().direct_space_state
+	var range_m: float = world.player.grapple.range_m
+	var before := totals.duplicate()
+	# P11 route: run along each leg, tap E.
+	if part == 1:
+		var route: Array[Vector3] = load("res://scripts/world/CityLayout.gd").route_points()
+		for leg: int in route.size() - 1:
+			var from: Vector3 = route[leg]
+			var to: Vector3 = route[leg + 1]
+			var length := Vector2(to.x - from.x, to.z - from.z).length()
+			if length < 1.0:
+				continue
+			var direction := Vector3(to.x - from.x, 0, to.z - from.z).normalized()
+			var samples := maxi(1, floori(length / 8.0))
+			for sample: int in samples:
+				var at := from.lerp(to, (float(sample) + 0.5) / float(samples))
+				await _press(world, hero, "route %s" % at, at, direction, direction)
+	# Rings around the anchors of this part.
+	for index: int in anchors.size():
+		if index % parts != part - 1:
+			continue
+		var point: Vector3 = anchors[index]
+		var turn := 0
+		for radius: float in RINGS:
+			for bearing: int in BEARINGS:
+				var angle := TAU * float(bearing) / float(BEARINGS)
+				var flat := Vector3(cos(angle), 0, sin(angle))
+				var x := point.x + flat.x * radius
+				var z := point.z + flat.z * radius
+				for floor_y: float in _floors(space, x, z, point.y - ABOVE - HAND_Y):
+					var at := Vector3(x, floor_y, z)
+					var hand := at + Vector3(0, HAND_Y, 0)
+					if hand.distance_to(point) > range_m or not _ray(space, hand, point, COVER_LAYER | 1).is_empty():
+						continue
+					var toward := Vector3(point.x - x, 0, point.z - z).normalized()
+					var level := "y%.1f" % floor_y
+					await _press(world, hero, "anchor %d ring %.1f/%d %s standing" % [index, radius, bearing, level], at, toward, toward, false)
+					var tangent := Vector3(-toward.z, 0, toward.x) * (1.0 if turn % 2 == 0 else -1.0)
+					turn += 1
+					await _press(world, hero, "anchor %d ring %.1f/%d %s run" % [index, radius, bearing, level], at, tangent, tangent)
+	print("ROPE_CHOICE %s presses=%d hangs=%d cut_first=%d open=%d rewinds=%d denied=%d none=%d" % [hero,
+		totals.presses - before.presses, totals.hangs - before.hangs, totals.cut_first - before.cut_first,
+		totals.open - before.open, totals.rewinds - before.rewinds, totals.denied - before.denied, totals.none - before.none])
+	world.queue_free()
+	current_scene = null
+	await _ticks(3)
+
+
+## One press from `at`: reset there facing `facing`, the camera along `view`; run with W for RUN_TICKS when `run`; tap E
+## (W released once the hook holds, as P11). Evaluates the anchor the product launched at.
+func _press(world: Node, hero: String, label: String, at: Vector3, facing: Vector3, view: Vector3, run: bool = true) -> void:
+	if mutation != "none" and failures > 0:
+		return # A negative has made its point; the slow `flight` would not fit the frame budget otherwise.
+	var hero_node: CharacterBody3D = world.player
+	var hook: Node = hero_node.grapple
+	_key(KEY_W, false)
+	hook.detach()
+	world.ropes.clear_match()
+	await _ticks(1)
+	hero_node.restart_at(at)
+	hero_node._set_forward(facing)
+	var rig: Node3D = world.camera_rig
+	rig.reset_view()
+	rig.aim.yaw_offset = atan2(-view.x, -view.z)
+	await _ticks(SETTLE_TICKS)
+	if run:
+		_key(KEY_W, true)
+		await _ticks(RUN_TICKS)
+	var marked := String(rig.aim.published.get("target_id", ""))
+	totals.presses += 1
+	_key(KEY_E, true)
+	await _ticks(1)
+	_key(KEY_E, false)
+	var launched := ""
+	var phases: Array[int] = []
+	var hung := false
+	for tick: int in 60:
+		await _ticks(1)
+		phases.append(int(hook.phase))
+		if int(hook.phase) == FLIGHT and launched.is_empty():
+			launched = String(hook.aim_intent.get("target_id", ""))
+		if int(hook.phase) == HANG and hook.attached:
+			hung = true
+			break
+		if tick > 2 and int(hook.phase) == 0:
+			break
+	_key(KEY_W, false)
+	var tag := "[%s] %s: " % [hero, label]
+	if REWIND in phases:
+		totals.rewinds += 1
+		# What stopped the projectile: the flight's own query (GrappleHook._flight: cover, body and layer 4, areas too)
+		# from where it was launched toward the point it was launched at.
+		var target := root.get_node_or_null(NodePath(launched)) as Node3D if not launched.is_empty() else null
+		var blocker := "?"
+		if target != null:
+			var query := PhysicsRayQueryParameters3D.create(hook.get("_launch_origin"), target.global_position, COVER_LAYER | 1 | 4)
+			query.collide_with_areas = true
+			query.hit_from_inside = true
+			query.exclude = [hero_node.get_rid(), hero_node.hurtbox.get_rid()]
+			var hit := hero_node.get_world_3d().direct_space_state.intersect_ray(query)
+			blocker = "-" if hit.is_empty() else "%s@(%.2f,%.2f,%.2f)" % [(hit.collider as Node).name, hit.position.x, hit.position.y, hit.position.z]
+			# A clear flight line rewinds only when the hand is past range at contact (GrappleHook._flight).
+			blocker += ", hand→point %.2f m now (range %.1f)" % [(hero_node.global_position + Vector3(0, HAND_Y, 0)).distance_to(target.global_position), float(hook.range_m)]
+		var key := "%s|%s|rewind" % [hero, label]
+		var entry := "%s from %s, marked %s, launched at %s: rewound before contact, the flight line stopped by %s" % [key, at, _name(marked), _name(launched), blocker]
+		if KNOWN_CUTS.has(key):
+			totals.open += 1
+			seen_open[key] = true
+			print("ROPE_CHOICE OPEN %s" % entry)
+			return
+		print("ROPE_CHOICE CUT %s" % entry)
+		_check(false, "rewind", tag + "the shot at %s (marked %s) rewound before contact (%s)" % [_name(launched), _name(marked), blocker])
+		return
+	if not hung:
+		totals.denied += int(not launched.is_empty() or not marked.is_empty())
+		totals.none += int(launched.is_empty() and marked.is_empty())
+		return
+	var anchor: Vector3 = hook.anchor_point
+	var index := anchors.find(anchor)
+	_check(index >= 0 and _name(launched) == "StreetAnchor%d" % index, "count", tag + "the hang %s is on the anchor launched at (%s)" % [anchor, _name(launched)])
+	totals.hangs += 1
+	picked[index] = int(picked.get(index, 0)) + 1
+	var spec: Dictionary = supports[index] if index >= 0 else {}
+	if mutation == "late_wall":
+		_plate(world, hero_node.global_position + Vector3(0, HAND_Y, 0), anchor)
+	var contact_line := _line(hero_node, hero_node.global_position + Vector3(0, HAND_Y, 0), anchor, spec)
+	# The first hanging tick: one drive of the hang (its move, then its line check).
+	await _ticks(1)
+	var line := _line(hero_node, hero_node.global_position + Vector3(0, HAND_Y, 0), anchor, spec)
+	var released: bool = int(hook.phase) != HANG or not hook.attached
+	if late_plate != null:
+		late_plate.free()
+		late_plate = null
+	if not released:
+		return
+	var cut := not String(line.other).is_empty()
+	_check(cut, "release", tag + "the hang on %s ended on the first tick with a clear line" % _name(launched))
+	if not cut:
+		return
+	totals.cut_first += 1
+	var key := "%s|%s|%d" % [hero, label, index]
+	var entry := "%s from %s, marked %s: first tick cut by %s; contact line %s" % [key, at, _name(marked), line.other, contact_line.other if not String(contact_line.other).is_empty() else "clear"]
+	if KNOWN_CUTS.has(key):
+		totals.open += 1
+		seen_open[key] = true
+		print("ROPE_CHOICE OPEN %s" % entry)
+		return
+	print("ROPE_CHOICE CUT %s" % entry)
+	_check(false, "cut", tag + "chosen %s, cut on the first hanging tick by %s" % [_name(launched), line.other])
+
+
+func _name(target_id: String) -> String:
+	return target_id.get_file()
+
+
+## Walkable floors of one column below `top`, top to bottom: an upward-facing hit with CLEARANCE free above it and the
+## same height within 0.1 m at ±PATCH (anchor_coverage's standing patch).
+func _floors(space: PhysicsDirectSpaceState3D, x: float, z: float, top: float) -> Array[float]:
+	var result: Array[float] = []
+	var from_y := top + CLEARANCE
+	for guard: int in 12:
+		var hit := _ray(space, Vector3(x, from_y, z), Vector3(x, -1.0, z), 1)
+		if hit.is_empty():
+			break
+		var y: float = hit.position.y
+		if y <= top and Vector3(hit.normal).y > 0.7 and _standing_patch(space, x, y, z):
+			if result.is_empty() or absf(result[-1] - y) > 0.2:
+				result.append(y)
+		from_y = y - 0.02
+	return result
+
+
+func _standing_patch(space: PhysicsDirectSpaceState3D, x: float, y: float, z: float) -> bool:
+	for offset: Vector2 in [Vector2.ZERO, Vector2(PATCH, 0), Vector2(-PATCH, 0), Vector2(0, PATCH), Vector2(0, -PATCH)]:
+		var px := x + offset.x
+		var pz := z + offset.y
+		if _ray(space, Vector3(px, y + 0.1, pz), Vector3(px, y - 0.1, pz), 1).is_empty():
+			return false
+		if not _ray(space, Vector3(px, y + 0.05, pz), Vector3(px, y + CLEARANCE, pz), 1).is_empty():
+			return false
+	return true
+
+
+func _ray(space: PhysicsDirectSpaceState3D, from: Vector3, to: Vector3, mask: int) -> Dictionary:
+	var query := PhysicsRayQueryParameters3D.create(from, to, mask)
+	return space.intersect_ray(query)
+
+
+## What solid geometry lies on hand→anchor, by the product's own rope rule (body layer and cover): `own` names the
+## anchor's own post if the line crosses it, `other` the first other solid ("" when none). rope_pull_check's rule.
+func _line(hero_node: CharacterBody3D, from: Vector3, to: Vector3, spec: Dictionary) -> Dictionary:
+	var result := {"own": "", "other": ""}
+	var exclude: Array[RID] = [hero_node.get_rid()]
+	for attempt: int in 4:
+		var query := PhysicsRayQueryParameters3D.create(from, to, COVER_LAYER | 1)
+		query.hit_from_inside = true
+		query.exclude = exclude
+		var hit := hero_node.get_world_3d().direct_space_state.intersect_ray(query)
+		if hit.is_empty():
+			break
+		var node := hit.collider as Node3D
+		var where := "%s@(%.2f,%.2f,%.2f)" % [node.name if node != null else "?", hit.position.x, hit.position.y, hit.position.z]
+		if node != null and _is_own_post(node, spec):
+			result.own = where
+			exclude.append(hit.rid)
+			continue
+		result.other = where
+		break
+	return result
+
+
+func _is_own_post(node: Node3D, spec: Dictionary) -> bool:
+	if spec.is_empty() or String(spec.kind) != "post" or not node is StaticBody3D:
+		return false
+	var mount: Vector3 = spec.mount
+	var at := node.global_position
+	return Vector2(at.x - mount.x, at.z - mount.z).length() < 0.05 and at.y > mount.y and at.y < Vector3(spec.point).y + 0.3
+
+
+# --- negative controls -------------------------------------------------------------------------------------------
+func _break_scene(world: Node) -> void:
+	match mutation:
+		"awning":
+			var body := StaticBody3D.new()
+			body.name = "NegativeGrocerAwning"
+			body.collision_layer = 1 | 8
+			body.collision_mask = 0
+			var shape := CollisionShape3D.new()
+			var box := BoxShape3D.new()
+			box.size = GROCER_AWNING_SIZE
+			shape.shape = box
+			body.add_child(shape)
+			world.add_child(body)
+			body.global_position = GROCER_AWNING
+		"flight":
+			var hook: Node = world.player.grapple
+			hook.set("parkour_projectile_speed", float(hook.get("parkour_projectile_speed")) * 0.25)
+	print("ROPE_CHOICE break=%s" % mutation)
+
+
+## `late_wall`: a 0.6 × 0.6 m plate, 5 cm thick, across hand → anchor halfway, on the contact tick.
+func _plate(world: Node, hand: Vector3, anchor: Vector3) -> void:
+	late_plate = StaticBody3D.new()
+	late_plate.collision_layer = 1 | 8
+	late_plate.collision_mask = 0
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(0.6, 0.6, 0.05)
+	shape.shape = box
+	late_plate.add_child(shape)
+	world.add_child(late_plate)
+	var mid := hand.lerp(anchor, 0.5)
+	var direction := (anchor - hand).normalized()
+	late_plate.global_transform = Transform3D(Basis.looking_at(direction, Vector3.UP if absf(direction.y) < 0.99 else Vector3.FORWARD), mid)
