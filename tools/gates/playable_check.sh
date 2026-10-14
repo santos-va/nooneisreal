@@ -141,6 +141,7 @@ cases = [
     # Thirst, substance states, the strength buff and item icons (plan 2026-10-08-Thirst-Substances-Icons steps 1–3).
     ('city-thirst', 'tools/world/city_thirst_check.gd', r'CITY_THIRST_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('city-substances', 'tools/world/city_substances_check.gd', r'CITY_SUBSTANCES_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-substances-route', 'tools/world/city_substances_check.gd', r'CITY_SUBSTANCES_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', ['--', '--part=route'], 0),
     ('glyph-coverage', 'tools/ui/glyph_coverage_check.gd', r'GLYPH_COVERAGE_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('item-icons', 'tools/ui/item_icons_check.gd', r'ITEM_ICONS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
 ]
@@ -231,6 +232,12 @@ for mutation, family in (('blend', 'G2'), ('tuck', 'G1'), ('land', 'G4depth')):
     cases.append(('jump-arc-negative-' + mutation, 'tools/animation/jump_arc_check.gd',
                   rf'JUMP_ARC_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[A-Za-z0-9,]*\b{family}\b[A-Za-z0-9,]*',
                   ['--', '--break=' + mutation], 1))
+# Jump arc G1time (T4 audit 2026-10-09 proposal 3, plan 2026-10-14 step 5): T4's J10 (a 3–4 tick tuck), the tuck two
+# ticks late (С1) and held until 0.06 s before the ground (С2) must each go red in G1time.
+for mutation in ('j10', 'tuck_late', 'tuck_long'):
+    cases.append(('jump-arc-negative-' + mutation, 'tools/animation/jump_arc_check.gd',
+                  rf'JUMP_ARC_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[A-Za-z0-9,]*\bG1time\b[A-Za-z0-9,]*',
+                  ['--', '--break=' + mutation], 1))
 # Animation feel, branch A: the product of 595490d put back one part at a time must go red in its own family — the
 # landing played to its straight end with the hold (hips), the heavy landing's sliding kneel (foot), the guard at full
 # weight on the first idle tick (bone), the stance foot let go in one tick (foot), the legs chosen for the gameplay
@@ -296,6 +303,19 @@ for script, sentinel, prefix, mutations in (
         cases.append((prefix + '-negative-' + mutation, script,
                       rf'{sentinel}_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                       ['--', '--break=' + mutation], 1))
+# Glyphs built at run time (T4 audit 2026-10-09 п. 4, plan 2026-10-14 step 7): G4 `char (0x2713)`, G6 bytes decoded with
+# get_string_from_utf8, `String . chr (…)`, `"%E2%9C%93".uri_decode()` and a padded `%-2c` must each go red.
+for mutation in ('inject_char_space', 'inject_utf8', 'inject_chr_space', 'inject_uri', 'inject_format_width'):
+    cases.append(('glyph-coverage-negative-' + mutation, 'tools/ui/glyph_coverage_check.gd',
+                  rf'GLYPH_COVERAGE_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# Substance states, the state-blind route B13 (T4 audit 2026-10-09 п. 3 U5/U6, plan 2026-10-14 step 6): in a state the
+# take-off × 1.08 (U5), the jump's gravity 15 % lighter, the rope pull × 1.25 (U6), the rope's target 1 m shorter, the
+# vault 20 % shorter, the wall run 25 % faster must each go red.
+for mutation in ('jump', 'float', 'pull', 'target', 'vault', 'wallrun'):
+    cases.append(('city-substances-negative-' + mutation, 'tools/world/city_substances_check.gd',
+                  rf'CITY_SUBSTANCES_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--part=route', '--break=' + mutation], 1))
 # City tidy (phase 0): each class with the returned audit defect and another form of it — a bracket strut and the
 # market wire in a pane; a barrel and a loaf floating, a crate sunk, the archive plate off its wall; the fascia and the
 # door jamb in one plane; a wall and a drum built twice; a planter, the dress form and the bypass plaque without their

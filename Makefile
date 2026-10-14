@@ -10,7 +10,7 @@ GAME  := game
 # Чесний run: відмова при другому Godot на ту саму теку + імпорт, коли HEAD змінився (tools/run/godot_guard.sh).
 GUARD := bash tools/run/godot_guard.sh
 
-.PHONY: roles gates gates-docs check check-playable import run run-plane run-rig editor update fetch-assets hooks-check
+.PHONY: roles gates gates-docs check check-playable import run run-plane run-rig editor update fetch-assets hooks-check summary-check
 
 # Таблиця ролей із tools/hooks/roles.map: аляс · тіло · Claude skill · мітка.
 roles:
@@ -51,6 +51,12 @@ check:
 	J="$$(printf '%s\n' "$$SMOKE" | grep -c 'not supported by Jolt')"; \
 	[ "$$J" -eq 0 ] || { echo "SMOKE ЧЕРВОНИЙ: $$J попереджень Jolt про масштаб тіла (Н7, запуск 7.1)"; exit 1; }; \
 	echo "SMOKE ЗЕЛЕНИЙ"
+
+# Клас 16: числа останнього пункту «▶ Хвиля» в state.md («T1 переміряв: …») проти логів фінальної батареї.
+#   make summary-check PLAYABLE_LOG_DIR=/тека/батареї   (тека з check-playable.log і gates.log або її playable/)
+# Без PLAYABLE_LOG_DIR — rc=0 і «НЕ ЗВІРЕНО: немає логів батареї»; розбіжність або число без джерела — rc=2.
+summary-check:
+	python3 tools/gates/summary_numbers_check.py $(if $(PLAYABLE_LOG_DIR),--log-dir "$(PLAYABLE_LOG_DIR)")
 
 # Retain the full smoke, then verify the playable presentation and its negative controls.
 check-playable: check

@@ -36,6 +36,21 @@ extends SceneTree
 ## the product before the fix: the pre-fix _walk_physics that carries a dash on in a state; ground_accel × 1.5, the hang
 ## + 1 s, the dodge bar × 1.25 in a state (tools/world/city_fighter_mutants.gd via CityWorld.fighter_script); W that
 ## stands in «Задишка».
+##   B13 the state-blind route (plan 2026-10-14 step 6; T4 audit 2026-10-09 п. 3 and proposal 4, U5/U6 — the header of
+##       CitySubstances.gd promises «Walk, jump, hang, hook … as they are»): one parkour route through the real keys,
+##       the same for sober, «Заплутаність», «Хміль» and «Задишка», Choko and Skea — a standing jump, the rope from the
+##       safe point at the south lamp, a vault over a CityProps obstacle, a side wall run along a facade. Every
+##       consequence in a state ≤ sober (ROUTE_EPS): the jump's peak, air ticks and travel; the rope — a hang only where
+##       sober hangs, on the same anchor, no sooner, its length on every tick from the contact ≥ sober's (the pull no
+##       faster), its shortest ≥ sober's (the target no higher), the body's peak ≤ sober's; the vault and the wall run,
+##       when the state lets them happen — the peak ≤ sober's, on no tick further along than sober plus the state's own
+##       slower stop from walking pace (STOP_CEILING, T5 § 3.3 (б): a landing is such a stop), and for the wall run no
+##       more wall ticks and no more ground covered on them. A move the state takes away (the wall run in «Хміль») is
+##       «none of it»; what the body does instead is the jump station's.
+##       B13 runs only with --part=route (its own battery case and frame budget); without it the fixture is as before.
+## --break=jump|float|pull|target|vault|wallrun (with --part=route) are B13's product mutations, a gain of one of the
+## route's moves while in a state (tools/world/city_fighter_mutants.gd): U5 the take-off × 1.08, the jump's gravity 15 %
+## lighter, U6 the rope pull × 1.25, the rope's target 1 m shorter, the vault 20 % shorter, the wall run 25 % faster.
 ## Sentinel: CITY_SUBSTANCES_COMPLETE checks=N failures=M mutation=<m>; failures print "CITY_SUBSTANCES: ...".
 const FULL := 10000
 const DT := 1.0 / 60.0
@@ -60,10 +75,23 @@ const ROUTE_EPS := 0.001   # metres: the world's physics noise between two ident
 const STOP_CEILING := {"tipsy": {"choko": 0.314, "skea": 0.343}, "haze": {"choko": 0.209, "skea": 0.229}, "winded": {"choko": 0.0, "skea": 0.0}}
 const STOP_EPS := 0.001
 ## --break=carry|accel|hang|dodges run the hero on tools/world/city_fighter_mutants.gd (CityWorld.fighter_script).
-const FIGHTER_MUTATIONS: Array[String] = ["carry", "accel", "hang", "dodges"]
+const FIGHTER_MUTATIONS: Array[String] = ["carry", "accel", "hang", "dodges", "jump", "float", "pull", "target", "vault", "wallrun"]
+## B13 stations: the standing jump on the market street (jump_arc_check «stand»), the south lamp from the safe point
+## (rope_pull_check's standing start), the first CityProps obstacle from its run side (city_tidy_check V), and a side
+## wall run 0.6 m off the long facade whose face is at z 32.0 (normal −z, unbroken for x 0…28 at 1.2 m — rays of
+## scratchpad debt-b/probe_wall.gd), running +x with W and jumping on tick 12, as parkour_moves_check side_run does.
+const JUMP_AT := Vector3(-1.0, 0.0, 20.0)
+const ROPE_ANCHOR := Vector3(8.0, 6.5, 8.0)
+const WALL_AT := Vector3(2.0, 0.0, 31.4)
+const JUMP_TICKS := 90
+const ROPE_TICKS := 120    # after the contact: the pull, then the swing
+const VAULT_TICKS := 90    # from W down: the run-up, the vault and the run beyond
+const WALL_TICKS := 80     # W held throughout (no stop inside the window), Space from tick 12 to 70
+const HANG_PHASE := 3      # GrappleHook.Phase.HANG
 var checks: int = 0
 var failures: int = 0
 var mutation: String = "none"
+var part: String = ""
 var router: Node
 var content: Node
 var world: Node
@@ -81,6 +109,8 @@ func _initialize() -> void:
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--break="):
 			mutation = argument.trim_prefix("--break=")
+		elif argument.begins_with("--part="):
+			part = argument.trim_prefix("--part=")
 	_run.call_deferred()
 
 
@@ -212,6 +242,36 @@ func _run() -> void:
 	content.call("set_drugs_mode", "full")
 	state.set_free_move(true)
 	router.apply_profile("solo", false)
+	if part == "route":
+		await _route_part()
+	else:
+		await _main_part()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(content.get("storage_path")))
+	content.call("load_settings", old_content)
+	for singleton: String in ["Sfx", "UltMusic", "Music"]:
+		if root.has_node(singleton):
+			root.get_node(singleton).queue_free()
+	var deadline: int = Time.get_ticks_msec() + 250
+	while Time.get_ticks_msec() < deadline:
+		await process_frame
+		OS.delay_msec(1)
+	# playable_check runs this with --quit-after 12000: the engine frames used, so the headroom stays visible.
+	print("CITY_SUBSTANCES_INFO engine frames %d of the 12000 the battery allows" % Engine.get_process_frames())
+	print("CITY_SUBSTANCES_COMPLETE checks=%d failures=%d mutation=%s" % [checks, failures, mutation])
+	quit(1 if failures else 0)
+
+
+## B13 only (--part=route): Choko, then Skea.
+func _route_part() -> void:
+	for hero: String in ["choko", "skea"]:
+		await _open_world(hero)
+		await _b13()
+		await _close_all()
+		await _close_world()
+
+
+## B1–B12, W7, W11 and Skea's braking (the fixture as it was before --part).
+func _main_part() -> void:
 	await _open_world("choko")
 	if mutation == "walk":
 		world.haze.walk_scale = 1.05          # the negative: a profile that walks faster
@@ -230,19 +290,6 @@ func _run() -> void:
 	await _close_all()
 	await _b12()
 	await _close_world()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(content.get("storage_path")))
-	content.call("load_settings", old_content)
-	for singleton: String in ["Sfx", "UltMusic", "Music"]:
-		if root.has_node(singleton):
-			root.get_node(singleton).queue_free()
-	var deadline: int = Time.get_ticks_msec() + 250
-	while Time.get_ticks_msec() < deadline:
-		await process_frame
-		OS.delay_msec(1)
-	# playable_check runs this with --quit-after 12000: the engine frames used, so the headroom stays visible.
-	print("CITY_SUBSTANCES_INFO engine frames %d of the 12000 the battery allows" % Engine.get_process_frames())
-	print("CITY_SUBSTANCES_COMPLETE checks=%d failures=%d mutation=%s" % [checks, failures, mutation])
-	quit(1 if failures else 0)
 
 
 func _open_world(hero: String) -> void:
@@ -996,6 +1043,216 @@ func _b12() -> void:
 		_check(int(dodge.dodges) <= int(s_dodge.dodges) and float(dodge.bar) <= float(s_dodge.bar) + 0.001 and int(dodge.w) <= int(s_dodge.w),
 			"B12 %s %s, a dodge burst from a full bar: %d ≤ %d dodges (bar left %.2f / sober %.2f); an empty bar refills to %.2f ≤ %.2f in %d frames; W %d ≤ %d" % [hero, id, dodge.dodges, s_dodge.dodges, dodge.bar_burst, s_dodge.bar_burst, dodge.bar, s_dodge.bar, DODGE_TAIL, dodge.w, s_dodge.w])
 		_check(hang <= sober_hang + DT + 1e-6, "B12 %s %s, the hang: %.3f s ≤ sober %.3f" % [hero, id, hang, sober_hang])
+
+
+## B13 (plan 2026-10-14 step 6; T4 audit 2026-10-09 п. 3, proposal 4): the state-blind route. The same four stations and
+## keys sober and in each state; every consequence in the state ≤ sober. A move the state takes away (the wall run in
+## «Хміль») is «no more of it» — its per-tick comparison is skipped, and what the body does instead is the jump station's.
+func _b13() -> void:
+	var hero: String = player.data.id
+	npc.process_mode = Node.PROCESS_MODE_DISABLED   # no resident walks into a station
+	var obstacles: Array = world.district.get_node("CityProps").get_meta("obstacles", [])
+	_check(not obstacles.is_empty(), "B13 %s: CityProps lists its vault obstacles" % hero)
+	var obstacle: Dictionary = obstacles[0] if not obstacles.is_empty() else {}
+	var sober: Dictionary = await _route_stations("", obstacle)
+	_check(int(sober.jump.air) > 0 and bool(sober.rope.hung) and int(sober.vault.moves) > 0 and int(sober.wall.moves) > 0,
+		"B13 %s sober: every move of the route happens — %d air ticks, a hang %s, %d vault ticks over %s, %d wall-run ticks" % [hero, sober.jump.air, sober.rope.hung, sober.vault.moves, obstacle.get("id", "?"), sober.wall.moves])
+	for id: String in ["haze", "tipsy", "winded"]:
+		var mine: Dictionary = await _route_stations(id, obstacle)
+		var tag: String = "B13 %s %s" % [hero, id]
+		var j: Dictionary = mine.jump
+		var sj: Dictionary = sober.jump
+		_check(float(j.peak) <= float(sj.peak) + ROUTE_EPS and int(j.air) <= int(sj.air) and float(j.travel) <= float(sj.travel) + ROUTE_EPS,
+			"%s, the standing jump: peak %.3f ≤ sober %.3f m, %d ≤ %d air ticks, travel %.3f ≤ %.3f m" % [tag, j.peak, sj.peak, j.air, sj.air, j.travel, sj.travel])
+		var r: Dictionary = mine.rope
+		var sr: Dictionary = sober.rope
+		var below: int = -1   # the first tick from the contact where the rope is shorter than sober's
+		for k: int in mini((r.lengths as Array).size(), (sr.lengths as Array).size()):
+			if float(r.lengths[k]) < float(sr.lengths[k]) - ROUTE_EPS:
+				below = k
+				break
+		var rope_ok: bool = not bool(r.hung) or (bool(sr.hung) and Vector3(r.anchor).is_equal_approx(Vector3(sr.anchor)) and int(r.contact) >= int(sr.contact) and below < 0 and float(r.shortest) >= float(sr.shortest) - ROUTE_EPS and float(r.peak) <= float(sr.peak) + ROUTE_EPS)
+		_check(rope_ok, "%s, the rope: a hang %s (sober %s) on %s (sober %s), contact +%d ≥ +%d, never shorter than sober's (first tick below: %d), shortest %.3f ≥ %.3f m, body peak %.3f ≤ %.3f m" % [tag, r.hung, sr.hung, r.anchor, sr.anchor, r.contact, sr.contact, below, r.shortest, sr.shortest, r.peak, sr.peak])
+		var allowance: float = float(STOP_CEILING[id][hero])
+		for station: String in ["vault", "wall"]:
+			var a: Dictionary = mine[station]
+			var b: Dictionary = sober[station]
+			var further: int = -1
+			if int(a.moves) > 0:
+				for k: int in mini((a.along as Array).size(), (b.along as Array).size()):
+					if float(a.along[k]) > float(b.along[k]) + allowance + ROUTE_EPS:
+						further = k
+						break
+			var moves_ok: bool = int(a.moves) == 0 or (_max_of(a.heights) <= _max_of(b.heights) + ROUTE_EPS and further < 0 and (station == "vault" or (int(a.moves) <= int(b.moves) and float(a.on_move) <= float(b.on_move) + ROUTE_EPS)))
+			_check(moves_ok,
+				"%s, the %s: %d move ticks, sober %d (wall: ≤); %.3f m along on them, sober %.3f (wall: ≤); peak %.3f ≤ %.3f m, on no tick further along than sober + %.3f m (first: %d); the end %.3f m along (sober %.3f)" % [tag, station, a.moves, b.moves, a.on_move, b.on_move, _max_of(a.heights), _max_of(b.heights), allowance, further, (a.along as Array).back(), (b.along as Array).back()])
+		print("CITY_SUBSTANCES_INFO B13 %s %s: jump peak %.5f/%.5f air %d/%d; rope hung %s contact %d/%d shortest %.5f/%.5f peak %.5f/%.5f; vault %d/%d ticks end %.3f/%.3f; wall %d/%d ticks end %.3f/%.3f up %.3f/%.3f (state/sober)" % [hero, id, j.peak, sj.peak, j.air, sj.air, r.hung, r.contact, sr.contact, r.shortest, sr.shortest, r.peak, sr.peak, mine.vault.moves, sober.vault.moves, (mine.vault.along as Array).back(), (sober.vault.along as Array).back(), mine.wall.moves, sober.wall.moves, (mine.wall.along as Array).back(), (sober.wall.along as Array).back(), _max_of(mine.wall.heights), _max_of(sober.wall.heights)])
+	npc.process_mode = Node.PROCESS_MODE_INHERIT
+
+
+## The four B13 stations for one state ("" = sober).
+func _route_stations(id: String, obstacle: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	out["jump"] = await _station_jump(id)
+	out["rope"] = await _station_rope(id)
+	out["vault"] = await _station_vault(id, obstacle)
+	out["wall"] = await _station_wall(id)
+	return out
+
+
+## A station's start: no state, no rope, no key held; the hero at `at` facing `facing`, the camera looking along `view`;
+## full scales (no hunger band takes a move away), then the state on its plateau.
+func _station(at: Vector3, facing: Vector3, view: Vector3, id: String) -> void:
+	await _close_all()
+	_release_keys()
+	player.grapple.detach()
+	world.ropes.clear_match()
+	player.restart_at(at)
+	player._set_forward(facing)
+	world.camera_rig.reset_view()
+	world.camera_rig.aim.yaw_offset = atan2(-view.x, -view.z)
+	await _ticks(20)
+	_level(FULL, FULL)
+	_begin_state(id)
+	await _ticks(2)
+
+
+var _held_keys: Dictionary = {}
+
+
+## A key held down or let go — one event on each change, as a player's keyboard sends it.
+func _hold_key(code: Key, down: bool) -> void:
+	if bool(_held_keys.get(code, false)) == down:
+		return
+	_held_keys[code] = down
+	var key := InputEventKey.new()
+	key.keycode = code
+	key.physical_keycode = code
+	key.pressed = down
+	_send(key)
+
+
+func _release_keys() -> void:
+	for code: Key in _held_keys.keys():
+		_hold_key(code, false)
+
+
+static func _max_of(values: Array) -> float:
+	var best: float = -INF
+	for value: float in values:
+		best = maxf(best, value)
+	return best
+
+
+## A standing jump (Space for 6 ticks): its peak above the take-off, its ticks off the floor, its horizontal travel.
+func _station_jump(id: String) -> Dictionary:
+	await _station(JUMP_AT, Vector3.RIGHT, Vector3.FORWARD, id)
+	var base: Vector3 = player.global_position
+	var out: Dictionary = {"peak": 0.0, "air": 0, "travel": 0.0}
+	var left: bool = false
+	for tick: int in JUMP_TICKS:
+		_hold_key(KEY_SPACE, tick < 6)
+		await _ticks(1)
+		var airborne: bool = not player.is_on_floor()
+		if airborne:
+			left = true
+			out.air = int(out.air) + 1
+		out.peak = maxf(float(out.peak), player.global_position.y - base.y)
+		if left and not airborne:
+			break
+	_release_keys()
+	out.travel = Vector2(player.global_position.x - base.x, player.global_position.z - base.z).length()
+	return out
+
+
+## The rope from the safe point at the south lamp (E tapped): the hang, its contact tick, the anchor, the rope length on
+## each tick from the contact, the shortest length and the body's peak above the start.
+func _station_rope(id: String) -> Dictionary:
+	var view: Vector3 = Vector3(ROPE_ANCHOR.x - SAFE_POINT.x, 0.0, ROPE_ANCHOR.z - SAFE_POINT.z).normalized()
+	await _station(SAFE_POINT, view, view, id)
+	var hook: Node = player.grapple
+	var base_y: float = player.global_position.y
+	var out: Dictionary = {"hung": false, "contact": -1, "anchor": Vector3.ZERO, "lengths": [], "shortest": INF, "peak": 0.0}
+	_hold_key(KEY_E, true)
+	await _ticks(1)
+	_hold_key(KEY_E, false)
+	for tick: int in 50:
+		await _ticks(1)
+		if int(hook.phase) == HANG_PHASE and hook.attached:
+			out.hung = true
+			out.contact = tick
+			break
+		if tick > 2 and int(hook.phase) == 0:
+			break
+	if bool(out.hung):
+		out.anchor = hook.anchor_point
+		for tick: int in ROPE_TICKS:
+			(out.lengths as Array).append(float(hook.rope_length))
+			out.shortest = minf(float(out.shortest), float(hook.rope_length))
+			out.peak = maxf(float(out.peak), player.global_position.y - base_y)
+			await _ticks(1)
+			if not hook.attached:
+				break
+	hook.detach()
+	world.ropes.clear_match()
+	await _ticks(2)
+	return out
+
+
+## A vault over `obstacle` from its run side (W held, Space for 2 ticks 1.15 m before it, as city_tidy_check V): the vault
+## ticks, and on each tick the distance along the run and the height above the start.
+func _station_vault(id: String, obstacle: Dictionary) -> Dictionary:
+	var out: Dictionary = {"moves": 0, "on_move": 0.0, "along": [0.0], "heights": [0.0]}
+	if obstacle.is_empty():
+		return out
+	var run: Vector3 = obstacle.run
+	var center: Vector3 = obstacle.center
+	var depth: float = absf(Vector3(obstacle.size).dot(run))
+	var start: Vector3 = center - run * (depth * 0.5 + 5.0)
+	await _station(start, run, run, id)
+	out.along = []
+	out.heights = []
+	var jumped: bool = false
+	var held: int = 0
+	for tick: int in VAULT_TICKS:
+		_hold_key(KEY_W, true)
+		if not jumped and (player.global_position - center).dot(run) >= -depth * 0.5 - 1.15 and player.is_on_floor():
+			jumped = true
+			_hold_key(KEY_SPACE, true)
+		var before: float = (player.global_position - start).dot(run)
+		await _ticks(1)
+		if jumped:
+			held += 1
+			if held == 2:
+				_hold_key(KEY_SPACE, false)
+		if String(player.parkour.phase) == "vault":
+			out.moves = int(out.moves) + 1
+			out.on_move = float(out.on_move) + (player.global_position - start).dot(run) - before
+		(out.along as Array).append((player.global_position - start).dot(run))
+		(out.heights as Array).append(player.global_position.y - start.y)
+	_release_keys()
+	return out
+
+
+## A side wall run along the facade (W held throughout, so no stop and its braking — B12's subject — falls inside; Space
+## from tick 12 to 70): the wall-run ticks, the distance covered on them, and on each tick the horizontal distance from
+## the start and the height above it.
+func _station_wall(id: String) -> Dictionary:
+	await _station(WALL_AT, Vector3.RIGHT, Vector3.RIGHT, id)
+	var start: Vector3 = player.global_position
+	var out: Dictionary = {"moves": 0, "on_move": 0.0, "along": [], "heights": []}
+	for tick: int in WALL_TICKS:
+		_hold_key(KEY_W, true)
+		_hold_key(KEY_SPACE, tick >= 12 and tick < 70)
+		var before: Vector3 = player.global_position
+		await _ticks(1)
+		if String(player.parkour.phase) in ["wall_side", "wall_run"]:
+			out.moves = int(out.moves) + 1
+			out.on_move = float(out.on_move) + Vector2(player.global_position.x - before.x, player.global_position.z - before.z).length()
+		(out.along as Array).append(Vector2(player.global_position.x - start.x, player.global_position.z - start.z).length())
+		(out.heights as Array).append(player.global_position.y - start.y)
+	_release_keys()
+	return out
 
 
 ## W7: the effects line above HazeLine; HazeLine the card's last line; the words.

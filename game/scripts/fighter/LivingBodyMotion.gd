@@ -14,7 +14,9 @@ extends RefCounted
 ## Jump arc С2 (plan docs/Plans/2026-10-09-Rope-Pull-Jump-Arc-Substance-Momentum.md step 2; T5 С1–С6 in
 ## docs/GDD/2026-10-09-Rope-Pull-And-Jump-Arc-Numbers.md § 2, PLACEHOLDER): after a take-off the air is exactly
 ## takeoff → apex (the tuck) → fall, the tuck from the end of the take-off until the ground is 0.31 s away and never one
-## shorter than 0.28 s; no `rise` after a take-off; blends of at least 0.12 s; the light landing plays Jump_Land ×6.
+## shorter than 0.28 s; no `rise` after a take-off; blends of at least 0.12 s in the air; landings 0.15 / 0.08 / 0.06
+## (MODE_BLEND; with land_settle the normal / heavy entry blend never goes below LAND_BLEND_MIN 0.10); the light landing
+## plays Jump_Land ×6.
 ##
 ## Contract (docs/Fix/2026-10-07-Living-Body-Fix.md § Звірка, п. 1). SkeletalRig first draws the mannequin exactly as
 ## before. That pose is the authority: BoneRagdoll starts from it (BoneRagdoll.gd:52-57) and the fighter's position
