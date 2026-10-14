@@ -245,7 +245,7 @@ OPEN тепер прив'язаний до натиску, а не до всьо
 | `city-substances`, `city-substances-route` | 2 / 2 | 115/0; 32/0 |
 | `city-substances-negative-*`: 10 старих основної частини, 6 старих B13, новий `settle` | 17 / 17 rc=1 | B13: `jump` 16, `float` 12, `pull` 6, `target` 6, `vault` 4, `wallrun` 4, `settle` 4 провали |
 | `rope-pull` | 1 / 1 | 19290/0, `open=air:5` |
-| `rope-pull-negative-*`: 14 старих, 4 нові `air5_*` | 18 / 18 rc=1 | кожен у своїй родині; `air5_behind` `air`, `air5_front` `air`, `air5_counter` `air`, `air5_box` `open` |
+| `rope-pull-negative-*`: 13 старих, 4 нові `air5_*` (виправлено T1 за повторним аудитом T4: було «14», «18 / 18») | 17 / 17 rc=1 | кожен у своїй родині; `air5_behind` `air`, `air5_front` `air`, `air5_counter` `air`, `air5_box` `open` |
 | `rope-choice-choko-1…5`, `rope-choice-skea-1…5` | 10 / 10 | OPEN Choko 1 + 0 + 2 + 1 + 0 = 4, Skea 2 + 0 + 2 + 1 + 2 = 7; denied — рівно закріплені в кожній частині |
 | `rope-choice-negative-awning`, `-late_wall`, `-flight`, `-blocker_name` | 4 / 4 rc=1 | усі `red=cut` |
 
