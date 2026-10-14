@@ -20,13 +20,22 @@ extends SceneTree
 ## Santos with his M3 feedback (the plan's variant Т2, a selection that also checks the line from the hand at contact,
 ## is deferred; selection code is not changed). Each is printed as «ROPE_CHOICE OPEN …» and is not a failure, under a
 ## negative too; a cut or rewind not in the list fails (`cut`, `rewind`), and on the product a listed one that no longer
-## happens fails too (`open`), so any change to the class has to be looked at.
+## happens fails too (`open`), so any change to the class has to be looked at. An OPEN cut is pinned to what cuts it (T4
+## audit 2026-10-14 proposal 7, plan «Рішення T1 після аудиту T4»): the blocker's name is part of the key (an
+## engine-made name «@Class@N» depends on build order, so such a body is named by its parent and class instead), and the
+## first-tick hit must lie within BLOCKER_TOLERANCE of the pinned point — another blocker, or the same one elsewhere,
+## at the same press is a new cut (`cut`), and the pinned one is gone (`open`).
+## DENIED (KNOWN_DENIED): a press that marked or launched at an anchor but neither hung nor rewound within 60 ticks.
+## Measured on 2026-10-14 (18 presses, Choko 11, Skea 7); each is printed «ROPE_CHOICE DENIED …», and on the product a
+## denied press not in the list, or a listed one that no longer happens, fails (`denied`): counted per part, pinned.
 ##   --hero=choko|skea (default both) · --part=K/N (default 1/1): the rings of the anchors whose index % N == K − 1,
 ##     and the route in part 1, so the battery splits the 12000-frame budget.
 ##   --break=awning|late_wall|flight — negative controls, each must go red in `cut` (a negative stops pressing at its
 ##     first failure): the grocer's spread awning back (its collider as before step 2, layer 1 | 8); a thin plate put
 ##     across hand → anchor on the contact tick; the parkour projectile at a quarter of its speed, so the hand moves
 ##     four times as far between the choice and the contact.
+##   --break=blocker_name — the pin's own negative, red in `cut`: every engine-named solid of the market renamed
+##     (MarketSolid<N>), so the same body at the same point is another blocker by name.
 ## Sentinel: ROPE_CHOICE_COMPLETE checks=N failures=M mutation=<m> part=K/N anchors=a/A presses=p hangs=h cut_first=c
 ## open=o rewinds=r red=<families|none>; failures print "ROPE_CHOICE: ...".
 const RINGS: Array[float] = [2.5, 5.0, 8.0, 11.0]
@@ -45,20 +54,49 @@ const REWIND := 4
 ## 6.5 × 0.18 × 1.15) — the `awning` negative.
 const GROCER_AWNING := Vector3(-26.6, 3.85, 11.48)
 const GROCER_AWNING_SIZE := Vector3(6.5, 0.18, 1.15)
-## OPEN first-tick cuts (see the header): "<hero>|<press label>|<anchor hung on>" → what cuts it. Measured on the tree of
-## plan 2026-10-14 step 2 (the grocer's awning rolled), docs/Fix/2026-10-14-Lamp-Posts-Awning-Anchor-5-Fix.md § 2.
+## OPEN first-tick cuts (see the header): "<hero>|<press label>|<anchor hung on>|<blocker>" → the first-tick hit point
+## (`at`, the rewind has none: its flight line is clear, the hand past range) and why. Measured on the tree of plan
+## 2026-10-14 step 2 (the grocer's awning rolled), docs/Fix/2026-10-14-Lamp-Posts-Awning-Anchor-5-Fix.md § 2; the same
+## points to 0.01 m in T4's run (scratchpad t4-debt/logs/P-choice-*.log) and in docs/Fix/2026-10-14-Guard-Pins-After-Audit-Fix.md.
 const KNOWN_CUTS: Dictionary = {
-	"choko|anchor 5 ring 5.0/5 y0.0 run|4": "anchor 4, the east z 18 stall's canopy; the line at contact was clear",
-	"choko|anchor 17 ring 11.0/4 y0.0 run|16": "anchor 16, the grocer's lintel: the run ends in the shop door",
-	"choko|anchor 22 ring 5.0/0 y0.0 run|22": "anchor 22, the plaster house's facade; the line at contact was clear",
-	"choko|anchor 23 ring 11.0/4 y0.0 run|rewind": "anchor 23, the hand 14.32 m from it at contact (range 14): rewound",
-	"skea|anchor 3 ring 11.0/2 y2.7 run|3": "anchor 3, PracticeLedge under the line",
-	"skea|anchor 5 ring 5.0/5 y0.0 run|4": "anchor 4, the east z 18 stall's canopy",
-	"skea|anchor 14 ring 8.0/0 y0.0 run|14": "anchor 14, RoofBridge: the run ends under the bridge",
-	"skea|anchor 14 ring 11.0/0 y0.0 run|15": "anchor 15, RoofBridge: the run ends under the bridge",
-	"skea|anchor 15 ring 8.0/4 y0.0 run|15": "anchor 15, RoofBridge: the run ends under the bridge",
-	"skea|anchor 17 ring 11.0/4 y0.0 run|16": "anchor 16, the grocer's lintel: the run ends in the shop door",
-	"skea|anchor 22 ring 5.0/0 y0.0 run|22": "anchor 22, the plaster house's facade",
+	"choko|anchor 5 ring 5.0/5 y0.0 run|4|CityMarket/StaticBody3D": {"at": Vector3(7.29, 2.65, 18.81), "why": "anchor 4, the east z 18 stall's canopy; the line at contact was clear"},
+	"choko|anchor 17 ring 11.0/4 y0.0 run|16|ShopLintel": {"at": Vector3(-25.86, 3.35, 12.15), "why": "anchor 16, the grocer's lintel: the run ends in the shop door"},
+	"choko|anchor 22 ring 5.0/0 y0.0 run|22|ArchitectureSolid1537": {"at": Vector3(-9.89, 5.90, -25.81), "why": "anchor 22, the plaster house's facade; the line at contact was clear"},
+	"choko|anchor 23 ring 11.0/4 y0.0 run|rewind|-": {"why": "anchor 23, the hand 14.32 m from it at contact (range 14): rewound"},
+	"skea|anchor 3 ring 11.0/2 y2.7 run|3|PracticeLedge": {"at": Vector3(5.23, 2.48, 17.00), "why": "anchor 3, PracticeLedge under the line"},
+	"skea|anchor 5 ring 5.0/5 y0.0 run|4|CityMarket/StaticBody3D": {"at": Vector3(7.38, 2.65, 18.72), "why": "anchor 4, the east z 18 stall's canopy"},
+	"skea|anchor 14 ring 8.0/0 y0.0 run|14|RoofBridge": {"at": Vector3(-4.27, 3.50, -21.80), "why": "anchor 14, RoofBridge: the run ends under the bridge"},
+	"skea|anchor 14 ring 11.0/0 y0.0 run|15|RoofBridge": {"at": Vector3(4.14, 3.50, -21.80), "why": "anchor 15, RoofBridge: the run ends under the bridge"},
+	"skea|anchor 15 ring 8.0/4 y0.0 run|15|RoofBridge": {"at": Vector3(4.27, 3.50, -21.80), "why": "anchor 15, RoofBridge: the run ends under the bridge"},
+	"skea|anchor 17 ring 11.0/4 y0.0 run|16|ShopLintel": {"at": Vector3(-25.67, 3.70, 12.15), "why": "anchor 16, the grocer's lintel: the run ends in the shop door"},
+	"skea|anchor 22 ring 5.0/0 y0.0 run|22|ArchitectureSolid1624": {"at": Vector3(-9.80, 5.76, -26.01), "why": "anchor 22, the plaster house's facade"},
+}
+## How far the first-tick hit may lie from its pinned point: under the shift of one hanging tick (the contact and the
+## first-tick hits of one press lie 0.04–0.13 m apart) and under the gap between the two heroes' hits at one press
+## (0.13 m at anchor 5); the runs are deterministic (T2-A's and T4's points are identical to 0.01 m).
+const BLOCKER_TOLERANCE: float = 0.1
+## DENIED presses (see the header): "<hero>|<press label>" → what the product did, from this guard's own «DENIED» lines
+## on 2026-10-14 (docs/Fix/2026-10-14-Guard-Pins-After-Audit-Fix.md § 3). Per part 1–5: Choko 5 · 1 · 2 · 1 · 2, Skea
+## 4 · 0 · 0 · 1 · 2 — the same counts as T2-A's and T4's runs (their «denied=» per hero line).
+const KNOWN_DENIED: Dictionary = {
+	"choko|route (-29.0, 3.0, -5.5)": "part 1: marked StreetAnchor18, a windup the launch never followed (1×9 0×1)",
+	"choko|anchor 5 ring 11.0/5 y0.0 run": "part 1: marked StreetAnchor5, a windup the launch never followed (1×9 0×1)",
+	"choko|anchor 10 ring 5.0/5 y0.0 run": "part 1: marked StreetAnchor3, a windup the launch never followed (1×9 0×1)",
+	"choko|anchor 20 ring 5.0/2 y4.0 run": "part 1: marked StreetAnchor13, a windup the launch never followed (1×9 0×1)",
+	"choko|anchor 20 ring 8.0/3 y4.0 run": "part 1: marked StreetAnchor20, a windup the launch never followed (1×9 0×1)",
+	"choko|anchor 16 ring 8.0/0 y0.0 run": "part 2: marked StreetAnchor17, the press started nothing (0×4)",
+	"choko|anchor 17 ring 5.0/0 y0.0 run": "part 3: marked StreetAnchor17, the press started nothing (0×4)",
+	"choko|anchor 17 ring 5.0/4 y0.0 run": "part 3: marked StreetAnchor16, the press started nothing (0×4)",
+	"choko|anchor 13 ring 8.0/5 y4.0 run": "part 4: marked StreetAnchor13, a windup the launch never followed (1×9 0×1)",
+	"choko|anchor 14 ring 2.5/7 y0.0 run": "part 5: marked StreetAnchor22, a windup the launch never followed (1×9 0×1)",
+	"choko|anchor 24 ring 2.5/2 y4.0 run": "part 5: marked StreetAnchor12, a windup the launch never followed (1×9 0×1)",
+	"skea|anchor 5 ring 11.0/5 y0.0 run": "part 1: marked StreetAnchor5, a windup the launch never followed (1×9 0×1)",
+	"skea|anchor 10 ring 5.0/5 y0.0 run": "part 1: marked StreetAnchor3, a windup the launch never followed (1×9 0×1)",
+	"skea|anchor 20 ring 5.0/2 y4.0 run": "part 1: marked StreetAnchor13, a windup the launch never followed (1×9 0×1)",
+	"skea|anchor 20 ring 8.0/3 y4.0 run": "part 1: marked StreetAnchor20, a windup the launch never followed (1×9 0×1)",
+	"skea|anchor 13 ring 8.0/5 y4.0 run": "part 4: marked StreetAnchor13, a windup the launch never followed (1×9 0×1)",
+	"skea|anchor 14 ring 2.5/7 y0.0 run": "part 5: marked StreetAnchor22, a windup the launch never followed (1×9 0×1)",
+	"skea|anchor 24 ring 2.5/2 y4.0 run": "part 5: marked StreetAnchor12, a windup the launch never followed (1×9 0×1)",
 }
 var checks: int = 0
 var failures: int = 0
@@ -73,6 +111,7 @@ var anchors: Array[Vector3] = []
 var picked: Dictionary = {}         # anchor index -> presses that hung on it (all heroes)
 var totals := {"presses": 0, "hangs": 0, "cut_first": 0, "open": 0, "rewinds": 0, "denied": 0, "none": 0}
 var seen_open: Dictionary = {}
+var seen_denied: Dictionary = {}
 var late_plate: StaticBody3D
 
 
@@ -155,7 +194,15 @@ func _run() -> void:
 	if mutation == "none":
 		for key: String in KNOWN_CUTS:
 			if _expected(key, heroes):
-				_check(seen_open.has(key), "open", "the OPEN first-tick cut «%s» (%s) no longer happens: look at it and unpin it" % [key, KNOWN_CUTS[key]])
+				_check(seen_open.has(key), "open", "the OPEN first-tick cut «%s» (%s) no longer happens: look at it and unpin it" % [key, KNOWN_CUTS[key].why])
+		# DENIED, per part: every pinned denied press of this run still happens (a new one already failed at its press).
+		var expected_denied := 0
+		for key: String in KNOWN_DENIED:
+			if _expected(key, heroes):
+				expected_denied += 1
+				_check(seen_denied.has(key), "denied", "the pinned denied press «%s» (%s) no longer happens: look at it and unpin it" % [key, KNOWN_DENIED[key]])
+		_check(int(totals.denied) == expected_denied, "denied", "%d denied presses in part %d/%d, pinned %d" % [totals.denied, part, parts, expected_denied])
+		print("ROPE_CHOICE denied %d (pinned for this part %d)" % [totals.denied, expected_denied])
 	var families: Array = red.keys()
 	families.sort()
 	print("ROPE_CHOICE frames=%d (the playable harness quits after 12000)" % Engine.get_process_frames())
@@ -286,16 +333,18 @@ func _press(world: Node, hero: String, label: String, at: Vector3, facing: Vecto
 		# from where it was launched toward the point it was launched at.
 		var target := root.get_node_or_null(NodePath(launched)) as Node3D if not launched.is_empty() else null
 		var blocker := "?"
+		var rewind_by := "?"
 		if target != null:
 			var query := PhysicsRayQueryParameters3D.create(hook.get("_launch_origin"), target.global_position, COVER_LAYER | 1 | 4)
 			query.collide_with_areas = true
 			query.hit_from_inside = true
 			query.exclude = [hero_node.get_rid(), hero_node.hurtbox.get_rid()]
 			var hit := hero_node.get_world_3d().direct_space_state.intersect_ray(query)
+			rewind_by = "-" if hit.is_empty() else _blocker_id(hit.collider as Node)
 			blocker = "-" if hit.is_empty() else "%s@(%.2f,%.2f,%.2f)" % [(hit.collider as Node).name, hit.position.x, hit.position.y, hit.position.z]
 			# A clear flight line rewinds only when the hand is past range at contact (GrappleHook._flight).
 			blocker += ", hand→point %.2f m now (range %.1f)" % [(hero_node.global_position + Vector3(0, HAND_Y, 0)).distance_to(target.global_position), float(hook.range_m)]
-		var key := "%s|%s|rewind" % [hero, label]
+		var key := "%s|%s|rewind|%s" % [hero, label, rewind_by]
 		var entry := "%s from %s, marked %s, launched at %s: rewound before contact, the flight line stopped by %s" % [key, at, _name(marked), _name(launched), blocker]
 		if KNOWN_CUTS.has(key):
 			totals.open += 1
@@ -306,8 +355,16 @@ func _press(world: Node, hero: String, label: String, at: Vector3, facing: Vecto
 		_check(false, "rewind", tag + "the shot at %s (marked %s) rewound before contact (%s)" % [_name(launched), _name(marked), blocker])
 		return
 	if not hung:
-		totals.denied += int(not launched.is_empty() or not marked.is_empty())
-		totals.none += int(launched.is_empty() and marked.is_empty())
+		var denied := not launched.is_empty() or not marked.is_empty()
+		totals.denied += int(denied)
+		totals.none += int(not denied)
+		if denied:
+			var key := "%s|%s" % [hero, label]
+			seen_denied[key] = true
+			var entry := "%s from %s, marked %s, launched at %s, phases %s" % [key, at, _name(marked), _name(launched) if not launched.is_empty() else "-", _phases(phases)]
+			print("ROPE_CHOICE DENIED %s%s" % [entry, "" if KNOWN_DENIED.has(key) else " (not pinned)"])
+			if mutation == "none":
+				_check(KNOWN_DENIED.has(key), "denied", tag + "marked %s, launched at %s, but neither hung nor rewound in 60 ticks (phases %s), and this press is not in KNOWN_DENIED" % [_name(marked), _name(launched), _phases(phases)])
 		return
 	var anchor: Vector3 = hook.anchor_point
 	var index := anchors.find(anchor)
@@ -332,19 +389,50 @@ func _press(world: Node, hero: String, label: String, at: Vector3, facing: Vecto
 	if not cut:
 		return
 	totals.cut_first += 1
-	var key := "%s|%s|%d" % [hero, label, index]
+	var key := "%s|%s|%d|%s" % [hero, label, index, line.other_id]
 	var entry := "%s from %s, marked %s: first tick cut by %s; contact line %s" % [key, at, _name(marked), line.other, contact_line.other if not String(contact_line.other).is_empty() else "clear"]
-	if KNOWN_CUTS.has(key):
+	var pin: Dictionary = KNOWN_CUTS.get(key, {})
+	var off := INF if pin.is_empty() else Vector3(line.other_at).distance_to(Vector3(pin.get("at", Vector3.INF)))
+	if not pin.is_empty() and off <= BLOCKER_TOLERANCE:
 		totals.open += 1
 		seen_open[key] = true
-		print("ROPE_CHOICE OPEN %s" % entry)
+		print("ROPE_CHOICE OPEN %s (%.3f m from the pinned point)" % [entry, off])
 		return
 	print("ROPE_CHOICE CUT %s" % entry)
-	_check(false, "cut", tag + "chosen %s, cut on the first hanging tick by %s" % [_name(launched), line.other])
+	var pinned := ""
+	for other: String in KNOWN_CUTS:
+		if other.begins_with("%s|%s|" % [hero, label]):
+			pinned = "; the press is pinned as «%s» at %s (this hit %.3f m from it, at most %.2f)" % [other, KNOWN_CUTS[other].get("at", "-"), Vector3(line.other_at).distance_to(Vector3(KNOWN_CUTS[other].get("at", Vector3.INF))), BLOCKER_TOLERANCE]
+	_check(false, "cut", tag + "chosen %s, cut on the first hanging tick by %s%s" % [_name(launched), line.other, pinned])
 
 
 func _name(target_id: String) -> String:
 	return target_id.get_file()
+
+
+## A blocker as the OPEN key names it: its own name, or «<parent>/<class>» when the engine made the name («@Class@N»
+## counts every node built before it, so it moves whenever the city gains or loses one).
+func _blocker_id(node: Node) -> String:
+	if node == null:
+		return "?"
+	var own := String(node.name)
+	if not own.begins_with("@"):
+		return own
+	return "%s/%s" % [String(node.get_parent().name) if node.get_parent() != null else "?", node.get_class()]
+
+
+## The phases of a press, run-length coded (GrappleHook.Phase: 0 idle, 1 windup, 2 flight, 3 hang, 4 miss rewind):
+## «1×9 0×1» — a windup the launch never followed; «0×4» — the press started nothing.
+func _phases(phases: Array[int]) -> String:
+	var parts_out: PackedStringArray = []
+	var index := 0
+	while index < phases.size():
+		var run := 1
+		while index + run < phases.size() and phases[index + run] == phases[index]:
+			run += 1
+		parts_out.append("%d×%d" % [phases[index], run])
+		index += run
+	return " ".join(parts_out) if not parts_out.is_empty() else "-"
 
 
 ## Walkable floors of one column below `top`, top to bottom: an upward-facing hit with CLEARANCE free above it and the
@@ -383,7 +471,7 @@ func _ray(space: PhysicsDirectSpaceState3D, from: Vector3, to: Vector3, mask: in
 ## What solid geometry lies on hand→anchor, by the product's own rope rule (body layer and cover): `own` names the
 ## anchor's own post if the line crosses it, `other` the first other solid ("" when none). rope_pull_check's rule.
 func _line(hero_node: CharacterBody3D, from: Vector3, to: Vector3, spec: Dictionary) -> Dictionary:
-	var result := {"own": "", "other": ""}
+	var result := {"own": "", "other": "", "other_id": "", "other_at": Vector3.INF}
 	var exclude: Array[RID] = [hero_node.get_rid()]
 	for attempt: int in 4:
 		var query := PhysicsRayQueryParameters3D.create(from, to, COVER_LAYER | 1)
@@ -399,6 +487,9 @@ func _line(hero_node: CharacterBody3D, from: Vector3, to: Vector3, spec: Diction
 			exclude.append(hit.rid)
 			continue
 		result.other = where
+		# The blocker's name now: a negative's plate is freed before the verdict reads it.
+		result.other_id = _blocker_id(node)
+		result.other_at = hit.position
 		break
 	return result
 
@@ -429,6 +520,15 @@ func _break_scene(world: Node) -> void:
 		"flight":
 			var hook: Node = world.player.grapple
 			hook.set("parkour_projectile_speed", float(hook.get("parkour_projectile_speed")) * 0.25)
+		"blocker_name":
+			var market := world.find_child("CityMarket", true, false)
+			var renamed := 0
+			if market != null:
+				for child: Node in market.get_children():
+					if child is StaticBody3D and String(child.name).begins_with("@"):
+						child.name = "MarketSolid%d" % renamed
+						renamed += 1
+			print("ROPE_CHOICE break=blocker_name renamed %d market solids" % renamed)
 	print("ROPE_CHOICE break=%s" % mutation)
 
 

@@ -5,8 +5,11 @@
 district=99048` у власному лозі батареї T1; «7 іконок» проти 5 + 2). Пропозиція T4 (аудит 2026-10-09, «Реєстр
 рецидивів»): кожне число підсумку береться з рядка логу фінальної батареї, гейт звіряє відомі сентинели.
 
-Що читає: ОСТАННІЙ пункт нумерованого списку розділу `## ▶ Хвиля` у state.md і в ньому речення «T1 переміряв: …»
-(від цих слів до кінця речення). Розпізнає:
+Що читає: ОСТАННІЙ пункт нумерованого списку розділу `## ▶ Хвиля` у state.md — увесь, з підпунктами (аудит T4
+2026-10-14 п. 8, рішення T1 «варіант А»: другий випадок класу, «91 892 → 98 364», стояв у підпункті). Відомі форми
+звіряються в усьому пункті; у реченні «T1 переміряв: …» (від цих слів до кінця речення) ще й будь-яка інша цифра —
+«число без звірки». Поза цим реченням інші цифри — дизайн-числа пункту (тики, метри, градуси), гейт їх не чіпає.
+Розпізнає:
   `make check-playable` N/F          → `PLAYABLE CHECK: N scenarios, F failures` (check-playable.log)
   (K негативів `PASS rc=1`)          → кількість рядків `PLAYABLE <case>: PASS rc=1` (check-playable.log)
   smoke A/B                          → `[smoke] ALL OK (A checks) in B frames` (check-playable.log)
@@ -14,6 +17,9 @@ district=99048` у власному лозі батареї T1; «7 іконок
   реєстр R/D                         → `на диску: D · у реєстрі: R` (gates.log)
   `<case>` n/f                       → `<SENTINEL>_COMPLETE checks=n failures=f` в логу фікстури <case>.log
   `CITY_TIDY_INFO triangles k=v …`   → той самий рядок у city-tidy.log, кожен названий ключ
+  трикутників [кварталу] A → B       → `CITY_TIDY_INFO triangles district=B` (city-tidy.log); A — база, не ця батарея
+  трикутників [кварталу] N           → `district=N` (N з пробілами-тисячами або ≥ 4 цифри)
+  `MeshInstance3D` a → b             → `mesh_instances=b` у тому самому рядку
   0 ERROR / 0 WARNING / 0 витоків    → рядки `ERROR:`/`SCRIPT ERROR:`, `WARNING:`, «leaked / still in use at exit»
                                        у логах позитивних кейсів (`PASS rc=0`)
   `make gates` зелено / gates зелено → рядок `БАТАРЕЯ ЗЕЛЕНА` у gates.log
@@ -22,11 +28,13 @@ district=99048` у власному лозі батареї T1; «7 іконок
 `--log-dir DIR` — тека батареї: DIR (або її батьківська тека, якщо DIR — це сам PLAYABLE_LOG_DIR) містить
 check-playable.log і gates.log; логи кейсів — у DIR/playable/ або в DIR.
 
-rc: 0 — усе звірено й збігається, або `--log-dir` не задано (тоді рядок «НЕ ЗВІРЕНО: немає логів батареї»);
-    2 — розбіжність, число, якого немає в логах, або немає чого читати (перелік нижче). Це «не можна вірити підсумку»,
-        і воно блокує так само, як порушення.
+rc: 0 — усе звірено й збігається;
+    2 — розбіжність, число, якого немає в логах, немає чого читати, або `--log-dir` не задано («НЕ ВИМІРЯНО»: R3
+        конституції, клас 12 реєстру — «не зміг виміряти» блокує так само, як порушення; аудит T4 2026-10-14 п. 8).
 `--state PATH` — інший state.md (для негативних контролів). `--canary` — самоперевірка: на згенерованій фікстурі
-чисте зведення мусить дати rc=0, а кожна навмисна розбіжність — rc=2; інакше rc=2 (гейт мовчки пропускав би).
+чисте зведення мусить дати rc=0, а кожна навмисна розбіжність — rc=2; інакше rc=2 (гейт мовчки пропускав би). Серед
+форм — повтор інциденту `cd8f5dd` (п. 10 дослівно проти рядка `CITY_TIDY_INFO` з логу батареї T1 `t1-battery-1009`)
+з контролем: той самий пункт із виправленим числом дає rc=0.
 `make gates` запускає лише канарку; звірку з логами — `make summary-check PLAYABLE_LOG_DIR=…`.
 Тільки stdlib, без мережі.
 """
@@ -90,6 +98,8 @@ def summary_sentence(item: str) -> str | None:
 
 # --- розпізнавачі чисел у реченні -----------------------------------------------------------------------------------
 
+NUM = r"\d{1,3}(?:[ \u00a0\u202f]\d{3})+|\d+"  # 99 048, 99 048 (нерозривні пробіли) або 99048
+
 PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("playable", re.compile(r"`?make check-playable`?\s+(\d+)/(\d+)")),
     ("negatives", re.compile(r"(\d+)\s+негатив\w*\s+`?PASS rc=1`?")),
@@ -97,10 +107,18 @@ PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("gds", re.compile(r"\bGDS\s+(\d+)/(\d+)")),
     ("registry", re.compile(r"реєстр\s+(\d+)/(\d+)")),
     ("triangles", re.compile(r"`?CITY_TIDY_INFO triangles((?:\s+[a-z_]+=\d+)+)`?")),
+    ("district", re.compile(r"трикутник\w*(?:\s+кварталу)?\s+(?:" + NUM + r")\s*→\s*(" + NUM + r")")),
+    ("district", re.compile(r"трикутник\w*(?:\s+кварталу)?\s+(\d{1,3}(?:[ \u00a0\u202f]\d{3})+|\d{4,})(?![\d/])")),
+    ("meshes", re.compile(r"`MeshInstance3D`\s+(?:\d+)\s*→\s*(\d+)")),
     ("clean", re.compile(r"\b(\d+)\s+(ERROR|WARNING|витік\w*|витоків|витоку)")),
     ("gates", re.compile(r"(?:`make gates`|\bgates)\s+зелен\w*")),
     ("fixture", re.compile(r"`([a-z0-9][a-z0-9_-]*)`\s+(\d+)/(\d+)")),
 ]
+
+
+def flat(text: str) -> str:
+    """Рядки пункту в один рядок (як summary_sentence склеює абзац): число, розірване переносом, лишається числом."""
+    return " ".join(part.strip() for part in text.splitlines())
 
 
 def claims(sentence: str) -> tuple[list[tuple[str, tuple[str, ...]]], list[str]]:
@@ -160,7 +178,7 @@ class Battery:
 
 def verify(kind: str, groups: tuple[str, ...], bat: Battery) -> list[str]:
     """Порожній список — твердження збігається з логом; інакше перелік розбіжностей / відсутніх джерел."""
-    need_playable = kind in ("playable", "negatives", "smoke", "clean", "fixture", "triangles")
+    need_playable = kind in ("playable", "negatives", "smoke", "clean", "fixture", "triangles", "district", "meshes")
     if need_playable and bat.playable is None:
         return [f"{kind}: немає check-playable.log у {bat.dir} (ні в батьківській теці)"]
     if kind == "playable":
@@ -223,6 +241,17 @@ def verify(kind: str, groups: tuple[str, ...], bat: Battery) -> list[str]:
             if logged.get(key) != value:
                 out.append(f"`CITY_TIDY_INFO triangles {key}={value}` ≠ city-tidy.log {key}={logged.get(key, 'немає')}")
         return out
+    if kind in ("district", "meshes"):
+        key = "district" if kind == "district" else "mesh_instances"
+        value = re.sub(r"\D", "", groups[0])
+        log = bat.case_log("city-tidy")
+        if log is None:
+            return [f"{describe(kind, groups)}: немає логу city-tidy.log"]
+        found = re.findall(r"^CITY_TIDY_INFO triangles((?:\s+[a-z_]+=\d+)+)", log, re.M)
+        if not found:
+            return [f"{describe(kind, groups)}: у city-tidy.log немає рядка `CITY_TIDY_INFO triangles`"]
+        logged = dict(re.findall(r"([a-z_]+)=(\d+)", found[-1]))
+        return [] if logged.get(key) == value else [f"{describe(kind, groups)} ≠ city-tidy.log {key}={logged.get(key, 'немає')}"]
     if kind == "clean":
         number, what = int(groups[0]), groups[1]
         pattern = ERROR_RE if what == "ERROR" else WARNING_RE if what == "WARNING" else LEAK_RE
@@ -253,6 +282,10 @@ def describe(kind: str, groups: tuple[str, ...]) -> str:
         return f"{groups[0]} {groups[1]}"
     if kind == "gates":
         return "gates зелено"
+    if kind == "district":
+        return f"трикутників {groups[0]} (district)"
+    if kind == "meshes":
+        return f"`MeshInstance3D` → {groups[0]} (mesh_instances)"
     return f"`{groups[0]}` {groups[1]}/{groups[2]}"
 
 
@@ -268,6 +301,12 @@ def check(state_text: str, log_dir: Path) -> tuple[list[str], list[str]]:
     problems = [f"п. {number}: число без звірки — «…{piece}…»" for piece in leftovers]
     if not found:
         problems.append(f"п. {number}: у реченні «{OPENER}» немає жодного числа, яке гейт уміє звірити")
+    # Решта пункту (підпункти, інші абзаци): лише відомі форми; інші цифри там — дизайн-числа, не числа батареї.
+    whole = flat(item)
+    at = whole.find(sentence)
+    rest = whole[:at] + " " * len(sentence) + whole[at + len(sentence):] if at >= 0 else whole
+    rest_found, _ = claims(rest)
+    found += rest_found
     bat = Battery(log_dir)
     verified = []
     for kind, groups in found:
@@ -296,9 +335,9 @@ def run(argv: list[str]) -> int:
         print(f"   ВІДМОВА: невідомий аргумент `{flag}` (відомі: --state PATH, --log-dir DIR, --canary)")
         return 2
     if log_dir is None:
-        print("   НЕ ЗВІРЕНО: немає логів батареї (--log-dir); числа state.md не перевірено."
+        print("   НЕ ВИМІРЯНО: немає логів батареї (--log-dir); числа state.md не перевірено — це блокує (rc=2, R3)."
               " Звірка: make summary-check PLAYABLE_LOG_DIR=/тека/батареї")
-        return 0
+        return 2
     try:
         text = state.read_text(encoding="utf-8")
     except OSError as e:
@@ -378,6 +417,53 @@ CANARY_FORMS: list[tuple[str, str, str, str]] = [
 ]
 
 
+# Повтор інциденту класу 16 (аудит T4 2026-10-14 п. 8, рішення T1): п. 10 з `git show cd8f5dd:docs/system/state.md`
+# дослівно, проти логів батареї T1 `t1-battery-1009` у тій частині, яку цей пункт називає (282/0, 180 негативів, smoke
+# 165/19847, GDS 143/0, реєстр 183/183, gates зелено; рядок city-tidy.log `CITY_TIDY_INFO triangles district=99048
+# mesh_instances=259`). Підсумок писав «трикутників 91 892 → 98 364» у підпункті, лог мав 99048. Гейт мусить дати rc=2 саме
+# через трикутники, а той самий пункт із числом логу — rc=0 (контроль: rc=2 не від фікстури).
+INCIDENT_CD8F5DD_ITEM = """10. **Трос тягне, стрибок однією дугою, «Хміль» без вигоди, порядок у місті — у гілці PR #190** ([[2026-10-09-Rope-Pull-Jump-Arc-Substance-Momentum]], [[2026-10-09-City-Tidy-And-Modern-Props]], [[ADR-027-City-Modern-Props-Style-And-Path]]):
+   - трос V4: після зачепу в місті мотузка сама тягне 8 м/с до довжини гойдання (ступні на 0,5 м над вищою з двох опор), Space — ще 1,2 м. З місця: зсув 0,05 → 8,80 м, у повітрі 0 → 126 зі 127 тиків. Власний стовп якоря мотузку не рве. Дуель без змін;
+   - стрибок С2: одне групування, змішування в повітрі 0,15–0,18 с, посадки 0,15 / 0,08 / 0,06 (варіант B, рішення T1). Найбільший поворот кістки в повітрі 11,4° (HEAD 25,3°);
+   - «Хміль» і «Заплутаність» A: понад швидкість ходи — повне гальмування. Серія ривків без стіка +27,3 % → +4,5 %. Гард на наслідок, негативи U1–U4;
+   - дрібне з аудитів: важіль і ковш колонки, teardown меню без ERROR, одна підказка на клавішу, заборона гліфів, зібраних у рантаймі;
+   - місто, фаза 0: 207 дефектів на базі → 0 (`city_tidy_check`); бочки трьох видів, 4 перешкоди для перескоку, труби й випуски пари, урни; трикутників 91 892 → 98 364.
+
+   T1 переміряв: `make check-playable` 282/0 (180 негативів `PASS rc=1`), smoke 165/19847, GDS 143/0, у позитивних логах 0 ERROR / 0 WARNING / 0 витоків, `make gates` зелено, реєстр 183/183, код незмінний за прогін (`cmp`).
+
+   Відкрите:
+   - паромобіль і легковик під брезентом з Blender (0 кр.) готові окремо, ще не в місті — [[ADR-027-City-Modern-Props-Style-And-Path]];
+   - 3 концепт-аркуші — генерацію блокує фільтр дозволів сесії;
+   - аудит T4 цієї хвилі, кадри й слова довідок T6/T8, рушій множить альбедо вдруге (T6);
+   - тент `ShopAwning` біля якоря (−24; 6,8; 10,6) рве мотузку на першому тику."""
+INCIDENT_WRONG = "трикутників 91 892 → 98 364"
+INCIDENT_FIXED = "трикутників 91 892 → 99 048"
+
+
+def _incident_files() -> dict[str, str]:
+    """Фікстура повтору: state.md з п. 10 `cd8f5dd` і логи `t1-battery-1009` у тій частині, яку він називає."""
+    positives = [f"case-{index:03d}" for index in range(1, 102)] + ["city-tidy"]
+    negatives = [f"case-negative-{index:03d}" for index in range(1, 181)]
+    lines = ["   перевірено: 143 · не парсяться: 0 · не виміряно: 0 · канарка: FAIL як треба",
+             "[smoke] ALL OK (165 checks) in 19847 frames", "SMOKE ЗЕЛЕНИЙ"]
+    lines += [f"PLAYABLE {name}: PASS rc=0 log=/elsewhere/{name}.log" for name in positives]
+    lines += [f"PLAYABLE {name}: PASS rc=1 log=/elsewhere/{name}.log" for name in negatives]
+    lines.append(f"PLAYABLE CHECK: {len(positives) + len(negatives)} scenarios, 0 failures")
+    files = {
+        "state.md": "# state\n\n## ▶ Хвиля — повтор інциденту cd8f5dd\n\n" + INCIDENT_CD8F5DD_ITEM + "\n\n## Ще не завершено\n",
+        "check-playable.log": "\n".join(lines) + "\n",
+        "gates.log": ("   на диску: 183 · у реєстрі: 183 · незареєстрованих: 0 · неіснуючих: 0\n"
+                      "   перевірено: 143 · не парсяться: 0 · не виміряно: 0 · канарка: FAIL як треба\nБАТАРЕЯ ЗЕЛЕНА\n"),
+    }
+    for name in positives:
+        files[f"playable/{name}.log"] = "CASE_COMPLETE checks=1 failures=0 mutation=none\n"
+    files["playable/city-tidy.log"] = ("CITY_TIDY_INFO triangles district=99048 mesh_instances=259 {\"CityInteriors\":19920}\n"
+                                       "CITY_TIDY_COMPLETE checks=1 failures=0 mutation=none\n")
+    for name in negatives:
+        files[f"playable/{name}.log"] = "ERROR: CASE: x\nCASE_COMPLETE checks=1 failures=1 mutation=x\n"
+    return files
+
+
 def _materialise(base: Path, files: dict[str, str]) -> None:
     for rel, body in files.items():
         path = base / rel
@@ -418,12 +504,36 @@ def canary() -> int:
             rc, text = _gate(case)
             if rc != 2:
                 failures.append(f"форма «{name}» дала rc={rc}, а не 2: {text.strip()[:200]}")
+        # Без --log-dir — «не виміряно», rc=2 (клас 12, R3), а не «зелено».
+        out = io.StringIO()
+        with redirect_stdout(out):
+            rc = run(["--state", str(clean / "state.md")])
+        if rc != 2:
+            failures.append(f"без --log-dir гейт мав дати rc=2 («НЕ ВИМІРЯНО»), а дав rc={rc}: {out.getvalue().strip()[:200]}")
+        # Повтор інциденту cd8f5dd п. 10 і його контроль (див. INCIDENT_CD8F5DD_ITEM).
+        incident = _incident_files()
+        if INCIDENT_WRONG not in incident["state.md"]:
+            failures.append(f"повтор cd8f5dd: у пункті немає «{INCIDENT_WRONG}» — канарка застаріла")
+        else:
+            replay = Path(tmp) / "incident-cd8f5dd"
+            _materialise(replay, incident)
+            rc, text = _gate(replay)
+            if rc != 2 or "district=99048" not in text or "98 364" not in text:
+                failures.append(f"повтор інциденту cd8f5dd п. 10 мав дати rc=2 через «98 364» ≠ district=99048, а дав rc={rc}: {text.strip()[:300]}")
+            control = Path(tmp) / "incident-cd8f5dd-fixed"
+            fixed = dict(incident)
+            fixed["state.md"] = fixed["state.md"].replace(INCIDENT_WRONG, INCIDENT_FIXED, 1)
+            _materialise(control, fixed)
+            rc, text = _gate(control)
+            if rc != 0 or "99 048 (district)" not in text:
+                failures.append(f"контроль повтору cd8f5dd (число логу 99 048) мав дати rc=0 і звірити трикутники, а дав rc={rc}: {text.strip()[:300]}")
     if failures:
         for f in failures:
             print(f"   ✗ канарка: {f}")
         print("   ВІДМОВА виміряти: гейт підсумкових чисел не розрізняє збіг і розбіжність (rc=2)")
         return 2
-    print(f"   канарка: чиста фікстура — 0 розбіжностей; {len(CANARY_FORMS)} форм розбіжності — кожна rc=2, як треба."
+    print(f"   канарка: чиста фікстура — 0 розбіжностей; {len(CANARY_FORMS)} форм розбіжності — кожна rc=2, як треба;"
+          " без --log-dir — rc=2; повтор інциденту cd8f5dd п. 10 — rc=2 (98 364 ≠ district=99048), з числом логу — rc=0."
           " Звірка справжньої батареї: make summary-check PLAYABLE_LOG_DIR=…")
     return 0
 

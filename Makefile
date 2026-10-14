@@ -52,9 +52,10 @@ check:
 	[ "$$J" -eq 0 ] || { echo "SMOKE ЧЕРВОНИЙ: $$J попереджень Jolt про масштаб тіла (Н7, запуск 7.1)"; exit 1; }; \
 	echo "SMOKE ЗЕЛЕНИЙ"
 
-# Клас 16: числа останнього пункту «▶ Хвиля» в state.md («T1 переміряв: …») проти логів фінальної батареї.
+# Клас 16: числа останнього пункту «▶ Хвиля» в state.md (увесь пункт у відомих формах; у реченні «T1 переміряв: …» —
+# кожна цифра) проти логів фінальної батареї.
 #   make summary-check PLAYABLE_LOG_DIR=/тека/батареї   (тека з check-playable.log і gates.log або її playable/)
-# Без PLAYABLE_LOG_DIR — rc=0 і «НЕ ЗВІРЕНО: немає логів батареї»; розбіжність або число без джерела — rc=2.
+# Без PLAYABLE_LOG_DIR — rc=2 «НЕ ВИМІРЯНО» (R3, клас 12); розбіжність або число без джерела — rc=2.
 summary-check:
 	python3 tools/gates/summary_numbers_check.py $(if $(PLAYABLE_LOG_DIR),--log-dir "$(PLAYABLE_LOG_DIR)")
 

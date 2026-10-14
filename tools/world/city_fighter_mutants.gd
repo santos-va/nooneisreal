@@ -17,6 +17,9 @@ extends CityFighter
 ##   target  — the rope's target length 1 m shorter on each hang (the body pulled higher);
 ##   vault   — the vault 20 % shorter (CityParkourProfile.vault_seconds, on this body's own copy of the profile);
 ##   wallrun — the wall run 25 % faster along and up (wall_along_speed, wall_up_speed, on the same copy).
+## T5 docs/GDD/2026-10-08-Substances-And-Nutrition.md § 12.3 (б) rolled back (T4 audit 2026-10-14 п. 6):
+##   settle  — CityFighter._walk_physics as it was before (variant A only): in a landing's land_frames ticks the state's
+##             braking scale applies even with the stick holding walking pace (strict `> sober_pace()`, no stick).
 const JUMP_GAIN: float = 1.08
 const FLOAT_LIFT: float = 0.15
 const PULL_GAIN: float = 1.25
@@ -68,6 +71,15 @@ func _walk_physics(delta: float, vx: float, vz: float = 0.0) -> void:
 		var cur := Vector2(velocity.x, velocity.z if _free() else 0.0)
 		var want := Vector2(vx, vz if _free() else 0.0)
 		var rate := data.ground_accel if want.length() > cur.length() - 0.001 else data.ground_decel * decel_scale()
+		var h := cur.move_toward(want, rate * delta)
+		_ground_physics(delta, h.x, h.y)
+		return
+	if mutation == "settle" and _in_state():
+		var cur := Vector2(velocity.x, velocity.z if _free() else 0.0)
+		var want := Vector2(vx, vz if _free() else 0.0)
+		var rate := data.ground_accel
+		if want.length() <= cur.length() - 0.001:
+			rate = data.ground_decel if cur.length() > sober_pace() else data.ground_decel * decel_scale()
 		var h := cur.move_toward(want, rate * delta)
 		_ground_physics(delta, h.x, h.y)
 		return

@@ -42,15 +42,26 @@ extends SceneTree
 ##       safe point at the south lamp, a vault over a CityProps obstacle, a side wall run along a facade. Every
 ##       consequence in a state ≤ sober (ROUTE_EPS): the jump's peak, air ticks and travel; the rope — a hang only where
 ##       sober hangs, on the same anchor, no sooner, its length on every tick from the contact ≥ sober's (the pull no
-##       faster), its shortest ≥ sober's (the target no higher), the body's peak ≤ sober's; the vault and the wall run,
-##       when the state lets them happen — the peak ≤ sober's, on no tick further along than sober plus the state's own
-##       slower stop from walking pace (STOP_CEILING, T5 § 3.3 (б): a landing is such a stop), and for the wall run no
-##       more wall ticks and no more ground covered on them. A move the state takes away (the wall run in «Хміль») is
-##       «none of it»; what the body does instead is the jump station's.
+##       faster), its shortest ≥ sober's (the target no higher), the body's peak ≤ sober's; the vault and the wall run —
+##       the peak ≤ sober's, on no tick further along than sober, and for the wall run no more wall ticks and no more
+##       ground covered on them. W is held through both stations, so no stop falls inside them and no stop ceiling
+##       applies (T5 docs/GDD/2026-10-09-Rope-Pull-And-Jump-Arc-Numbers.md § 3.3 п. 3: «зі стіком, затиснутим за рухом,
+##       — шлях ≤ тверезого»; the ceiling of п. 2 is for a stop from walking pace, B12's subject; T4 audit 2026-10-14
+##       п. 6). A move the state takes away (CityFighter.wall_run_allowed() false: the wall run in «Хміль») is compared
+##       with the same body without that move (T5 docs/GDD/2026-10-08-Substances-And-Nutrition.md § 12.2–12.3): sober
+##       at the same station with Space let go before the wall-run trigger (WALL_PLAIN_RELEASE; the wall runs need the
+##       jump held, CityParkourMotor.gd:153, and nothing else of a plain jump reads it — Fighter.gd:471 feeds only the
+##       rope's reel and CityParkourMotor) — no further, no higher, and the taken move never happens.
+##       OPEN (KNOWN_PARKOUR, T5 § 12.2 and § 12.3 (в) п. 2, on M3): at the wall station the sober side wall run ends
+##       shorter and lower than the sober plain jump from the same point — a question of the parkour, not of a state.
+##       It is pinned per hero at its measured ends and peaks and printed «CITY_SUBSTANCES_OPEN B13 parkour …»; any
+##       change beyond ROUTE_EPS or one tick — the gap wider, narrower or gone — fails, so it has to be looked at.
 ##       B13 runs only with --part=route (its own battery case and frame budget); without it the fixture is as before.
 ## --break=jump|float|pull|target|vault|wallrun (with --part=route) are B13's product mutations, a gain of one of the
 ## route's moves while in a state (tools/world/city_fighter_mutants.gd): U5 the take-off × 1.08, the jump's gravity 15 %
-## lighter, U6 the rope pull × 1.25, the rope's target 1 m shorter, the vault 20 % shorter, the wall run 25 % faster.
+## lighter, U6 the rope pull × 1.25, the rope's target 1 m shorter, the vault 20 % shorter, the wall run 25 % faster;
+## settle — CityFighter._walk_physics as it was before T5 § 12.3 (б) (the state's braking in a landing's land_frames
+## ticks even with the stick holding walking pace: «Хміль» +0.037 / +0.041 m on the vault and at the wall).
 ## Sentinel: CITY_SUBSTANCES_COMPLETE checks=N failures=M mutation=<m>; failures print "CITY_SUBSTANCES: ...".
 const FULL := 10000
 const DT := 1.0 / 60.0
@@ -75,7 +86,7 @@ const ROUTE_EPS := 0.001   # metres: the world's physics noise between two ident
 const STOP_CEILING := {"tipsy": {"choko": 0.314, "skea": 0.343}, "haze": {"choko": 0.209, "skea": 0.229}, "winded": {"choko": 0.0, "skea": 0.0}}
 const STOP_EPS := 0.001
 ## --break=carry|accel|hang|dodges run the hero on tools/world/city_fighter_mutants.gd (CityWorld.fighter_script).
-const FIGHTER_MUTATIONS: Array[String] = ["carry", "accel", "hang", "dodges", "jump", "float", "pull", "target", "vault", "wallrun"]
+const FIGHTER_MUTATIONS: Array[String] = ["carry", "accel", "hang", "dodges", "jump", "float", "pull", "target", "vault", "wallrun", "settle"]
 ## B13 stations: the standing jump on the market street (jump_arc_check «stand»), the south lamp from the safe point
 ## (rope_pull_check's standing start), the first CityProps obstacle from its run side (city_tidy_check V), and a side
 ## wall run 0.6 m off the long facade whose face is at z 32.0 (normal −z, unbroken for x 0…28 at 1.2 m — rays of
@@ -88,6 +99,17 @@ const ROPE_TICKS := 120    # after the contact: the pull, then the swing
 const VAULT_TICKS := 90    # from W down: the run-up, the vault and the run beyond
 const WALL_TICKS := 80     # W held throughout (no stop inside the window), Space from tick 12 to 70
 const HANG_PHASE := 3      # GrappleHook.Phase.HANG
+## The wall station without the wall run (see the header): Space from tick 12 to this tick, so it is let go long before
+## the side run's trigger (the rise slowed to ≤ 2.0 m/s, ≈ 23 / 25 ticks after the take-off — T5 § 12.2).
+const WALL_PLAIN_RELEASE := 18
+## B13 OPEN (see the header): hero → the sober wall station measured on 2026-10-14 (debt-c logs), with the wall run and
+## without it: move ticks, the end and the peak (m, along the run and above the start), and the first tick the plain
+## jump is further along. The same while the ticks match (the first ± 1) and every length is within ROUTE_EPS: B13 is
+## deterministic (two runs give identical lines), and the smallest gap here, 0.053 m, is 53 × ROUTE_EPS.
+const KNOWN_PARKOUR: Dictionary = {
+	"choko": {"run_moves": 21, "run_end": 6.4112, "run_peak": 2.3768, "plain_end": 7.1036, "plain_peak": 2.4301, "first": 35},
+	"skea": {"run_moves": 33, "run_end": 6.5203, "run_peak": 2.7501, "plain_end": 7.8823, "plain_peak": 2.8036, "first": 37},
+}
 var checks: int = 0
 var failures: int = 0
 var mutation: String = "none"
@@ -1046,8 +1068,9 @@ func _b12() -> void:
 
 
 ## B13 (plan 2026-10-14 step 6; T4 audit 2026-10-09 п. 3, proposal 4): the state-blind route. The same four stations and
-## keys sober and in each state; every consequence in the state ≤ sober. A move the state takes away (the wall run in
-## «Хміль») is «no more of it» — its per-tick comparison is skipped, and what the body does instead is the jump station's.
+## keys sober and in each state; every consequence in the state ≤ sober, with no ceiling (W held). A move the state takes
+## away is compared with the same body without it (sober, Space let go before the trigger; T5 § 12.2–12.3); the sober
+## wall run against the sober plain jump is the pinned OPEN of KNOWN_PARKOUR (T5 § 12.3 (в) п. 2).
 func _b13() -> void:
 	var hero: String = player.data.id
 	npc.process_mode = Node.PROCESS_MODE_DISABLED   # no resident walks into a station
@@ -1055,8 +1078,11 @@ func _b13() -> void:
 	_check(not obstacles.is_empty(), "B13 %s: CityProps lists its vault obstacles" % hero)
 	var obstacle: Dictionary = obstacles[0] if not obstacles.is_empty() else {}
 	var sober: Dictionary = await _route_stations("", obstacle)
+	var plain: Dictionary = await _station_wall("", WALL_PLAIN_RELEASE)
 	_check(int(sober.jump.air) > 0 and bool(sober.rope.hung) and int(sober.vault.moves) > 0 and int(sober.wall.moves) > 0,
 		"B13 %s sober: every move of the route happens — %d air ticks, a hang %s, %d vault ticks over %s, %d wall-run ticks" % [hero, sober.jump.air, sober.rope.hung, sober.vault.moves, obstacle.get("id", "?"), sober.wall.moves])
+	_check(int(plain.moves) == 0 and bool(sober.wall.allowed), "B13 %s sober, Space let go on tick %d: no wall run (%d ticks) — the same body without the move (the wall run allowed sober: %s)" % [hero, WALL_PLAIN_RELEASE, plain.moves, sober.wall.allowed])
+	_parkour_open(hero, sober.wall, plain)
 	for id: String in ["haze", "tipsy", "winded"]:
 		var mine: Dictionary = await _route_stations(id, obstacle)
 		var tag: String = "B13 %s %s" % [hero, id]
@@ -1073,21 +1099,48 @@ func _b13() -> void:
 				break
 		var rope_ok: bool = not bool(r.hung) or (bool(sr.hung) and Vector3(r.anchor).is_equal_approx(Vector3(sr.anchor)) and int(r.contact) >= int(sr.contact) and below < 0 and float(r.shortest) >= float(sr.shortest) - ROUTE_EPS and float(r.peak) <= float(sr.peak) + ROUTE_EPS)
 		_check(rope_ok, "%s, the rope: a hang %s (sober %s) on %s (sober %s), contact +%d ≥ +%d, never shorter than sober's (first tick below: %d), shortest %.3f ≥ %.3f m, body peak %.3f ≤ %.3f m" % [tag, r.hung, sr.hung, r.anchor, sr.anchor, r.contact, sr.contact, below, r.shortest, sr.shortest, r.peak, sr.peak])
-		var allowance: float = float(STOP_CEILING[id][hero])
+		var taken: bool = not bool(mine.wall.allowed)
 		for station: String in ["vault", "wall"]:
 			var a: Dictionary = mine[station]
-			var b: Dictionary = sober[station]
-			var further: int = -1
-			if int(a.moves) > 0:
-				for k: int in mini((a.along as Array).size(), (b.along as Array).size()):
-					if float(a.along[k]) > float(b.along[k]) + allowance + ROUTE_EPS:
-						further = k
-						break
-			var moves_ok: bool = int(a.moves) == 0 or (_max_of(a.heights) <= _max_of(b.heights) + ROUTE_EPS and further < 0 and (station == "vault" or (int(a.moves) <= int(b.moves) and float(a.on_move) <= float(b.on_move) + ROUTE_EPS)))
-			_check(moves_ok,
-				"%s, the %s: %d move ticks, sober %d (wall: ≤); %.3f m along on them, sober %.3f (wall: ≤); peak %.3f ≤ %.3f m, on no tick further along than sober + %.3f m (first: %d); the end %.3f m along (sober %.3f)" % [tag, station, a.moves, b.moves, a.on_move, b.on_move, _max_of(a.heights), _max_of(b.heights), allowance, further, (a.along as Array).back(), (b.along as Array).back()])
+			# W held through the station: no stop inside it, so no ceiling (T5 § 3.3 п. 3). The wall run the state takes
+			# away is compared with the sober body without it (T5 § 12.2–12.3), and it must not happen at all.
+			var b: Dictionary = plain if station == "wall" and taken else sober[station]
+			var against: String = "sober without the wall run" if station == "wall" and taken else "sober"
+			var further: int = _first_further(a, b)
+			var moves_ok: bool = _max_of(a.heights) <= _max_of(b.heights) + ROUTE_EPS and further < 0 and (station == "vault" or (int(a.moves) <= int(b.moves) and float(a.on_move) <= float(b.on_move) + ROUTE_EPS and (not taken or int(a.moves) == 0)))
+			_check(moves_ok, "%s, the %s against %s: %d move ticks, %d (wall: ≤%s); %.3f m along on them, %.3f (wall: ≤); peak %.4f ≤ %.4f m, on no tick further along (first: %d); the end %.4f m along (%.4f)" % [tag, station, against, a.moves, b.moves, ", and none: the state takes it away" if taken and station == "wall" else "", a.on_move, b.on_move, _max_of(a.heights), _max_of(b.heights), further, (a.along as Array).back(), (b.along as Array).back()])
 		print("CITY_SUBSTANCES_INFO B13 %s %s: jump peak %.5f/%.5f air %d/%d; rope hung %s contact %d/%d shortest %.5f/%.5f peak %.5f/%.5f; vault %d/%d ticks end %.3f/%.3f; wall %d/%d ticks end %.3f/%.3f up %.3f/%.3f (state/sober)" % [hero, id, j.peak, sj.peak, j.air, sj.air, r.hung, r.contact, sr.contact, r.shortest, sr.shortest, r.peak, sr.peak, mine.vault.moves, sober.vault.moves, (mine.vault.along as Array).back(), (sober.vault.along as Array).back(), mine.wall.moves, sober.wall.moves, (mine.wall.along as Array).back(), (sober.wall.along as Array).back(), _max_of(mine.wall.heights), _max_of(sober.wall.heights)])
+		print("CITY_SUBSTANCES_INFO B13 %s %s 4dp: vault end %.4f / sober %.4f, peak %.4f / %.4f; wall (%s) end %.4f / %.4f, peak %.4f / %.4f" % [hero, id, (mine.vault.along as Array).back(), (sober.vault.along as Array).back(), _max_of(mine.vault.heights), _max_of(sober.vault.heights), "taken: against sober without it" if taken else "against the sober wall run", (mine.wall.along as Array).back(), ((plain if taken else sober.wall).along as Array).back(), _max_of(mine.wall.heights), _max_of((plain if taken else sober.wall).heights)])
 	npc.process_mode = Node.PROCESS_MODE_INHERIT
+
+
+## The first tick on which `a` is further along than `b` (beyond ROUTE_EPS), −1 when never.
+func _first_further(a: Dictionary, b: Dictionary) -> int:
+	for k: int in mini((a.along as Array).size(), (b.along as Array).size()):
+		if float(a.along[k]) > float(b.along[k]) + ROUTE_EPS:
+			return k
+	return -1
+
+
+## KNOWN_PARKOUR (T5 § 12.2, § 12.3 (в) п. 2): the sober side wall run against the sober plain jump at the same station.
+## The plain jump must still be further or higher (else the OPEN is gone), and every measured value as pinned.
+func _parkour_open(hero: String, run: Dictionary, plain: Dictionary) -> void:
+	var pin: Dictionary = KNOWN_PARKOUR.get(hero, {})
+	var first: int = _first_further(plain, run)
+	var gap: bool = first >= 0 or _max_of(plain.heights) > _max_of(run.heights) + ROUTE_EPS
+	var measured: String = "the run %d ticks, end %.4f, peak %.4f; the plain jump end %.4f, peak %.4f (+%.4f m, +%.4f m), further from tick %d" % [run.moves, (run.along as Array).back(), _max_of(run.heights), (plain.along as Array).back(), _max_of(plain.heights), float((plain.along as Array).back()) - float((run.along as Array).back()), _max_of(plain.heights) - _max_of(run.heights), first]
+	if pin.is_empty():
+		_check(not gap, "B13 %s sober: the wall run ends shorter or lower than the plain jump, and no OPEN is pinned for it — %s" % [hero, measured])
+		return
+	var pinned: String = "pinned: the run %d ticks, end %.4f, peak %.4f; the plain jump end %.4f, peak %.4f, further from tick %d" % [pin.run_moves, pin.run_end, pin.run_peak, pin.plain_end, pin.plain_peak, pin.first]
+	if not gap:
+		_check(false, "B13 %s sober: the OPEN parkour gap (T5 § 12.3 (в) п. 2) no longer happens — %s; %s: look at it and unpin it" % [hero, measured, pinned])
+		return
+	var same: bool = int(run.moves) == int(pin.run_moves) and absi(first - int(pin.first)) <= 1 \
+		and absf(float((run.along as Array).back()) - float(pin.run_end)) <= ROUTE_EPS and absf(_max_of(run.heights) - float(pin.run_peak)) <= ROUTE_EPS \
+		and absf(float((plain.along as Array).back()) - float(pin.plain_end)) <= ROUTE_EPS and absf(_max_of(plain.heights) - float(pin.plain_peak)) <= ROUTE_EPS
+	_check(same, "B13 %s sober: the OPEN parkour gap changed — %s; %s" % [hero, measured, pinned])
+	print("CITY_SUBSTANCES_OPEN B13 parkour %s: %s — the sober side wall run is slower and lower than the plain jump from the same point; T5 on M3 (Substances § 12.3 (в) п. 2)" % [hero, measured])
 
 
 ## The four B13 stations for one state ("" = sober).
@@ -1237,13 +1290,15 @@ func _station_vault(id: String, obstacle: Dictionary) -> Dictionary:
 ## A side wall run along the facade (W held throughout, so no stop and its braking — B12's subject — falls inside; Space
 ## from tick 12 to 70): the wall-run ticks, the distance covered on them, and on each tick the horizontal distance from
 ## the start and the height above it.
-func _station_wall(id: String) -> Dictionary:
+## `space_until` < 70 lets Space go earlier (the wall station without the wall run); `allowed` is the body's own answer
+## (CityFighter.wall_run_allowed) with the state on.
+func _station_wall(id: String, space_until: int = 70) -> Dictionary:
 	await _station(WALL_AT, Vector3.RIGHT, Vector3.RIGHT, id)
 	var start: Vector3 = player.global_position
-	var out: Dictionary = {"moves": 0, "on_move": 0.0, "along": [], "heights": []}
+	var out: Dictionary = {"moves": 0, "on_move": 0.0, "along": [], "heights": [], "allowed": bool(player.wall_run_allowed())}
 	for tick: int in WALL_TICKS:
 		_hold_key(KEY_W, true)
-		_hold_key(KEY_SPACE, tick >= 12 and tick < 70)
+		_hold_key(KEY_SPACE, tick >= 12 and tick < space_until)
 		var before: Vector3 = player.global_position
 		await _ticks(1)
 		if String(player.parkour.phase) in ["wall_side", "wall_run"]:

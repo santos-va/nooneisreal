@@ -359,6 +359,23 @@ for mutation in ('pane_strut', 'pane_wire', 'float_barrel', 'float_loaf', 'sink_
     cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
                   rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
+# Guard pins after the T4 audit 2026-10-14 (docs/Fix/2026-10-14-Guard-Pins-After-Audit-Fix.md). B13: T5 Substances
+# § 12.3 (б) rolled back — the state's braking in a landing's settle ticks with the stick held — must go red. The OPEN
+# `air` item at anchor 5, pinned to its measured air and its stall's bodies: T4's wall 0.2 m beyond the vertical (air
+# stays in the slack, a foreign body), T4's wall 0.3 m on the approach side, the stall's own counter grown toward the
+# vertical (only the air floor sees it) must go red in `air`; T4's box under the vertical (the OPEN gone) in `open`.
+cases.append(('city-substances-negative-settle', 'tools/world/city_substances_check.gd',
+              r'CITY_SUBSTANCES_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation=settle',
+              ['--', '--part=route', '--break=settle'], 1))
+for mutation, family in (('air5_behind', 'air'), ('air5_front', 'air'), ('air5_counter', 'air'), ('air5_box', 'open')):
+    cases.append(('rope-pull-negative-' + mutation, 'tools/grapple/rope_pull_check.gd',
+                  rf'ROPE_PULL_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z,]*\b{family}\b[a-z,]*',
+                  ['--', '--hero=choko', '--break=' + mutation], 1))
+# «Chosen — not cut», the OPEN pinned to its blocker (T4 audit 2026-10-14 proposal 7): the market's engine-named solids
+# renamed — the same body at the same point under another name — must go red in `cut`.
+cases.append(('rope-choice-negative-blocker_name', 'tools/grapple/rope_choice_check.gd',
+              r'ROPE_CHOICE_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation=blocker_name part=1/5 anchors=[0-9]+/[0-9]+ presses=[0-9]+ hangs=[0-9]+ cut_first=[0-9]+ open=[0-9]+ rewinds=[0-9]+ red=[a-z,]*\bcut\b[a-z,]*',
+              ['--', '--hero=choko', '--part=1/5', '--break=blocker_name'], 1))
 @contextmanager
 def isolated_profile():
     # Linux has an OS-supported data root override. macOS does not: use Godot's

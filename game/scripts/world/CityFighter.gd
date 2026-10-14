@@ -26,6 +26,9 @@ var substances: CitySubstances = null
 const ParkourMotor = preload("res://scripts/world/CityParkourMotor.gd")
 @export var parkour_profile: Resource = preload("res://data/world/city_parkour.tres")
 var parkour: ParkourMotor = ParkourMotor.new()
+## The stick's pace during a landing's land_frames tick, −1 outside one (T5 Substances § 12.3 (б); see _walk_physics):
+## what Fighter._tick_ground would ask of _walk_physics without the landing — the wish at this body's walk.
+var _settle_pace: float = -1.0
 
 func _ready() -> void:
 	super._ready()
@@ -115,6 +118,10 @@ func sober_pace() -> float:
 ## Above sober_pace() (what is left of a dash or a landing) the full ground_decel brakes, exactly as without the state,
 ## so neither «Хміль» nor «Заплутаність» carries momentum beyond a sober body (T4 audit 2026-10-08 RED п. 1; plan
 ## 2026-10-09-Rope-Pull-Jump-Arc-Substance-Momentum step 3, variant A).
+## And the state's scale brakes only when the player asks the body to slow down — the stick's own pace below the body's
+## speed (T5 docs/GDD/2026-10-08-Substances-And-Nutrition.md § 12.3 (б); T4 audit 2026-10-14 п. 6). In a landing's
+## land_frames ticks Fighter brakes toward zero whatever the stick says; with the stick still holding at least the
+## body's speed that braking is the full ground_decel, as sober. Let go, and the state's slower stop stays.
 func _walk_physics(delta: float, vx: float, vz: float = 0.0) -> void:
 	if not _hazy() and not _substance():
 		super._walk_physics(delta, vx, vz)
@@ -123,9 +130,21 @@ func _walk_physics(delta: float, vx: float, vz: float = 0.0) -> void:
 	var want := Vector2(vx, vz if _free() else 0.0)
 	var rate := data.ground_accel
 	if want.length() <= cur.length() - 0.001:
-		rate = data.ground_decel if cur.length() > sober_pace() else data.ground_decel * decel_scale()
+		var asked: float = maxf(want.length(), _settle_pace)
+		var player_slows: bool = asked <= cur.length() - 0.001
+		rate = data.ground_decel if cur.length() > sober_pace() or not player_slows else data.ground_decel * decel_scale()
 	var h := cur.move_toward(want, rate * delta)
 	_ground_physics(delta, h.x, h.y)
+
+
+## The ground speed the stick asks for right now: Fighter._walk_free's travel (free move) or its WALK branch (the plane).
+func _stick_pace(intent: Dictionary) -> float:
+	if _free():
+		return _wish.length() * data.walk_speed * speed_mult() * water_walk_mult() if _wish.length() > 0.1 else 0.0
+	if absf(intent.axis) <= 0.1:
+		return 0.0
+	var forward_walk: bool = signf(intent.axis) == float(facing)
+	return absf(intent.axis) * (data.walk_speed if forward_walk else data.back_walk_speed) * speed_mult() * water_walk_mult()
 
 func _start_move(m: MoveData, slot: String = "") -> void:
 	super._start_move(m, slot)
@@ -158,7 +177,10 @@ func _tick_air(delta: float, intent: Dictionary) -> void:
 
 func _tick_ground(delta: float, intent: Dictionary) -> void:
 	if not parkour.tick_ground(self, delta, intent):
+		# T5 Substances § 12.3 (б): a landing's settle ticks tell _walk_physics what the stick asks for.
+		_settle_pace = _stick_pace(intent) if land_lag > 0 and (_hazy() or _substance()) else -1.0
 		super._tick_ground(delta, intent)
+		_settle_pace = -1.0
 
 func set_control(enabled: bool) -> void:
 	super.set_control(enabled)
