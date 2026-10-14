@@ -26,8 +26,8 @@
 | що | місце / команда | вихід |
 |---|---|---|
 | подвійне альбедо в місті | `game/shaders/city_surface.gdshader:119-120` | `shaded = ALBEDO * …`; `DIFFUSE_LIGHT += mix(shaded, ALBEDO, lit) * LIGHT_COLOR * key_gain / PI` — колір поверхні входить у світло |
-| те саме в обвідному світлі | `grep -rln DIFFUSE_LIGHT game` | ще `toon.gdshader:43`, `sword_dissolve.gdshader:91`, `gear_surface.gdshader:60`, `hero_garment.gdshader:73` (`ALBEDO * rim …`) |
-| що Godot 4.7 множить DIFFUSE_LIGHT на ALBEDO | — | **не перевірено**; заземлює T3 (крок 1) |
+| те саме в шейдерах героїв | `grep -rln DIFFUSE_LIGHT game`; T3 | `toon`, `sword_dissolve`, `gear_surface`, `hero_garment`: `ALBEDO` і в основному тоні, і в обвідному світлі. Тобто в квадраті все пряме світло героїв, спорядження й меча ([[2026-10-14-Godot-Diffuse-Albedo]]; спершу T1 записав «лише обвідне», виправлено) |
+| що Godot 4.7 множить DIFFUSE_LIGHT на ALBEDO | T3, крок 1 | **так**, у всіх трьох рендерерах (`scene_forward_clustered.glsl:3048`, `scene_forward_mobile.glsl:2311`, `scene.glsl:2778`). Кадри на Linux робляться в Compatibility з іншим колірним простором, а M3 — це Forward+ на Metal ([[2026-10-14-Godot-Diffuse-Albedo]]) |
 | кран і лебідка в каталозі | `docs/Art/2026-10-08-City-Modern-Realism-Props.md:286-287` | № 10 — паровий поворотний кран: колона, стріла 7 м, противага, гак; тераса NE ≈ (28,5; 4; −14). № 11 — парова лебідка біля крана |
 | інструменти | `ls tools/blender/` | `prop_kit.py`, `steam_truck.py`, `steam_car_tarp.py`; `bpy` у scratchpad `bpyvenv` |
 | бюджет | лог батареї T1 2026-10-14 | `CITY_TIDY_INFO triangles district=108396 mesh_instances=264`; вантажівка — 5646 трикутників (реєстр) |
