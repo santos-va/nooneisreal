@@ -55,7 +55,10 @@ func _run() -> void:
 	await key(KEY_ENTER, viewport)
 	var modal: Control = menu.get("_comfort")
 	check(modal.visible, "keyboard opens modal")
-	# Master is the established initial focus; up reaches the new first option.
+	# Master is the established initial focus; up passes COLOURS (TEST) (plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB
+	# step 8, the row right under GRAPHICS QUALITY) and reaches the quality choice.
+	await key(KEY_UP, viewport)
+	check(modal.colour_choice.has_focus(), "keyboard reaches the colour test row right above MASTER")
 	await key(KEY_UP, viewport)
 	check(modal.quality_choice.has_focus(), "keyboard reaches graphics through focus order")
 	await key(KEY_ENTER, viewport)

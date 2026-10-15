@@ -510,7 +510,11 @@ func _menu_and_panel() -> void:
 	_key(KEY_UP, true)
 	_key(KEY_UP, false)
 	await _frames(2)
-	check(modal.display_choice.has_focus(), "keyboard reaches DISPLAY: ↑↑ from MASTER")
+	# COLOURS (TEST) sits between GRAPHICS QUALITY and MASTER (plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB step 8).
+	_key(KEY_UP, true)
+	_key(KEY_UP, false)
+	await _frames(2)
+	check(modal.display_choice.has_focus(), "keyboard reaches DISPLAY: ↑↑↑ from MASTER")
 	_key(KEY_ENTER, true)
 	_key(KEY_ENTER, false)
 	await _frames(3)

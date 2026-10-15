@@ -32,6 +32,8 @@ var _settle_pace: float = -1.0
 
 func _ready() -> void:
 	super._ready()
+	# The district's invisible edge over its boundary walls (CityLayout.BOUNDARY_VEIL_LAYER) holds only the city body.
+	collision_mask |= CityLayout.BOUNDARY_VEIL_LAYER
 	parkour.profile = parkour_profile
 	grapple.responsive_parkour = true
 	floor_snap_length = 0.3 # PLACEHOLDER: follows the district ramp without snapping a jump.

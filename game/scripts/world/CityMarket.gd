@@ -109,7 +109,10 @@ func _stall_goods(pose: Transform3D, state: String, goods_seed: int) -> void:
 			_crate(_nudged(pose, Vector3(-1.1, 0, -0.45), rng, 0.04, 0.12), Vector3(0.78, 0.72, 0.72))
 			jars = 1
 		"trestle":
-			_trestle_barrel(_nudged(pose, Vector3(0.62, 0, -0.55), rng, 0.03, 0.05))
+			# 0.13 m toward the counter (local z −0.55 → −0.42): at −0.55 the barrel stood 0.62 m off SouthWestRear behind
+			# the west z 25 stall, and a hero who stepped off its back rested on the rim with no key out of it (T6 RED,
+			# docs/Audit/2026-10-15-T6-Geometry-Fix-Acceptance.md § 5, ТЗ «Б»: ≥ 0.75 m to SouthWestRear, ≈ +0.13 m).
+			_trestle_barrel(_nudged(pose, Vector3(0.62, 0, -0.42), rng, 0.03, 0.05))
 			_crate(_nudged(pose, Vector3(-1.14, 0, -0.45), rng, 0.03, 0.10), Vector3(0.78, 0.72, 0.72))
 			jars = 2
 		_:

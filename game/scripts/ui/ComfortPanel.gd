@@ -22,6 +22,13 @@ const DISPLAY_LABELS: Array[String] = ["Fullscreen — whole screen, no borders"
 const QUALITY_LABELS: Array[String] = ["Auto — adapts to your screen", "Low — lighter rendering", "Medium — balanced", "High — full detail"]
 const QUALITY_HELP := "Applies immediately. Text and controls stay sharp."
 const AUTO_LINE_PERIOD := 1.0   # PLACEHOLDER (T8): the AUTO line refreshes at most once a second, only while open
+## Colour test A / B3 (plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB step 8): right under GRAPHICS QUALITY, applied at
+## once and saved by GraphicsSettings like the quality. Order as GraphicsSettings.COLOURS. T2 wording; T8 owns the final
+## labels. RESTORE never resets it.
+var colour_choice: OptionButton
+const COLOUR_TITLE := "COLOURS (TEST)"
+const COLOUR_LABELS: Array[String] = ["A — current", "B3 — palette-true light"]
+const COLOUR_HELP := "A colour test for comparing two looks. Applies immediately; A is the game as it is."
 var _auto_line_age: float = 0.0
 ## ADR-024 п. 7 (T8): blood in lethal fights and the hit flash, stored by ContentSettings. No new input actions.
 var blood_choice: OptionButton
@@ -96,6 +103,17 @@ func _ready() -> void:
 	quality_help = _label(QUALITY_HELP, 24)
 	quality_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	content.add_child(quality_help)
+	content.add_child(_label(COLOUR_TITLE, 32))
+	colour_choice = _choice("ColourTest", COLOUR_LABELS)
+	content.add_child(colour_choice)
+	_focus_order.append(colour_choice)
+	colour_choice.item_selected.connect(func(index: int):
+		if not _syncing and _graphics.call("set_colours", _graphics.COLOURS[index]):
+			_graphics.call("save_colours")
+			_save())
+	var colour_help := _label(COLOUR_HELP, 24)
+	colour_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(colour_help)
 	var labels := {"master": "MASTER", "sfx": "SOUND EFFECTS", "music": "MUSIC", "shake": "CAMERA SHAKE"}
 	for key: String in labels:
 		var row := VBoxContainer.new()
@@ -226,6 +244,7 @@ func _sync_values() -> void:
 		display_choice.select(_graphics.WINDOW_MODES.find(_graphics.call("get_window_mode")))
 	quality_choice.select(_graphics.PROFILES.find(_graphics.call("get_profile")))
 	_refresh_quality_help()
+	colour_choice.select(_graphics.COLOURS.find(_graphics.call("get_colours")))
 	blood_choice.select(_content.BLOOD_MODES.find(_content.call("blood_mode")))
 	hit_flash_choice.select(_content.HIT_FLASH_MODES.find(_content.call("hit_flash")))
 	drugs_choice.select(_content.DRUGS_MODES.find(_content.call("drugs_mode")))
@@ -248,7 +267,7 @@ func _status_text() -> String:
 
 func _choices() -> Array[OptionButton]:
 	var result: Array[OptionButton] = []
-	for choice: OptionButton in [display_choice, quality_choice, hit_flash_choice, blood_choice, drugs_choice]:
+	for choice: OptionButton in [display_choice, quality_choice, colour_choice, hit_flash_choice, blood_choice, drugs_choice]:
 		if choice != null:
 			result.append(choice)
 	return result

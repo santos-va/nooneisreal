@@ -33,7 +33,8 @@ extends SceneTree
 ##                no longer there fails too; and no listed step wedges a hero on its rim (T6 К7-а п. 2): a hero capsule
 ##                standing on the top that walks to a solid rising over it within 0.05–0.75 m of the edge and steps off
 ##                rests on the top (≤ 0.05 m under it) or off the step — never on its rim with the feet in the air
-##                (wedges a T1 decision left open are pinned in STEP_WEDGE_OPEN and must stay as measured);
+##                (wedges a T1 decision left open are pinned in STEP_WEDGE_OPEN — gap, wedged points, depth — and
+##                must stay as measured: never gone, never wider or deeper);
 ##   S          — each steam vent puffs (≤ 0.8 opacity), changes frame under 3 times a second, never jumps in opacity
 ##                by more than 0.1 a frame, stays ≤ 1.0 × 1.5 m and is gone while a hero stands at the vent;
 ##   M          — the steam vehicles (CityProps.VEHICLES, Blender GLBs; docs/Fix/2026-10-09-City-Vehicles-And-Iron-Paint
@@ -95,7 +96,11 @@ const VEHICLE_RUN_BREAKS := ["vehicle_vault"]
 ## same 0.32 m off the shop wall that its flat edge stands on (a round rim); a wall 0.66 m off a free side of the tailor's
 ## cutting table, just under the capsule's width (the band's deep end); a pinned OPEN wedge whose wall's collider is
 ## off (an OPEN that is gone must go red too).
-const STEP_BREAKS := ["step_new", "step_low", "step_moved", "wedge_wall", "wedge_round", "wedge_deep", "wedge_open"]
+## T4 audit 2026-10-15, class 17, the pinned OPEN's other two forms: a wall 0.55 m off the grocer counter's west end,
+## along its whole side (its gap stays, its wedged points grow: wider), and the grocer's side shelf 0.018 m further west
+## (its gap stays within the slack, its points too, the capsule rests deeper: 0.171 m under, pinned 0.147 + 0.02).
+const STEP_BREAKS := ["step_new", "step_low", "step_moved", "wedge_wall", "wedge_round", "wedge_deep", "wedge_open",
+	"wedge_more", "wedge_deeper"]
 ## Machine negatives (MC): the hulls on the cover layer only; a winch surface off its city material; a crane surface
 ## named and painted brass; the winch 5 cm up, the crane 5 cm down; the winch's body hull gone; the crane's mesh 0.3 m off
 ## its hulls; the winch under anchor 24; the crane 1.1 m from anchor 12's vertical; the winch in the east terrace pocket
@@ -147,7 +152,7 @@ const STEP_SKIP_PREFIX := ["ArchitectureSolid", "Anchor", "BridgeParapet", "Nort
 const STEP_PROPS: Dictionary = {
 	"CityMarket@(-8.93, 1.27, 19.09)": "west z 18 stall, goods behind the counter: a stack of two crates",
 	"CityMarket@(-8.98, 0.90, 16.98)": "west z 18 stall, goods behind the counter: a beer barrel",
-	"CityMarket@(-9.06, 0.86, 24.34)": "west z 25 stall: the barrel on its trestles",
+	"CityMarket@(-8.93, 0.86, 24.34)": "west z 25 stall: the barrel on its trestles, 0.13 m toward the counter (T6 RED 2026-10-15)",
 	"CityMarket@(-8.92, 0.72, 26.16)": "west z 25 stall, goods behind the counter: a crate",
 	"CityMarket@(8.98, 0.72, 16.86)": "east z 18 stall, goods behind the counter: a crate",
 	"CityMarket@(8.92, 1.27, 23.90)": "east z 25 stall, goods behind the counter: a stack of two crates",
@@ -155,7 +160,7 @@ const STEP_PROPS: Dictionary = {
 	"CityInteriors@(-26.80, 0.96, 17.60)": "the grocer's counter, indoors",
 	"CityInteriors@(-28.85, 0.80, 12.62)": "the grocer's west display crate inside the shop front",
 	"CityInteriors@(-24.35, 0.80, 12.62)": "the grocer's east display crate inside the shop front",
-	"CityInteriors@(-23.95, 0.90, 15.00)": "the grocer's beer barrel, indoors",
+	"CityInteriors@(-23.95, 0.90, 13.45)": "the grocer's beer barrel, indoors, by the east display crate (T6 2026-10-15 § 4)",
 	"CityInteriors@(-20.20, 0.96, 17.60)": "the tailor's counter, indoors",
 	"CityInteriors@(-17.85, 1.00, 14.95)": "the tailor's cutting table, indoors",
 	"CityInteriors@(-13.60, 0.96, 17.60)": "the workshop's counter, indoors",
@@ -203,19 +208,25 @@ const STEP_NUDGES: Array[Vector3] = [Vector3.ZERO,
 	Vector3(0.12, 0, 0), Vector3(-0.12, 0, 0), Vector3(0, 0, 0.12), Vector3(0, 0, -0.12),
 	Vector3(0.085, 0, 0.085), Vector3(-0.085, 0, 0.085), Vector3(0.085, 0, -0.085), Vector3(-0.085, 0, -0.085)]
 ## Wedges the walk finds beyond the three T6 named (docs/Fix/2026-10-14-T6-Acceptance-Geometry-Fix.md § 5): «<step key>
-## <side>» → the narrowest gap it met on that side (± 2 cm) and why it stays. T6 accepted these steps from their run-ups
-## (K7: no run-up, or the hero on top); the walk reaches the sides no run-up does. Moving them is outside T1's task for
-## this fix (rows 1–5 of the T6 acceptance), so T1 decides; each must still wedge as measured.
+## <side>» → what the walk measured on that side and why it stays: `gap` the narrowest gap it met (± STEP_OPEN_SLACK),
+## `points` how many of the STEP_SAMPLES points wedge (no more may), `depth` how far under the top the worst of them
+## rests (no deeper than + STEP_OPEN_SLACK). T6 accepted these steps from their run-ups (K7: no run-up, or the hero on
+## top); the walk reaches the sides no run-up does. Moving them is outside T1's task for this fix (rows 1–5 of the T6
+## acceptance), so T1 decides; each must still wedge as measured, and no wider or deeper (T4 audit 2026-10-15, class 17:
+## the gap alone let a wall 0.55 m along the grocer's counter take its side from 5 to 9 wedged points unseen). The barrel
+## on trestles' −x side (SouthWestRear 0.62 m behind it, 9 of 9 points 0.18 m under) was T6's RED soft-lock: the barrel
+## moved 0.13 m toward the counter and the side wedges no more (docs/Fix/2026-10-15-Stall-Wedge-Boundary-Fix.md § 1), so
+## it left this list; its rim exit is the city-rim-exit case. Values measured on the tree of that journal (§ 5).
+const STEP_OPEN_SLACK: float = 0.02
 const STEP_WEDGE_OPEN: Dictionary = {
-	"CityMarket@(-9.06, 0.86, 24.34) (-1.00, 0.00, 0.00)": {"gap": 0.624, "why": "west z 25 stall, the barrel on trestles behind the counter: SouthWestRear 0.62 m behind it, 9 of 9 points 0.18 m under the top"},
-	"CityMarket@(-9.06, 0.86, 24.34) (0.00, 0.00, -1.00)": {"gap": 0.410, "why": "the same barrel: the stall's back post 0.54 m off its north end, 1 of 9 points 0.07 m under"},
-	"CityMarket@(-8.92, 0.72, 26.16) (-1.00, 0.00, 0.00)": {"gap": 0.190, "why": "west z 25 stall, the crate behind the counter: SouthWestRear 0.69 m behind it past the stall's post, 2 of 9 points 0.34 m under"},
-	"CityMarket@(8.97, 0.90, 26.04) (1.00, 0.00, 0.00)": {"gap": 0.466, "why": "east z 25 stall, the beer barrel behind the counter: the east facade 0.65 m behind it, 3 of 9 points 0.18 m under"},
-	"CityInteriors@(-26.80, 0.96, 17.60) (-1.00, 0.00, 0.00)": {"gap": 0.544, "why": "the grocer's counter: the end of the side stock shelf 0.54–0.62 m off its west end, 5 of 9 points 0.15 m under"},
-	"CityInteriors@(-20.20, 0.96, 17.60) (-1.00, 0.00, 0.00)": {"gap": 0.544, "why": "the tailor's counter: the same side shelf, the same 0.15 m"},
-	"CityInteriors@(-13.60, 0.96, 17.60) (-1.00, 0.00, 0.00)": {"gap": 0.544, "why": "the workshop's counter: the same side shelf, the same 0.15 m"},
-	"CityInteriors@(-17.85, 1.00, 14.95) (0.00, 0.00, -1.00)": {"gap": 0.680, "why": "the tailor's cutting table: the dress form's torso 0.68 m off its north end, 2 of 9 points 0.28 m under"},
-	"CityInteriors@(-15.60, 0.62, 13.15) (-1.00, 0.00, 0.00)": {"gap": 0.648, "why": "the tailor's waiting stool: the shop wall 0.65–0.75 m west of it, 7 of 9 points 0.30 m under; the stool's rim is T1's «капсула на ободі», hero movement after M3 with T5's numbers"},
+	"CityMarket@(-8.93, 0.86, 24.34) (0.00, 0.00, -1.00)": {"gap": 0.520, "points": 1, "depth": 0.061, "why": "west z 25 stall, the barrel on trestles behind the counter: the stall's back post off its north end (0.410 m, 0.070 m under before the barrel moved 0.13 m toward the counter, docs/Fix/2026-10-15-Stall-Wedge-Boundary-Fix.md § 1; T6 found the hero on the floor from all three points, as is)"},
+	"CityMarket@(-8.92, 0.72, 26.16) (-1.00, 0.00, 0.00)": {"gap": 0.190, "points": 2, "depth": 0.339, "why": "west z 25 stall, the crate behind the counter: SouthWestRear 0.69 m behind it past the stall's post"},
+	"CityMarket@(8.97, 0.90, 26.04) (1.00, 0.00, 0.00)": {"gap": 0.466, "points": 3, "depth": 0.181, "why": "east z 25 stall, the beer barrel behind the counter: the east facade 0.65 m behind it"},
+	"CityInteriors@(-26.80, 0.96, 17.60) (-1.00, 0.00, 0.00)": {"gap": 0.544, "points": 5, "depth": 0.147, "why": "the grocer's counter: the end of the side stock shelf 0.54–0.62 m off its west end"},
+	"CityInteriors@(-20.20, 0.96, 17.60) (-1.00, 0.00, 0.00)": {"gap": 0.544, "points": 5, "depth": 0.147, "why": "the tailor's counter: the same side shelf"},
+	"CityInteriors@(-13.60, 0.96, 17.60) (-1.00, 0.00, 0.00)": {"gap": 0.544, "points": 5, "depth": 0.147, "why": "the workshop's counter: the same side shelf"},
+	"CityInteriors@(-17.85, 1.00, 14.95) (0.00, 0.00, -1.00)": {"gap": 0.682, "points": 2, "depth": 0.289, "why": "the tailor's cutting table: the dress form's torso 0.68 m off its north end (0.680 m, 0.281 m under with the old round torso; its collider now falls west to the wall, docs/Fix/2026-10-15-Stall-Wedge-Boundary-Fix.md § 3)"},
+	"CityInteriors@(-15.60, 0.62, 13.15) (-1.00, 0.00, 0.00)": {"gap": 0.648, "points": 7, "depth": 0.301, "why": "the tailor's waiting stool: the shop wall 0.65–0.75 m west of it; the stool's rim is T1's «капсула на ободі», hero movement after M3 with T5's numbers"},
 }
 const VEHICLE_LAYER: int = 1 | 8   # CityMarket._solid: walking and the camera, cover
 const SWING_CLEAR: float = 0.3
@@ -1554,8 +1565,11 @@ func _v_wedges() -> void:
 			var wedged: bool = int(counts.wedge) > 0
 			if STEP_WEDGE_OPEN.has(tag):
 				seen_open[tag] = true
-				var pinned: float = float(STEP_WEDGE_OPEN[tag].gap)
-				_check(wedged and absf(narrowest - pinned) <= 0.02, "V+ wedge OPEN %s no longer wedges as pinned (%d of %d points, gap %.3f, pinned %.3f): fix STEP_WEDGE_OPEN" % [label, counts.wedge, STEP_SAMPLES, narrowest, pinned])
+				var pin: Dictionary = STEP_WEDGE_OPEN[tag]
+				var pinned: float = float(pin.gap)
+				_check(wedged and absf(narrowest - pinned) <= STEP_OPEN_SLACK, "V+ wedge OPEN %s no longer wedges as pinned (%d of %d points, gap %.3f, pinned %.3f): fix STEP_WEDGE_OPEN" % [label, counts.wedge, STEP_SAMPLES, narrowest, pinned])
+				var deepest: float = float(worst.get("depth", 0.0))
+				_check(int(counts.wedge) <= int(pin.points) and deepest <= float(pin.depth) + STEP_OPEN_SLACK, "V+ wedge OPEN %s wedges wider or deeper than pinned (%d of %d points, pinned %d; %.3f m under, pinned %.3f + %.2f)" % [label, counts.wedge, STEP_SAMPLES, int(pin.points), deepest, float(pin.depth), STEP_OPEN_SLACK])
 			else:
 				wedges += int(wedged)
 				_check(not wedged, "V+ wedge %s: a hero pressed to %s %.3f m off the edge rests %.3f m under the top on its rim (%d of %d points; T6 К7-а п. 2: ≤ %.2f m or off the step)" % [label, worst.get("wall", "?"), worst.get("gap", 0.0), worst.get("depth", 0.0), counts.wedge, STEP_SAMPLES, STEP_RIM])
@@ -2592,6 +2606,27 @@ func _break_scene() -> void:
 			wall.add_child(wall_shape)
 			props_node.add_child(wall)
 			wall.global_position = Vector3(-11.45, 1.1, 8.475 + 0.55 + 0.1) if mutation == "wedge_wall" else Vector3(-18.45 - 0.66 - 0.1, 1.1, 14.95)
+		"wedge_deeper":
+			# V+ wedge OPEN: the grocer's side stock shelf 0.018 m further from its counter (gap 0.544 → 0.562, in the slack).
+			(district.get_node("CityInteriors/StockShelf") as Node3D).global_position.x -= 0.018
+		"wedge_more":
+			# V+ wedge OPEN (T4 audit 2026-10-15, class 17, its mutant): a wall 0.55 m off the grocer counter's west end,
+			# along the whole side and 0.2 m past it — the shelf's narrowest gap 0.544 stays within its slack.
+			for c: Dictionary in _step_candidates():
+				if c.key == "CityInteriors@(-26.80, 0.96, 17.60)":
+					var top_shape: CollisionShape3D = _top_shape(c.body)
+					var tb: AABB = top_shape.global_transform * top_shape.shape.get_debug_mesh().get_aabb()
+					var more := StaticBody3D.new()
+					more.name = "NegativeWall"
+					more.collision_layer = 1 | 8
+					more.collision_mask = 0
+					var more_shape := CollisionShape3D.new()
+					var more_box := BoxShape3D.new()
+					more_box.size = Vector3(0.2, 2.2, tb.size.z + 0.4)
+					more_shape.shape = more_box
+					more.add_child(more_shape)
+					props_node.add_child(more)
+					more.global_position = Vector3(tb.position.x - 0.55 - 0.1, tb.end.y - float(c.height) + 1.1, tb.get_center().z)
 		"wedge_round":
 			# V+ wedge: the grocer's west display crate keeps its place, depth and top but has a round top (r 0.425): the
 			# shop wall, 0.32 m off its flat edge, is now 0.52 m off the rim.

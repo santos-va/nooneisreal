@@ -3,6 +3,8 @@ extends Node
 ## Owns the 3D quality profile (AUTO by default) and the window mode (DISPLAY row and the fullscreen key):
 ## docs/GDD/06-UI-UX.md § DISPLAY, AUTO-якість і клавіша повного екрана. Presentation only: nothing here changes
 ## gameplay, the input map or the simulation clock.
+## Also the colour test switch A / B3 (COLOURS (TEST) row; plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB step 8, V1):
+## one global shader uniform read by the five shaders that light the world and the heroes. A is the default.
 signal changed(profile: String)
 signal display_changed(mode: String)
 
@@ -14,6 +16,13 @@ const DEFAULT_PROFILE := "auto"   # only while nothing is saved: a saved low/med
 const SAFE_PROFILE := "high"      # unreadable file or unknown saved profile: the pre-AUTO session default
 const WINDOW_MODES: Array[String] = ["fullscreen", "windowed"]
 const DEFAULT_WINDOW_MODE := "fullscreen"
+## Colour test: "a" = the game as it is, "b3" = docs/Fix/2026-10-15-Albedo-B3-Fix.md (PLACEHOLDER numbers live in the
+## shaders). Saved in the graphics section next to the profile; an unknown saved value plays A and is never written over.
+const COLOURS: Array[String] = ["a", "b3"]
+const DEFAULT_COLOURS := "a"
+const COLOURS_KEY := "colours"
+## project.godot [shader_globals]; bool, false = A.
+const COLOUR_GLOBAL := &"colour_b3"
 ## T2 PLACEHOLDER: a mode we just requested may still be animating (macOS opens a separate Space); a mismatch seen
 ## inside this window is our own transition, not the player's, and is re-requested once instead of being saved.
 const WINDOW_GUARD_MS := 5000
@@ -24,8 +33,12 @@ var mobile_override: int = -1     # tests: 0 desktop, 1 phone; -1 reads the OS f
 var scripted_override: int = -1   # tests: 0/1 forces the scripted-run rule; -1 detects headless or --script
 var window_requests: int = 0      # DisplayServer window requests (headless has no real window to observe)
 var save_error: Error = OK        # the last graphics.cfg write attempt, shown by the panel status
+## The colour value whose uniform was last handed to RenderingServer ("" before the first). The engine reads global
+## shader uniforms back only in the editor, and headless keeps none, so this is what a scripted run can observe.
+var colours_applied: String = ""
 var _profile: String = DEFAULT_PROFILE
 var _window_mode: String = DEFAULT_WINDOW_MODE
+var _colours: String = DEFAULT_COLOURS
 var _observed_mode: String = ""
 var _guard_until_ms: int = 0
 var _reapplied: bool = false
@@ -150,6 +163,27 @@ func _process(_delta: float) -> void:
 	var playing := not get_tree().paused and not InputRouter.ui_suppressed()
 	if auto.feed(frame_s, playing):
 		_apply_auto_scale()
+
+
+# --- colour test switch ----------------------------------------------------------------------------------------
+
+func get_colours() -> String:
+	return _colours
+
+
+## Applies at once, in the same frame, for every material of the five shaders (camera copies included): the value is
+## a global uniform, not a material parameter. Saving is the caller's step (save_colours), as with the profile.
+func set_colours(value: Variant) -> bool:
+	if not value is String or not COLOURS.has(value):
+		return false
+	_colours = value
+	_apply_colours()
+	return true
+
+
+func _apply_colours() -> void:
+	RenderingServer.global_shader_parameter_set(COLOUR_GLOBAL, _colours == "b3")
+	colours_applied = _colours
 
 
 # --- window mode -----------------------------------------------------------------------------------------------
@@ -314,6 +348,7 @@ func load_settings(path: String = "") -> Error:
 	_load_error = _config.load(storage_path)
 	var selected: String = DEFAULT_PROFILE
 	var mode: String = DEFAULT_WINDOW_MODE
+	var colours: String = DEFAULT_COLOURS
 	if _load_error == ERR_FILE_NOT_FOUND:
 		_load_error = OK
 	elif _load_error == OK:
@@ -328,10 +363,16 @@ func load_settings(path: String = "") -> Error:
 			mode = raw_mode
 		else:
 			_load_error = ERR_INVALID_DATA
+		var raw_colours: Variant = _config.get_value(SECTION, COLOURS_KEY, DEFAULT_COLOURS)
+		if raw_colours is String and COLOURS.has(raw_colours):
+			colours = raw_colours
+		else:
+			_load_error = ERR_INVALID_DATA
 	else:
 		selected = SAFE_PROFILE
 	_window_mode = mode
 	_observed_mode = mode
+	set_colours(colours)
 	set_profile(selected)
 	return _load_error
 
@@ -343,6 +384,11 @@ func save_settings() -> Error:
 
 func save_display() -> Error:
 	return _save_value(DISPLAY_SECTION, "window_mode", _window_mode)
+
+
+func save_colours() -> Error:
+	save_error = _save_value(SECTION, COLOURS_KEY, _colours)
+	return save_error
 
 
 ## Only the changed key is written; every other section and key survives. Invalid/future values and malformed

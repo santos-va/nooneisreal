@@ -58,6 +58,10 @@ cases = [
     ('graphics-ui', 'tools/ui/graphics_ui_check.gd', r'GRAPHICS_UI_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('graphics-independent', 'tools/settings/graphics_independent_check.gd', r'T4_GRAPHICS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
     ('display-auto', 'tools/settings/display_auto_check.gd', r'DISPLAY_AUTO_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
+    # Colour test switch A / B3 (plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB step 8): A by default, saved next to the
+    # profile, unknown or damaged → A with the bytes kept, the COLOURS (TEST) row. Headless renders nothing: the run must
+    # say the frame check of the five shaders was not measured (docs/Fix/2026-10-15-Colour-Switch-Fix.md).
+    ('colour-switch', 'tools/settings/colour_switch_check.gd', r'COLOUR_SWITCH_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none red=none rs=not-measured-headless', [], 0),
     ('comfort-input', 'tools/input/comfort_input_check.gd', r'COMFORT_INPUT_CHECK checks=[1-9][0-9]* failures=0', [], 0),
     ('free-movement', 'tools/input/free_movement_check.gd', r'FREE_MOVEMENT_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
     ('limb-input', 'tools/input/limb_input_check.gd', r'LIMB_INPUT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
@@ -407,6 +411,44 @@ for mutation in ('machine_seen_hook', 'machine_seen_street', 'machine_seen_float
     cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
                   rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
+# Colour test switch A / B3 (docs/Fix/2026-10-15-Colour-Switch-Fix.md): a fresh profile on B3, a saved key forgotten at
+# load, any unknown value played as B3, a damaged file saved over, a row that never switches, a row that never saves,
+# project.godot shipping B3, a shader without its branch and a row that never reaches RenderingServer must each go red
+# in their own family.
+for mutation in ('default', 'persist', 'unknown', 'cfg', 'row', 'row_save', 'global', 'shader', 'apply'):
+    cases.append(('colour-switch-negative-' + mutation, 'tools/settings/colour_switch_check.gd',
+                  rf'COLOUR_SWITCH_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z_,]*\b{mutation}\b[a-z_,]* rs=not-measured-headless',
+                  ['--', '--break=' + mutation], 1))
+# T4 audit 2026-10-15, class 17 (docs/Fix/2026-10-15-Stall-Wedge-Boundary-Fix.md § 5): a pinned OPEN wedge that grows —
+# a wall 0.55 m along the grocer counter's west end (wider: 9 of 9 points, pinned 5) or its side shelf 0.018 m further off
+# (deeper: 0.171 m under, pinned 0.147 + 0.02) — must go red.
+for mutation in ('wedge_more', 'wedge_deeper'):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# Plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB, T1's decision after T6 (2026-10-15; docs/Fix/2026-10-15-Stall-Wedge-
+# Boundary-Fix.md). The district's invisible edge: no running jump crosses any of the four boundaries at any height, the
+# edge only meets the hero's body. Negatives: the north veil gone, every veil at 8 m, the veils on the world layer too
+# (camera, rope, parkour), a veil drawn, the hero's mask without the veil.
+cases.append(('city-bounds', 'tools/world/city_bounds_check.gd', r'CITY_BOUNDS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0))
+for mutation in ('gap', 'low', 'world', 'mesh', 'hero'):
+    cases.append(('city-bounds-negative-' + mutation, 'tools/world/city_bounds_check.gd',
+                  rf'CITY_BOUNDS_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# The barrel on trestles (T6 RED): off its back the hero ends on the floor or its top, or S/A/D take him there. Negatives:
+# the barrel back at its old place (0.62 m off SouthWestRear), a wall brought to 0.62 m off it, the barrel 0.68 m off it.
+cases.append(('city-rim-exit', 'tools/world/city_rim_exit_check.gd', r'CITY_RIM_EXIT_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0))
+for mutation in ('old', 'wall', 'near'):
+    cases.append(('city-rim-exit-negative-' + mutation, 'tools/world/city_rim_exit_check.gd',
+                  rf'CITY_RIM_EXIT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# The tailor's dress form (T6 YELLOW) holds no hero; the cutting table's rim keeps A and D. Negatives: the old flat
+# cylinder, a top narrowed to the neck, a top falling from the form's own east edge.
+cases.append(('city-perch', 'tools/world/city_perch_check.gd', r'CITY_PERCH_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0))
+for mutation in ('flat', 'cone', 'edge'):
+    cases.append(('city-perch-negative-' + mutation, 'tools/world/city_perch_check.gd',
+                  rf'CITY_PERCH_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
 @contextmanager
 def isolated_profile():
     # Linux has an OS-supported data root override. macOS does not: use Godot's
@@ -495,6 +537,10 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('city-substances-negative-', 'ERROR: CITY_SUBSTANCES: '),
                           ('glyph-coverage-negative-', 'ERROR: GLYPH_COVERAGE: '),
                           ('item-icons-negative-', 'ERROR: ITEM_ICONS: '),
+                          ('colour-switch-negative-', 'ERROR: COLOUR_SWITCH: '),
+                          ('city-bounds-negative-', 'ERROR: CITY_BOUNDS: '),
+                          ('city-rim-exit-negative-', 'ERROR: CITY_RIM_EXIT: '),
+                          ('city-perch-negative-', 'ERROR: CITY_PERCH: '),
                           ('city-tidy-negative-', 'ERROR: CITY_TIDY: ')):
         if name.startswith(scope):
             assertion_prefix = prefix

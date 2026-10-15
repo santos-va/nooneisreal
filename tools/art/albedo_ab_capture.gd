@@ -47,6 +47,28 @@ extends SceneTree
 ## Integrity (each station): frames B1 and B3 must differ from A and from each other, frame A2 must equal A byte for
 ## byte; else rc 1.
 ## In "close" mode the world's Label3D nodes outside the hero (resident chatter) are hidden for the shot and restored.
+##
+## --switch: the real game with the colour test switch (plan step 8, docs/Fix/2026-10-15-Colour-Switch-Fix.md), no text
+## swap at all — the shaders are the product's own, the value goes through GraphicsSettings.set_colours() (the global
+## uniform colour_b3). Per station, scene paused as above:
+##   <id>_<hero>_off.png   switch A ("off", the default)
+##   <id>_<hero>_on.png    switch B3
+##   <id>_<hero>_off2.png  A again: must equal "off" byte for byte
+## plus DIR/receipt_switch_<hero>.json. "off" is held against frame A of a run without --switch on the head without
+## the switch, "on" against frame B3 of that run: tools/art/colour_switch_compare.py. Residents are not frozen between
+## two processes, so across runs they (and their shadows) may differ even for the same code; hence also:
+##      [--ref-shaders=DIR]  DIR/<name>.A.gdshader and .B3.gdshader of the head without the switch (the unchanged
+##                         tool's --dump-shaders): after "on", the same paused shot is drawn with the five shaders' code
+##                         set to those texts ("refA", "refB3"), then the product code is put back before "off2".
+##                         OFF must equal refA byte for byte (rc 1 otherwise); ON vs refB3 is counted by the compare.
+## Integrity (rc 1): ON differs from OFF, OFF2 equals OFF, GraphicsSettings handed each value to RenderingServer, and
+## the census finds no shader with ALBEDO in light() that does not branch on colour_b3 (it would stay A).
+##      [--break=switch_stuck|switch_leak|switch_foreign|switch_drift]  negative controls of --switch (each must fail):
+##                         switch_stuck — the uniform put back to A right after the switch: ON == OFF → rc 1;
+##                         switch_leak — B3 left on for the last pass: OFF2 != OFF → rc 1;
+##                         switch_foreign — one city surface on a Shader.duplicate() without the branch: census → rc 1;
+##                         switch_drift — city_surface's A branch with key_gain × 1.01 (A is no longer the old code),
+##                                        with --ref-shaders: OFF != refA → rc 1.
 
 const AB_SHADERS: PackedStringArray = [
 	"res://shaders/city_surface.gdshader",
@@ -162,6 +184,10 @@ var wanted: PackedStringArray = PackedStringArray()
 var dump_only: bool = false
 var only_sun: bool = false
 var break_mode: String = ""
+var switch_mode: bool = false
+var ref_shaders: String = ""      # --ref-shaders=DIR
+var ref_codes: Dictionary = {}    # "A" / "B3" -> {path -> code} of the head without the switch
+var product_codes: Dictionary = {} # path -> the product's own code (put back after the ref passes)
 var world: Node3D
 var eye: Camera3D
 var originals: Dictionary = {}  # path -> String (A code)
@@ -193,6 +219,10 @@ func _initialize() -> void:
 			dump_only = true
 		elif argument == "--only-sun":
 			only_sun = true
+		elif argument == "--switch":
+			switch_mode = true
+		elif argument.begins_with("--ref-shaders="):
+			ref_shaders = argument.trim_prefix("--ref-shaders=")
 		elif argument.begins_with("--break="):
 			break_mode = argument.trim_prefix("--break=")
 	_run.call_deferred()
@@ -442,12 +472,86 @@ func _census(tag: String) -> Dictionary:
 					else:
 						if not light_albedo.has(shader):
 							light_albedo[shader] = int(b1_source(shader.code).replaced)
+							# --switch: a copy whose light() branches on the global uniform switches with the five.
+							if switch_mode and _light_switches(shader.code):
+								light_albedo[shader] = 0
 						if int(light_albedo[shader]) > 0:
 							foreign.append("%s (%s)" % [world.get_path_to(geometry), shader.resource_path if not shader.resource_path.is_empty() else "no path"])
 				material = material.next_pass
 	if not foreign.is_empty():
 		_fail("%s: %d slots draw with a shader whose light() has ALBEDO but is not one of the swapped five (would stay A): %s" % [tag, foreign.size(), ", ".join(foreign.slice(0, 3))])
 	return {"slots": counts, "foreign": foreign.size()}
+
+
+## True when the body of light() branches on the colour test switch.
+static func _light_switches(code: String) -> bool:
+	var head: int = code.find("void light()")
+	return head >= 0 and code.find("if (colour_b3)", head) >= 0
+
+
+## --switch: the same paused shot with the switch off, on and off again, through the product's GraphicsSettings.
+func _capture_switch(station: Dictionary) -> Dictionary:
+	var graphics: Node = root.get_node("GraphicsSettings")
+	var camera: Camera3D = await _place(station)
+	var census: Dictionary = _census(String(station.id))
+	var hidden_labels: Array[Label3D] = []
+	if String(station.mode) == "close":
+		for node: Node in world.find_children("*", "Label3D", true, false):
+			var label := node as Label3D
+			if label.visible and not world.player.is_ancestor_of(label):
+				label.visible = false
+				hidden_labels.append(label)
+	paused = true
+	await _frames(3)
+	var name: String = "%s_%s%s" % [station.id, hero_name, "_sun" if only_sun else ""]
+	var row: Dictionary = {"id": station.id, "sheet": station.sheet, "mode": station.mode, "hero": hero_name,
+		"hero_position": var_to_str(world.player.global_position), "camera_position": var_to_str(camera.global_position),
+		"camera_basis": var_to_str(camera.global_basis), "fov": camera.fov, "frames": {}, "applied": {}}
+	var frames: Dictionary = {}
+	var images: Dictionary = {}
+	for pass_name: String in ["off", "on", "off2"]:
+		var value: String = "b3" if pass_name == "on" else "a"
+		if not (break_mode == "switch_leak" and pass_name == "off2"):
+			graphics.set_colours(value)
+		if break_mode == "switch_stuck" and pass_name == "on":
+			RenderingServer.global_shader_parameter_set(&"colour_b3", false)
+		row.applied[pass_name] = graphics.colours_applied
+		if graphics.colours_applied != value and break_mode != "switch_leak":
+			_fail("%s %s: GraphicsSettings handed %s to RenderingServer, want %s" % [name, pass_name, graphics.colours_applied, value])
+		await _frames(4)
+		var saved: bool = await _grab(name + "_" + pass_name)
+		frames[pass_name] = name + "_%s.png" % pass_name if saved else ""
+		images[pass_name] = last_image
+		if pass_name == "on" and not ref_codes.is_empty():
+			for variant: String in ["A", "B3"]:
+				_set_codes(ref_codes[variant])
+				await _frames(4)
+				var ref_saved: bool = await _grab(name + "_ref" + variant)
+				frames["ref" + variant] = name + "_ref%s.png" % variant if ref_saved else ""
+				images["ref" + variant] = last_image
+			_set_codes(product_codes)
+	var off: Image = images.off
+	if images.has("refA"):
+		row["off_equals_refA"] = off != null and images.refA != null and off.get_data() == (images.refA as Image).get_data()
+		row["on_equals_refB3"] = images.on != null and images.refB3 != null and (images.on as Image).get_data() == (images.refB3 as Image).get_data()
+		if not row.off_equals_refA:
+			_fail("%s: frame OFF differs from refA (switch A is not the old code's frame)" % name)
+	if off == null or images.on == null or off.get_data() == (images.on as Image).get_data():
+		_fail("%s: frame ON is byte-identical to OFF (the switch did not reach the renderer)" % name)
+	var reversible: bool = off != null and images.off2 != null and off.get_data() == (images.off2 as Image).get_data()
+	if not reversible:
+		_fail("%s: frame OFF2 differs from OFF (switching back to A does not restore the frame)" % name)
+	graphics.set_colours("a")
+	row["off2_equals_off"] = reversible
+	row.frames = frames
+	row["hidden_labels"] = hidden_labels.size()
+	row["census"] = census
+	for label: Label3D in hidden_labels:
+		label.visible = true
+	paused = false
+	print("ALBEDO_AB_SWITCH_STATION ", JSON.stringify(row))
+	world.camera_rig.camera.make_current()
+	return row
 
 
 ## Replace every visible geometry's material for one measurement pass; returns what to restore, exactly.
@@ -625,13 +729,93 @@ func _write_receipt(receipt: Dictionary) -> void:
 	file.close()
 
 
+func _set_codes(codes: Dictionary) -> void:
+	for path: String in AB_SHADERS:
+		(load(path) as Shader).code = String(codes[path])
+
+
+## --ref-shaders: the texts of the head without the switch; the product's code is kept to be put back.
+func _load_ref_codes() -> void:
+	for path: String in AB_SHADERS:
+		product_codes[path] = (load(path) as Shader).code
+	if break_mode == "switch_drift":
+		var drifted: String = String(product_codes[CITY_SHADER_PATH]).replace(
+			"\t\tDIFFUSE_LIGHT += mix(shaded, ALBEDO, lit) * LIGHT_COLOR * key_gain / PI;",
+			"\t\tDIFFUSE_LIGHT += mix(shaded, ALBEDO, lit) * LIGHT_COLOR * key_gain * 1.01 / PI;")
+		if drifted == String(product_codes[CITY_SHADER_PATH]):
+			_fail("switch_drift: the A branch line was not found")
+		product_codes[CITY_SHADER_PATH] = drifted
+		_set_codes(product_codes)
+	if ref_shaders.is_empty():
+		return
+	for variant: String in ["A", "B3"]:
+		ref_codes[variant] = {}
+		for path: String in AB_SHADERS:
+			var file: String = ref_shaders.path_join("%s.%s.gdshader" % [path.get_file().get_basename(), variant])
+			var code: String = FileAccess.get_file_as_string(file)
+			if code.is_empty() or code.contains("colour_b3"):
+				_fail("--ref-shaders: %s is missing or already has the switch" % file)
+			ref_codes[variant][path] = code
+
+
+## --switch: no text swap, no measurement passes; frames off / on / off2 per station and receipt_switch_<hero>.json.
+func _run_switch() -> void:
+	var graphics: Node = root.get_node("GraphicsSettings")
+	if only_sun:
+		_fail("--switch shoots product frames only: --only-sun is not taken")
+	_load_ref_codes()
+	if break_mode == "switch_foreign":
+		for node: Node in world.find_children("*", "MeshInstance3D", true, false):
+			var probe := node as MeshInstance3D
+			var material: Material = probe.material_override
+			if material is ShaderMaterial and (material as ShaderMaterial).shader == load(CITY_SHADER_PATH):
+				var twin: ShaderMaterial = (material as ShaderMaterial).duplicate()
+				twin.shader = (twin.shader as Shader).duplicate()
+				twin.shader.code = twin.shader.code.replace("if (colour_b3)", "if (false)")
+				probe.material_override = twin
+				print("ALBEDO_AB_BREAK switch_foreign: %s" % world.get_path_to(probe))
+				break
+	var census: Dictionary = _census("start")
+	var receipt: Dictionary = {
+		"mode": "switch", "renderer": RenderingServer.get_current_rendering_method(),
+		"adapter": RenderingServer.get_video_adapter_name(), "godot": Engine.get_version_info().string,
+		"window": var_to_str(DisplayServer.window_get_size()), "msaa_3d": root.msaa_3d, "scale_3d": root.scaling_3d_scale,
+		"hero": hero_name, "colours_at_start": graphics.get_colours(), "census": census, "stations": [],
+		"only_sun": only_sun, "break": break_mode, "ref_shaders": ref_shaders}
+	if graphics.get_colours() != "a":
+		_fail("the run starts on colours %s, want a (default)" % graphics.get_colours())
+	print("ALBEDO_AB_INFO mode=switch renderer=%s adapter=%s window=%s msaa=%d hero=%s colours=%s census=%s" % [
+		receipt.renderer, receipt.adapter, receipt.window, root.msaa_3d, hero_name, graphics.get_colours(),
+		JSON.stringify(census)])
+	for station: Dictionary in STATIONS:
+		if not wanted.is_empty() and not wanted.has(String(station.id)):
+			continue
+		var row: Dictionary = await _capture_switch(station)
+		(receipt.stations as Array).append(row)
+		var file := FileAccess.open(out_dir.path_join("receipt_switch_%s.json" % hero_name), FileAccess.WRITE)
+		file.store_string(JSON.stringify(receipt, "\t"))
+		file.close()
+	print("ALBEDO_AB_COMPLETE mode=switch stations=%d failures=%d hero=%s" % [(receipt.stations as Array).size(), failures, hero_name])
+	graphics.set_colours("a")
+	if not product_codes.is_empty():
+		_set_codes(product_codes)
+	world.queue_free()
+	await _frames(3)
+	for singleton: String in ["Sfx", "UltMusic", "Music"]:
+		if root.has_node(singleton):
+			root.get_node(singleton).queue_free()
+	await _frames(3)
+	quit(1 if failures > 0 else 0)
+
+
 func _run() -> void:
 	if out_dir.is_empty():
 		push_error("ALBEDO_AB: pass -- --out=/abs/dir")
 		quit(2)
 		return
 	DirAccess.make_dir_recursive_absolute(out_dir)
-	_prepare_variants()
+	if not switch_mode:
+		_prepare_variants()
 	if dump_only:
 		_dump_shaders()
 		quit(1 if failures > 0 else 0)
@@ -665,6 +849,9 @@ func _run() -> void:
 	eye.near = 0.05
 	eye.far = 240.0
 	world.add_child(eye)
+	if switch_mode:
+		await _run_switch()
+		return
 	_setup_labels()
 	var hidden_lights: PackedStringArray = PackedStringArray()
 	if only_sun:

@@ -17,6 +17,12 @@ uniform float variation : hint_range(0.0, 0.2) = 0.05;
 uniform float painted_fill : hint_range(0.0, 0.4) = 0.16;
 uniform float key_gain : hint_range(0.5, 3.0) = 2.2;
 uniform float glow : hint_range(0.0, 0.3) = 0.0;
+// Colour test switch A / B3 (plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB step 8, variant V1).
+// GraphicsSettings sets it from the COLOURS (TEST) row; the default lives in project.godot [shader_globals].
+// false = A: exactly the code as it was. true = B3: the calibration tool's variant, text for text
+// (tools/art/albedo_ab_capture.gd b1_source() + b3_edits()).
+// B3 numbers are PLACEHOLDER (artistic, Forward+ formula): docs/Fix/2026-10-15-Albedo-B3-Fix.md.
+global uniform bool colour_b3;
 varying vec3 world_position;
 varying vec3 world_normal;
 
@@ -109,13 +115,26 @@ void fragment() {
 	ALBEDO = paint;
 	ROUGHNESS = 1.0;
 	METALLIC = 0.0;
-	EMISSION = paint * (painted_fill + glow);
+	if (colour_b3) {
+		// B3: the district's fill 0.16 -> 0.028 (PLACEHOLDER); a material's own fill (CityInteriors, CityBackdrop)
+		// keeps its ratio to the district.
+		EMISSION = paint * (painted_fill * (0.028 / 0.16) + glow);
+	} else {
+		EMISSION = paint * (painted_fill + glow);
+	}
 }
 
 void light() {
 	// LIGHT_COLOR includes PI in Godot. Divide once, rather than blowing pale trim to white.
 	// A single directional key gives one lit band and one lilac shadow, including cast shadows.
 	float lit = step(0.20, dot(NORMAL, LIGHT)) * step(0.5, ATTENUATION);
-	vec3 shaded = ALBEDO * mix(vec3(0.50), shadow_tint.rgb, 0.35);
-	DIFFUSE_LIGHT += mix(shaded, ALBEDO, lit) * LIGHT_COLOR * key_gain / PI;
+	if (colour_b3) {
+		// B3: no albedo factor here (the engine multiplies DIFFUSE_LIGHT by it once after light()); the shadow is shadow_tint
+		// (style guide: colour x #B07AA6); key_gain 2.2 -> 1.053 keeping each material's ratio. PLACEHOLDER numbers.
+		vec3 shaded = vec3(1.0) * mix(vec3(0.000), shadow_tint.rgb, 1.000);
+		DIFFUSE_LIGHT += mix(shaded, vec3(1.0), lit) * LIGHT_COLOR * key_gain * (1.053 / 2.20) / PI;
+	} else {
+		vec3 shaded = ALBEDO * mix(vec3(0.50), shadow_tint.rgb, 0.35);
+		DIFFUSE_LIGHT += mix(shaded, ALBEDO, lit) * LIGHT_COLOR * key_gain / PI;
+	}
 }

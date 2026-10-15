@@ -171,7 +171,10 @@ func _grocer(pose: Transform3D) -> void:
 			fruit.rings = 4
 			# The fruit lies on the closed crate's lid (y 0.8), not 3.5 cm inside it.
 			_primitive(fruit, display.translated_local(Vector3(-0.4 + float(i % 3) * 0.4, 0.915, -0.2 + float(i / 3) * 0.36)), "cloth_red" if side < 0 else "marker")
-	_beer_barrel(pose.translated_local(Vector3(2.65, 0, 3)))
+	# The beer barrel stands by the east display crate, out from under the herb rack (T6 docs/Audit/2026-10-15-T6-Geometry
+	# -Fix-Acceptance.md § 4, choice «Б», T6's spot): 0.10 m off the crate, 0.25 m off the east wall, 0.43 m short of the
+	# rack's south end. Under the rack (local z 3) a hero on the barrel had the rack board through his chest.
+	_beer_barrel(pose.translated_local(Vector3(2.65, 0, 1.45)))
 	_box(pose, Vector3(-0.6, 1.085, 5.55), Vector3(1.8, 0.035, 0.82), "cloth_cream")
 	for index: int in 3:
 		_loaf(pose.translated_local(Vector3(-1.2 + float(index) * 0.55, 1.21, 5.55)), 0.85)
@@ -210,10 +213,7 @@ func _tailor(pose: Transform3D) -> void:
 	foot.radius = 0.48
 	foot.height = 0.16
 	_solid("DressFormFoot", pose.translated_local(Vector3(2.2, 0.08, 1)), foot)
-	var torso := CylinderShape3D.new()
-	torso.radius = 0.37
-	torso.height = 1.05
-	_solid("DressFormTorso", pose.translated_local(Vector3(2.2, 1.435, 1)), torso)
+	_solid("DressFormTorso", pose.translated_local(Vector3(2.2, 1.435, 1)), _dress_form_torso())
 	# D17: the cutting table stands 0.25 m further from the counter aisle, so the service point (z 4.4) keeps a
 	# hero capsule of r 0.35 clear of it (its edge was 0.30 m away).
 	var cutting: Transform3D = pose.translated_local(Vector3(2.15, 0, 2.95))
@@ -231,6 +231,44 @@ func _tailor(pose: Transform3D) -> void:
 	for index: int in 2:
 		_hanging_coat(pose.translated_local(Vector3(2.99, 0, 2.35 + float(index) * 1.2)), "cloth_red" if index == 0 else "cloth_teal")
 	_sign(pose * Vector3(0, 2.7, 7.73), "КРІЙ · РЕМОНТ · ТКАНИНИ", 0.006)
+
+## The dress form's torso collider, relative to the body at shop-local (2.2, 1.435, 1.0); the visible mesh is unchanged.
+## T6 (docs/Audit/2026-10-15-T6-Geometry-Fix-Acceptance.md § 5, «манекен»): its flat top (a cylinder r 0.37 up to 1.96)
+## held a hero who jumped onto it from the cutting table. Any top a capsule can stand over holds it: a contact within 45°
+## of up is floor (floor_max_angle, unchanged by Fighter) — a cone up to the neck held the hero placed on its axis, a top
+## slanted down from its own east edge held drops 0.27 m off that edge (probe, docs/Fix/2026-10-15-Stall-Wedge-Boundary
+## -Fix.md § 3). So the top is one plane falling west at DRESS_FORM_SLOPE, and its high edge stands DRESS_FORM_WALL_GAP off
+## the shop's east wall: a capsule's axis keeps 0.35 m off that wall, too far for the edge to carry it. Over the visible
+## form the plane runs 1.38–2.32 m (DRESS_FORM_AXIS_TOP over the axis, 0.11 m under the neck): a walking hero (capsule
+## body 0.35–1.45 m) still meets it from 0.91 m. The south side runs flat to the wall (the window base 0.49 m off it: a
+## slanting side opened a 0.64–0.71 m slot there that wedged the hero), the north side narrows to 0.10 m at the wall, so
+## the cutting table keeps the gap the round torso gave it (0.68 m over the axis, wider to the east). PLACEHOLDER.
+const DRESS_FORM_SLOPE: float = 52.0      # degrees; 7° steeper than the floor angle
+const DRESS_FORM_AXIS_TOP: float = 1.85
+const DRESS_FORM_WALL_GAP: float = 0.02
+## The round part's sides: with 16 the hero who stepped off the cutting table slid off a corner of the polygon to the
+## form's foot (0.07 m) and lost the D exit T6 accepted; with 32 he rests where the cylinder held him (0.71 m) and both
+## A and D lead to the floor, as on e7b3603 (probe, docs/Fix/2026-10-15-Stall-Wedge-Boundary-Fix.md § 3).
+const DRESS_FORM_SIDES: int = 32
+
+func _dress_form_torso() -> ConvexPolygonShape3D:
+	var origin := Vector3(2.2, 1.435, 1.0)
+	var wall_x: float = 3.2 - DRESS_FORM_WALL_GAP   # the shop's east wall, inner face (ShopWall at local x 3.3, 0.2 thick)
+	var rise: float = tan(deg_to_rad(DRESS_FORM_SLOPE))
+	var foot: Array[Vector2] = []
+	for i: int in DRESS_FORM_SIDES:
+		var angle: float = TAU * float(i) / float(DRESS_FORM_SIDES)
+		foot.append(Vector2(origin.x + cos(angle) * 0.37, origin.z + sin(angle) * 0.37))
+	foot.append(Vector2(wall_x, origin.z - 0.37))
+	foot.append(Vector2(wall_x, origin.z + 0.10))
+	var points := PackedVector3Array()
+	for p: Vector2 in foot:
+		var top: float = DRESS_FORM_AXIS_TOP + (p.x - origin.x) * rise
+		points.append(Vector3(p.x, 0.91, p.y) - origin)
+		points.append(Vector3(p.x, top, p.y) - origin)
+	var shape := ConvexPolygonShape3D.new()
+	shape.points = points
+	return shape
 
 func _workshop(pose: Transform3D) -> void:
 	# D17: as in the atelier, the workbench keeps the service point (z 4.4) clear of a hero capsule of r 0.35.
