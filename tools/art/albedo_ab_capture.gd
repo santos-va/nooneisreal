@@ -1,18 +1,22 @@
 extends SceneTree
-## Albedo A/B capture — docs/Plans/2026-10-14-T6-Acceptance-Crane-Albedo-AB.md step 5. A tool, not a fixture.
+## Albedo A/B capture — docs/Plans/2026-10-14-T6-Acceptance-Crane-Albedo-AB.md step 5, and variant B3 (Santos
+## 2026-10-15 «Зняти Б3», docs/Fix/2026-10-15-Albedo-B3-Fix.md). A tool, not a fixture.
 ## The product is never written: no resource is saved, game/ stays byte-identical.
 ##
 ## What it swaps (in memory, for this process only): the code of the five shaders whose light() puts ALBEDO into
 ## DIFFUSE_LIGHT (city_surface, toon, sword_dissolve, gear_surface, hero_garment). Variant B1 = the same source with
 ## every ALBEDO token inside light() replaced by vec3(1.0), so DIFFUSE_LIGHT carries only light and shadow and the
 ## engine's own post-light() multiply by albedo is the only one left (docs/Research/2026-10-14-Godot-Diffuse-Albedo.md).
+## Variant B3 = B1 plus the light strengths re-calibrated in the same shaders (B3_EDITS: exact substitutions on the B1
+## source, each must match exactly once), numbers from tools/art/albedo_b3_calibrate.py (Forward+ formula, PLACEHOLDER).
 ## The swap edits the cached Shader resource, so every material that preloads the file switches at once; the run
 ## refuses (rc 1) if a shader's light() has no ALBEDO, still has one after the swap, or a material in the world holds
 ## another Shader instance with the same path (it would silently stay on A).
 ##
 ## Per station, with the scene tree paused (same pose, camera, sun and shadow map in every pass):
 ##   <id>_<hero>_A.png    product as is
-##   <id>_<hero>_B1.png   B1 code
+##   <id>_<hero>_B1.png   B1 code (reference)
+##   <id>_<hero>_B3.png   B3 code
 ##   <id>_<hero>_label.png every city surface flat-coloured by its CityMaterials key, hero surfaces by shader,
 ##                         everything else and the sky black (unshaded: an ID pass for the measurement)
 ##   <id>_<hero>_lit.png  white where the sun band of city_surface is lit — step(0.20, N·L) · step(0.5, ATTENUATION),
@@ -25,18 +29,23 @@ extends SceneTree
 ## gl_compatibility. Godot 4.7 Compatibility differs from Forward+ in colour space (uniforms raw sRGB, EMISSION read
 ## as sRGB, shadow_tint raw in light()), so frame numbers are "Compatibility / llvmpipe", never "M3".
 ##   -- --out=/abs/dir [--hero=choko|skea] [--stations=pump,benches,market,plaster,truck,car,hero]
-##      [--dump-shaders]   write DIR/shaders/<name>.A.gdshader and .B1.gdshader and quit (for diff -u)
+##      [--dump-shaders]   write DIR/shaders/<name>.A.gdshader, .B1.gdshader and .B3.gdshader and quit (for diff -u)
 ##      [--only-sun]       diagnostic: hide every non-directional Light3D of the world for the whole run, so frame
 ##                         numbers can be held against the one-sun formula (product frames are without this flag).
 ##                         city_surface light() multiplies LIGHT_COLOR without ATTENUATION, and Compatibility hands an
 ##                         omni light's colour over unattenuated (gles3 scene.glsl light_process_omni), so a shop lamp
 ##                         lights whole meshes it touches; the flag measures how much of a frame that is.
-##      [--break=nolight|foreign|stuck|leak]  negative controls of the run's own integrity (each must fail):
+##      [--break=nolight|foreign|stuck|leak|b3drift|stuck3]  negative controls of the run's own integrity (each must fail):
 ##                         nolight — city_surface without light(): the swap finds no ALBEDO → rc 1;
 ##                         foreign — one city surface on Shader.duplicate() (no resource_path): the census → rc 1;
 ##                         stuck — city_surface B1 = A code: albedo_ab_table.py reports city pixels unchanged → rc 1;
-##                         leak — the largest city geometry is not restored after the ID pass: A2 != A → rc 1.
-## Integrity (each station): frame B1 must differ from A, frame A2 must equal A byte for byte; else rc 1.
+##                         leak — the largest city geometry is not restored after the ID pass: A2 != A → rc 1;
+##                         b3drift — city_surface's source no longer holds a line a B3 edit replaces: the edit
+##                                   matches 0 times → rc 1;
+##                         stuck3 — city_surface B3 = B1 code (the re-calibration never reaches the city):
+##                                  albedo_ab_table.py reports city pixels unchanged B1 → B3 → rc 1.
+## Integrity (each station): frames B1 and B3 must differ from A and from each other, frame A2 must equal A byte for
+## byte; else rc 1.
 ## In "close" mode the world's Label3D nodes outside the hero (resident chatter) are hidden for the shot and restored.
 
 const AB_SHADERS: PackedStringArray = [
@@ -49,6 +58,58 @@ const AB_SHADERS: PackedStringArray = [
 const CITY_SHADER_PATH: String = "res://shaders/city_surface.gdshader"
 const LIT_DOT: float = 0.20 # city_surface.gdshader:118
 const LIT_ATTENUATION: float = 0.5 # city_surface.gdshader:118
+
+## B3 numbers: `python3 -I tools/art/albedo_b3_calibrate.py` (Forward+ formula, median dE76 over the district's 19
+## palette keys; lit → the palette hex, shadow → hex × #B07AA6 of the style guide). PLACEHOLDER, artistic.
+## albedo_ab_table.py recomputes them and fails (rc 1) when the receipt carries other numbers.
+const B3: Dictionary = {
+	"painted_fill": 0.028, "key_gain": 1.053, "shadow_base": 0.0, "shadow_share": 1.0, # city_surface (district)
+	"hero_gain": 0.914, # toon, sword_dissolve, hero_garment, gear_surface: each DIFFUSE_LIGHT line × hero_gain / PI
+	"toon_shadow_strength": 1.0, "sword_shadow_strength": 0.945, "garment_shadow_strength": 0.895, # of the 0.45 default
+	"cloth_share": 0.355, # hero_garment cloth and gear_surface: vec3(0.69,0.48,0.65) × 0.75 → × cloth_share
+}
+## city_surface's own defaults the B3 scales refer to (city_surface.gdshader:17-18): materials that set their own
+## painted_fill / key_gain (CityInteriors.gd:21-22, CityBackdrop.gd:27-28) keep their ratio to the district.
+const CITY_FILL: float = 0.16
+const CITY_GAIN: float = 2.2
+const SHADOW_STRENGTH: float = 0.45 # toon / sword_dissolve / hero_garment default (toon.gdshader:11)
+
+
+## B3 = these exact substitutions on the B1 source (B1 has already turned light()'s ALBEDO into vec3(1.0)).
+static func b3_edits() -> Dictionary:
+	var hero_gain: String = " * %.3f / PI;" % float(B3.hero_gain)
+	var fill: String = "painted_fill * (%.3f / %.2f)" % [float(B3.painted_fill), CITY_FILL]
+	var gain: String = "key_gain * (%.3f / %.2f)" % [float(B3.key_gain), CITY_GAIN]
+	var cloth: String = "vec3(0.69,0.48,0.65) * %.3f" % float(B3.cloth_share)
+	var strength := func(key: String) -> String:
+		return "float k = mix(1.0 - clamp(shadow_strength * (%.3f / %.2f), 0.0, 1.0), 1.0, a);" % [float(B3[key]), SHADOW_STRENGTH]
+	var rim_old: String = "DIFFUSE_LIGHT += vec3(1.0) * rim * rim_strength * LIGHT_COLOR * ATTENUATION * step(0.0, ndl);"
+	var rim_new: String = rim_old.trim_suffix(";") + hero_gain
+	var toon_like := func(key: String) -> Array:
+		return [
+			["float k = mix(1.0 - shadow_strength, 1.0, a);", strength.call(key)],
+			["DIFFUSE_LIGHT += shade * LIGHT_COLOR * ATTENUATION;", "DIFFUSE_LIGHT += shade * LIGHT_COLOR * ATTENUATION" + hero_gain],
+			[rim_old, rim_new],
+		]
+	var garment: Array = toon_like.call("garment_shadow_strength")
+	garment.append(["mix(vec3(1.0) * vec3(0.69,0.48,0.65) * 0.75, vec3(1.0),", "mix(vec3(1.0) * " + cloth + ", vec3(1.0),"])
+	return {
+		"res://shaders/city_surface.gdshader": [
+			["EMISSION = paint * (painted_fill + glow);", "EMISSION = paint * (" + fill + " + glow);"],
+			["vec3 shaded = vec3(1.0) * mix(vec3(0.50), shadow_tint.rgb, 0.35);",
+				"vec3 shaded = vec3(1.0) * mix(vec3(%.3f), shadow_tint.rgb, %.3f);" % [float(B3.shadow_base), float(B3.shadow_share)]],
+			["DIFFUSE_LIGHT += mix(shaded, vec3(1.0), lit) * LIGHT_COLOR * key_gain / PI;",
+				"DIFFUSE_LIGHT += mix(shaded, vec3(1.0), lit) * LIGHT_COLOR * " + gain + " / PI;"],
+		],
+		"res://shaders/toon.gdshader": toon_like.call("toon_shadow_strength"),
+		"res://shaders/sword_dissolve.gdshader": toon_like.call("sword_shadow_strength"),
+		"res://shaders/hero_garment.gdshader": garment,
+		"res://shaders/gear_surface.gdshader": [
+			["vec3 shadow = vec3(1.0) * vec3(0.69,0.48,0.65) * 0.75;", "vec3 shadow = vec3(1.0) * " + cloth + ";"],
+			["DIFFUSE_LIGHT += (shaded + vec3(1.0) * edge * rim * step(0.0,ndl)) * LIGHT_COLOR * ATTENUATION;",
+				"DIFFUSE_LIGHT += (shaded + vec3(1.0) * edge * rim * step(0.0,ndl)) * LIGHT_COLOR * ATTENUATION" + hero_gain],
+		],
+	}
 
 ## Stations. "play" = the real CityCamera behind the hero (placement as in T6's acceptance script,
 ## scratchpad t6-accept/accept_frames.gd); "eye" = fixed audit camera (fov 65 like CityCamera);
@@ -105,6 +166,8 @@ var world: Node3D
 var eye: Camera3D
 var originals: Dictionary = {}  # path -> String (A code)
 var variants: Dictionary = {}   # path -> String (B1 code)
+var variants_b3: Dictionary = {} # path -> String (B3 code)
+var b3_counts: Dictionary = {}   # path -> [matches of each B3 edit]
 var swap_counts: Dictionary = {} # path -> int (ALBEDO tokens replaced in light())
 var palette_keys: Dictionary = {} # "rrggbb" -> CityMaterials key
 var district: Dictionary = {} # CityMaterials key -> [painted_fill, key_gain, glow] of CityMaterials.palette()
@@ -197,12 +260,38 @@ func _prepare_variants() -> void:
 		if int(result.replaced) < 1 or int(result.left) != 0:
 			_fail("%s light(): replaced=%d left=%d (want >=1 and 0)" % [path, int(result.replaced), int(result.left)])
 		print("ALBEDO_AB_SWAP %s albedo_tokens_in_light=%d left_after=%d" % [path.get_file(), int(result.replaced), int(result.left)])
+		# B3: the B1 source with every edit of b3_edits() applied, each matching exactly once.
+		var b3: String = String(result.code)
+		if break_mode == "b3drift" and path == CITY_SHADER_PATH:
+			b3 = b3.replace("painted_fill + glow", "glow + painted_fill") # the same sum, but no longer the edited line
+		var counts: Array[int] = []
+		for edit: Array in b3_edits().get(path, []):
+			var found: int = b3.count(String(edit[0]))
+			counts.append(found)
+			if found != 1:
+				_fail("%s B3 edit matches %d times (want 1): %s" % [path, found, String(edit[0])])
+			b3 = b3.replace(String(edit[0]), String(edit[1]))
+		if counts.is_empty():
+			_fail("%s has no B3 edits" % path)
+		b3_counts[path.get_file()] = counts
+		variants_b3[path] = b3
+		if break_mode == "stuck3" and path == CITY_SHADER_PATH:
+			variants_b3[path] = String(variants[path])
+		print("ALBEDO_AB_B3 %s edits=%s" % [path.get_file(), str(counts)])
 
 
 func _apply(variant: String) -> void:
 	for path: String in AB_SHADERS:
 		var shader: Shader = load(path) as Shader
-		shader.code = String(originals[path]) if variant == "A" else String(variants[path])
+		match variant:
+			"A":
+				shader.code = String(originals[path])
+			"B1":
+				shader.code = String(variants[path])
+			"B3":
+				shader.code = String(variants_b3[path])
+			_:
+				_fail("unknown variant " + variant)
 
 
 func _dump_shaders() -> void:
@@ -210,9 +299,10 @@ func _dump_shaders() -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	for path: String in AB_SHADERS:
 		var stem: String = path.get_file().get_basename()
-		for variant: String in ["A", "B1"]:
+		for variant: String in ["A", "B1", "B3"]:
 			var file := FileAccess.open(dir.path_join("%s.%s.gdshader" % [stem, variant]), FileAccess.WRITE)
-			file.store_string(String(originals[path]) if variant == "A" else String(variants[path]))
+			var source: Dictionary = {"A": originals, "B1": variants, "B3": variants_b3}[variant]
+			file.store_string(String(source[path]))
 			file.close()
 	print("ALBEDO_AB_DUMP dir=%s shaders=%d" % [dir, AB_SHADERS.size()])
 
@@ -487,6 +577,15 @@ func _capture(station: Dictionary, environment: Environment) -> Dictionary:
 	frames["B1"] = name + "_B1.png" if saved else ""
 	if image_a != null and last_image != null and image_a.get_data() == last_image.get_data():
 		_fail("%s: frame B1 is byte-identical to A (the swap did not reach the renderer)" % name)
+	var image_b1: Image = last_image
+	_apply("B3")
+	await _frames(4)
+	saved = await _grab(name + "_B3")
+	frames["B3"] = name + "_B3.png" if saved else ""
+	if image_a != null and last_image != null and image_a.get_data() == last_image.get_data():
+		_fail("%s: frame B3 is byte-identical to A (the swap did not reach the renderer)" % name)
+	if image_b1 != null and last_image != null and image_b1.get_data() == last_image.get_data():
+		_fail("%s: frame B3 is byte-identical to B1 (the re-calibration did not reach the renderer)" % name)
 	_apply("A")
 	var background: int = environment.background_mode
 	var background_color: Color = environment.background_color
@@ -590,6 +689,7 @@ func _run() -> void:
 		"godot": Engine.get_version_info().string, "window": var_to_str(DisplayServer.window_get_size()),
 		"msaa_3d": root.msaa_3d, "scale_3d": root.scaling_3d_scale, "hero": hero_name,
 		"swap_albedo_tokens": swap_counts, "census": census, "lit_rule": {"dot": LIT_DOT, "attenuation": LIT_ATTENUATION},
+		"b3": B3, "b3_edits": b3_counts, "b3_refs": {"city_fill": CITY_FILL, "city_gain": CITY_GAIN, "shadow_strength": SHADOW_STRENGTH},
 		"labels": {}, "palette": {}, "city_params": city_params, "stations": [], "only_sun": only_sun, "hidden_lights": hidden_lights, "break": break_mode}
 	for name: String in label_names:
 		receipt.labels[name] = (label_colors[name] as Color).to_html(false)

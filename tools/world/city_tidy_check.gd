@@ -60,9 +60,10 @@ extends SceneTree
 ##                nothing solid over the street (every hull within the block its foot stands on), and at the street
 ##                stations S2, S3, S4 of the T6 form (a hero facing north) the machines change nothing for the camera:
 ##                the same arm with and without them, no machine face between the lens and the hero, and at S3 (under
-##                the boom) the arm keeps 6.00 m — the machine points in the frame and those the lens sees are counted, not
-##                judged: the form's «на S3 його в кадрі немає» does not hold (the column over the terrace's edge and the
-##                winch's top are in it, docs/Fix/2026-10-14-Steam-Crane-Winch-Fix.md), T6 judges the frame; MC8 the
+##                the boom) the arm keeps 6.00 m; of the machine points in the frame, those the lens sees (a ray from it)
+##                all stand at or above the terrace's level, 4.0 m (T6's A5, docs/Audit/2026-10-14-T6-Crane-Winch-
+##                Acceptance.md § 3 п. 1: «з вулиці видно лише частини вище рівня тераси (seen_y ≥ 4,0 м)»; the form's
+##                «на S3 його в кадрі немає» was dropped there — the column over the terrace's edge is in the frame); MC8 the
 ##                camera arm keeps ≥ 3 m for a hero 1.2 m off
 ##                each open side of the foot facing it (M8); MC9 every foot hull leaves 0 or ≥ 1.2 m on each side to
 ##                whatever stops the hero beside it — a solid or the floor's edge (a slot between them wedges a hero);
@@ -106,7 +107,11 @@ const STEP_BREAKS := ["step_new", "step_low", "step_moved", "wedge_wall", "wedge
 const MACHINE_BREAKS := ["machine_layer", "machine_material", "machine_brass", "machine_float", "machine_sink",
 	"machine_nocollider", "machine_shift", "machine_column", "machine_anchor", "machine_pocket", "machine_lane",
 	"machine_street_hull", "machine_cross", "machine_occlude", "machine_gap", "machine_slot", "machine_budget",
-	"machine_step"]
+	"machine_step", "machine_seen_hook", "machine_seen_street", "machine_seen_float"]
+## MC7 seen_y negatives (A5), one form each of «a street lens sees a machine point under the terrace's level»: decor of
+## the crane, standing where it stands, hangs under the level over the street (no hull; MC3 sees its box's bottom too);
+## the crane stands on the street floor in the S2–S4 view (every other guard holds: only seen_y goes red); the winch
+## hangs in front of the terrace's wall with no floor.
 const MACHINE_RUN_BREAKS := ["machine_vault"]
 ## MC literals. The hulls (docs/Art/2026-10-14-Steam-Crane-Winch-Form.md § Колізії, both tables) and the keys the form
 ## bans (§ Матеріали, A2); the triangle ceilings «≤ 5646 / 2000» of plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB,
@@ -126,6 +131,10 @@ const SLOT_STEP: float = 0.04       # MC9 measures with 4 cm slabs, 4 cm apart: 
 const ANCHOR_REACH: float = 2.0
 const STREET_STATIONS := {"S2": Vector3(27, 0, 9), "S3": Vector3(28, 0, -6), "S4": Vector3(24, 0, 0)}
 const STREET_ARM: float = 6.0
+## A5: from S2–S4 only the parts above the terrace's level are seen, «seen_y ≥ 4,0 м» (docs/Audit/2026-10-14-T6-Crane-
+## Winch-Acceptance.md § 3 п. 1, its literal; the terrace NorthEastRoof tops out at 4.0, the machines' level). 1 mm of
+## float slack, no more: measured lows are 4.30 / 4.45 / 4.30 (docs/Fix/2026-10-14-Steam-Crane-Winch-Fix.md).
+const STREET_SEEN_FLOOR: float = 4.0
 ## V+: the height band of the T4 audit's proposal 8 («пропи 0,6–1,3 м із пласким верхом»), inclusive to 5 mm.
 const STEP_HEIGHT := Vector2(0.6, 1.3)
 const STEP_TOLERANCE: float = 0.005
@@ -2458,6 +2467,7 @@ func _mc_street_camera() -> void:
 		_check(crossing == 0, "MC7 %s %s: no machine face stands between the lens and the hero (%d crossings)" % [key, _v(at), crossing])
 		if key == "S3":
 			_check(float(with.arm) >= STREET_ARM - 0.005, "MC7 S3 %s: the arm keeps %.2f m (%.3f)" % [_v(at), STREET_ARM, with.arm])
+		_check(seen == 0 or seen_low >= STREET_SEEN_FLOOR - 0.001, "MC7 %s %s: the lens sees no machine point under the terrace's level %.1f m (%s)" % [key, _v(at), STREET_SEEN_FLOOR, "none seen" if seen == 0 else "lowest seen %.2f m" % seen_low])
 		print("CITY_TIDY_INFO MC7 %s hero=%s lens=%s arm=%.3f without=%.3f crossing=%d in_frame=%d seen=%d seen_y=%s" % [key, _v(with.feet), _v(with.lens), with.arm, without.arm, crossing, in_frame, seen, "-" if seen == 0 else "%.2f…%.2f" % [seen_low, seen_high]])
 	world.npc_director.process_mode = Node.PROCESS_MODE_INHERIT
 
@@ -2779,6 +2789,42 @@ func _break_scene() -> void:
 				winch_mesh.set_surface_override_material(surface, overrides[surface])
 		"machine_step":
 			(props_node.get_node("Machine_steam_winch") as Node3D).position.x += 0.3
+		"machine_seen_hook":
+			# Decor of the crane where it stands: a 0.3 × 0.8 × 0.3 m block (one more surface of its own mesh, its own
+			# city material) hangs at (29.3, 2.6–3.4, −8.8), past the terrace's edge (z −10) over the street.
+			var hook_mesh: MeshInstance3D = props_node.get_node("Machine_steam_crane/SteamCrane")
+			var hung := ArrayMesh.new()
+			var keep: Array[Material] = []
+			for surface: int in hook_mesh.mesh.get_surface_count():
+				hung.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, hook_mesh.mesh.surface_get_arrays(surface))
+				hung.surface_set_material(surface, hook_mesh.mesh.surface_get_material(surface))
+				keep.append(hook_mesh.get_surface_override_material(surface))
+			var block := BoxMesh.new()
+			block.size = Vector3(0.3, 0.8, 0.3)
+			var arrays: Array = block.get_mesh_arrays()
+			var to_local: Transform3D = hook_mesh.global_transform.affine_inverse() * Transform3D(Basis.IDENTITY, Vector3(29.3, 3.0, -8.8))
+			var points: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+			for i: int in points.size():
+				points[i] = to_local * points[i]
+				normals[i] = (to_local.basis * normals[i]).normalized()
+			arrays[Mesh.ARRAY_VERTEX] = points
+			arrays[Mesh.ARRAY_NORMAL] = normals
+			arrays[Mesh.ARRAY_TANGENT] = null
+			hung.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+			hung.surface_set_material(hung.get_surface_count() - 1, hook_mesh.mesh.surface_get_material(0))
+			keep.append(hook_mesh.get_surface_override_material(0))
+			hook_mesh.mesh = hung
+			for surface: int in keep.size():
+				hook_mesh.set_surface_override_material(surface, keep[surface])
+		"machine_seen_street":
+			# The crane stands on the street at (24.5, 0, −4), north of the S4 hero and west of the S3 line: on a level
+			# floor, out of every anchor's column and swing, lane and pocket, its sides and slots free, nothing between a
+			# lens and a hero — every other guard holds; only the street lens sees it under the terrace's level.
+			(props_node.get_node("Machine_steam_crane") as Node3D).position = Vector3(24.5, 0.0, -4.0)
+		"machine_seen_float":
+			# The winch hangs in front of the terrace's wall, its bottom 2.2 m over the street, nothing under it.
+			(props_node.get_node("Machine_steam_winch") as Node3D).position = Vector3(29.0, 2.2, -9.0)
 		"machine_vault":
 			# A winch the motor would vault: its body hull a flat box of the same bounds and the profile allowing 1.2 m
 			# deep vaults (the shipped one is 1.07 m deep across the rope's side and 1.58 m along its drum).

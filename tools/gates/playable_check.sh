@@ -399,6 +399,14 @@ for mutation in ('wedge_wall', 'wedge_round', 'wedge_deep', 'wedge_open'):
     cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
                   rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
+# T6's A5 (docs/Audit/2026-10-14-T6-Crane-Winch-Acceptance.md § 3 п. 1; docs/Fix/2026-10-15-Albedo-B3-Fix.md § MC7): from
+# the street stations S2–S4 the lens sees no machine point under the terrace's level, «seen_y ≥ 4,0 м». One form each:
+# the crane's decor hanging under the level over the street (no hull), the crane standing on the street floor in view
+# (every other guard holds: only this one goes red), the winch hanging in front of the terrace's wall with no floor.
+for mutation in ('machine_seen_hook', 'machine_seen_street', 'machine_seen_float'):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
 @contextmanager
 def isolated_profile():
     # Linux has an OS-supported data root override. macOS does not: use Godot's
