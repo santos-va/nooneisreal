@@ -120,33 +120,39 @@ GPU-прискоренням і не обіцяють певного FPS на я
 Рядок додано на кроці 8 плану [[2026-10-14-T6-Acceptance-Crane-Albedo-AB]]. Рішення Santos: «б — перемикач у
 налаштуваннях, порівняю на M3». Журнал — [[2026-10-15-Colour-Switch-Fix]], приймання T8 —
 [[2026-10-15-T8-Colour-Switch-Row-Acceptance]]. Рядок тимчасовий: після вибору Santos рядок, uniform і гілки шейдерів
-прибираються (журнал, «Що лишилось відкритим» п. 8). Описано те, що є в коді на `407595d`.
+прибираються (журнал, «Що лишилось відкритим» п. 8). Описано те, що є в коді на `b9d2480`, після правки T2-З
+[[2026-10-15-Comfort-Colour-Row-Fold-Fix]].
 
-- **Місце:** одразу під списком GRAPHICS QUALITY і його підписом (`ComfortPanel.gd:106–116`). Рядок є і на десктопі,
-  і на телефоні.
-- **Заголовок** (32 px): `COLOURS (TEST)` (`:29`).
-- **Список:** OptionButton, вузол `ColourTest`, змінна `colour_choice`, 32 px. Порядок — як у `GraphicsSettings.COLOURS`
-  (`GraphicsSettings.gd:21`): `A — current` (типовий) і `B3 — palette-true light` (`ComfortPanel.gd:30`).
-- **Підпис** (24 px, autowrap): `A colour test for comparing two looks. Applies immediately; A is the game as it is.`
-  (`:31`). На полотні 1600×900 він займає 2 рядки.
-- **Застосування й збереження.** Вибір одразу ставить глобальний uniform `colour_b3` (`GraphicsSettings.gd:176–186`,
-  `[shader_globals]` у `project.godot`). Значення пишеться в `user://graphics.cfg`, секція `graphics`, ключ `colours` =
-  `"a"` | `"b3"` (`GraphicsSettings.gd:389–391`).
+- **Місце:** одразу під списком GRAPHICS QUALITY і його підписом (`ComfortPanel.gd:106–113`). Одразу за рядком іде
+  рядок MASTER (`:114–117`). Рядок є і на десктопі, і на телефоні: він стоїть поза умовою DISPLAY (`:82`).
+- **Заголовок** (32 px): `COLOURS (TEST)` (`:30`, мітка `:106`).
+- **Список:** OptionButton, вузол `ColourTest`, змінна `colour_choice` (`:29`, `:107`), 32 px (`_choice`, `:323–331`).
+  Порядок — як у `GraphicsSettings.COLOURS` (`GraphicsSettings.gd:21`): `A — the game as it is` (типовий) і
+  `B3 — palette-true light` (`ComfortPanel.gd:31`).
+- **Підпису під рядком немає** (з `b9d2480`). Він зсував MASTER нижче видимої частини скролу (приймання T8 п. 3). Те, що
+  казав підпис, тепер каже пункт A. Причина записана в коментарі `ComfortPanel.gd:25–28`.
+- **Застосування й збереження.** Вибір одразу ставить глобальний uniform `colour_b3` (`ComfortPanel.gd:110–113` →
+  `GraphicsSettings.gd:176–186`, `[shader_globals]` у `project.godot`). Значення пишеться в `user://graphics.cfg`,
+  секція `graphics`, ключ `colours` = `"a"` | `"b3"` (`GraphicsSettings.gd:389–391`).
   - Немає ключа → A.
   - Невідоме значення → A і `ERR_INVALID_DATA`, файл не перезаписується (`:366–371`).
-  - Невдалий запис показує наявний статус панелі.
+  - Невдалий запис показує наявний статус панелі `Could not save preferences…` (`ComfortPanel.gd:260–262`).
   - RESTORE SOUND & SHAKE DEFAULTS рядок не скидає.
 - **Видимість зміни.** Панель затемнює світ на α 0,94 (`ComfortPanel.gd:58`), тож різницю A / B3 видно після закриття
   панелі.
-- **Фокус.** Рядок — зупинка кільця між GRAPHICS QUALITY і MASTER. Повне кільце — § «Випадки міста: COMFORT і HUD» п. 1.
-  - Фокус при відкритті — MASTER (`ComfortPanel.gd:225`). Від нього ↑ — COLOURS (TEST), ↑↑ — GRAPHICS QUALITY,
-    ↑↑↑ — DISPLAY.
+- **Фокус.** Рядок — зупинка кільця між GRAPHICS QUALITY і MASTER (`ComfortPanel.gd:109`). Повне кільце — § «Випадки
+  міста: COMFORT і HUD» п. 1.
+  - При відкритті скрол стоїть на 0, фокус на MASTER (`ComfortPanel.gd:221–222`, `:226`). Від MASTER ↑ — COLOURS (TEST),
+    ↑↑ — GRAPHICS QUALITY, ↑↑↑ — DISPLAY.
   - Геймпад іде тим самим кільцем через D-pad. A відкриває список, B закриває лише список.
 - **Розміри** (виміряно T8, Godot 4.7, полотно 1600×900): рядок 884 × 53 логічних px, найдовший пункт — 349 px тексту
   (мінімум кнопки 381), заголовок — 250.
-- **Відомий дефект (YELLOW).** Заголовок, рядок і підпис разом мають 223 логічних px. На вікнах 16:9 і ширших (полотно
-  1600×900) панель тому відкривається з фокусом на MASTER, але MASTER нижче видимої частини скролу. ТЗ для T2 —
-  [[2026-10-15-T8-Colour-Switch-Row-Acceptance]] п. 3.
+- **MASTER видно при відкритті.** Гард — `tools/ui/comfort_ui_check.gd:37–80`. Панель відкривається заново на трьох
+  полотнах: 1600×900, 1600×1200 і 1948×900. Гард вимагає, щоб фокус був на MASTER, повзунок і заголовок MASTER лежали
+  у видимій частині скролу, а скрол стояв на 0. П'ять негативів — `tools/gates/playable_check.sh:160–168`. На 1600×900
+  запас під повзунком — 24 логічних px. Коли запис налаштувань не вдався, статус займає 2 рядки (93 px). Видима частина
+  меншає на 48 px, і повзунок MASTER знову не видно. Відкрите — [[2026-10-15-T8-Colour-Switch-Row-Acceptance]]
+  § «Після правки T2-З».
 
 ### DISPLAY, AUTO-якість і клавіша повного екрана — GAP-специфікація 2026-10-07
 

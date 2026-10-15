@@ -263,6 +263,67 @@ DISPLAY → GRAPHICS QUALITY → COLOURS (TEST) → MASTER → SOUND EFFECTS →
 - **Не перевірено:** фізичний геймпад і тач на пристрої, Retina / Forward+ на M3, телефонний макет панелі (окрім фікстур
   T2), нативні кадри перемикання шейдерів (їх знімав T2).
 
+## Після правки T2-З (2026-10-15)
+
+**Що приймаю:** кроки 1–3 ТЗ вище в коміті `b9d2480` (`git log --oneline -1` → `b9d2480 Keep MASTER in view when COMFORT
+opens and rename the A colour option`), журнал [[2026-10-15-Comfort-Colour-Row-Fold-Fix]]. Підсумок угорі сторінки описує
+стан на `407595d`, чинний стан — цей розділ. Дерево — `scratchpad/t8b-tree`, detached `b9d2480`, після роботи прибране.
+Імпорт: rc 0, 182 с, `ERROR` 0. Логи — `scratchpad/t8b/`. Продукт не змінював. У репо записав лише цей розділ і
+§ COLOURS (TEST) у [[06-UI-UX]].
+
+| крок ТЗ | чим перевірив | вихід | вердикт |
+|---|---|---|---|
+| 1. Мітку підпису прибрано | `grep -rn -E 'COLOUR_HELP\|colour_help\|comparing two looks' game tools` | порожньо | **GREEN** |
+| 2. `A — current` → `A — the game as it is` | `ComfortPanel.gd:31`; мій зонд v2 | `items="A — the game as it is \| B3 — palette-true light" next=@VBoxContainer@98` — одразу за рядком іде рядок MASTER | **GREEN** |
+| 3. Гард «MASTER видно» | прочитав `comfort_ui_check.gd:37–80` і порівняв із кроком 3 ТЗ; прогнав кейси батареї | 49 кейсів (`ui`, `city-controls`, `graphics-ui`, `display-auto`, `colour-switch`, `comfort-ui`, `blood-content` з усіма негативами) → `PLAYABLE CHECK: 49 scenarios, 0 failures`, rc 0. `comfort-ui` → `COMFORT_UI_FAMILIES failures=0 mutation= red=none`, `colour-switch` → `checks=146 failures=0` | **GREEN** |
+
+- **Гард робить те, що в ТЗ.** На кожному з трьох полотен (1600×900, 1600×1200, 1948×900) він заново відкриває панель
+  справжніми Esc / Enter. Далі вимагає, щоб `scroll.get_global_rect()` містив повзунок MASTER із фокусом і його
+  заголовок. Понад ТЗ є ще `open_top`: скрол 0 і перший рядок угорі. Ця перевірка не пропускає відкинутий варіант О2.
+  Негатив із ТЗ (мітка у 2 рядки по 24 px над MASTER) — це `master_label`. Ще чотири форми зламу — `master_window`,
+  `master_focus`, `master_title`, `open_scrolled`. Кожен негатив червоніє у своїй родині (рядок `COMFORT_UI_FAMILIES`
+  у `scratchpad/t8b/subset/comfort-ui-negative-*.log`): `master_label` → `red=master_slider,master_title` (4),
+  `master_window` → `master_slider` (2), `master_focus` → `master_focus` (3), `master_title` → `master_title,open_top` (6),
+  `open_scrolled` → `open_top` (3). У 7 позитивних логах `ERROR` 0, `WARNING` 0, витоків 0. У 42 негативних `WARNING` 0,
+  витоків 0.
+- **Мій зонд v2, незалежно від гарда** (headless, панель відкрита справжнім шляхом MainMenu → Enter):
+
+| полотно | видимо, y | MASTER заголовок / повзунок, y | запас | видно | при помилці збереження |
+|---|---|---|---|---|---|
+| 1600×900 | 107–726 | 613–658 / 662–702 | 24 | так / так | видимо до 678, повзунок **ні** (−24) |
+| 1948×900 | 107–726 | 613–658 / 662–702 | 24 | так / так | повзунок **ні** (−24) |
+| 1600×1200 | 107–1026 | 613–658 / 662–702 | 324 | так / так | так (276) |
+
+  Повний прогін на 1600×900: `T8PROBE_COMPLETE checks=25 failures=0`. Кільце фокусу (↓, ↑, D-pad ↓ / ↑, Tab) те саме,
+  що в п. 3. Два інші полотна — `--quick`: `checks=9 failures=0`. Усі rc 0, `ERROR` 0, `WARNING` 0, витоків 0.
+- **Кадр** `docs/assets/screenshots/2026-10-15-comfort-colours-row.jpg` **приймаю**. На ньому видно DISPLAY угорі,
+  COLOURS (TEST) з `A — the game as it is`, заголовок `MASTER 80%` і повзунок цілком. Фокус на MASTER позначено лише
+  підсвіткою повзунка: у Godot 4.7 `Slider` не має теми `focus` (журнал T2). Підсвітку видно, але вона слабка. Пікселі
+  з журналу T2 (з фокусом / без): заповнена частина 197 / 116, бігунок 254 / 195. Так позначаються всі чотири повзунки
+  панелі, тож це не дефект цієї правки (див. «Відкрите»).
+
+**Загалом:** п. 3 — YELLOW → **GREEN**, перейменування з п. 1 зроблено. RED немає.
+
+**Відкрите:**
+- **Запас 24 px (від T2) — YELLOW, рідкісний стан.** Коли запис налаштувань не вдався, рядок статусу
+  `Could not save preferences; changes apply for this session.` займає 2 рядки (93 px). Тоді видима частина скролу
+  закінчується на y 678, і повзунок MASTER (662–702) знову не видно. Заголовок видно. Мій зонд:
+  `OPEN_SAVE_ERROR … status_h=93 lines=2 view_y=107..678 … margin=-24 slider_visible=false` на 1600×900 і 1948×900.
+  Гард цей стан не ганяє. Негатив `master_window` (93 px) доводить, що гард його спіймає, коли стан додадуть у
+  фікстуру. Як лагодити, вирішую я: окреме ТЗ з аудитом і варіантами (статус в один рядок, статус поверх BACK, коротший
+  текст).
+- **Наступний рядок над MASTER** (зокрема TEXT SIZE 125–150 % з GAP) з'їсть ці 24 px. Тепер це червоне `comfort-ui`, а
+  не тихий дефект.
+- **Позначка фокуса на повзунках слабка.** Числа вище; так у всіх повзунків панелі. Сильніша позначка (рамка або колір
+  бігунка) — моє окреме GAP-питання. Поріг контрасту дає Архімед, до того — PLACEHOLDER.
+- **Мій зонд v1** `scratchpad/t8-acc/probe/t8_colour_row_probe.gd` на `b9d2480` падає: `SCRIPT ERROR: Trying to assign
+  value of type 'VBoxContainer' to a variable of type 'Label'` на `:150` (`t8b/logs/v1_quick_1600x900.log`; rc 124,
+  бо після помилки сцена не виходить сама). Зонд читав підпис як вузол одразу після рядка, а підпису більше немає. Це мій
+  зонд, не репо: продукт і фікстури тут ні до чого. Для цього приймання є копія
+  `scratchpad/t8b/probe/t8_colour_row_probe_v2.gd`: вона не читає підпис і міряє стан із помилкою збереження.
+- **Не перевірено:** нативний кадр сам не переганяв (приймаю кадр і лог T2), телефонний макет, Retina / Forward+ на M3,
+  фізичний геймпад.
+
 ## Related
 
 - [[2026-10-14-T6-Acceptance-Crane-Albedo-AB]] · [[2026-10-15-Colour-Switch-Fix]] · [[2026-10-15-Albedo-B3-Fix]]
