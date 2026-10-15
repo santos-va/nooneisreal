@@ -344,6 +344,12 @@ func _row() -> void:
 		labels.append(choice.get_item_text(item))
 	check("row", labels.size() == 2 and labels[0].begins_with("A ") and labels[1].begins_with("B3 "),
 		"two items, A then B3, in GraphicsSettings.COLOURS order (%s)" % " | ".join(labels))
+	# T8 2026-10-15 (docs/Audit/2026-10-15-T8-Colour-Switch-Row-Acceptance.md, spec steps 1–2): the words T8 accepted, and
+	# no help line between the row and MASTER — item A says what the help line used to.
+	check("row", labels == PackedStringArray(["A — the game as it is", "B3 — palette-true light"]),
+		"the items read «A — the game as it is» and «B3 — palette-true light» (%s)" % " | ".join(labels))
+	check("row", choice.get_index() + 1 < column.get_child_count() and column.get_child(choice.get_index() + 1) == master.get_parent(),
+		"MASTER comes right after the row, with no help line between")
 	check("row", choice.selected == 0, "an unsaved profile shows A selected (%d)" % choice.selected)
 	var order: Array = panel.get("_focus_order")
 	var at: int = order.find(quality)

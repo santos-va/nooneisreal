@@ -3,6 +3,8 @@ extends SceneTree
 var failures := 0
 var viewport: SubViewport
 var mutation := ""
+## Failing check families, printed on COMFORT_UI_FAMILIES so a negative proves which guard went red.
+var red: Dictionary = {}
 
 func _initialize() -> void:
 	for argument in OS.get_cmdline_user_args():
@@ -25,40 +27,77 @@ func _run() -> void:
 	var launcher: Button = menu.get("_comfort_button")
 	await _click(launcher)
 	var modal: Control = menu.get("_comfort")
-	_check(modal.visible, "mouse opens settings")
+	_check(modal.visible, "mouse opens settings", "open")
 	if mutation == "footer":
 		(menu.get("_foot") as Label).add_theme_font_size_override("font_size", 8)
 	if mutation == "focus":
 		(modal.get("controls_label") as Label).focus_mode = Control.FOCUS_NONE
 	if mutation == "bounds":
 		(modal.get("panel") as Control).custom_minimum_size.x = 3000
+	# T8 2026-10-15 § 3 (docs/Audit/2026-10-15-T8-Colour-Switch-Row-Acceptance.md): the panel opens focused on MASTER,
+	# so MASTER must be seen at open. Negatives, one per form (docs/Fix/2026-10-15-Comfort-Colour-Row-Fold-Fix.md):
+	# content above MASTER grows (a 2-line label at 24 px), the visible part shrinks (a 2-line status at 32 px, 93 px),
+	# the open lands on another row, the scroll leaves MASTER's title above the top, the scroll leaves the first row.
+	var master: HSlider = modal.get("sliders")["master"]
+	var master_row: Control = master.get_parent()
+	var panel_scroll: ScrollContainer = modal.get("scroll")
+	if mutation == "master_label":
+		var extra: Label = modal.call("_label", "A help line that wraps\nonto a second line", 24)
+		master_row.get_parent().add_child(extra)
+		master_row.get_parent().move_child(extra, master_row.get_index())
+	if mutation == "master_window":
+		(modal.get("_status") as Label).custom_minimum_size.y = 93
+	if mutation == "master_focus":
+		modal.visibility_changed.connect(func() -> void:
+			if modal.visible:
+				(modal.get("quality_choice") as Control).grab_focus.call_deferred())
 	for dimensions in [Vector2i(1600, 900), Vector2i(1600, 1200), Vector2i(1948, 900)]:
 		viewport.size = dimensions
 		await _settle()
-		_check(Rect2(Vector2.ZERO, Vector2(dimensions)).encloses((modal.get("panel") as Control).get_global_rect()), "modal fits canvas")
+		_check(Rect2(Vector2.ZERO, Vector2(dimensions)).encloses((modal.get("panel") as Control).get_global_rect()), "modal fits canvas", "fit")
 		var footer: Label = menu.get("_foot")
 		var width := footer.get_theme_font("font").get_string_size(footer.text, HORIZONTAL_ALIGNMENT_LEFT, -1, footer.get_theme_font_size("font_size")).x
-		_check(width <= footer.size.x, "compact footer actually fits without clipping")
+		_check(width <= footer.size.x, "compact footer actually fits without clipping", "footer")
+		# Reopen on this canvas: only show_panel resets the scroll. Real keys: Escape closes, Enter on the launcher opens.
+		await _key(KEY_ESCAPE)
+		await _key(KEY_ENTER)
+		var title: Control = master_row.get_child(0)
+		var first: Control = panel_scroll.get_child(0).get_child(0)
+		if mutation == "master_title":
+			panel_scroll.scroll_vertical += roundi(title.get_global_rect().position.y - panel_scroll.get_global_rect().position.y + title.size.y * 0.5)
+			await _settle()
+		if mutation == "open_scrolled":
+			panel_scroll.scroll_vertical += roundi(first.size.y * 0.5)
+			await _settle()
+		var view := panel_scroll.get_global_rect()
+		var at := "%dx%d" % [dimensions.x, dimensions.y]
+		_check(modal.visible and master.has_focus(), "%s: a reopened panel focuses MASTER (focus %s)" % [at, viewport.gui_get_focus_owner()], "master_focus")
+		_check(view.encloses(master.get_global_rect()), "%s: the MASTER slider lies inside the scroll's visible part (y %.0f..%.0f in %.0f..%.0f)" % [at,
+			master.get_global_rect().position.y, master.get_global_rect().end.y, view.position.y, view.end.y], "master_slider")
+		_check(view.encloses(title.get_global_rect()), "%s: the MASTER title lies inside the scroll's visible part (y %.0f..%.0f in %.0f..%.0f)" % [at,
+			title.get_global_rect().position.y, title.get_global_rect().end.y, view.position.y, view.end.y], "master_title")
+		_check(panel_scroll.scroll_vertical == 0 and view.encloses(first.get_global_rect()), "%s: the scroll opens at 0 with the first row's title on top (scroll %d)" % [at,
+			panel_scroll.scroll_vertical], "open_top")
 	for physical_scale in [648.0 / 900.0, 768.0 / 1200.0, 390.0 / 900.0]:
-		_check((menu.get("_foot") as Label).get_theme_font_size("font_size") * physical_scale >= 13.8, "footer physical font floor")
-		_check((modal.get("controls_label") as Label).get_theme_font_size("font_size") * physical_scale >= 13.8, "controls physical font floor")
+		_check((menu.get("_foot") as Label).get_theme_font_size("font_size") * physical_scale >= 13.8, "footer physical font floor", "footer")
+		_check((modal.get("controls_label") as Label).get_theme_font_size("font_size") * physical_scale >= 13.8, "controls physical font floor", "font")
 	var slider: HSlider = modal.get("sliders")["master"]
 	slider.grab_focus()
 	var before := slider.value
 	await _key(KEY_LEFT)
-	_check(slider.value < before, "keyboard changes focused slider")
-	_check(is_equal_approx(float(preferences.call("get_value", "master")), slider.value / 100.0), "slider applies preference live")
+	_check(slider.value < before, "keyboard changes focused slider", "slider")
+	_check(is_equal_approx(float(preferences.call("get_value", "master")), slider.value / 100.0), "slider applies preference live", "slider")
 	var saved_config := ConfigFile.new()
-	_check(saved_config.load(preferences.get("storage_path")) == OK and is_equal_approx(float(saved_config.get_value("comfort", "master", -1)), slider.value / 100.0), "slider preference persisted")
+	_check(saved_config.load(preferences.get("storage_path")) == OK and is_equal_approx(float(saved_config.get_value("comfort", "master", -1)), slider.value / 100.0), "slider preference persisted", "slider")
 	(modal.get("restore_button") as Button).grab_focus()
 	await _key(KEY_ENTER)
-	_check(is_equal_approx(slider.value, 80.0) and is_equal_approx(float(preferences.call("get_value", "master")), 0.8), "restore button resets live UI and preference")
+	_check(is_equal_approx(slider.value, 80.0) and is_equal_approx(float(preferences.call("get_value", "master")), 0.8), "restore button resets live UI and preference", "restore")
 	var help: Label = modal.get("controls_label")
-	_check("Crouch: D-pad Down" in help.text, "help names actual crouch controller binding")
-	_check(help.focus_mode == Control.FOCUS_ALL, "controls help is focusable")
+	_check("Crouch: D-pad Down" in help.text, "help names actual crouch controller binding", "help")
+	_check(help.focus_mode == Control.FOCUS_ALL, "controls help is focusable", "help")
 	(modal.get("restore_button") as Button).grab_focus()
 	await _key(KEY_TAB)
-	_check(help.has_focus(), "Tab reaches controls from restore defaults")
+	_check(help.has_focus(), "Tab reaches controls from restore defaults", "help")
 	await _settle()
 	var scroll: ScrollContainer = modal.get("scroll")
 	scroll.scroll_vertical = 0
@@ -67,13 +106,13 @@ func _run() -> void:
 		if scroll.scroll_vertical >= scroll.get_v_scroll_bar().max_value - scroll.get_v_scroll_bar().page - 2:
 			break
 		await _pad(JOY_BUTTON_DPAD_DOWN)
-	_check(scroll.scroll_vertical >= scroll.get_v_scroll_bar().max_value - scroll.get_v_scroll_bar().page - 2, "controller can reach last controls line")
+	_check(scroll.scroll_vertical >= scroll.get_v_scroll_bar().max_value - scroll.get_v_scroll_bar().page - 2, "controller can reach last controls line", "help")
 	await _key(KEY_ESCAPE)
-	_check(not modal.visible and launcher.has_focus(), "Escape returns focus to menu invoker")
+	_check(not modal.visible and launcher.has_focus(), "Escape returns focus to menu invoker", "close")
 	await _pad(JOY_BUTTON_A)
-	_check(modal.visible, "controller accept reopens settings")
+	_check(modal.visible, "controller accept reopens settings", "open")
 	await _pad(JOY_BUTTON_B)
-	_check(not modal.visible and launcher.has_focus(), "controller cancel closes without activating underlying button")
+	_check(not modal.visible and launcher.has_focus(), "controller cancel closes without activating underlying button", "close")
 	menu.queue_free()
 	await _settle()
 	var arena: Node = load("res://scenes/arena/Arena.tscn").instantiate()
@@ -89,22 +128,22 @@ func _run() -> void:
 		controller.call("shake", 0.7)
 		controller.call("_process", 0.016)
 		var lens: Camera3D = controller.get("cam")
-		_check(absf(lens.h_offset) + absf(lens.v_offset) > 0.00001, camera_name + " positive shake is wired")
+		_check(absf(lens.h_offset) + absf(lens.v_offset) > 0.00001, camera_name + " positive shake is wired", "shake")
 		preferences.call("set_value", "shake", 0.0)
 		controller.call("_process", 0.016)
-		_check(lens.h_offset == 0.0 and lens.v_offset == 0.0, camera_name + " setting zero clears active shake")
+		_check(lens.h_offset == 0.0 and lens.v_offset == 0.0, camera_name + " setting zero clears active shake", "shake")
 	preferences.call("set_value", "shake", saved_shake)
 	var hud: Node = arena.get_node("HUD")
 	await _key(KEY_ESCAPE)
-	_check(paused and bool(hud.get("_paused")), "actual Escape pauses arena")
+	_check(paused and bool(hud.get("_paused")), "actual Escape pauses arena", "pause")
 	launcher = hud.get("_comfort_button")
 	await _click(launcher)
 	modal = hud.get("_comfort")
-	_check(modal.visible and paused, "pause settings stays paused")
+	_check(modal.visible and paused, "pause settings stays paused", "pause")
 	await _key(KEY_ESCAPE)
-	_check(not modal.visible and paused and launcher.has_focus(), "first Escape closes child only and restores pause focus")
+	_check(not modal.visible and paused and launcher.has_focus(), "first Escape closes child only and restores pause focus", "pause")
 	await _key(KEY_ESCAPE)
-	_check(not paused, "second Escape resumes")
+	_check(not paused, "second Escape resumes", "pause")
 	arena.queue_free()
 	await _settle()
 	viewport.queue_free()
@@ -116,6 +155,9 @@ func _run() -> void:
 	while Time.get_ticks_msec() < until:
 		await process_frame
 		OS.delay_msec(1)
+	var families: Array = red.keys()
+	families.sort()
+	print("COMFORT_UI_FAMILIES failures=%d mutation=%s red=%s" % [failures, mutation, ",".join(PackedStringArray(families)) if not families.is_empty() else "none"])
 	print("COMFORT_UI %s (%d failures; mutation=%s)" % ["PASS" if failures == 0 else "FAIL", failures, mutation])
 	quit(0 if failures == 0 else 1)
 
@@ -153,7 +195,8 @@ func _click(button: Button) -> void:
 		viewport.push_input(event, true)
 		await _settle()
 
-func _check(ok: bool, description: String) -> void:
+func _check(ok: bool, description: String, family: String) -> void:
 	if not ok:
 		failures += 1
-		push_error("COMFORT_UI: " + description)
+		red[family] = true
+		push_error("COMFORT_UI: [%s] %s" % [family, description])

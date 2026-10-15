@@ -23,12 +23,12 @@ const QUALITY_LABELS: Array[String] = ["Auto — adapts to your screen", "Low �
 const QUALITY_HELP := "Applies immediately. Text and controls stay sharp."
 const AUTO_LINE_PERIOD := 1.0   # PLACEHOLDER (T8): the AUTO line refreshes at most once a second, only while open
 ## Colour test A / B3 (plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB step 8): right under GRAPHICS QUALITY, applied at
-## once and saved by GraphicsSettings like the quality. Order as GraphicsSettings.COLOURS. T2 wording; T8 owns the final
-## labels. RESTORE never resets it.
+## once and saved by GraphicsSettings like the quality. Order as GraphicsSettings.COLOURS. T8 owns the labels. RESTORE
+## never resets it. No help line under it (T8 2026-10-15 § 3): two more lines pushed MASTER, which has the focus at open,
+## below the visible part on 16:9 canvases; item A carries the meaning instead.
 var colour_choice: OptionButton
 const COLOUR_TITLE := "COLOURS (TEST)"
-const COLOUR_LABELS: Array[String] = ["A — current", "B3 — palette-true light"]
-const COLOUR_HELP := "A colour test for comparing two looks. Applies immediately; A is the game as it is."
+const COLOUR_LABELS: Array[String] = ["A — the game as it is", "B3 — palette-true light"]
 var _auto_line_age: float = 0.0
 ## ADR-024 п. 7 (T8): blood in lethal fights and the hit flash, stored by ContentSettings. No new input actions.
 var blood_choice: OptionButton
@@ -111,9 +111,6 @@ func _ready() -> void:
 		if not _syncing and _graphics.call("set_colours", _graphics.COLOURS[index]):
 			_graphics.call("save_colours")
 			_save())
-	var colour_help := _label(COLOUR_HELP, 24)
-	colour_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	content.add_child(colour_help)
 	var labels := {"master": "MASTER", "sfx": "SOUND EFFECTS", "music": "MUSIC", "shake": "CAMERA SHAKE"}
 	for key: String in labels:
 		var row := VBoxContainer.new()

@@ -157,6 +157,15 @@ for mutation in ('footer', 'focus', 'bounds'):
     cases.append(('comfort-ui-negative-' + mutation, 'tools/ui/comfort_ui_check.gd',
                   rf'COMFORT_UI FAIL \([1-9][0-9]* failures; mutation={mutation}\)',
                   ['--', '--break=' + mutation], 1))
+# T8 2026-10-15 § 3 (docs/Fix/2026-10-15-Comfort-Colour-Row-Fold-Fix.md): the panel opens on MASTER, so MASTER and its
+# title must be seen at open on every canvas. Content above it growing (a 2-line label at 24 px), the visible part
+# shrinking, the open landing on another row, the title scrolled away and the scroll off 0 must each go red in their family.
+for mutation, family in (('master_label', 'master_slider'), ('master_window', 'master_slider'),
+                         ('master_focus', 'master_focus'), ('master_title', 'master_title'),
+                         ('open_scrolled', 'open_top')):
+    cases.append(('comfort-ui-negative-' + mutation, 'tools/ui/comfort_ui_check.gd',
+                  rf'COMFORT_UI_FAMILIES failures=[1-9][0-9]* mutation={mutation} red=[a-z_,]*\b{family}\b[a-z_,]*',
+                  ['--', '--break=' + mutation], 1))
 for mutation in ('opponent_frame', 'orbit', 'facing'):
     cases.append(('free-movement-negative-' + mutation, 'tools/input/free_movement_check.gd',
                   rf'FREE_MOVEMENT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
