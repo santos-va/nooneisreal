@@ -129,9 +129,14 @@ func _downpipe(points: Array[Vector3], clamps: Array[Vector4]) -> void:
 	_cylinder(Transform3D.IDENTITY, points[-1] + Vector3(0, 0.03, 0), 0.07, 0.07, 0.06, "copper")
 
 
-## Three steel tar drums beside the low roof approach (east, the industrial edge), clear of its climbing face.
+## Three steel tar drums beside the low roof approach (east, the industrial edge), clear of its climbing face. The third
+## stands against the east ramp's wall (x 16), 1 cm off it: at (15.18, −4.3) it left 0.52 m to that wall, where Choko
+## wedged on its rim (T6 acceptance docs/Audit/2026-10-14-T6-Acceptance.md § 2.2, «впритул до стіни рампи (≤ 0,05 м)
+## або ≥ 0,75 м»; ≥ 0.75 m does not fit beside the other two). Along the wall it stands where it keeps ≥ 0.75 m to both
+## of them (0.78 and 1.11 m): at z −4.3 it would have opened 0.57–0.68 m slots between rims of one height. North of the
+## pair, the ramp's edge there (2.53 m) and the first drum keep Skea's way up the ramp that T6 accepted (§ 2.2).
 func _tar_drums() -> void:
-	for at: Vector3 in [Vector3(14.45, 0, -4.0), Vector3(14.6, 0, -4.72), Vector3(15.18, 0, -4.3)]:
+	for at: Vector3 in [Vector3(14.45, 0, -4.0), Vector3(14.6, 0, -4.72), Vector3(15.69, 0, -3.4)]:
 		_tar_barrel(Transform3D(Basis(Vector3.UP, at.x * 1.3), at))
 		_note("tar_barrel", at, 0.3)
 

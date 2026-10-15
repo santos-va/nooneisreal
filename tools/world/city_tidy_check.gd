@@ -30,7 +30,10 @@ extends SceneTree
 ##   V+         — every solid body that stands on the floor with a flat top 0.6–1.3 m over it (a stack counts by its
 ##                top) is either a vault obstacle (vaulted in V) or a step listed in STEP_PROPS, which T6 accepts (T4 audit
 ##                2026-10-09 proposal 8, plan 2026-10-14-Quality-Debt-Posts-Awning-Guards step 4); a listed step that is
-##                no longer there fails too;
+##                no longer there fails too; and no listed step wedges a hero on its rim (T6 К7-а п. 2): a hero capsule
+##                standing on the top that walks to a solid rising over it within 0.05–0.75 m of the edge and steps off
+##                rests on the top (≤ 0.05 m under it) or off the step — never on its rim with the feet in the air
+##                (wedges a T1 decision left open are pinned in STEP_WEDGE_OPEN and must stay as measured);
 ##   S          — each steam vent puffs (≤ 0.8 opacity), changes frame under 3 times a second, never jumps in opacity
 ##                by more than 0.1 a frame, stays ≤ 1.0 × 1.5 m and is gone while a hero stands at the vent;
 ##   M          — the steam vehicles (CityProps.VEHICLES, Blender GLBs; docs/Fix/2026-10-09-City-Vehicles-And-Iron-Paint
@@ -86,7 +89,12 @@ const VEHICLE_BREAKS := ["vehicle_float", "vehicle_sink", "vehicle_nocollider", 
 	"vehicle_material", "vehicle_anchor", "vehicle_lane", "vehicle_runup", "vehicle_gap"]
 const VEHICLE_RUN_BREAKS := ["vehicle_vault"]
 ## V+ negatives: a new unlisted 1.0 m crate on the street, one at the bottom literal 0.6 m, a listed step moved 0.3 m.
-const STEP_BREAKS := ["step_new", "step_low", "step_moved"]
+## V+ wedge negatives, one form each of «no rim between a step and a solid within the band»: a wall put 0.55 m off a free
+## side of a street urn (a wall comes to a step); the grocer's display crate given a round top of its own depth, the
+## same 0.32 m off the shop wall that its flat edge stands on (a round rim); a wall 0.66 m off a free side of the tailor's
+## cutting table, just under the capsule's width (the band's deep end); a pinned OPEN wedge whose wall's collider is
+## off (an OPEN that is gone must go red too).
+const STEP_BREAKS := ["step_new", "step_low", "step_moved", "wedge_wall", "wedge_round", "wedge_deep", "wedge_open"]
 ## Machine negatives (MC): the hulls on the cover layer only; a winch surface off its city material; a crane surface
 ## named and painted brass; the winch 5 cm up, the crane 5 cm down; the winch's body hull gone; the crane's mesh 0.3 m off
 ## its hulls; the winch under anchor 24; the crane 1.1 m from anchor 12's vertical; the winch in the east terrace pocket
@@ -154,14 +162,51 @@ const STEP_PROPS: Dictionary = {
 	"CityProps@(9.30, 0.90, 21.35)": "market street, east: a beer barrel",
 	"CityProps@(14.45, 0.90, -4.00)": "east street by the ramp: a tar barrel",
 	"CityProps@(14.60, 0.90, -4.72)": "east street by the ramp: a tar barrel",
-	"CityProps@(15.18, 0.90, -4.30)": "east street by the ramp: a tar barrel",
+	"CityProps@(15.69, 0.90, -3.40)": "east street by the ramp: a tar barrel against the ramp's wall",
 	"CityProps@(-27.20, 0.92, 8.25)": "west street: a street urn",
 	"CityProps@(-11.45, 0.92, 8.25)": "west street: a street urn",
-	"CityMaintenance@(-22.25, 5.18, -12.80)": "the maintenance yard: the tool chest on the work bench",
-	"CityMaintenance@(-22.25, 4.82, -12.40)": "the maintenance yard: the work bench",
+	"CityMaintenance@(-21.96, 5.18, -12.26)": "the maintenance yard: the tool chest on the work bench",
+	"CityMaintenance@(-21.96, 4.82, -11.86)": "the maintenance yard: the work bench in the south-east corner",
 	# Accepted by T6 in advance (docs/Art/2026-10-14-Steam-Crane-Winch-Form.md § Лебідка № 11, «V+»): climbed or walked
 	# round, never vaulted (V-MC). The key as this check printed it (docs/Fix/2026-10-14-Steam-Crane-Winch-Fix.md).
 	"CityProps@(27.24, 5.12, -18.63)": "the NE terrace: the steam winch, the top of its drum's flanges",
+}
+## V+ wedge. T6 acceptance docs/Audit/2026-10-14-T6-Acceptance.md § 2.1, К7-а п. 2: a step is honest when the hero ends
+## on it — «не нижче за верх більш ніж на 0,05 м» (STEP_RIM) — or on the floor; the typical failure, «зазор 0,05–0,75 м
+## між пропом і стіною, у якому заклинює капсула r 0,35» (STEP_GAP_BAND). T6's what_under.gd log
+## (scratchpad t6-accept/logs/what_under.log) of the wedged runs: the hero touched EastRamp and the tar barrel 0.52 m off
+## it (end_y 0.764 of a 0.90 top), SouthWall and the yard bench 0.55 m off it (0.760 of 0.825); the tailor's cutting
+## table, 0.45 m off the shop wall, kept him 0.025 m under its top (GREEN). The band read as «no gap 0.05–0.75 m to a
+## solid» would fail most of the 25 steps T6 accepted (0.07–0.45 m off walls, the hero on top), so the guard measures the
+## rule itself: the capsule (Fighter.tscn r 0.35, h 1.8) stands on the top STEP_LIFT over it at STEP_SAMPLES points across
+## each side, walks out until it meets a solid that rises over the top with its axis at most 0.75 − 0.35 m past the edge,
+## and is lowered there. Resting more than STEP_RIM under the top while touching the step is a wedge. A start the
+## capsule does not fit (a canopy over the goods, the chest on the bench) is not a place to stand: it is counted, not judged.
+const STEP_GAP_BAND := Vector2(0.05, 0.75)
+const STEP_RIM: float = 0.05
+const STEP_SAMPLES: int = 9
+const STEP_LIFT: float = 0.03
+const FIGHTER_H: float = 1.8       # Fighter.tscn BodyShape height
+## The start and its nudges (6 and 12 cm, eight ways; a grain, not a threshold): a free stance over the top.
+const STEP_NUDGES: Array[Vector3] = [Vector3.ZERO,
+	Vector3(0.06, 0, 0), Vector3(-0.06, 0, 0), Vector3(0, 0, 0.06), Vector3(0, 0, -0.06),
+	Vector3(0.042, 0, 0.042), Vector3(-0.042, 0, 0.042), Vector3(0.042, 0, -0.042), Vector3(-0.042, 0, -0.042),
+	Vector3(0.12, 0, 0), Vector3(-0.12, 0, 0), Vector3(0, 0, 0.12), Vector3(0, 0, -0.12),
+	Vector3(0.085, 0, 0.085), Vector3(-0.085, 0, 0.085), Vector3(0.085, 0, -0.085), Vector3(-0.085, 0, -0.085)]
+## Wedges the walk finds beyond the three T6 named (docs/Fix/2026-10-14-T6-Acceptance-Geometry-Fix.md § 5): «<step key>
+## <side>» → the narrowest gap it met on that side (± 2 cm) and why it stays. T6 accepted these steps from their run-ups
+## (K7: no run-up, or the hero on top); the walk reaches the sides no run-up does. Moving them is outside T1's task for
+## this fix (rows 1–5 of the T6 acceptance), so T1 decides; each must still wedge as measured.
+const STEP_WEDGE_OPEN: Dictionary = {
+	"CityMarket@(-9.06, 0.86, 24.34) (-1.00, 0.00, 0.00)": {"gap": 0.624, "why": "west z 25 stall, the barrel on trestles behind the counter: SouthWestRear 0.62 m behind it, 9 of 9 points 0.18 m under the top"},
+	"CityMarket@(-9.06, 0.86, 24.34) (0.00, 0.00, -1.00)": {"gap": 0.410, "why": "the same barrel: the stall's back post 0.54 m off its north end, 1 of 9 points 0.07 m under"},
+	"CityMarket@(-8.92, 0.72, 26.16) (-1.00, 0.00, 0.00)": {"gap": 0.190, "why": "west z 25 stall, the crate behind the counter: SouthWestRear 0.69 m behind it past the stall's post, 2 of 9 points 0.34 m under"},
+	"CityMarket@(8.97, 0.90, 26.04) (1.00, 0.00, 0.00)": {"gap": 0.466, "why": "east z 25 stall, the beer barrel behind the counter: the east facade 0.65 m behind it, 3 of 9 points 0.18 m under"},
+	"CityInteriors@(-26.80, 0.96, 17.60) (-1.00, 0.00, 0.00)": {"gap": 0.544, "why": "the grocer's counter: the end of the side stock shelf 0.54–0.62 m off its west end, 5 of 9 points 0.15 m under"},
+	"CityInteriors@(-20.20, 0.96, 17.60) (-1.00, 0.00, 0.00)": {"gap": 0.544, "why": "the tailor's counter: the same side shelf, the same 0.15 m"},
+	"CityInteriors@(-13.60, 0.96, 17.60) (-1.00, 0.00, 0.00)": {"gap": 0.544, "why": "the workshop's counter: the same side shelf, the same 0.15 m"},
+	"CityInteriors@(-17.85, 1.00, 14.95) (0.00, 0.00, -1.00)": {"gap": 0.680, "why": "the tailor's cutting table: the dress form's torso 0.68 m off its north end, 2 of 9 points 0.28 m under"},
+	"CityInteriors@(-15.60, 0.62, 13.15) (-1.00, 0.00, 0.00)": {"gap": 0.648, "why": "the tailor's waiting stool: the shop wall 0.65–0.75 m west of it, 7 of 9 points 0.30 m under; the stool's rim is T1's «капсула на ободі», hero movement after M3 with T5's numbers"},
 }
 const VEHICLE_LAYER: int = 1 | 8   # CityMarket._solid: walking and the camera, cover
 const SWING_CLEAR: float = 0.3
@@ -300,8 +345,8 @@ class MarketRec extends CityMarket:
 		rec.push(Rec.at("beer_barrel", pose.origin)); super(pose); rec.pop()
 	func _trestle_barrel(pose: Transform3D) -> void:
 		rec.push(Rec.at("trestle_barrel", pose.origin)); super(pose); rec.pop()
-	func _jar(pose: Transform3D, color: String, scale_factor: float) -> void:
-		rec.push(Rec.at("jar", pose.origin)); super(pose, color, scale_factor); rec.pop()
+	func _jar(pose: Transform3D, color: String, scale_factor: float, solid: bool = true) -> void:
+		rec.push(Rec.at("jar", pose.origin)); super(pose, color, scale_factor, solid); rec.pop()
 	func _wire(a: Vector3, b: Vector3, sag: float) -> void:
 		rec.push(Rec.at("wire", a)); super(a, b, sag); rec.pop()
 	func _lantern(center: Vector3, scale_factor: float) -> void:
@@ -344,8 +389,8 @@ class InteriorsRec extends CityInteriors:
 		rec.push(Rec.at("crate", pose.origin)); super(pose, size); rec.pop()
 	func _beer_barrel(pose: Transform3D) -> void:
 		rec.push(Rec.at("beer_barrel", pose.origin)); super(pose); rec.pop()
-	func _jar(pose: Transform3D, color: String, scale_factor: float) -> void:
-		rec.push(Rec.at("jar", pose.origin)); super(pose, color, scale_factor); rec.pop()
+	func _jar(pose: Transform3D, color: String, scale_factor: float, solid: bool = true) -> void:
+		rec.push(Rec.at("jar", pose.origin)); super(pose, color, scale_factor, solid); rec.pop()
 	func _lantern(center: Vector3, scale_factor: float) -> void:
 		rec.push(Rec.at("lantern", center)); super(center, scale_factor); rec.pop()
 
@@ -1464,6 +1509,168 @@ func _v_steps() -> void:
 	print("CITY_TIDY_INFO V+ candidates=%d vaults=%d steps=%d listed=%d" % [candidates.size(), vaults, steps, STEP_PROPS.size()])
 
 
+## V+ wedge (see STEP_GAP_BAND): every listed step, each side (±x, ±z), STEP_SAMPLES points across it.
+func _v_wedges() -> void:
+	var wedges: int = 0
+	var sides: int = 0
+	var blocked: int = 0
+	var seen_open: Dictionary = {}
+	for c: Dictionary in _step_candidates():
+		if c.vault or not STEP_PROPS.has(c.key):
+			continue
+		var body: StaticBody3D = c.body
+		var shape: CollisionShape3D = _top_shape(body)
+		var top: float = _body_box(body).end.y
+		var floor_y: float = top - float(c.height)
+		var centre: Vector3 = _step_centre(shape)
+		for out: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD]:
+			var across := Vector3(absf(out.z), 0, absf(out.x))
+			var half: float = _step_extent(shape, across)
+			var counts := {"top": 0, "off": 0, "wedge": 0, "blocked": 0, "open": 0}
+			var narrowest: float = INF
+			var worst: Dictionary = {}
+			for i: int in STEP_SAMPLES:
+				var s: float = lerpf(-half + 0.03, half - 0.03, float(i) / float(STEP_SAMPLES - 1))
+				var at: Vector3 = centre + across * s
+				var w: Dictionary = _step_walk(at, out, _step_edge(shape, out, s), top, floor_y, body)
+				counts[w.result] = int(counts[w.result]) + 1
+				if w.has("gap"):
+					narrowest = minf(narrowest, float(w.gap))
+				if w.result == "wedge" and (worst.is_empty() or float(w.depth) > float(worst.depth)):
+					worst = w
+			sides += 1
+			blocked += int(int(counts.blocked) == STEP_SAMPLES)
+			var tag := "%s %s" % [c.key, _v(out)]
+			var label := "%s «%s» side %s" % [c.key, c.name, _v(out)]
+			var wedged: bool = int(counts.wedge) > 0
+			if STEP_WEDGE_OPEN.has(tag):
+				seen_open[tag] = true
+				var pinned: float = float(STEP_WEDGE_OPEN[tag].gap)
+				_check(wedged and absf(narrowest - pinned) <= 0.02, "V+ wedge OPEN %s no longer wedges as pinned (%d of %d points, gap %.3f, pinned %.3f): fix STEP_WEDGE_OPEN" % [label, counts.wedge, STEP_SAMPLES, narrowest, pinned])
+			else:
+				wedges += int(wedged)
+				_check(not wedged, "V+ wedge %s: a hero pressed to %s %.3f m off the edge rests %.3f m under the top on its rim (%d of %d points; T6 К7-а п. 2: ≤ %.2f m or off the step)" % [label, worst.get("wall", "?"), worst.get("gap", 0.0), worst.get("depth", 0.0), counts.wedge, STEP_SAMPLES, STEP_RIM])
+			print("CITY_TIDY_INFO V+ wedge %s %s narrowest=%s%s" % [label, JSON.stringify(counts), "none" if is_inf(narrowest) else "%.3f" % narrowest,
+				(" worst=%.3f under, by %s" % [worst.depth, worst.wall]) if wedged else ""])
+	for tag: String in STEP_WEDGE_OPEN:
+		_check(seen_open.has(tag), "V+ wedge OPEN %s is no longer a listed step side: fix STEP_WEDGE_OPEN" % tag)
+	_check(wedges == 0, "V+ no listed step wedges a hero on its rim (%d sides)" % wedges)
+	print("CITY_TIDY_INFO V+ wedge sides=%d wedges=%d open=%d blocked_sides=%d" % [sides, wedges, seen_open.size(), blocked])
+
+
+## The highest collision shape of a body (its top for V+).
+func _top_shape(body: StaticBody3D) -> CollisionShape3D:
+	var best: CollisionShape3D = null
+	var high: float = -INF
+	for child: Node in body.get_children():
+		var shape := child as CollisionShape3D
+		if shape == null or shape.shape == null or shape.disabled:
+			continue
+		var end: float = (shape.global_transform * shape.shape.get_debug_mesh().get_aabb()).end.y
+		if end > high:
+			high = end
+			best = shape
+	return best
+
+
+func _step_centre(shape: CollisionShape3D) -> Vector3:
+	if shape.shape is BoxShape3D or shape.shape is CylinderShape3D:
+		var o: Vector3 = shape.global_transform.origin
+		return Vector3(o.x, 0, o.z)
+	var c: Vector3 = (shape.global_transform * shape.shape.get_debug_mesh().get_aabb()).get_center()
+	return Vector3(c.x, 0, c.z)
+
+
+## Half the top's width along the floor direction `dir`.
+func _step_extent(shape: CollisionShape3D, dir: Vector3) -> float:
+	if shape.shape is CylinderShape3D:
+		return (shape.shape as CylinderShape3D).radius
+	if shape.shape is BoxShape3D:
+		var half: Vector3 = (shape.shape as BoxShape3D).size * 0.5
+		var b: Basis = shape.global_transform.basis.orthonormalized()
+		return absf(b.x.dot(dir)) * half.x + absf(b.z.dot(dir)) * half.z
+	var box: AABB = shape.global_transform * shape.shape.get_debug_mesh().get_aabb()
+	return absf(dir.x) * box.size.x * 0.5 + absf(dir.z) * box.size.z * 0.5
+
+
+## How far the top reaches along `out` at `s` across it: a round top's chord, a flat top's half width.
+func _step_edge(shape: CollisionShape3D, out: Vector3, s: float) -> float:
+	if shape.shape is CylinderShape3D:
+		var r: float = (shape.shape as CylinderShape3D).radius
+		return sqrt(maxf(r * r - s * s, 0.0))
+	return _step_extent(shape, out)
+
+
+## One point of V+ wedge: the capsule stands on the top at `at` (its body inside the edge, STEP_LIFT over the top), walks
+## along `out` until it meets a solid with its axis at most STEP_GAP_BAND.y − FIGHTER_R past the edge, and is lowered.
+## result: blocked (no room to stand), open (nothing met), top, off (rests off the step: floor, another body), wedge.
+func _step_walk(at: Vector3, out: Vector3, edge: float, top: float, floor_y: float, body: StaticBody3D) -> Dictionary:
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = FIGHTER_R
+	capsule.height = FIGHTER_H
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = capsule
+	query.collision_mask = 1
+	query.exclude = [(world.player as CollisionObject3D).get_rid()]
+	var feet: float = top + STEP_LIFT
+	var inset: float = maxf(0.0, edge - FIGHTER_R - 0.01)
+	var start: Vector3 = at + out * inset + Vector3(0, feet + FIGHTER_H * 0.5, 0)
+	# A step flush with a wall leaves no room for the capsule over its middle: the hero stands a little off it. Try the
+	# start, then the STEP_NUDGES round it, keeping the axis over the top (`body` under it).
+	var free: bool = false
+	for nudge: Vector3 in STEP_NUDGES:
+		query.transform = Transform3D(Basis.IDENTITY, start + nudge)
+		if space.intersect_shape(query, 1).is_empty() and _over_body(start + nudge, feet, body):
+			start += nudge
+			inset += nudge.dot(out)
+			free = true
+			break
+	if not free:
+		return {"result": "blocked"}
+	var reach: float = maxf(edge - inset, 0.0) + STEP_GAP_BAND.y - FIGHTER_R
+	query.motion = out * reach
+	var walk: PackedFloat32Array = space.cast_motion(query)
+	if walk[0] >= 1.0:
+		return {"result": "open"}
+	var gap: float = inset + float(walk[0]) * reach - edge + FIGHTER_R
+	var walls: PackedStringArray = PackedStringArray()
+	query.motion = Vector3.ZERO
+	query.transform = Transform3D(Basis.IDENTITY, start + out * (float(walk[1]) * reach))
+	for hit: Dictionary in space.intersect_shape(query, 4):
+		walls.append(_body_label(hit.collider as Node))
+	var axis: Vector3 = start + out * (float(walk[0]) * reach)
+	var drop: float = feet - floor_y + 0.1
+	query.transform = Transform3D(Basis.IDENTITY, axis)
+	query.motion = Vector3(0, -drop, 0)
+	var down: PackedFloat32Array = space.cast_motion(query)
+	var rest: float = feet - float(down[0]) * drop
+	var touches: bool = false
+	query.motion = Vector3.ZERO
+	query.transform = Transform3D(Basis.IDENTITY, axis - Vector3(0, float(down[1]) * drop, 0))
+	for hit: Dictionary in space.intersect_shape(query, 8):
+		touches = touches or hit.collider == body
+	var result: String = "top" if rest >= top - STEP_RIM else ("wedge" if touches else "off")
+	return {"result": result, "gap": gap, "depth": top - rest, "wall": ",".join(walls)}
+
+
+## Whether the point under `axis` (the capsule's axis) on the top is `body`'s.
+func _over_body(axis: Vector3, feet: float, body: StaticBody3D) -> bool:
+	var ray := PhysicsRayQueryParameters3D.create(Vector3(axis.x, feet, axis.z), Vector3(axis.x, feet - 0.1, axis.z), 1)
+	ray.exclude = [(world.player as CollisionObject3D).get_rid()]
+	var hit: Dictionary = space.intersect_ray(ray)
+	return not hit.is_empty() and hit.collider == body
+
+
+## «<parent>/<name>» of a body, or «<parent>/<engine name>@(x, z)» for the engine's own @-names, which change with the
+## node count.
+static func _body_label(node: Node) -> String:
+	var name: String = String(node.name)
+	if name.begins_with("@"):
+		var at: Vector3 = (node as Node3D).global_position
+		name = "%s@(%.2f, %.2f)" % [node.get_class(), at.x, at.z]
+	return "%s/%s" % [String(node.get_parent().name), name]
+
+
 func _vault_run(start: Vector3, run: Vector3, center: Vector3, depth: float) -> Dictionary:
 	var player: Node3D = world.player
 	_key(KEY_W, false)
@@ -2361,6 +2568,35 @@ func _break_scene() -> void:
 			crate.add_child(shape)
 			props_node.add_child(crate)
 			crate.global_position = Vector3(3.0, height * 0.5, 13.5)
+		"wedge_wall", "wedge_deep":
+			# V+ wedge: a wall 2.2 m high — 0.55 m off the street urn (−11.45, 8.25)'s north side (its face z 8.475), or
+			# 0.66 m off the tailor's cutting table's free west side (its face x −18.45), just under the capsule's width.
+			var wall := StaticBody3D.new()
+			wall.name = "NegativeWall"
+			wall.collision_layer = 1 | 8
+			wall.collision_mask = 0
+			var wall_shape := CollisionShape3D.new()
+			var wall_box := BoxShape3D.new()
+			wall_box.size = Vector3(1.2, 2.2, 0.2) if mutation == "wedge_wall" else Vector3(0.2, 2.2, 1.8)
+			wall_shape.shape = wall_box
+			wall.add_child(wall_shape)
+			props_node.add_child(wall)
+			wall.global_position = Vector3(-11.45, 1.1, 8.475 + 0.55 + 0.1) if mutation == "wedge_wall" else Vector3(-18.45 - 0.66 - 0.1, 1.1, 14.95)
+		"wedge_round":
+			# V+ wedge: the grocer's west display crate keeps its place, depth and top but has a round top (r 0.425): the
+			# shop wall, 0.32 m off its flat edge, is now 0.52 m off the rim.
+			for c: Dictionary in _step_candidates():
+				if c.key == "CityInteriors@(-28.85, 0.80, 12.62)":
+					var crate_shape := _top_shape(c.body)
+					var round := CylinderShape3D.new()
+					round.radius = 0.425
+					round.height = (crate_shape.shape as BoxShape3D).size.y
+					crate_shape.shape = round
+		"wedge_open":
+			# V+ wedge: the grocer's side shelf without its collider, so the pinned OPEN at its counter is gone.
+			for node: Node in district.get_node("CityInteriors/StockShelf").get_children():
+				if node is CollisionShape3D:
+					(node as CollisionShape3D).disabled = true
 		"step_moved":
 			# V+: a listed step moved 0.3 m, so the list names a place where it no longer stands.
 			for c: Dictionary in _step_candidates():
@@ -2664,6 +2900,7 @@ func _run() -> void:
 		await _mc_street_camera()
 		_mc_slots()
 		_v_steps()
+		_v_wedges()
 	if _phase("steam"):
 		await _steam()
 	if _phase("vault"):

@@ -392,6 +392,13 @@ for mutation in ('machine_layer', 'machine_material', 'machine_brass', 'machine_
     cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
                   rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
+# T6 acceptance 2026-10-14, rows 1–5 (docs/Fix/2026-10-14-T6-Acceptance-Geometry-Fix.md): V+ wedge, one form each — a
+# wall put 0.55 m off a street urn, the grocer's display crate with a round top 0.52 m off the shop wall, a wall 0.66 m
+# off the tailor's cutting table (the band's deep end), a pinned OPEN whose wall is gone — must each go red.
+for mutation in ('wedge_wall', 'wedge_round', 'wedge_deep', 'wedge_open'):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
 @contextmanager
 def isolated_profile():
     # Linux has an OS-supported data root override. macOS does not: use Godot's

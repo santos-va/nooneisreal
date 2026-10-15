@@ -8,6 +8,11 @@ const Places = preload("res://scripts/world/CityPlaces.gd")
 ## 2026-10-09-Rope-Pull-And-Jump-Arc-Fix.md). T1's choice Т1, plan 2026-10-14-Quality-Debt-Posts-Awning-Guards step 2;
 ## the tailor's and the workshop's stay spread. PLACEHOLDER; T6 accepts the frame.
 const ROLLED_AWNINGS: Array[String] = ["grocer"]
+## The rolled awning's cloth (_rolled_awning): cross stripes of cream and accent, ~0.46 m each like the rolled stall's
+## 0.445 m (T6 acceptance docs/Audit/2026-10-14-T6-Acceptance.md § 1, ТЗ 2: «~14 смуг по ~0,46 м»), and its ties' width,
+## П4 «≥ 0,1 м» (ТЗ 3). PLACEHOLDER; T6 accepts the frame.
+const ROLLED_STRIPES: int = 14
+const ROLLED_TIE: float = 0.10
 
 func _ready() -> void:
 	name = "CityInteriors"
@@ -90,25 +95,35 @@ func _shop(shop: Dictionary) -> void:
 	marker.set_meta("walk_in", true)
 	add_child(marker)
 
-## A shop awning rolled up (ROLLED_AWNINGS): the same accent cloth as one roll Ø 0.24 m (the Н6 stall roll's size) along
-## the lintel, 1 cm off its face (local z −0.15) at the spread awning's height (y 3.85), tied in three places; the cream
-## valance hangs from the roll's front edge with the shop's name on it, as the front bar of a retracted awning. One
-## collider for the roll, none for the valance (as the spread fascia). PLACEHOLDER sizes; look and colour are T6's.
+## A shop awning rolled up (ROLLED_AWNINGS): one roll Ø 0.24 m (the Н6 stall roll's size) along the lintel, 1 cm off its
+## face (local z −0.15) at the spread awning's height (y 3.85), in cross stripes of cream and the shop's accent like the
+## rolled stall canopy (CityMarket._rolled_canopy: 8 × 0.445 m there, ROLLED_STRIPES × 6.5 / 14 m here), tied in three
+## places with bands ROLLED_TIE wide (П4 ≥ 0.1 m); the cream valance with the shop's name hangs under the roll, as the front
+## bar of a retracted awning. T6 acceptance docs/Audit/2026-10-14-T6-Acceptance.md § 1: one accent roll behind the valance
+## merged with the lintel of its own colour and its 4 cm ties were ~6 px from 6 m. One collider for the roll (unchanged),
+## none for the valance (as the spread fascia). PLACEHOLDER sizes; look and colour are T6's.
 func _rolled_awning(pose: Transform3D, accent: String, title: String) -> void:
 	var radius: float = 0.12
+	var length: float = 6.5
 	var axis: Transform3D = pose.translated_local(Vector3(0, 3.85, -0.15 - radius - 0.01)).rotated_local(Vector3.BACK, PI * 0.5)
-	# The roll's axis is its local y; rotated_local(BACK, π/2) points it along the shop's −x.
-	_cylinder(axis, Vector3.ZERO, radius, radius, 6.5, accent, 16)
+	# The roll's axis is its local y; rotated_local(BACK, π/2) points it along the shop's −x, so the offset −(x0 + ½) puts
+	# a stripe at shop x x0 + ½: stripe 0 (cream) is the west end, as in the stall.
+	var stripe: float = length / float(ROLLED_STRIPES)
+	for index: int in ROLLED_STRIPES:
+		var x0: float = -length * 0.5 + float(index) * stripe
+		_cylinder(axis, Vector3(0, -(x0 + stripe * 0.5), 0), radius, radius, stripe, "cloth_cream" if index % 2 == 0 else accent, 16)
 	for x: float in [-2.2, 0.0, 2.2]:
-		_cylinder(axis, Vector3(0, -x, 0), radius + 0.008, radius + 0.008, 0.04, "wood", 16)
+		_cylinder(axis, Vector3(0, -x, 0), radius + 0.008, radius + 0.008, ROLLED_TIE, "wood", 16)
 	var shape := CylinderShape3D.new()
 	shape.radius = radius
-	shape.height = 6.5
+	shape.height = length
 	_solid("RolledAwning", axis, shape)
-	# The valance's back face (z −0.345) cuts the roll's lower front, so it hangs from the roll, not beside it. It ends
-	# 3 cm inside each end of the roll, so its ends never share the roll's end planes.
-	_box(pose, Vector3(0, 3.66, -0.40), Vector3(6.44, 0.26, 0.11), "cloth_cream")
-	_sign(pose * Vector3(0, 3.59, -0.47), title, 0.0067)
+	# The valance hangs under the roll (T6 § 1, ТЗ 1): its top (y 3.73) is the roll's underside, so the whole roll shows
+	# over it from the street. Its back face (z −0.28) is under the roll's lowest line (the roll's axis): at z −0.345, where
+	# it stood, the 16-sided roll is 2.2 cm higher and the valance would float. It ends 3 cm inside each end of the roll,
+	# so its ends never share the roll's end planes; the name stays 1.5 cm in front of it.
+	_box(pose, Vector3(0, 3.60, -0.335), Vector3(6.44, 0.26, 0.11), "cloth_cream")
+	_sign(pose * Vector3(0, 3.53, -0.405), title, 0.0067)
 
 func _counter(pose: Transform3D, accent: String) -> void:
 	_box(pose, Vector3(0, 0.48, 0), Vector3(3.6, 0.96, 0.86), accent, "ShopCounter")
@@ -162,11 +177,13 @@ func _grocer(pose: Transform3D) -> void:
 		_loaf(pose.translated_local(Vector3(-1.2 + float(index) * 0.55, 1.21, 5.55)), 0.85)
 	_jar(pose.translated_local(Vector3(0.5, 1.07, 5.6)), "cloth_teal", 0.7)
 	# A wall herb rack gives the otherwise clear aisle a readable shop-specific silhouette. It hangs over head height
-	# (its underside at 1.86 m; at 1.74 m a hero's head went through it).
+	# (its underside at 1.86 m; at 1.74 m a hero's head went through it). It is decor, so its jars have no collider:
+	# solid, they were a 2.13 m perch a hero reached from the beer barrel under the rack (T6 acceptance
+	# docs/Audit/2026-10-14-T6-Acceptance.md § 2.2, «бочка Шавлії»; the rack board never had one).
 	_box(pose, Vector3(3.04, 1.9, 3.35), Vector3(0.3, 0.08, 2.35), "wood")
 	for index: int in 4:
 		var z: float = 2.5 + float(index) * 0.55
-		_jar(pose.translated_local(Vector3(2.97, 1.95, z)), "terracotta", 0.55)
+		_jar(pose.translated_local(Vector3(2.97, 1.95, z)), "terracotta", 0.55, false)
 		# The sprigs stand in the jar's mouth (their foot 2 cm under its lip), not 4.5 cm over its shoulder.
 		for sprig: int in 3:
 			_cylinder(pose, Vector3(2.97, 2.43 + float(sprig % 2) * 0.12, z + float(sprig - 1) * 0.08), 0, 0.14, 0.46, "marker", 5)
