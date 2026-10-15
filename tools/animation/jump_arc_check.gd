@@ -4,6 +4,10 @@ extends SceneTree
 ## Subject: for a jump from the ground in the production CityWorld (its camera, light and HUD; real Space and D; both
 ## heroes; standing and running) and for drops onto the street:
 ##   G1 the air after a take-off shows exactly takeoff → apex → fall; a drop without a take-off never tucks;
+##   G1time (T4 audit 2026-10-09 proposal 3, J10; T5 С1–С3) the tuck lasts: `apex` begins on the 12th tick after the
+##      press ± 1 (С1, the end of the 0.20 s take-off), its first `fall` tick is the one where the ground is ≤ 0.31 s away
+##      ± 1 tick (С2: the landing tick − 18), and it lasts ≥ 0.28 s, i.e. ≥ 17 ticks (С3) — the order alone let a
+##      3-tick tuck through;
 ##   G2 no hero bone turns ≥ 15° in a tick in the air after the take-off (ticks 12 … landing);
 ##   G3 the largest turn in the take-off (ticks 0–11) is not above the value before bf38d3e (aa51881);
 ##   G4 on the standing landing no leg bone turns ≥ 15° in a tick; the light landing's lowest hips are not below
@@ -12,6 +16,11 @@ extends SceneTree
 ## The "before" values are the aa51881 captures of the same measure (T2 jump_capture, 2026-10-08/09): the largest
 ## per-tick change of any hero bone's skeleton-space rotation, and the hero Hips height above CityFighter.floor_y().
 ##   --break=blend|tuck|land — negative controls: the 2026-10-08 blends, no tuck at all, the light landing at ×2.5.
+##   --break=j10|tuck_late|tuck_long — G1time negatives, the product's tuck clock changed at run time (its exit is a
+##     constant, so the check drives the layer's own `_tuck` / `_takeoff_frames` between two ticks): T4's J10 (the tuck
+##     left once the ground is 0.58 s away, `tuck_min_seconds` 0.02 → a 3–4 tick tuck), the take-off held 2 ticks longer
+##     (the tuck starts on tick 14 and still lasts ≥ 17 ticks: С1 alone), the tuck held until the ground is 0.06 s away
+##     (С2 alone); each red in G1time.
 ## Sentinel: JUMP_ARC_COMPLETE checks=N failures=M mutation=<m> red=<failed families|none>; failures print
 ## "JUMP_ARC: ...".
 const TURN_LIMIT: float = 15.0
@@ -24,6 +33,17 @@ const BEFORE_TAKEOFF: Dictionary = {"choko_run": 17.1, "choko_stand": 33.4, "ske
 const BEFORE_LIGHT_HIPS: Dictionary = {"choko": 0.717, "skea": 0.700}
 const DROPS: Dictionary = {"drop_normal": 3.5, "drop_heavy": 6.5}
 const JUMP_STATE := 4
+## G1time: T5 docs/GDD/2026-10-09-Rope-Pull-And-Jump-Arc-Numbers.md § 2 С1–С3 and T4's tolerance (audit 2026-10-09
+## proposal 3) as literals — never read from LivingBodyMotion.
+const TUCK_START_TICK: int = 12          # С1: the tuck starts at the end of the take-off, 0.20 s = tick 12
+const TUCK_EXIT_SECONDS: float = 0.31    # С2: it ends when the ground is ≤ 0.31 s away
+const TUCK_MIN_SECONDS: float = 0.28     # С3: never shorter
+const TUCK_TOLERANCE: int = 1            # ± 1 tick
+const J10_EXIT_SECONDS: float = 0.58     # --break=j10: T4's mutation J10 (TUCK_EXIT 0.58, TUCK_MIN 0.02)
+const J10_MIN_SECONDS: float = 0.02
+const LATE_TICKS: int = 2                # --break=tuck_late: the take-off held this many ticks longer (and
+                                         # tuck_min_seconds 0, so the later tuck still starts: only С1 is broken)
+const LONG_EXIT_SECONDS: float = 0.06    # --break=tuck_long: the tuck held until the ground is this close
 var checks: int = 0
 var failures: int = 0
 var mutation: String = "none"
@@ -105,6 +125,10 @@ func _hero(hero: String) -> void:
 		layer.set("tuck_min_seconds", 99.0)
 	elif mutation == "land":
 		layer.set("light_land_rate", 2.5)
+	elif mutation == "j10":
+		layer.set("tuck_min_seconds", J10_MIN_SECONDS)
+	elif mutation == "tuck_late":
+		layer.set("tuck_min_seconds", 0.0)
 	var runs: Dictionary = {}
 	var done: Dictionary = {}
 	for case: String in ["stand", "run", "drop_normal", "drop_heavy"]:
@@ -116,6 +140,7 @@ func _hero(hero: String) -> void:
 		if not done[case]:
 			continue
 		_check(run.air_modes == ["takeoff", "apex", "fall"], "G1", "%s: the air after the take-off is %s, expected takeoff → apex → fall" % [id, " → ".join(run.air_modes)])
+		_tuck_time(run, id)
 		_check(run.air_turns.is_empty(), "G2", "%s: %d ticks in the air after the take-off turn a bone ≥ %.0f°: %s" % [id, run.air_turns.size(), TURN_LIMIT, run.air_turns.slice(0, 4)])
 		_check(run.takeoff_max <= float(BEFORE_TAKEOFF[id]) + 0.05, "G3", "%s: the take-off turns a bone %.1f° in a tick, above %.1f° before (aa51881)" % [id, run.takeoff_max, BEFORE_TAKEOFF[id]])
 		_check(run.land_max < FLIP_LIMIT, "flip", "%s: a bone flips %.1f° in one tick on the landing (%s)" % [id, run.land_max, run.land_bone])
@@ -137,6 +162,43 @@ func _hero(hero: String) -> void:
 	world.queue_free()
 	current_scene = null
 	await _ticks(3)
+
+
+## G1time: the tuck window measured on the rows (first / last `apex` tick, the landing tick), against С1–С3.
+func _tuck_time(run: Dictionary, id: String) -> void:
+	var first: int = int(run.tuck_first)
+	var last: int = int(run.tuck_last)
+	if first < 0:
+		_check(false, "G1time", "%s: no tuck at all after the take-off (press %d, land %d)" % [id, run.press, run.land])
+		return
+	var exit_want: int = int(run.land) - floori(TUCK_EXIT_SECONDS * 60.0 + 0.0001)
+	var ticks: int = last - first + 1
+	var min_ticks: int = ceili(TUCK_MIN_SECONDS * 60.0 - 0.0001)
+	_check(absi(first - int(run.press) - TUCK_START_TICK) <= TUCK_TOLERANCE, "G1time", "%s: the tuck starts on tick +%d after the press, expected +%d ± %d (С1)" % [id, first - int(run.press), TUCK_START_TICK, TUCK_TOLERANCE])
+	_check(absi(last + 1 - exit_want) <= TUCK_TOLERANCE, "G1time", "%s: the tuck's first fall tick is +%d, %.3f s before the ground; expected +%d (≤ %.2f s) ± %d (С2)" % [id, last + 1 - int(run.press), float(int(run.land) - last - 1) / 60.0, exit_want - int(run.press), TUCK_EXIT_SECONDS, TUCK_TOLERANCE])
+	_check(ticks >= min_ticks, "G1time", "%s: the tuck lasts %d ticks (%.3f s), shorter than %.2f s = %d ticks (С3)" % [id, ticks, float(ticks) / 60.0, TUCK_MIN_SECONDS, min_ticks])
+
+
+## --break=j10|tuck_late|tuck_long: the layer's tuck clock changed between two ticks of a jump from the ground. The layer
+## is reached as an Object (naming its class here would compile its autoload dependencies before the autoloads exist).
+func _break_tuck(hero: CharacterBody3D, layer: Object, broken: Dictionary) -> void:
+	if int(hero.state) != JUMP_STATE or not bool(layer.get("_takeoff")):
+		return
+	var tuck: Dictionary = (layer.get_script() as Script).get_script_constant_map()["Tuck"]
+	match mutation:
+		"j10":
+			if int(layer.get("_tuck")) == int(tuck.ON) and float(layer.call("time_to_ground", hero)) <= J10_EXIT_SECONDS:
+				layer.set("_tuck", int(tuck.DONE))
+		"tuck_late":
+			if not broken.get("delayed", false) and int(layer.get("_takeoff_frames")) >= TUCK_START_TICK - LATE_TICKS:
+				broken["delayed"] = true
+				layer.set("_takeoff_frames", int(layer.get("_takeoff_frames")) - LATE_TICKS)
+		"tuck_long":
+			if String(layer.get("mode")) == "apex":
+				broken["tucked"] = true
+			if broken.get("tucked", false):
+				layer.set("tuck_min_seconds", LONG_EXIT_SECONDS - TUCK_EXIT_SECONDS)
+				layer.set("_tuck", int(tuck.PENDING))
 
 
 func _complete(run: Dictionary, id: String) -> bool:
@@ -164,6 +226,7 @@ func _capture(world: Node, case: String) -> Dictionary:
 	var press_at := 36 if case == "run" else 0
 	var drop: float = float(DROPS.get(case, 0.0))
 	var landed := -1
+	var broken: Dictionary = {}
 	for tick: int in 200:
 		if case == "run" and tick == 0:
 			_key(KEY_D, true)
@@ -194,6 +257,8 @@ func _capture(world: Node, case: String) -> Dictionary:
 		rows.append({"t": tick, "state": int(hero.state), "floor": hero.is_on_floor(), "mode": String(layer.get("mode")), "turn": turn, "bone": turn_bone, "leg": leg, "hips": hips, "tier": String(layer.get("landing_tier"))})
 		if landed < 0 and tick > press_at and hero.is_on_floor() and int(hero.state) != JUMP_STATE:
 			landed = tick
+		if mutation in ["j10", "tuck_late", "tuck_long"] and drop <= 0.0 and landed < 0:
+			_break_tuck(hero, layer, broken)
 		if landed >= 0 and tick >= landed + LANDING_TICKS:
 			break
 	_key(KEY_D, false)
@@ -202,7 +267,7 @@ func _capture(world: Node, case: String) -> Dictionary:
 		if row.state == JUMP_STATE:
 			press = row.t
 			break
-	var out: Dictionary = {"press": press, "land": landed, "air_modes": [], "air_turns": [], "leg_turns": [], "takeoff_max": 0.0, "land_max": 0.0, "land_bone": "", "low": INF, "tier": ""}
+	var out: Dictionary = {"press": press, "land": landed, "air_modes": [], "air_turns": [], "leg_turns": [], "takeoff_max": 0.0, "land_max": 0.0, "land_bone": "", "low": INF, "tier": "", "tuck_first": -1, "tuck_last": -1}
 	if press < 0 or landed < 0:
 		return out
 	for row: Dictionary in rows:
@@ -211,6 +276,10 @@ func _capture(world: Node, case: String) -> Dictionary:
 			var mode: String = row.mode
 			if out.air_modes.is_empty() or out.air_modes.back() != mode:
 				out.air_modes.append(mode)
+			if mode == "apex":
+				if int(out.tuck_first) < 0:
+					out.tuck_first = t
+				out.tuck_last = t
 		if t >= press and t < press + TAKEOFF_TICKS:
 			out.takeoff_max = maxf(out.takeoff_max, row.turn)
 		if t >= press + TAKEOFF_TICKS and t < landed and row.turn >= TURN_LIMIT:
@@ -224,5 +293,6 @@ func _capture(world: Node, case: String) -> Dictionary:
 			out.low = minf(out.low, row.hips)
 		if t == landed:
 			out.tier = row.tier
-	print("JUMP_ARC %s %s press=%d land=%d air=%s takeoff_max=%.1f air_turns=%d leg_turns=%d land_max=%.1f(%s) low=%.3f tier=%s" % [hero.data.id, case, press, landed, "→".join(out.air_modes), out.takeoff_max, out.air_turns.size(), out.leg_turns.size(), out.land_max, out.land_bone, out.low, out.tier])
+	var tuck: String = "none" if int(out.tuck_first) < 0 else "+%d…+%d(%d)" % [int(out.tuck_first) - press, int(out.tuck_last) - press, int(out.tuck_last) - int(out.tuck_first) + 1]
+	print("JUMP_ARC %s %s press=%d land=%d air=%s tuck=%s takeoff_max=%.1f air_turns=%d leg_turns=%d land_max=%.1f(%s) low=%.3f tier=%s" % [hero.data.id, case, press, landed, "→".join(out.air_modes), tuck, out.takeoff_max, out.air_turns.size(), out.leg_turns.size(), out.land_max, out.land_bone, out.low, out.tier])
 	return out

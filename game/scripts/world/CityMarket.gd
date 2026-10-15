@@ -109,7 +109,10 @@ func _stall_goods(pose: Transform3D, state: String, goods_seed: int) -> void:
 			_crate(_nudged(pose, Vector3(-1.1, 0, -0.45), rng, 0.04, 0.12), Vector3(0.78, 0.72, 0.72))
 			jars = 1
 		"trestle":
-			_trestle_barrel(_nudged(pose, Vector3(0.62, 0, -0.55), rng, 0.03, 0.05))
+			# 0.13 m toward the counter (local z −0.55 → −0.42): at −0.55 the barrel stood 0.62 m off SouthWestRear behind
+			# the west z 25 stall, and a hero who stepped off its back rested on the rim with no key out of it (T6 RED,
+			# docs/Audit/2026-10-15-T6-Geometry-Fix-Acceptance.md § 5, ТЗ «Б»: ≥ 0.75 m to SouthWestRear, ≈ +0.13 m).
+			_trestle_barrel(_nudged(pose, Vector3(0.62, 0, -0.42), rng, 0.03, 0.05))
 			_crate(_nudged(pose, Vector3(-1.14, 0, -0.45), rng, 0.03, 0.10), Vector3(0.78, 0.72, 0.72))
 			jars = 2
 		_:
@@ -269,12 +272,16 @@ func _tar_barrel(pose: Transform3D) -> void:
 	_solid("TarBarrel", pose.translated_local(Vector3(0, 0.45, 0)), shape)
 
 
-func _jar(pose: Transform3D, color: String, scale_factor: float) -> void:
+## A lidded jar. `solid` false leaves it without a collider: decor out of the hero's reach that must never be a perch
+## (the grocer's herb rack, CityInteriors._grocer).
+func _jar(pose: Transform3D, color: String, scale_factor: float, solid: bool = true) -> void:
 	_cylinder(pose, Vector3(0, 0.18 * scale_factor, 0), 0.2 * scale_factor, 0.12 * scale_factor, 0.36 * scale_factor, color)
 	_cylinder(pose, Vector3(0, 0.4 * scale_factor, 0), 0.09 * scale_factor, 0.2 * scale_factor, 0.09 * scale_factor, color)
 	_cylinder(pose, Vector3(0, 0.46 * scale_factor, 0), 0.11 * scale_factor, 0.1 * scale_factor, 0.05 * scale_factor, color)
 	# The lid sits on the mouth (top 0.485 × scale) and rises 8 mm over it, not within 6 mm of the mouth's plane.
 	_cylinder(pose, Vector3(0, 0.485 * scale_factor + 0.004, 0), 0.075 * scale_factor, 0.075 * scale_factor, 0.008, "iron")
+	if not solid:
+		return
 	var shape := CylinderShape3D.new()
 	shape.radius = 0.2 * scale_factor
 	shape.height = 0.49 * scale_factor

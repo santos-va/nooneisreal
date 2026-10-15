@@ -44,10 +44,15 @@ func _ready() -> void:
 	_box("LeverMount", Vector3(-27.16, 5.0, -15.25), Vector3(0.24, 0.5, 0.4), "wood", true)
 	_lever = _box("ReleaseLever", Vector3(-26.995, 5.22, -15.25), Vector3(0.09, 0.6, 0.09), "brass", true)   # on its mount
 	_lever.rotation.x = -0.5
-	_box("MaintenanceBench", Vector3(-22.25, 4.75, -12.4), Vector3(1.3, 0.15, 2.1), "wood", true)
-	for z: float in [-13.1, -11.7]:
-		_box("BenchLeg", Vector3(-22.25, 4.35, z), Vector3(0.9, 0.7, 0.14), "iron", true)
-	_box("ToolChest", Vector3(-22.25, 5.0, -12.8), Vector3(0.8, 0.35, 0.55), "copper", true)
+	# The work bench stands in the court's south-east corner, 1 cm off SouthWall (face z −10.8) and EastWall (face
+	# x −21.3); its legs and the tool chest move with it. 0.55 m off SouthWall, Choko wedged between its end and the wall
+	# (T6 acceptance docs/Audit/2026-10-14-T6-Acceptance.md § 2.2, «впритул до SouthWall (≤ 0,05 м) або ≥ 0,75 м; скриня
+	# їде разом із верстаком»), and the chest left the same 0.55 m to EastWall (city_tidy_check V+ wedge). Now the chest is
+	# 0.26 m off EastWall: a hero pressed to that wall still stands on its lid.
+	_box("MaintenanceBench", Vector3(-21.96, 4.75, -11.86), Vector3(1.3, 0.15, 2.1), "wood", true)
+	for z: float in [-12.56, -11.16]:
+		_box("BenchLeg", Vector3(-21.96, 4.35, z), Vector3(0.9, 0.7, 0.14), "iron", true)
+	_box("ToolChest", Vector3(-21.96, 5.0, -12.26), Vector3(0.8, 0.35, 0.55), "copper", true)
 	_sign("EntranceSign", "СЛУЖБОВИЙ ДВІР", Vector3(-27.65, 6.72, -13.95), -PI * 0.5)
 	# D22: the bypass plaque stands at waist height on the terrace, so it is solid, and its post stands on the terrace
 	# (y 4.0) instead of 0.3 m inside it. Solid, it would close the walk to the ramp along z −10.55 that heroes took

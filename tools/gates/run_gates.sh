@@ -84,6 +84,8 @@ run "РЕЄ реєстр текстур і ассетів"    "$PY" tools/gates/
 run "ПАР парність ролей"              "$PY" tools/gates/role_parity_check.py
 run "ЯКІ якорі шапки state.md"       "$PY" tools/gates/state_anchor_check.py
 run "ПЛА розділ R8 у планах"         "$PY" tools/gates/plan_sections_check.py
+# Клас 16: лише канарка (навмисна розбіжність → rc=2). Звірка state.md з логами — make summary-check PLAYABLE_LOG_DIR=…
+run "ЧИС підсумкові числа (канарка)" "$PY" tools/gates/summary_numbers_check.py --canary
 if [ "$MODE" = full ]; then
   run "GDS godot --check-only на .gd"   bash  tools/gates/gd_check_all.sh
 else

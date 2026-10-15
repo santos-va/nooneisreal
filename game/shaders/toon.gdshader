@@ -14,6 +14,12 @@ uniform float rim_strength : hint_range(0.0, 1.0) = 0.3;
 uniform float rim_width : hint_range(0.0, 1.0) = 0.55;
 uniform float hit_flash : hint_range(0.0, 1.0) = 0.0;
 uniform float desat : hint_range(0.0, 1.0) = 0.0;   // TIME STOP: grey-blue frozen look
+// Colour test switch A / B3 (plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB step 8, variant V1).
+// GraphicsSettings sets it from the COLOURS (TEST) row; the default lives in project.godot [shader_globals].
+// false = A: exactly the code as it was. true = B3: the calibration tool's variant, text for text
+// (tools/art/albedo_ab_capture.gd b1_source() + b3_edits()).
+// B3 numbers are PLACEHOLDER (artistic, Forward+ formula): docs/Fix/2026-10-15-Albedo-B3-Fix.md.
+global uniform bool colour_b3;
 
 void vertex() {
 	camera_main_pass = distance(INV_VIEW_MATRIX[3].xyz, MAIN_CAM_INV_VIEW_MATRIX[3].xyz) < 0.001 ? 1.0 : 0.0;
@@ -35,10 +41,22 @@ void light() {
 	float lit = clamp(ndl * 0.5 + 0.5, 0.0, 1.0);
 	float band = floor(lit * bands) / max(bands - 1.0, 1.0);
 	float a = clamp(band, 0.0, 1.0);
-	float k = mix(1.0 - shadow_strength, 1.0, a);
-	vec3 shade = mix(ALBEDO * shadow_tint.rgb, ALBEDO, k);
-	DIFFUSE_LIGHT += shade * LIGHT_COLOR * ATTENUATION;
-	float rim = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
-	rim = smoothstep(1.0 - rim_width, 1.0, rim);
-	DIFFUSE_LIGHT += ALBEDO * rim * rim_strength * LIGHT_COLOR * ATTENUATION * step(0.0, ndl);
+	if (colour_b3) {
+		// B3 (PLACEHOLDER): no albedo factor here (the engine multiplies by it once after light());
+		// every light line x 0.914 / PI;
+		// shadow_strength 0.45 -> 1.000.
+		float k = mix(1.0 - clamp(shadow_strength * (1.000 / 0.45), 0.0, 1.0), 1.0, a);
+		vec3 shade = mix(vec3(1.0) * shadow_tint.rgb, vec3(1.0), k);
+		DIFFUSE_LIGHT += shade * LIGHT_COLOR * ATTENUATION * 0.914 / PI;
+		float rim = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
+		rim = smoothstep(1.0 - rim_width, 1.0, rim);
+		DIFFUSE_LIGHT += vec3(1.0) * rim * rim_strength * LIGHT_COLOR * ATTENUATION * step(0.0, ndl) * 0.914 / PI;
+	} else {
+		float k = mix(1.0 - shadow_strength, 1.0, a);
+		vec3 shade = mix(ALBEDO * shadow_tint.rgb, ALBEDO, k);
+		DIFFUSE_LIGHT += shade * LIGHT_COLOR * ATTENUATION;
+		float rim = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
+		rim = smoothstep(1.0 - rim_width, 1.0, rim);
+		DIFFUSE_LIGHT += ALBEDO * rim * rim_strength * LIGHT_COLOR * ATTENUATION * step(0.0, ndl);
+	}
 }

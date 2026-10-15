@@ -109,3 +109,29 @@ static func blocks() -> Array[Dictionary]:
 
 static func _box(id: String, center: Vector3, size: Vector3, material: String, layer: int = 9) -> Dictionary:
 	return {"id": id, "center": center, "size": size, "material": material, "layer": layer}
+
+## The district's invisible edge (T1's choice «а», plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB «Рішення T1 після
+## приймань T6»): a running jump from the terrace (y 4) or the service gallery (y 6.3) carried the hero over the 4 m
+## slate boundary walls into the void (T6 docs/Audit/2026-10-15-T6-Geometry-Fix-Acceptance.md § 3.3). Over each of the
+## four walls a collider without a mesh, the wall's own plan, from its top up to BOUNDARY_VEIL_TOP. It is on a layer of
+## its own that only the city hero collides with (CityFighter adds it to its mask): the follow camera, the rope, the
+## residents and every world ray keep mask 1 and never meet it, and the parkour motor does not take it for a wall to
+## run, kick or grip (CityParkourMotor._ray leaves it out). Project layer 7, «district_bound».
+const BOUNDARY_VEIL_LAYER: int = 64
+## The veil's top: the highest solid of the district (the clock tower's dome support, y 21.90, measured on e7b3603) plus
+## Skea's jump (+2.80, T6 § 3.2) plus the hero capsule (1.8, Fighter.tscn) is 26.50; PLACEHOLDER 28 with a margin.
+const BOUNDARY_VEIL_TOP: float = 28.0
+
+## One veil per boundary wall: «<wall id>Veil», the wall's plan (x, z, size), from the wall's top to BOUNDARY_VEIL_TOP.
+static func boundary_veils() -> Array[Dictionary]:
+	var veils: Array[Dictionary] = []
+	for block: Dictionary in blocks():
+		if not String(block.id).ends_with("Boundary"):
+			continue
+		var center: Vector3 = block.center
+		var size: Vector3 = block.size
+		var top: float = center.y + size.y * 0.5
+		veils.append({"id": String(block.id) + "Veil", "wall": block.id,
+			"center": Vector3(center.x, (top + BOUNDARY_VEIL_TOP) * 0.5, center.z),
+			"size": Vector3(size.x, BOUNDARY_VEIL_TOP - top, size.z)})
+	return veils
