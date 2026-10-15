@@ -128,7 +128,7 @@ cases = [
     ('city-geometry', 'tools/world/city_geometry_check.gd', r'CITY_GEOMETRY_COMPLETE checks=[1-9][0-9]* failures=0 meshes=[1-9][0-9]*', [], 0),
     # City tidy-up and the first props (plan 2026-10-09-City-Tidy-And-Modern-Props, phase 0): panes, support, z-fight,
     # duplicates, solidity, the T6 places, real-key vaults of both heroes and the steam puffs.
-    ('city-tidy', 'tools/world/city_tidy_check.gd', r'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-tidy', 'tools/world/city_tidy_check.gd', r'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none red=none', [], 0),
     ('city-runtime', 'tools/world/city_runtime_check.gd', r'CITY_RUNTIME_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-onboarding', 'tools/world/city_onboarding_check.gd', r'CITY_ONBOARDING_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     # City events, stage 1 (plan 2026-10-08-City-Events-Stage-1, steps 1–5): the director, the alley, the leaves and
@@ -239,9 +239,9 @@ for mutation, family in (('all_posts', 'foreign'), ('counter', 'air'), ('wall', 
                   rf'ROPE_PULL_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z,]*\b{family}\b[a-z,]*',
                   ['--', '--hero=choko', '--break=' + mutation], 1))
 # Step 4: V+ — an unlisted 1.0 m crate, one at the band's bottom 0.6 m, and a listed step moved 0.3 m must each go red.
-for mutation in ('step_new', 'step_low', 'step_moved'):
+for mutation, family in (('step_new', 'vstep'), ('step_low', 'vstep'), ('step_moved', 'vstep')):
     cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
-                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
                   ['--', '--break=' + mutation], 1))
 # Animation feel, branch B: the product of main 595490d, and each change switched back alone — no transition blend, the
 # duel's 0.28 rope lean, the camera arm stopped by the anchor's own post, the old wall-run clock, a still hang and a
@@ -344,6 +344,8 @@ for mutation in ('jump', 'float', 'pull', 'target', 'vault', 'wallrun'):
     cases.append(('city-substances-negative-' + mutation, 'tools/world/city_substances_check.gd',
                   rf'CITY_SUBSTANCES_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--part=route', '--break=' + mutation], 1))
+# Every city-tidy negative names the family it must turn red (red=…, city_tidy_check.gd header; T4 audit 2026-10-15,
+# class 18: a negative red on a neighbouring guard no longer passes).
 # City tidy (phase 0): each class with the returned audit defect and another form of it — a bracket strut and the
 # market wire in a pane; a barrel and a loaf floating, a crate sunk, the archive plate off its wall; the fascia and the
 # door jamb in one plane; a wall and a drum built twice; a planter, the dress form and the bypass plaque without their
@@ -354,14 +356,18 @@ for mutation in ('jump', 'float', 'pull', 'target', 'vault', 'wallrun'):
 # steam vehicles (docs/Fix/2026-10-09-City-Vehicles-And-Iron-Paint-Fix.md): one floating or sunk, a hull gone, the mesh
 # off its hulls, hulls on the cover layer only, a surface off the city material, a vehicle under an anchor, in a lane,
 # on a run-up, a camera station behind one, and a flat-roofed one vaulted with a relaxed profile — each red.
-for mutation in ('pane_strut', 'pane_wire', 'float_barrel', 'float_loaf', 'sink_crate', 'float_plate', 'zfight_fascia',
-                 'zfight_jamb', 'dup_wall', 'dup_barrel', 'solid_planter', 'solid_dressform', 'solid_sign', 'service',
-                 'court', 'anchor', 'passage', 'lane', 'ink_strip', 'vault_high', 'vault_deep', 'steam_hero', 'steam_flash',
-                 'pump_spout', 'pump_lever', 'pump_layer', 'vehicle_float', 'vehicle_sink', 'vehicle_nocollider',
-                 'vehicle_shift', 'vehicle_layer', 'vehicle_material', 'vehicle_anchor', 'vehicle_lane', 'vehicle_runup',
-                 'vehicle_gap', 'vehicle_vault'):
+for mutation, family in (('pane_strut', 'c1'), ('pane_wire', 'c1'), ('float_barrel', 'c2'), ('float_loaf', 'c2'),
+                         ('sink_crate', 'c2'), ('float_plate', 'c2'), ('zfight_fascia', 'c3'), ('zfight_jamb', 'c3'),
+                         ('dup_wall', 'c4'), ('dup_barrel', 'c4'), ('solid_planter', 'c5'), ('solid_dressform', 'c5'),
+                         ('solid_sign', 'c5'), ('service', 'd17'), ('court', 'k6'), ('anchor', 'k'), ('passage', 'k7'),
+                         ('lane', 'k6'), ('ink_strip', 'k4'), ('vault_high', 'v'), ('vault_deep', 'v'),
+                         ('steam_hero', 's'), ('steam_flash', 's'), ('pump_spout', 'c5'), ('pump_lever', 'c5'),
+                         ('pump_layer', 'c5'), ('vehicle_float', 'm3'), ('vehicle_sink', 'm3'),
+                         ('vehicle_nocollider', 'm4'), ('vehicle_shift', 'm4'), ('vehicle_layer', 'm1'),
+                         ('vehicle_material', 'm2'), ('vehicle_anchor', 'm5'), ('vehicle_lane', 'm6'),
+                         ('vehicle_runup', 'm7'), ('vehicle_gap', 'm8'), ('vehicle_vault', 'vm')):
     cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
-                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
                   ['--', '--break=' + mutation], 1))
 # Guard pins after the T4 audit 2026-10-14 (docs/Fix/2026-10-14-Guard-Pins-After-Audit-Fix.md). B13: T5 Substances
 # § 12.3 (б) rolled back — the state's braking in a landing's settle ticks with the stick held — must go red. The OPEN
@@ -388,28 +394,32 @@ cases.append(('rope-choice-negative-blocker_name', 'tools/grapple/rope_choice_ch
 # lens and its hook (no hull) across that line, a camera station with the facade behind, a 0.5 m slot to the terrace's
 # edge, the winch's triangles doubled, its
 # listed step moved, and a flat-topped winch vaulted with a relaxed profile.
-for mutation in ('machine_layer', 'machine_material', 'machine_brass', 'machine_float', 'machine_sink',
-                 'machine_nocollider', 'machine_shift', 'machine_column', 'machine_anchor', 'machine_pocket',
-                 'machine_lane', 'machine_street_hull', 'machine_cross', 'machine_occlude', 'machine_gap', 'machine_slot',
-                 'machine_budget',
-                 'machine_step', 'machine_vault'):
+for mutation, family in (('machine_layer', 'mc1'), ('machine_material', 'mc2'), ('machine_brass', 'mc2'),
+                         ('machine_float', 'mc3'), ('machine_sink', 'mc3'), ('machine_nocollider', 'mc1'),
+                         ('machine_shift', 'mc4'), ('machine_column', 'mc5'), ('machine_anchor', 'mc5'),
+                         ('machine_pocket', 'mc6'), ('machine_lane', 'mc6'), ('machine_street_hull', 'mc7hull'),
+                         ('machine_cross', 'mc7arm'), ('machine_occlude', 'mc7cross'), ('machine_gap', 'mc8'),
+                         ('machine_slot', 'mc9'), ('machine_budget', 'mc10'),
+                         ('machine_step', 'vstep'), ('machine_vault', 'vmc')):
     cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
-                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
                   ['--', '--break=' + mutation], 1))
 # T6 acceptance 2026-10-14, rows 1–5 (docs/Fix/2026-10-14-T6-Acceptance-Geometry-Fix.md): V+ wedge, one form each — a
 # wall put 0.55 m off a street urn, the grocer's display crate with a round top 0.52 m off the shop wall, a wall 0.66 m
 # off the tailor's cutting table (the band's deep end), a pinned OPEN whose wall is gone — must each go red.
-for mutation in ('wedge_wall', 'wedge_round', 'wedge_deep', 'wedge_open'):
+for mutation, family in (('wedge_wall', 'vwedge'), ('wedge_round', 'vwedge'), ('wedge_deep', 'vwedge'), ('wedge_open', 'vopen')):
     cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
-                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
                   ['--', '--break=' + mutation], 1))
 # T6's A5 (docs/Audit/2026-10-14-T6-Crane-Winch-Acceptance.md § 3 п. 1; docs/Fix/2026-10-15-Albedo-B3-Fix.md § MC7): from
 # the street stations S2–S4 the lens sees no machine point under the terrace's level, «seen_y ≥ 4,0 м». One form each:
 # the crane's decor hanging under the level over the street (no hull), the crane standing on the street floor in view
 # (every other guard holds: only this one goes red), the winch hanging in front of the terrace's wall with no floor.
-for mutation in ('machine_seen_hook', 'machine_seen_street', 'machine_seen_float'):
+# At the threshold (T4 audit 2026-10-15 proposal 2): the crane's decor with its bottom at 3.9 m, 0.1 m under the level.
+for mutation, family in (('machine_seen_hook', 'mc7seen'), ('machine_seen_street', 'mc7seen'), ('machine_seen_float', 'mc7seen'),
+                         ('machine_seen_low', 'mc7seen')):
     cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
-                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
                   ['--', '--break=' + mutation], 1))
 # Colour test switch A / B3 (docs/Fix/2026-10-15-Colour-Switch-Fix.md): a fresh profile on B3, a saved key forgotten at
 # load, any unknown value played as B3, a damaged file saved over, a row that never switches, a row that never saves,
@@ -422,9 +432,17 @@ for mutation in ('default', 'persist', 'unknown', 'cfg', 'row', 'row_save', 'glo
 # T4 audit 2026-10-15, class 17 (docs/Fix/2026-10-15-Stall-Wedge-Boundary-Fix.md § 5): a pinned OPEN wedge that grows —
 # a wall 0.55 m along the grocer counter's west end (wider: 9 of 9 points, pinned 5) or its side shelf 0.018 m further off
 # (deeper: 0.171 m under, pinned 0.147 + 0.02) — must go red.
-for mutation in ('wedge_more', 'wedge_deeper'):
+for mutation, family in (('wedge_more', 'vgrow'), ('wedge_deeper', 'vgrow')):
     cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
-                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
+                  ['--', '--break=' + mutation], 1))
+# T4 audit 2026-10-15 YELLOW 5 (docs/Fix/2026-10-15-Tidy-Sentinel-Families-Fix.md): M0 — every kind of CityProps places
+# its own GLB, an unknown kind is refused and places nothing. CityProps._place_glb broken in the fixture's probe, one form
+# each: an unknown kind placed as the truck with no refusal, an unknown kind placing nothing and reporting nothing, refused
+# but placed anyway, the crane placed as the winch — each must go red in m0.
+for mutation, family in (('glb_standin', 'm0'), ('glb_silent', 'm0'), ('glb_both', 'm0'), ('glb_swap', 'm0')):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
                   ['--', '--break=' + mutation], 1))
 # Plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB, T1's decision after T6 (2026-10-15; docs/Fix/2026-10-15-Stall-Wedge-
 # Boundary-Fix.md). The district's invisible edge: no running jump crosses any of the four boundaries at any height, the

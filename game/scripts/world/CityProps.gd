@@ -269,6 +269,8 @@ func _steam_vent(spec: Dictionary) -> void:
 ## of its whole mesh.
 func _vehicle(spec: Dictionary) -> void:
 	var vehicle: Node3D = _place_glb(spec, "Vehicle_")
+	if vehicle == null:
+		return
 	var box: AABB = _mesh_box(vehicle)
 	_note(String(spec.kind), spec.center, Vector2(box.size.x, box.size.z).length() * 0.5)
 
@@ -277,6 +279,8 @@ func _vehicle(spec: Dictionary) -> void:
 ## floor (bottom within 0.25 m of it): the crane's plinth, not its boom over the street.
 func _machine(spec: Dictionary) -> void:
 	var machine: Node3D = _place_glb(spec, "Machine_")
+	if machine == null:
+		return
 	var foot := AABB()
 	var first: bool = true
 	for node: Node in machine.find_children("*", "CollisionShape3D", true, false):
@@ -294,17 +298,24 @@ func _machine(spec: Dictionary) -> void:
 
 ## One Blender GLB in the city: every surface becomes the city material named by the GLB's material (one manner with
 ## the rest of the district: the city shader, its outline and its shadow tint); a name the palette does not know is an
-## error, not a silent stand-in. The importer turns each `-convcolonly` hull into its own StaticBody3D; each goes on the
-## layer of the city's solids (1 walking and the camera, 8 cover), like `_solid`.
+## error, not a silent stand-in. So is a `kind` with no GLB of its own: nothing is placed and null comes back (the tarped
+## car used to stand in for any unknown kind, T4 audit docs/Audit/2026-10-15-Wave-14-Review.md YELLOW 5). The importer
+## turns each `-convcolonly` hull into its own StaticBody3D; each goes on the layer of the city's solids (1 walking and
+## the camera, 8 cover), like `_solid`.
 func _place_glb(spec: Dictionary, prefix: String) -> Node3D:
-	var scene: PackedScene = STEAM_CAR_TARP
+	var scene: PackedScene = null
 	match String(spec.kind):
 		"steam_truck":
 			scene = STEAM_TRUCK
+		"steam_car_tarp":
+			scene = STEAM_CAR_TARP
 		"steam_crane":
 			scene = STEAM_CRANE
 		"steam_winch":
 			scene = STEAM_WINCH
+		_:
+			_refuse_kind(spec, prefix)
+			return null
 	var placed: Node3D = scene.instantiate()
 	placed.name = prefix + String(spec.id)
 	placed.transform = Transform3D(Basis(Vector3.UP, float(spec.yaw)), spec.center)
@@ -324,6 +335,11 @@ func _place_glb(spec: Dictionary, prefix: String) -> Node3D:
 		body.collision_mask = 0
 		solid_count += 1
 	return placed
+
+
+## A spec `_place_glb` cannot place: its `kind` names no GLB. The error is the whole report; nothing stands in.
+func _refuse_kind(spec: Dictionary, prefix: String) -> void:
+	push_error("CITY_PROPS: %s%s asks for kind «%s», which has no GLB: nothing placed" % [prefix, spec.get("id", "?"), spec.get("kind", "")])
 
 
 ## A descendant's transform in `top`'s frame.

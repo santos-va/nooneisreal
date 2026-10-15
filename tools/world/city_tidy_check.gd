@@ -70,12 +70,22 @@ extends SceneTree
 ##                whatever stops the hero beside it — a solid or the floor's edge (a slot between them wedges a hero);
 ##                MC10 the visible triangles stay within the ceiling (the crane ≤ 5646, the winch ≤ 2000); V-MC both
 ##                heroes run at each open side of the winch with W and Space: no vault, never left inside it.
+##   M0         — every kind of CityProps.VEHICLES and MACHINES places the GLB of its own name
+##                (res://assets/props/city/prop_<kind>_v1.glb, the registry's id) and stands in the district under its
+##                prefix; a kind with no GLB is refused once by CityProps._place_glb and places nothing — no node, no
+##                solid, no stand-in (T4 audit docs/Audit/2026-10-15-Wave-14-Review.md YELLOW 5: the tarped car stood in
+##                for any unknown kind). Probed on a CityProps outside the tree whose one override records the refusal.
 ## Literals: docs/Audit/2026-10-08-City-Tidy-Technical-Audit.md § 2 (2 cm, 0.3 m, 20 %, 6 mm, 2 cm², 0.1 m, 1 mm, r 0.32,
 ## 0.12–1.8 m, 13/27, 0.08 m, 0.4 l); docs/Art/2026-10-08-City-Modern-Realism-Props.md (П4 0.1 m, К4 0.2 m, К6 8 m / 1 m,
 ## Н7 0.25 m / 3.2 m, К8 5 / 3); the plan (obstacles 0.9–1.1 m, ≤ 0.8 m); 2026-10-07-Tight-Station-Readability-Criteria
 ## (≥ 3 m of camera); WCAG 2.3.1 (< 3 flashes a second). The anchor floors were measured on 97675c7 (see ANCHOR_FLOOR).
 ## --break=<m> is a negative control: one returned defect or another form of the same class (see MUTATIONS); sentinel
-## CITY_TIDY_COMPLETE checks=N failures=M mutation=<m>; failures print "CITY_TIDY: ...".
+## CITY_TIDY_COMPLETE checks=N failures=M mutation=<m> red=<families|none>; failures print "CITY_TIDY: [family] ...".
+## A family is the guard's tag, the label's first word lower-cased (C1 → c1, K4/Н1 → k4, V-M → vm, MC10 → mc10), and two
+## guards are split by sub-guard: V+ into vstep (unlisted or lost steps), vwedge (a new wedge), vopen (a pinned OPEN gone
+## or moved), vgrow (a pinned OPEN wider or deeper); MC7 into mc7hull, mc7arm, mc7cross, mc7s3, mc7seen. Each negative
+## of tools/gates/playable_check.sh names the family it must turn red, so a negative that goes red on a neighbouring
+## guard no longer passes (T4 audit 2026-10-15, class 18).
 const DT: float = 1.0 / 60.0
 const GEOMETRY_BREAKS := ["pane_strut", "pane_wire", "float_barrel", "float_loaf", "sink_crate", "float_plate",
 	"zfight_fascia", "zfight_jamb", "dup_wall", "dup_barrel", "solid_planter", "solid_dressform", "solid_sign", "service",
@@ -112,12 +122,21 @@ const STEP_BREAKS := ["step_new", "step_low", "step_moved", "wedge_wall", "wedge
 const MACHINE_BREAKS := ["machine_layer", "machine_material", "machine_brass", "machine_float", "machine_sink",
 	"machine_nocollider", "machine_shift", "machine_column", "machine_anchor", "machine_pocket", "machine_lane",
 	"machine_street_hull", "machine_cross", "machine_occlude", "machine_gap", "machine_slot", "machine_budget",
-	"machine_step", "machine_seen_hook", "machine_seen_street", "machine_seen_float"]
+	"machine_step", "machine_seen_hook", "machine_seen_street", "machine_seen_float", "machine_seen_low"]
 ## MC7 seen_y negatives (A5), one form each of «a street lens sees a machine point under the terrace's level»: decor of
 ## the crane, standing where it stands, hangs under the level over the street (no hull; MC3 sees its box's bottom too);
 ## the crane stands on the street floor in the S2–S4 view (every other guard holds: only seen_y goes red); the winch
-## hangs in front of the terrace's wall with no floor.
+## hangs in front of the terrace's wall with no floor. At the threshold (T4 audit 2026-10-15 proposal 2): the same decor
+## with its bottom at 3.9 m, 0.1 m under the level — a floor weakened by more than that lets it through.
 const MACHINE_RUN_BREAKS := ["machine_vault"]
+## M0 negatives, one form each of «a kind places its own GLB, or is refused and places nothing» (CityProps._place_glb
+## broken in the probe only): an unknown kind placed as the steam truck with no refusal (the audited stand-in, another
+## GLB); an unknown kind placing nothing and reporting nothing; an unknown kind refused but placed as the truck anyway;
+## a known kind placed as another's GLB (the crane as the winch).
+const KIND_BREAKS := ["glb_standin", "glb_silent", "glb_both", "glb_swap"]
+## M0: the GLB of a kind, by the registry's naming (docs/Art/Textures-Registry.md prop-steam-*-v1), and kinds no GLB has.
+const KIND_GLB: String = "res://assets/props/city/prop_%s_v1.glb"
+const KIND_UNKNOWN := ["steam_bus", "", "Steam_Truck", "steam_truck_v2"]
 ## MC literals. The hulls (docs/Art/2026-10-14-Steam-Crane-Winch-Form.md § Колізії, both tables) and the keys the form
 ## bans (§ Матеріали, A2); the triangle ceilings «≤ 5646 / 2000» of plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB,
 ## step 4 (5 646 is the truck's, docs/Art/Textures-Registry.md prop-steam-truck-v1; the form's A1 the same); a slot «0 or ≥ 1.2 m»
@@ -294,6 +313,7 @@ const GALLERY_STRUCTURE := ["NorthWall", "SouthWall", "EastWall", "EntryNorth", 
 
 var checks: int = 0
 var failures: int = 0
+var red: Dictionary = {}   # family → true for every family with a red check (the sentinel's red=)
 var mutation: String = "none"
 var world: Node3D
 var district: Node3D
@@ -303,6 +323,32 @@ var parts: Array[Dictionary] = []
 var grid: Dictionary = {}
 var fighter_script: Script
 var arch_solids: Array[Dictionary] = []
+
+
+## M0's probe: the product's CityProps._place_glb on a node outside the tree. Its one override records a refusal instead
+## of printing it (a positive run prints no error). Under a glb_* negative, `form` breaks _place_glb in one form of the
+## subject; with form "none" every call is the product's own.
+class KindProbe extends CityProps:
+	var refused: Array[String] = []
+	var form: String = "none"
+	func _refuse_kind(spec: Dictionary, _prefix: String) -> void:
+		refused.append(String(spec.get("kind", "")))
+	func _place_glb(spec: Dictionary, prefix: String) -> Node3D:
+		var unknown: bool = not (String(spec.kind) in ["steam_truck", "steam_car_tarp", "steam_crane", "steam_winch"])
+		var as_truck: Dictionary = spec.duplicate()
+		as_truck.kind = "steam_truck"
+		var as_winch: Dictionary = spec.duplicate()
+		as_winch.kind = "steam_winch"
+		if form == "glb_standin" and unknown:
+			return super(as_truck, prefix)
+		if form == "glb_silent" and unknown:
+			return null
+		if form == "glb_both" and unknown:
+			_refuse_kind(spec, prefix)
+			return super(as_truck, prefix)
+		if form == "glb_swap" and String(spec.kind) == "steam_crane":
+			return super(as_winch, prefix)
+		return super(spec, prefix)
 
 
 class Rec extends RefCounted:
@@ -447,11 +493,21 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 
-func _check(ok: bool, label: String) -> void:
+## One guard's verdict. A red check adds its family to `red` (the sentinel's red=): the guard's tag, or a finer
+## sub-guard the call names (V+, MC7).
+func _check(ok: bool, label: String, family: String = "") -> void:
 	checks += 1
 	if not ok:
 		failures += 1
-		push_error("CITY_TIDY: " + label)
+		var tag: String = family if not family.is_empty() else _family(label)
+		red[tag] = true
+		push_error("CITY_TIDY: [%s] %s" % [tag, label])
+
+
+## The guard's tag of a label: its first word up to a slash, lower-cased, hyphens dropped («K4/Н1 …» → k4,
+## «V-MC …» → vmc).
+static func _family(label: String) -> String:
+	return label.get_slice(" ", 0).get_slice("/", 0).to_lower().replace("-", "").replace("+", "plus")
 
 
 func _ticks(count: int) -> void:
@@ -470,6 +526,8 @@ func _phase(name: String) -> bool:
 			return mutation == "none" or mutation in VAULT_BREAKS or mutation in VEHICLE_RUN_BREAKS or mutation in MACHINE_RUN_BREAKS
 		"steam":
 			return mutation == "none" or mutation in STEAM_BREAKS
+		"kind":
+			return mutation == "none" or mutation in KIND_BREAKS
 	return false
 
 
@@ -1523,9 +1581,9 @@ func _v_steps() -> void:
 			seen[c.key] = true
 			print("CITY_TIDY_INFO V+ step %s — %s" % [label, STEP_PROPS[c.key]])
 			continue
-		_check(false, "V+ %s has a flat top 0.6–1.3 m over the floor: neither a vault obstacle nor a listed step" % label)
+		_check(false, "V+ %s has a flat top 0.6–1.3 m over the floor: neither a vault obstacle nor a listed step" % label, "vstep")
 	for key: String in STEP_PROPS:
-		_check(seen.has(key), "V+ the listed step %s (%s) is no longer a floor body with a flat top 0.6–1.3 m" % [key, STEP_PROPS[key]])
+		_check(seen.has(key), "V+ the listed step %s (%s) is no longer a floor body with a flat top 0.6–1.3 m" % [key, STEP_PROPS[key]], "vstep")
 	print("CITY_TIDY_INFO V+ candidates=%d vaults=%d steps=%d listed=%d" % [candidates.size(), vaults, steps, STEP_PROPS.size()])
 
 
@@ -1567,17 +1625,17 @@ func _v_wedges() -> void:
 				seen_open[tag] = true
 				var pin: Dictionary = STEP_WEDGE_OPEN[tag]
 				var pinned: float = float(pin.gap)
-				_check(wedged and absf(narrowest - pinned) <= STEP_OPEN_SLACK, "V+ wedge OPEN %s no longer wedges as pinned (%d of %d points, gap %.3f, pinned %.3f): fix STEP_WEDGE_OPEN" % [label, counts.wedge, STEP_SAMPLES, narrowest, pinned])
+				_check(wedged and absf(narrowest - pinned) <= STEP_OPEN_SLACK, "V+ wedge OPEN %s no longer wedges as pinned (%d of %d points, gap %.3f, pinned %.3f): fix STEP_WEDGE_OPEN" % [label, counts.wedge, STEP_SAMPLES, narrowest, pinned], "vopen")
 				var deepest: float = float(worst.get("depth", 0.0))
-				_check(int(counts.wedge) <= int(pin.points) and deepest <= float(pin.depth) + STEP_OPEN_SLACK, "V+ wedge OPEN %s wedges wider or deeper than pinned (%d of %d points, pinned %d; %.3f m under, pinned %.3f + %.2f)" % [label, counts.wedge, STEP_SAMPLES, int(pin.points), deepest, float(pin.depth), STEP_OPEN_SLACK])
+				_check(int(counts.wedge) <= int(pin.points) and deepest <= float(pin.depth) + STEP_OPEN_SLACK, "V+ wedge OPEN %s wedges wider or deeper than pinned (%d of %d points, pinned %d; %.3f m under, pinned %.3f + %.2f)" % [label, counts.wedge, STEP_SAMPLES, int(pin.points), deepest, float(pin.depth), STEP_OPEN_SLACK], "vgrow")
 			else:
 				wedges += int(wedged)
-				_check(not wedged, "V+ wedge %s: a hero pressed to %s %.3f m off the edge rests %.3f m under the top on its rim (%d of %d points; T6 К7-а п. 2: ≤ %.2f m or off the step)" % [label, worst.get("wall", "?"), worst.get("gap", 0.0), worst.get("depth", 0.0), counts.wedge, STEP_SAMPLES, STEP_RIM])
+				_check(not wedged, "V+ wedge %s: a hero pressed to %s %.3f m off the edge rests %.3f m under the top on its rim (%d of %d points; T6 К7-а п. 2: ≤ %.2f m or off the step)" % [label, worst.get("wall", "?"), worst.get("gap", 0.0), worst.get("depth", 0.0), counts.wedge, STEP_SAMPLES, STEP_RIM], "vwedge")
 			print("CITY_TIDY_INFO V+ wedge %s %s narrowest=%s%s" % [label, JSON.stringify(counts), "none" if is_inf(narrowest) else "%.3f" % narrowest,
 				(" worst=%.3f under, by %s" % [worst.depth, worst.wall]) if wedged else ""])
 	for tag: String in STEP_WEDGE_OPEN:
-		_check(seen_open.has(tag), "V+ wedge OPEN %s is no longer a listed step side: fix STEP_WEDGE_OPEN" % tag)
-	_check(wedges == 0, "V+ no listed step wedges a hero on its rim (%d sides)" % wedges)
+		_check(seen_open.has(tag), "V+ wedge OPEN %s is no longer a listed step side: fix STEP_WEDGE_OPEN" % tag, "vopen")
+	_check(wedges == 0, "V+ no listed step wedges a hero on its rim (%d sides)" % wedges, "vwedge")
 	print("CITY_TIDY_INFO V+ wedge sides=%d wedges=%d open=%d blocked_sides=%d" % [sides, wedges, seen_open.size(), blocked])
 
 
@@ -1789,6 +1847,41 @@ func _steam() -> void:
 
 
 # --- M: the steam vehicles ---------------------------------------------------------------------------------------
+## M0 (see the header): CityProps._place_glb on a KindProbe outside the tree for every listed kind and for KIND_UNKNOWN,
+## and the live district's node of every listed spec.
+func _m0_kinds() -> void:
+	var probe := KindProbe.new()
+	probe.form = mutation if mutation in KIND_BREAKS else "none"
+	probe._materials = CityMaterials.palette()
+	var listed: Array[Array] = []
+	for spec: Dictionary in CityProps.VEHICLES:
+		listed.append([spec, "Vehicle_"])
+	for spec: Dictionary in CityProps.MACHINES:
+		listed.append([spec, "Machine_"])
+	for pair: Array in listed:
+		var spec: Dictionary = pair[0]
+		var want: String = KIND_GLB % String(spec.kind)
+		var placed: Node3D = probe._place_glb(spec, "Probe_")
+		var got: String = placed.scene_file_path if placed != null else "nothing"
+		_check(placed != null and got == want and placed.get_parent() == probe and probe.refused.is_empty(),
+			"M0 kind %s places its own GLB (%s; want %s; %d refusals)" % [spec.kind, got, want, probe.refused.size()])
+		var live: Node = props_node.get_node_or_null(String(pair[1]) + String(spec.id))
+		var live_path: String = live.scene_file_path if live != null else "nothing"
+		_check(live_path == want, "M0 %s%s stands in the district as its own GLB (%s)" % [pair[1], spec.id, live_path])
+	for kind: String in KIND_UNKNOWN:
+		var children: int = probe.get_child_count()
+		var solids: int = probe.solid_count
+		var refusals: int = probe.refused.size()
+		var placed: Node3D = probe._place_glb({"id": "probe", "kind": kind, "center": Vector3.ZERO, "yaw": 0.0}, "Probe_")
+		var once: bool = probe.refused.size() == refusals + 1 and probe.refused[probe.refused.size() - 1] == kind
+		_check(placed == null and probe.get_child_count() == children and probe.solid_count == solids and once,
+			"M0 the unknown kind «%s» is refused once and places nothing (%s, %d new nodes, %d new solids, %d refusals)" % [
+				kind, placed.scene_file_path if placed != null else "null", probe.get_child_count() - children,
+				probe.solid_count - solids, probe.refused.size() - refusals])
+	print("CITY_TIDY_INFO M0 listed=%d unknown=%d probe_nodes=%d refusals=%d" % [listed.size(), KIND_UNKNOWN.size(), probe.get_child_count(), probe.refused.size()])
+	probe.free()
+
+
 ## Each vehicle of CityProps.VEHICLES as built in the live world: its node, visible meshes, hulls and footprint.
 func _vehicles() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
@@ -2366,7 +2459,7 @@ func _mc_machines() -> void:
 			var hb: AABB = hull.box
 			if not block_rect.encloses(Rect2(Vector2(hb.position.x, hb.position.z), Vector2(hb.size.x, hb.size.z))):
 				outside.append(String(hull.name))
-		_check(m.floor != null and outside.is_empty(), "MC7 %s: every hull stands within %s, nothing solid over the street (%s)" % [id, (m.floor as Node).name if m.floor is Node else "no floor", ", ".join(outside)])
+		_check(m.floor != null and outside.is_empty(), "MC7 %s: every hull stands within %s, nothing solid over the street (%s)" % [id, (m.floor as Node).name if m.floor is Node else "no floor", ", ".join(outside)], "mc7hull")
 		# MC10: the triangle ceiling.
 		var triangles: int = int(faces.size() / 3)
 		var ceiling: int = int(MACHINE_TRIANGLES.get(id, 0))
@@ -2477,11 +2570,11 @@ func _mc_street_camera() -> void:
 		var without: Dictionary = await _street_view(at, Vector3.FORWARD)
 		_set_machines(machines, true, layers)
 		await _ticks(2)
-		_check(absf(float(with.arm) - float(without.arm)) <= 0.001, "MC7 %s %s: the machines change nothing for the street camera (arm %.3f with them, %.3f without)" % [key, _v(at), with.arm, without.arm])
-		_check(crossing == 0, "MC7 %s %s: no machine face stands between the lens and the hero (%d crossings)" % [key, _v(at), crossing])
+		_check(absf(float(with.arm) - float(without.arm)) <= 0.001, "MC7 %s %s: the machines change nothing for the street camera (arm %.3f with them, %.3f without)" % [key, _v(at), with.arm, without.arm], "mc7arm")
+		_check(crossing == 0, "MC7 %s %s: no machine face stands between the lens and the hero (%d crossings)" % [key, _v(at), crossing], "mc7cross")
 		if key == "S3":
-			_check(float(with.arm) >= STREET_ARM - 0.005, "MC7 S3 %s: the arm keeps %.2f m (%.3f)" % [_v(at), STREET_ARM, with.arm])
-		_check(seen == 0 or seen_low >= STREET_SEEN_FLOOR - 0.001, "MC7 %s %s: the lens sees no machine point under the terrace's level %.1f m (%s)" % [key, _v(at), STREET_SEEN_FLOOR, "none seen" if seen == 0 else "lowest seen %.2f m" % seen_low])
+			_check(float(with.arm) >= STREET_ARM - 0.005, "MC7 S3 %s: the arm keeps %.2f m (%.3f)" % [_v(at), STREET_ARM, with.arm], "mc7s3")
+		_check(seen == 0 or seen_low >= STREET_SEEN_FLOOR - 0.001, "MC7 %s %s: the lens sees no machine point under the terrace's level %.1f m (%s)" % [key, _v(at), STREET_SEEN_FLOOR, "none seen" if seen == 0 else "lowest seen %.2f m" % seen_low], "mc7seen")
 		print("CITY_TIDY_INFO MC7 %s hero=%s lens=%s arm=%.3f without=%.3f crossing=%d in_frame=%d seen=%d seen_y=%s" % [key, _v(with.feet), _v(with.lens), with.arm, without.arm, crossing, in_frame, seen, "-" if seen == 0 else "%.2f…%.2f" % [seen_low, seen_high]])
 	world.npc_director.process_mode = Node.PROCESS_MODE_INHERIT
 
@@ -2824,9 +2917,11 @@ func _break_scene() -> void:
 				winch_mesh.set_surface_override_material(surface, overrides[surface])
 		"machine_step":
 			(props_node.get_node("Machine_steam_winch") as Node3D).position.x += 0.3
-		"machine_seen_hook":
+		"machine_seen_hook", "machine_seen_low":
 			# Decor of the crane where it stands: a 0.3 × 0.8 × 0.3 m block (one more surface of its own mesh, its own
-			# city material) hangs at (29.3, 2.6–3.4, −8.8), past the terrace's edge (z −10) over the street.
+			# city material) hangs at (29.3, 2.6–3.4, −8.8), past the terrace's edge (z −10) over the street; at the
+			# threshold (machine_seen_low) the same block hangs at 3.9–4.7, its bottom 0.1 m under the terrace's level.
+			var hook_y: float = 3.0 if mutation == "machine_seen_hook" else 3.9 + 0.4
 			var hook_mesh: MeshInstance3D = props_node.get_node("Machine_steam_crane/SteamCrane")
 			var hung := ArrayMesh.new()
 			var keep: Array[Material] = []
@@ -2837,7 +2932,7 @@ func _break_scene() -> void:
 			var block := BoxMesh.new()
 			block.size = Vector3(0.3, 0.8, 0.3)
 			var arrays: Array = block.get_mesh_arrays()
-			var to_local: Transform3D = hook_mesh.global_transform.affine_inverse() * Transform3D(Basis.IDENTITY, Vector3(29.3, 3.0, -8.8))
+			var to_local: Transform3D = hook_mesh.global_transform.affine_inverse() * Transform3D(Basis.IDENTITY, Vector3(29.3, hook_y, -8.8))
 			var points: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 			var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 			for i: int in points.size():
@@ -2946,7 +3041,7 @@ func _break_parts() -> void:
 
 func _run() -> void:
 	await process_frame
-	if mutation != "none" and not (mutation in GEOMETRY_BREAKS or mutation in PLACE_BREAKS or mutation in VAULT_BREAKS or mutation in STEAM_BREAKS or mutation in VEHICLE_BREAKS or mutation in VEHICLE_RUN_BREAKS or mutation in STEP_BREAKS or mutation in MACHINE_BREAKS or mutation in MACHINE_RUN_BREAKS):
+	if mutation != "none" and not (mutation in GEOMETRY_BREAKS or mutation in PLACE_BREAKS or mutation in VAULT_BREAKS or mutation in STEAM_BREAKS or mutation in VEHICLE_BREAKS or mutation in VEHICLE_RUN_BREAKS or mutation in STEP_BREAKS or mutation in MACHINE_BREAKS or mutation in MACHINE_RUN_BREAKS or mutation in KIND_BREAKS):
 		push_error("CITY_TIDY: unknown --break=" + mutation)
 		quit(2)
 		return
@@ -2957,6 +3052,8 @@ func _run() -> void:
 	await _open_world("choko")
 	_break_scene()
 	await _ticks(2)
+	if _phase("kind"):
+		_m0_kinds()
 	if _phase("geometry") or _phase("places"):
 		_record_builders()
 		_live_parts()
@@ -3003,5 +3100,8 @@ func _run() -> void:
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
 		OS.delay_msec(1)
-	print("CITY_TIDY_COMPLETE checks=%d failures=%d mutation=%s" % [checks, failures, mutation])
+	var families: Array = red.keys()
+	families.sort()
+	print("CITY_TIDY_COMPLETE checks=%d failures=%d mutation=%s red=%s" % [checks, failures, mutation,
+		",".join(PackedStringArray(families)) if not families.is_empty() else "none"])
 	quit(1 if failures else 0)
