@@ -1,7 +1,27 @@
 extends SceneTree
 ## Finite-device traversal, camera candidates, prepared rope catch and latched input.
+## The duel's rule stays: a failed transfer keeps the support (lines «same occupied anchor», «empty stock», «out-of-range»,
+## «stale target»). The city (ADR-028 п. 5, T5 docs/GDD/2026-10-15-Rope-Climb-Numbers.md § 8, T8
+## docs/GDD/2026-10-15-Rope-Climb-Input.md § 2.2) narrows it to «a failed transfer with a target shown in the 15-tick
+## window keeps the support» — the hang, its length, the velocity and the stock as they were; with no target shown for
+## the window E lets go, the velocity as it is, the old rope deployed, the stock the same; the empty stock lets go too
+## (no rope in 0.70 m). Checked on a CityFighter body with real E presses through CityFighter._tick_grapple.
+## The window is exactly 15 ticks: a target shown 14 ticks ago keeps the hang, 15 lets go (T5 Е2 asks ≥ 6; T4 audit 15а Y1).
+## Every row starts swinging at (3; 0; 1) m/s, so «the velocity as it is» on the let-go compares a real velocity (T4 audit
+## 15а RED-2 б: the rows used to start still and compared zero with zero).
+##   --break=drop_on_flicker|stay_on_empty|short_window|zero_v — negatives on tools/grapple/rope_climb_fighter.gd (class
+##     18: each prints its families on the TRAVERSAL_FAMILIES line and must go red in its own): E lets go though a target
+##     was shown 3 ticks ago (`flicker`); E never lets go with no target shown (`empty`); the window 5 ticks (`flicker`);
+##     E's let-go stops the swing (`letgo_v`).
+## P5 (T8 acceptance 2026-10-15 ТЗ 7): a press inside the window that keeps the hang says why — exactly one
+## GrappleHook.denied with a HarpoonAim.REASONS code (the HUD words it) — `denied`; --break=mute_deny (the hook never
+## emits denied, rope_climb_mutants.gd) → `denied`.
+## The swing every city E row starts with (T4 audit 15а: «наприклад (3; 0; 1)»).
+const SWING := Vector3(3.0, 0.0, 1.0)
 var checks: int = 0
 var failures: int = 0
+var mutation: String = "none"
+var red: Dictionary = {}
 var f: Node3D
 var first: Node3D
 var next: Node3D
@@ -12,13 +32,18 @@ var helper: Node
 var camera: Camera3D
 
 func _initialize() -> void:
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--break="):
+			mutation = argument.trim_prefix("--break=")
 	run.call_deferred()
 
-func check(ok: bool, label: String) -> void:
+func check(ok: bool, label: String, family: String = "") -> void:
 	checks += 1
 	if not ok:
 		failures += 1
-		push_error("TRAVERSAL: " + label)
+		if not family.is_empty():
+			red[family] = true
+		push_error("TRAVERSAL: " + ("[%s] " % family if not family.is_empty() else "") + label)
 
 func hang() -> void:
 	registry.clear_match()
@@ -229,6 +254,7 @@ func run() -> void:
 	await responsive_profile()
 	registry.clear_match()
 	check(f.grapple._pending_rope == 0 and not f.grapple.busy(), "match clear removes catch and attachment state")
+	await city_transfer()
 	f.free()
 	registry.free()
 	first.free()
@@ -242,6 +268,9 @@ func run() -> void:
 	while Time.get_ticks_msec() < until:
 		await process_frame
 		OS.delay_msec(1)
+	var families: Array = red.keys()
+	families.sort()
+	print("TRAVERSAL_FAMILIES failures=%d mutation=%s red=%s" % [failures, mutation, ",".join(families) if not families.is_empty() else "none"])
 	print("TRAVERSAL_COMPLETE checks=%d failures=%d" % [checks, failures])
 	quit(1 if failures else 0)
 
@@ -372,3 +401,99 @@ func responsive_profile() -> void:
 	check(is_equal_approx(before.distance_to(f.grapple.projectile_position), 0.6), "city enemy projectile keeps 36 m/s")
 	registry.clear_match()
 	f.grapple.responsive_parkour = false
+
+
+## The city's E on the rope (see the header). The packet the player saw is set on the helper as the camera publishes it:
+## `shown` ticks ago the last target (HarpoonAim.last_target_tick), this tick's packet with or without one.
+func city_transfer() -> void:
+	if mutation != "none":
+		Engine.set_meta("rope_climb_mutation", mutation)
+	var city: Node3D = (load("res://scenes/fighter/Fighter.tscn") as PackedScene).instantiate()
+	city.set_script(load((get_script() as Script).resource_path.get_base_dir().path_join("rope_climb_fighter.gd")))
+	city.data = load("res://data/characters/choko.tres")
+	root.add_child(city)
+	city.set_physics_process(false)
+	var input: Node = root.get_node("InputRouter")
+	input.apply_profile("solo", false)
+	# Loaded at run time: naming the class in this script would compile it before the autoloads exist.
+	var reasons: Array = (load("res://scripts/core/HarpoonAim.gd") as GDScript).get_script_constant_map()["REASONS"]
+	var cases := [
+		# [label, family, setup, shown ticks ago (−1: this tick's packet shows it), expect let go]
+		["shown target, valid: the transfer", "", "valid", -1, false],
+		["shown target, occupied (line 97)", "", "occupied", -1, false],
+		["shown target, out of range (line 104)", "", "far", -1, false],
+		["shown target, stale (line 105)", "", "stale", -1, false],
+		["a target shown 3 ticks ago, none now", "flicker", "none", 3, false],
+		["a target shown 14 ticks ago, none now: still inside the 15-tick window", "flicker", "none", 14, false],
+		["no target shown for 15 ticks: the window is over", "empty", "none", 15, true],
+		["no target shown for 20 ticks", "empty", "none", 20, true],
+		["empty stock, no rope in 0.70 m (line 101)", "empty", "stock", 20, true],
+	]
+	for row: Array in cases:
+		registry.clear_match()
+		first.position = Vector3(0, 9.25, 0)
+		next.position = Vector3(5, 9.25, 0)
+		city.position = Vector3(0, 3, 0)
+		city.velocity = SWING
+		city._wish = Vector3.ZERO
+		city.control_locked = false
+		city.state = Actor.State.GRAPPLE
+		var token: int = registry.issue(1)
+		registry.deploy(token, 1, first.position, city.position + Hook.HAND, 6.25)
+		city.grapple.fire(false, "grapple_parkour")
+		var hook: Node = city.grapple
+		await physics_frame
+		var tag := "city E, %s: " % row[0]
+		check(hook.attached and hook._deployed_token == token and hook.climb_enabled, tag + "the city body hangs on the first rope", "count")
+		if String(row[2]) == "stock":
+			while hook.charges > 0:
+				registry.issue(1)
+		var now: int = input.frame()
+		var target := {"tick": now - 1, "player": 1, "enemy_mode": false, "origin": city.position + Hook.HAND, "point": next.position,
+			"target_id": String(next.get_path()), "candidate_kind": "anchor", "rope_token": 0, "reachable": true, "assist": true, "reason": ""}
+		var empty := {"tick": now - 1, "player": 1, "enemy_mode": false, "origin": city.position + Hook.HAND, "point": city.position,
+			"target_id": "", "candidate_kind": "", "rope_token": 0, "reachable": false, "assist": true, "reason": "no_harpoons" if String(row[2]) == "stock" else "none"}
+		helper.published = target if int(row[3]) < 0 else empty
+		helper._published_before = helper.published
+		helper.last_target_tick = now - 1 if int(row[3]) < 0 else now - int(row[3])
+		match String(row[2]):
+			"occupied":
+				var other_token: int = registry.issue(1)
+				registry.deploy(other_token, 1, next.position, next.position + Vector3.DOWN * 5.0, 5.0)
+			"far":
+				next.position = Vector3(60, 9.25, 0)
+			"stale":
+				helper.published.target_id = "/root/MissingAnchor"
+				helper._published_before = helper.published
+				next.position = Vector3(60, 9.25, 0) # the press re-selects once from the hand (T8 Г): nothing there now
+			"none", "stock":
+				next.position = Vector3(60, 9.25, 0) # the target that was shown is gone: nothing in reach now
+		var length: float = hook.rope_length
+		var stock: int = hook.charges
+		var velocity: Vector3 = city.velocity
+		var denied: Array[String] = []
+		var on_denied := func(reason: String) -> void: denied.append(reason)
+		hook.denied.connect(on_denied)
+		input.v_press(1, "grapple_parkour")
+		city._tick_grapple(city._read_intent())
+		input.v_release(1, "grapple_parkour")
+		hook.denied.disconnect(on_denied)
+		if String(row[1]) == "flicker":
+			# P5: the press kept the hang inside the window and said why (the HUD words the reason, CityHud.HOOK_REASONS).
+			check(denied.size() == 1 and denied[0] in reasons, tag + "P5: the kept hang says why: one denied with a HarpoonAim.REASONS code (%s)" % [denied], "denied")
+			print("TRAVERSAL P5 %s: denied %s" % [row[0], denied])
+		var still: Dictionary = registry.records.get(token, {})
+		if String(row[2]) == "valid":
+			check(hook.phase == Hook.Phase.FLIGHT and hook.charges == stock - 1, tag + "a shown, valid target is the transfer as before (phase %d)" % hook.phase, "count")
+		elif bool(row[4]):
+			check(not hook.attached and city.state == Actor.State.JUMP, tag + "E lets go (attached %s, state %d)" % [hook.attached, city.state], String(row[1]))
+			check(city.velocity == velocity and velocity != Vector3.ZERO, tag + "the velocity as it was (%s → %s)" % [velocity, city.velocity], "letgo_v")
+			check(not still.is_empty() and bool(still.deployed) and hook.charges == stock, tag + "the old rope stays deployed, the stock %d (now %d)" % [stock, hook.charges], String(row[1]))
+		else:
+			check(hook.attached and hook._deployed_token == token and hook.phase == Hook.Phase.HANG, tag + "the hero still hangs on the first rope (attached %s, phase %d)" % [hook.attached, hook.phase], String(row[1]) if not String(row[1]).is_empty() else "keep")
+			check(absf(hook.rope_length - length) <= 0.000001 and hook.charges == stock and city.velocity.length() <= velocity.length() + 0.001, tag + "the length %.4f → %.4f, the stock %d → %d, the speed %.4f → %.4f" % [length, hook.rope_length, stock, hook.charges, velocity.length(), city.velocity.length()], String(row[1]) if not String(row[1]).is_empty() else "keep")
+		hook.detach()
+	registry.clear_match()
+	city.free()
+	if Engine.has_meta("rope_climb_mutation"):
+		Engine.remove_meta("rope_climb_mutation")

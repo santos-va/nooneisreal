@@ -74,9 +74,9 @@ MAIN MENU. Повернення з налаштувань лишає паузу 
 Початкові значення — PLACEHOLDER комфорту. Зміна застосовується одразу; 0
 вимикає відповідний шар, без автоматичного тестового звуку. Вимкнення тряски
 не змінює влучання, hitstop або рух. RESTORE SOUND & SHAKE DEFAULTS
-(`ComfortPanel.gd:118`) відновлює ці чотири значення; якість графіки не скидає.
-Між CAMERA SHAKE і RESTORE стоять рядки BLOOD і HIT FLASH (`ComfortPanel.gd:99–117`,
-[[2026-10-07-Blood-And-Content-Settings-Fix]]).
+(`ComfortPanel.gd:183–186`) відновлює ці чотири значення; якість графіки не скидає.
+Між CAMERA SHAKE і RESTORE стоять рядки HIT FLASH, BLOOD, DRUGS і ROPE CLIMB (`ComfortPanel.gd:143–182`;
+[[2026-10-07-Blood-And-Content-Settings-Fix]], § «Випадки міста» нижче, § ROPE CLIMB нижче; звірено T8 2026-10-15 після T2-П).
 **Комфорт зберігається в `user://comfort.cfg`**, окремо від
 ігрових уподобань у `settings.cfg`. Помилка збереження має видимий статус;
 пошкоджений файл не замінюється мовчки дефолтами.
@@ -153,6 +153,70 @@ GPU-прискоренням і не обіцяють певного FPS на я
   запас під повзунком — 24 логічних px. Коли запис налаштувань не вдався, статус займає 2 рядки (93 px). Видима частина
   меншає на 48 px, і повзунок MASTER знову не видно. Відкрите — [[2026-10-15-T8-Colour-Switch-Row-Acceptance]]
   § «Після правки T2-З».
+
+### ROPE CLIMB — утримувати / перемикати, звірено з кодом 2026-10-15
+
+Рядок додано кроком 5 (15а) плану [[2026-10-15-Rope-Climb-Perch-Release]]: [[ADR-028-Rope-Climb-Perch-And-Retrieval]]
+п. 8, специфікація [[2026-10-15-Rope-Climb-Input]] § 5. Журнал — [[2026-10-15-Rope-Climb-City-Fix]] § 1 п. 9 і розділ T2-Л
+«Після батареї T1». Приймання — [[2026-10-15-T8-Rope-Climb-Input-Acceptance]] п. 3 і 5, правка за ним —
+[[2026-10-15-Rope-Input-Acceptance-Fix]] (T2-П). Тут описано те, що є в коді staging-дерева T1 (база `93ba633` + індекс
+T2-К / T2-И / T2-Л / T2-П).
+
+- **Місце:** одразу після підпису DRUGS, перед RESTORE (`ComfortPanel.gd:176–182`). Рядок є і на десктопі, і на
+  телефоні: він стоїть поза умовою DISPLAY.
+- **Заголовок** (32 px): `ROPE CLIMB · CITY ONLY` (константа `ROPE_CLIMB_TITLE`, `:53`, мітка `:176`). Це рішення T8 С2
+  (приймання п. 3), T2-П виконав його як ТЗ 2. Суфікс той самий, що в DRUGS. Трос у дуелі не лазить
+  ([[ADR-028-Rope-Climb-Perch-And-Retrieval]] п. 7), а панель відкривається і з дуелі.
+- **Список:** OptionButton, вузол `RopeClimb`, змінна `rope_climb_choice` (`:52`, `:177`), 32 px. Пункти (`:54`) у
+  порядку `InputRouter.ROPE_CLIMB_MODES` (`InputRouter.gd:72`):
+  - `Hold — climb and slide while held` — типовий;
+  - `Toggle — press to start, press again to stop`.
+- **Збереження:**
+  - файл `user://settings.cfg`, секція `[input]`, ключ `rope_climb` = `"hold"` | `"toggle"`, поруч із
+    `keyboard_profile` (`InputRouter.gd:105–116`). Це не `comfort.cfg`;
+  - немає ключа або невідоме значення → у сесії `hold` (`:99–100`);
+  - файл, що не читається з будь-якої причини, крім «немає файлу», не перезаписується (`:111–113`). Статусу помилки
+    рядок при цьому не показує;
+  - RESTORE SOUND & SHAKE DEFAULTS рядок не скидає (`ComfortPanel.gd:183–186` скидає лише `ComfortSettings`).
+- **Де діє:**
+  - лише трос міста: режим читають `CityFighter._climb_input` (`CityFighter.gd:203–224`) і рядок підказки
+    (`CityHud.gd:1224–1226`);
+  - лазіння вмикає тільки `CityFighter.gd:56` (`climb_enabled`);
+  - у дуелі рядок нічого не змінює ([[ADR-028-Rope-Climb-Perch-And-Retrieval]] п. 7).
+- **HOLD:** лізе або спускається, поки клавіша затиснута. Діє лише клавіша, натиснута після зачепу. Затиснуті обидві —
+  трос стоїть.
+- **TOGGLE** (`CityFighter.gd:214–219`):
+  - натиск jump після зачепу — лізти, повторний — стоп;
+  - натиск dodge — спуск, повторний — стоп;
+  - друга клавіша перемикає напрям;
+  - будь-яке меню чи пауза зупиняє (`press_history_revision`, `:204–207`);
+  - новий зачеп (`:190`) і звис на якорі (`:197`) теж скидають фіксатор.
+- **Рядок підказки** (`CityHud.gd:1225–1226`, PLACEHOLDER T7):
+  - HOLD — `Hold Space: climb · Hold Left Shift: slide down`;
+  - TOGGLE — `Space: climb / stop · Left Shift: slide down / stop`;
+  - на геймпаді — `A / Cross` і `X / Square` з `binding_label`.
+- **Фокус:**
+  - зупинка кільця між DRUGS і RESTORE (`_focus_order.append`, `ComfortPanel.gd:179`), повне кільце — § «Випадки міста:
+    COMFORT і HUD» п. 1;
+  - від MASTER (фокус при відкритті) — 7 × ↓;
+  - клавіатура: Enter відкриває список, ↓, Enter вибирає Toggle;
+  - геймпад: A, D-pad ↑, A повертає Hold, у файлі той самий ключ.
+  - Усі три шляхи тримає гард `_comfort_row` (нижче), а не лише зонд T8.
+- **Розміри** (зонд T8, 32 px): заголовок `ROPE CLIMB · CITY ONLY` — 376 px (без суфікса було 189), рядок 696 × 53.
+  - Ширину міряно до правки T2-П; після неї заголовок не переміряно.
+  - MASTER не зсунувся. Запас під повзунком на 1600×900 — 24 px до і після рядка (зонд T2-Л).
+  - Після T2-П: `comfort-ui` → `COMFORT_UI PASS (0 failures; mutation=)` ([[2026-10-15-Rope-Input-Acceptance-Fix]] § 4).
+- **Гарди:**
+  - `_comfort_row` (`rope_climb_check.gd:1121–1182`) перевіряє рядок справжніми натисками клавіатури й геймпада:
+    - пауза міста → Enter на COMFORT → фокус на MASTER;
+    - мітка перед `RopeClimb` дорівнює літералу `ROPE CLIMB · CITY ONLY` (`:152`);
+    - 7 × ↓ (`COMFORT_DOWNS`, `:151`) доводять фокус до рядка;
+    - Enter · ↓ · Enter → TOGGLE: `InputRouter.rope_climb`, `selected 1` і `[input] rope_climb` у `user://settings.cfg`;
+    - A · D-pad ↑ · A на геймпаді → HOLD;
+    - байти `settings.cfg` до першого натиску повертаються на місце (родина `count`).
+  - Негатив `--break=rope_row` від'єднує обробник `item_selected` рядка (`playable_check.sh:581–586`, родина `comfort`).
+    За повторним аудитом T4 він червоний у своїй родині ([[2026-10-15-Rope-Climb-15a-Recheck]] § 0).
+  - `blood_content_check.gd` `_ring()` — повне кільце.
 
 ### DISPLAY, AUTO-якість і клавіша повного екрана — GAP-специфікація 2026-10-07
 
@@ -1288,11 +1352,14 @@ PLACEHOLDER до T7. Чисел T5 у GDD ще немає: `grep -rln -i "гол
 QUALITY і MASTER додано COLOURS (TEST) — крок 8 [[2026-10-14-T6-Acceptance-Crane-Albedo-AB]], приймання
 [[2026-10-15-T8-Colour-Switch-Row-Acceptance]] п. 7. Так кільце стоїть у коді на `407595d` (`_focus_order`,
 `ComfortPanel.gd:86–189`) і у фікстурах: `blood_content_check.gd` `_ring()`, `graphics_ui_check.gd`, `display_auto_check.gd`,
-`colour_switch_check.gd`.
+`colour_switch_check.gd`. **Оновлено 2026-10-15 (T8, приймання 15а):** між DRUGS і RESTORE додано ROPE CLIMB
+(`_focus_order.append`, `ComfortPanel.gd:179` після T2-П), [[2026-10-15-T8-Rope-Climb-Input-Acceptance]] п. 3. Повне кільце
+літералами тримає лише `blood_content_check.gd` `_ring()`. Три інші фікстури дивляться тільки на верх кільця, а він не
+змінився.
 
 ```
 DISPLAY → GRAPHICS QUALITY → COLOURS (TEST) → MASTER → SOUND EFFECTS → MUSIC → CAMERA SHAKE → HIT FLASH → BLOOD → DRUGS
-→ RESTORE SOUND & SHAKE DEFAULTS → CONTROLS (довідка) → BACK → DISPLAY
+→ ROPE CLIMB → RESTORE SOUND & SHAKE DEFAULTS → CONTROLS (довідка) → BACK → DISPLAY
 ```
 
 Телефон: те саме без DISPLAY, кільце замикається BACK → GRAPHICS QUALITY. Фокус при відкритті — MASTER, scroll 0.

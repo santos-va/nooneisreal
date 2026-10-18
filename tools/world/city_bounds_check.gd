@@ -23,7 +23,10 @@ extends SceneTree
 ## --break=<m> is a negative control, one form each of «the edge does not hold or is not invisible to the rest»: gap (the
 ## north veil gone), low (every veil's top at 8 m), world (the veils on the world layer too, which the camera, the rope and
 ## the motor see), mesh (a veil drawn), hero (the city hero's mask without the veil). Sentinel CITY_BOUNDS_COMPLETE
-## checks=N failures=M mutation=<m>; failures print "CITY_BOUNDS: ...".
+## checks=N failures=M mutation=<m> red=<families|none>; failures print "CITY_BOUNDS: [family] ...". A family is the
+## guard's tag, the label's first word lower-cased (B1 → b1 … B5 → b5). Each negative of tools/gates/playable_check.sh
+## names the families it must turn red, so a negative that goes red on a neighbouring guard no longer passes (T4 audit
+## 2026-10-15 part 2, class 18).
 const BREAKS := ["gap", "low", "world", "mesh", "hero"]
 const FIGHTER_R: float = 0.35          # Fighter.tscn BodyShape
 const FIGHTER_H: float = 1.8
@@ -49,6 +52,7 @@ const RUNS: Array = [
 var mutation := "none"
 var checks: int = 0
 var failures: int = 0
+var red: Dictionary = {}   # family → true for every family with a red check (the sentinel's red=)
 var world: Node3D
 var space: PhysicsDirectSpaceState3D
 var held: Dictionary = {}
@@ -61,11 +65,14 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 
+## One guard's verdict. A red check adds its family, the label's tag (its first word lower-cased), to `red`.
 func _check(ok: bool, label: String) -> void:
 	checks += 1
 	if not ok:
 		failures += 1
-		push_error("CITY_BOUNDS: " + label)
+		var tag: String = label.get_slice(" ", 0).to_lower()
+		red[tag] = true
+		push_error("CITY_BOUNDS: [%s] %s" % [tag, label])
 
 
 func _ticks(count: int) -> void:
@@ -368,5 +375,8 @@ func _run() -> void:
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
 		OS.delay_msec(1)
-	print("CITY_BOUNDS_COMPLETE checks=%d failures=%d mutation=%s" % [checks, failures, mutation])
+	var families: Array = red.keys()
+	families.sort()
+	print("CITY_BOUNDS_COMPLETE checks=%d failures=%d mutation=%s red=%s" % [checks, failures, mutation,
+		",".join(PackedStringArray(families)) if not families.is_empty() else "none"])
 	quit(1 if failures else 0)

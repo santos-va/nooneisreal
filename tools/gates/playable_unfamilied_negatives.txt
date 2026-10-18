@@ -1,0 +1,166 @@
+# Negatives of tools/gates/playable_check.sh whose sentinel requires no family (red=), frozen on 2026-10-15 (T4 audit
+# 2026-10-15 part 2, class 18; docs/Fix/2026-10-15-Negative-Families-Runner-Fix.md, bound to their cases by
+# docs/Fix/2026-10-15-Runner-Rule-Bypass-Fix.md). Any other negative that requires no concrete family is refused by the
+# runner (rc 2). One line per negative, «name|script|args» (args joined by one space): the case of that name must still
+# run that script with those args — the same name given to a new negative is refused, and so is a name no case has.
+# This list only shrinks: a negative that gains its family leaves it, and the runner's UNFAMILIED_CEILING drops by one
+# with it; no line is ever added or rebound. tools/gates/unfamilied_ceiling_check.py (make gates) refuses any line or
+# ceiling that the merge-base with origin/main does not hold. «#» starts a comment.
+# Counted on 93ba633 + T2-K's fix: the `cases` of the runner's heredoc, expected rc 1, no «red=» in the sentinel → 156
+# (164 on 93ba633 less the 8 city-bounds / city-perch negatives that name their families now).
+auto-hook-negative-base|tools/grapple/auto_hook_check.gd|-- --break=base
+auto-hook-negative-empty_shot|tools/grapple/auto_hook_check.gd|-- --break=empty_shot
+auto-hook-negative-lock|tools/grapple/auto_hook_check.gd|-- --break=lock
+auto-hook-negative-no_recheck|tools/grapple/auto_hook_check.gd|-- --break=no_recheck
+auto-hook-negative-nopull|tools/grapple/auto_hook_check.gd|-- --break=nopull
+blood-content-negative-back|tools/fx/blood_content_check.gd|-- --break=back
+blood-content-negative-block|tools/fx/blood_content_check.gd|-- --break=block
+blood-content-negative-cfg|tools/fx/blood_content_check.gd|-- --break=cfg
+blood-content-negative-drugs_row|tools/fx/blood_content_check.gd|-- --break=drugs_row
+blood-content-negative-flash|tools/fx/blood_content_check.gd|-- --break=flash
+blood-content-negative-ink|tools/fx/blood_content_check.gd|-- --break=ink
+blood-content-negative-late|tools/fx/blood_content_check.gd|-- --break=late
+blood-content-negative-mode|tools/fx/blood_content_check.gd|-- --break=mode
+blood-content-negative-notice|tools/fx/blood_content_check.gd|-- --break=notice
+blood-content-negative-rng|tools/fx/blood_content_check.gd|-- --break=rng
+blood-content-negative-rng_state|tools/fx/blood_content_check.gd|-- --break=rng_state
+blood-content-negative-sparring|tools/fx/blood_content_check.gd|-- --break=sparring
+blood-content-negative-state|tools/fx/blood_content_check.gd|-- --break=state
+city-alley-negative-cap|tools/world/city_alley_check.gd|-- --break=cap
+city-alley-negative-memory|tools/world/city_alley_check.gd|-- --break=memory
+city-alley-negative-people|tools/world/city_alley_check.gd|-- --break=people
+city-alley-negative-sword|tools/world/city_alley_check.gd|-- --break=sword
+city-controls-negative-comfort|tools/ui/city_controls_check.gd|-- --break=comfort
+city-controls-negative-focus|tools/ui/city_controls_check.gd|-- --break=focus
+city-controls-negative-interval|tools/ui/city_controls_check.gd|-- --break=interval
+city-controls-negative-signal|tools/ui/city_controls_check.gd|-- --break=signal
+city-economy-negative-price|tools/npc/city_economy_check.gd|-- --break=price
+city-economy-negative-refund|tools/npc/city_economy_check.gd|-- --break=refund
+city-economy-negative-save|tools/npc/city_economy_check.gd|-- --break=save
+city-event-director-negative-cooldown|tools/world/city_event_director_check.gd|-- --break=cooldown
+city-event-director-negative-empty|tools/world/city_event_director_check.gd|-- --break=empty
+city-event-director-negative-headless|tools/world/city_event_director_check.gd|-- --break=headless
+city-event-director-negative-pocket|tools/world/city_event_director_check.gd|-- --break=pocket
+city-event-director-negative-rng|tools/world/city_event_director_check.gd|-- --break=rng
+city-event-menus-negative-arming|tools/world/city_event_menus_check.gd|-- --break=arming
+city-event-menus-negative-asktimer|tools/world/city_event_menus_check.gd|-- --break=asktimer
+city-event-menus-negative-teardown|tools/world/city_event_menus_check.gd|-- --break=teardown
+city-event-menus-negative-zero|tools/world/city_event_menus_check.gd|-- --break=zero
+city-haze-negative-end|tools/world/city_haze_check.gd|-- --break=end
+city-haze-negative-forget|tools/world/city_haze_check.gd|-- --break=forget
+city-haze-negative-layer|tools/world/city_haze_check.gd|-- --break=layer
+city-haze-negative-pocket|tools/world/city_haze_check.gd|-- --break=pocket
+city-haze-negative-pulse|tools/world/city_haze_check.gd|-- --break=pulse
+city-hunger-negative-collapse|tools/world/city_hunger_check.gd|-- --break=collapse
+city-hunger-negative-crust|tools/world/city_hunger_check.gd|-- --break=crust
+city-hunger-negative-floor|tools/world/city_hunger_check.gd|-- --break=floor
+city-hunger-negative-gate|tools/world/city_hunger_check.gd|-- --break=gate
+city-hunger-negative-haze|tools/world/city_hunger_check.gd|-- --break=haze
+city-hunger-negative-pocket_clock|tools/world/city_hunger_check.gd|-- --break=pocket_clock
+city-hunger-negative-rate|tools/world/city_hunger_check.gd|-- --break=rate
+city-hunger-negative-retry|tools/world/city_hunger_check.gd|-- --break=retry
+city-leaves-negative-cfg|tools/world/city_leaves_check.gd|-- --break=cfg
+city-leaves-negative-count|tools/world/city_leaves_check.gd|-- --break=count
+city-leaves-negative-off|tools/world/city_leaves_check.gd|-- --break=off
+city-leaves-negative-refuse|tools/world/city_leaves_check.gd|-- --break=refuse
+city-leaves-negative-row|tools/world/city_leaves_check.gd|-- --break=row
+city-leaves-negative-session|tools/world/city_leaves_check.gd|-- --break=session
+city-rim-exit-negative-near|tools/world/city_rim_exit_check.gd|-- --break=near
+city-rim-exit-negative-old|tools/world/city_rim_exit_check.gd|-- --break=old
+city-rim-exit-negative-wall|tools/world/city_rim_exit_check.gd|-- --break=wall
+city-substances-negative-accel|tools/world/city_substances_check.gd|-- --break=accel
+city-substances-negative-carry|tools/world/city_substances_check.gd|-- --break=carry
+city-substances-negative-decel|tools/world/city_substances_check.gd|-- --break=decel
+city-substances-negative-dodges|tools/world/city_substances_check.gd|-- --break=dodges
+city-substances-negative-float|tools/world/city_substances_check.gd|-- --part=route --break=float
+city-substances-negative-hang|tools/world/city_substances_check.gd|-- --break=hang
+city-substances-negative-hangover|tools/world/city_substances_check.gd|-- --break=hangover
+city-substances-negative-jump|tools/world/city_substances_check.gd|-- --part=route --break=jump
+city-substances-negative-pull|tools/world/city_substances_check.gd|-- --part=route --break=pull
+city-substances-negative-regen|tools/world/city_substances_check.gd|-- --break=regen
+city-substances-negative-settle|tools/world/city_substances_check.gd|-- --part=route --break=settle
+city-substances-negative-stack|tools/world/city_substances_check.gd|-- --break=stack
+city-substances-negative-target|tools/world/city_substances_check.gd|-- --part=route --break=target
+city-substances-negative-vault|tools/world/city_substances_check.gd|-- --part=route --break=vault
+city-substances-negative-walk|tools/world/city_substances_check.gd|-- --break=walk
+city-substances-negative-wallrun|tools/world/city_substances_check.gd|-- --part=route --break=wallrun
+city-substances-negative-water|tools/world/city_substances_check.gd|-- --break=water
+city-thirst-negative-gate|tools/world/city_thirst_check.gd|-- --break=gate
+city-thirst-negative-ignore|tools/world/city_thirst_check.gd|-- --break=ignore
+city-thirst-negative-ladle|tools/world/city_thirst_check.gd|-- --break=ladle
+city-thirst-negative-lever|tools/world/city_thirst_check.gd|-- --break=lever
+city-thirst-negative-lever_flat|tools/world/city_thirst_check.gd|-- --break=lever_flat
+city-thirst-negative-pocket_clock|tools/world/city_thirst_check.gd|-- --break=pocket_clock
+city-thirst-negative-prompt|tools/world/city_thirst_check.gd|-- --break=prompt
+city-thirst-negative-rate|tools/world/city_thirst_check.gd|-- --break=rate
+city-thirst-negative-source|tools/world/city_thirst_check.gd|-- --break=source
+comfort-ui-negative-bounds|tools/ui/comfort_ui_check.gd|-- --break=bounds
+comfort-ui-negative-focus|tools/ui/comfort_ui_check.gd|-- --break=focus
+comfort-ui-negative-footer|tools/ui/comfort_ui_check.gd|-- --break=footer
+display-auto-negative-cfg|tools/settings/display_auto_check.gd|-- --break=cfg
+display-auto-negative-combat_key|tools/settings/display_auto_check.gd|-- --break=combat_key
+display-auto-negative-headless_controller|tools/settings/display_auto_check.gd|-- --break=headless_controller
+display-auto-negative-migrate|tools/settings/display_auto_check.gd|-- --break=migrate
+display-auto-negative-upscaler|tools/settings/display_auto_check.gd|-- --break=upscaler
+free-movement-negative-facing|tools/input/free_movement_check.gd|-- --break=facing
+free-movement-negative-opponent_frame|tools/input/free_movement_check.gd|-- --break=opponent_frame
+free-movement-negative-orbit|tools/input/free_movement_check.gd|-- --break=orbit
+glyph-coverage-negative-font|tools/ui/glyph_coverage_check.gd|-- --break=font
+glyph-coverage-negative-inject_char|tools/ui/glyph_coverage_check.gd|-- --break=inject_char
+glyph-coverage-negative-inject_char_space|tools/ui/glyph_coverage_check.gd|-- --break=inject_char_space
+glyph-coverage-negative-inject_chr|tools/ui/glyph_coverage_check.gd|-- --break=inject_chr
+glyph-coverage-negative-inject_chr_space|tools/ui/glyph_coverage_check.gd|-- --break=inject_chr_space
+glyph-coverage-negative-inject_format|tools/ui/glyph_coverage_check.gd|-- --break=inject_format
+glyph-coverage-negative-inject_format_width|tools/ui/glyph_coverage_check.gd|-- --break=inject_format_width
+glyph-coverage-negative-inject_gd|tools/ui/glyph_coverage_check.gd|-- --break=inject_gd
+glyph-coverage-negative-inject_json|tools/ui/glyph_coverage_check.gd|-- --break=inject_json
+glyph-coverage-negative-inject_triple|tools/ui/glyph_coverage_check.gd|-- --break=inject_triple
+glyph-coverage-negative-inject_uri|tools/ui/glyph_coverage_check.gd|-- --break=inject_uri
+glyph-coverage-negative-inject_utf8|tools/ui/glyph_coverage_check.gd|-- --break=inject_utf8
+graphics-independent-negative-apply|tools/settings/graphics_independent_check.gd|-- --break=apply
+item-icons-negative-blank|tools/ui/item_icons_check.gd|-- --break=blank
+item-icons-negative-center|tools/ui/item_icons_check.gd|-- --break=center
+item-icons-negative-expand|tools/ui/item_icons_check.gd|-- --break=expand
+lethal-fight-negative-carry|tools/match/lethal_fight_check.gd|-- --break=carry
+lethal-fight-negative-carry_none|tools/match/lethal_fight_check.gd|-- --break=carry_none
+lethal-fight-negative-clock|tools/match/lethal_fight_check.gd|-- --break=clock
+lethal-fight-negative-death|tools/match/lethal_fight_check.gd|-- --break=death
+lethal-fight-negative-early_death|tools/match/lethal_fight_check.gd|-- --break=early_death
+lethal-fight-negative-edge|tools/match/lethal_fight_check.gd|-- --break=edge
+lethal-fight-negative-exit|tools/match/lethal_fight_check.gd|-- --break=exit
+lethal-fight-negative-npc|tools/match/lethal_fight_check.gd|-- --break=npc
+lethal-fight-negative-npc_return|tools/match/lethal_fight_check.gd|-- --break=npc_return
+lethal-fight-negative-outside|tools/match/lethal_fight_check.gd|-- --break=outside
+lethal-fight-negative-retry_carry|tools/match/lethal_fight_check.gd|-- --break=retry_carry
+lethal-fight-negative-skills|tools/match/lethal_fight_check.gd|-- --break=skills
+lethal-fight-negative-skills_late|tools/match/lethal_fight_check.gd|-- --break=skills_late
+lethal-fight-negative-sparring|tools/match/lethal_fight_check.gd|-- --break=sparring
+living-body-negative-deferred|tools/animation/living_body_check.gd|-- --break=deferred
+living-body-negative-fill|tools/animation/living_body_check.gd|-- --break=fill
+living-body-negative-getup|tools/animation/living_body_check.gd|-- --break=getup
+living-body-negative-hurtbox|tools/animation/living_body_check.gd|-- --break=hurtbox
+living-body-negative-pose|tools/animation/living_body_check.gd|-- --break=pose
+living-body-negative-rng|tools/animation/living_body_check.gd|-- --break=rng
+living-body-negative-side|tools/animation/living_body_check.gd|-- --break=side
+living-body-negative-state|tools/animation/living_body_check.gd|-- --break=state
+living-body-negative-tier|tools/animation/living_body_check.gd|-- --break=tier
+living-body-negative-transfer|tools/animation/living_body_check.gd|-- --break=transfer
+match-lifecycle-negative-rematch|tools/match/match_lifecycle_check.gd|-- --break=rematch
+match-lifecycle-negative-round|tools/match/match_lifecycle_check.gd|-- --break=round
+match-lifecycle-negative-score|tools/match/match_lifecycle_check.gd|-- --break=score
+parkour-moves-negative-shimmy_grip|tools/parkour/parkour_moves_check.gd|-- --break=shimmy_grip
+parkour-moves-negative-side_angle|tools/parkour/parkour_moves_check.gd|-- --break=side_angle
+parkour-moves-negative-vault_floor|tools/parkour/parkour_moves_check.gd|-- --break=vault_floor
+parkour-moves-negative-vault_height|tools/parkour/parkour_moves_check.gd|-- --break=vault_height
+tight-station-negative-damping|tools/camera/tight_station_probe.gd|-- --check --break=damping
+tight-station-negative-floor|tools/camera/tight_station_probe.gd|-- --check --break=floor
+tight-station-negative-lane|tools/camera/tight_station_probe.gd|-- --check --break=lane
+tight-station-negative-mask|tools/camera/tight_station_probe.gd|-- --check --break=mask
+tight-station-negative-recovery50|tools/camera/tight_station_probe.gd|-- --check --break=recovery50
+tight-station-negative-resident|tools/camera/tight_station_probe.gd|-- --check --break=resident
+tight-station-negative-restore|tools/camera/tight_station_probe.gd|-- --check --break=restore
+tight-station-negative-station|tools/camera/tight_station_probe.gd|-- --check --break=station
+tricks-independent-negative-budget|tools/parkour/tricks_independent_check.gd|-- --break=budget
+ui-negative-icon|tools/ui/layout_check.gd|-- --break=icon
+ui-negative-input|tools/ui/layout_check.gd|-- --break=input
+ui-negative-portrait|tools/ui/layout_check.gd|-- --break=portrait

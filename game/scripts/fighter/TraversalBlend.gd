@@ -57,7 +57,13 @@ static func signature(f: Fighter, parkour_phase: String, parkour_clip: String, h
 	# The rope's own sub-phases (catch → pull → hang → reel) hand over inside AuthoredHookMotion; only the rope phase
 	# and the recovery climb are transitions here.
 	var recover: bool = rope and hook_phase == "recover"
-	return "%s|%d|%s|%s|%s" % [rope, f.grapple.phase if rope else -1, recover, parkour_phase if own else "", parkour_clip if own else ""]
+	var phase: int = f.grapple.phase if rope else -1
+	# T6 acceptance 2026-10-15 § 9 п. 2: the rope's top → the pull-up is handed over inside AuthoredHookMotion (the hands
+	# carried on from where they were, the authored arms crossfaded) and HeroBodyMotion (the lean eased to vertical at
+	# 8°/tick). Blended here from the pose left, the body kept the rope's lean (19° on a swinging rope) for its first ticks.
+	if phase == GrappleHook.Phase.CLIMB_TOP:
+		phase = GrappleHook.Phase.HANG
+	return "%s|%d|%s|%s|%s" % [rope, phase, recover, parkour_phase if own else "", parkour_clip if own else ""]
 
 
 ## Whole actions that are transitions in themselves, drawn under the cap for as long as they run: the city hook's

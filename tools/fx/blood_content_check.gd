@@ -4,8 +4,9 @@ extends SceneTree
 ## keyboard and gamepad events where the player acts.
 ##   S. A sparring never shows blood, even with a BloodFx watching it.
 ##   C. ContentSettings defaults, round trip, damaged and unknown files kept byte for byte (session: ink / reduced);
-##      the ComfortPanel rows by keyboard and gamepad (HIT FLASH, BLOOD, DRUGS; T8 Д3 ring as literals, desktop and
-##      phone; --break=drugs_row: a DRUGS row that never calls set_drugs_mode); HIT FLASH Reduced ≤ half of Full.
+##      the ComfortPanel rows by keyboard and gamepad (HIT FLASH, BLOOD, DRUGS; T8 Д3 ring as literals plus the ROPE
+##      CLIMB stop before RESTORE, desktop and phone; --break=drugs_row: a DRUGS row that never calls set_drugs_mode);
+##      HIT FLASH Reduced ≤ half of Full.
 ##   L. The pocket: the card before the first fight (Esc / B step back unseen; Enter on a mode opens it, persisted,
 ##      never twice); levels by damage (< 50 / 50–89 / ≥ 90, crit +1, cap 4); clean hit → splash and floor drops
 ##      (1/2/3/4); block, DoT → none; frozen → splash; off / ink / muted; quality ½ and ¼; 16 floor drops at High;
@@ -106,8 +107,10 @@ func _ring(panel: Control, desktop: bool) -> Array[Control]:
 	if desktop:
 		ring.append(panel.display_choice)
 	# COLOURS (TEST) right under GRAPHICS QUALITY: plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB step 8 (T8 accepts it, step 9).
+	# ROPE CLIMB right before RESTORE: ADR-028 п. 8, T8 docs/GDD/2026-10-15-Rope-Climb-Input.md § 5; T8 confirmed the place
+	# (docs/Audit/2026-10-15-T8-Rope-Climb-Input-Acceptance.md п. 3, docs/GDD/06-UI-UX.md «Повне кільце»).
 	ring.append_array([panel.quality_choice, panel.get("colour_choice"), panel.sliders["master"], panel.sliders["sfx"], panel.sliders["music"], panel.sliders["shake"],
-		panel.hit_flash_choice, panel.blood_choice, panel.drugs_choice, panel.restore_button, panel.controls_label, panel.back_button])
+		panel.hit_flash_choice, panel.blood_choice, panel.drugs_choice, panel.get("rope_climb_choice"), panel.restore_button, panel.controls_label, panel.back_button])
 	return ring
 
 
@@ -254,7 +257,7 @@ func _content_settings() -> void:
 	# ComfortPanel: HIT FLASH, BLOOD and DRUGS by keyboard and gamepad, between CAMERA SHAKE and RESTORE. T8 Д3
 	# (06-UI-UX § «Випадки міста: COMFORT і HUD» п. 1) — the ring, as literals:
 	#   DISPLAY → GRAPHICS QUALITY → COLOURS (TEST) → MASTER → SOUND EFFECTS → MUSIC → CAMERA SHAKE → HIT FLASH → BLOOD → DRUGS
-	#   → RESTORE SOUND & SHAKE DEFAULTS → CONTROLS (help) → BACK → DISPLAY; a phone has no DISPLAY (BACK → GRAPHICS).
+	#   → ROPE CLIMB → RESTORE SOUND & SHAKE DEFAULTS → CONTROLS (help) → BACK → DISPLAY; a phone has no DISPLAY (BACK → GRAPHICS).
 	var ui_path := _temp("ui")
 	content.load_settings(ui_path)
 	var comfort: Node = root.get_node("ComfortSettings")
@@ -316,7 +319,10 @@ func _content_settings() -> void:
 	_check(panel.blood_choice.has_focus(), "Down from HIT FLASH reaches BLOOD")
 	panel.drugs_choice.grab_focus()
 	await _key(KEY_DOWN)
-	_check(panel.restore_button.has_focus(), "Down from DRUGS reaches RESTORE (the old RESTORE → help step stays)")
+	var rope_climb: Control = panel.get("rope_climb_choice")
+	_check(rope_climb != null and rope_climb.has_focus(), "Down from DRUGS reaches ROPE CLIMB")
+	await _key(KEY_DOWN)
+	_check(panel.restore_button.has_focus(), "Down from ROPE CLIMB reaches RESTORE (the old RESTORE → help step stays)")
 	panel.close_panel()
 	panel.queue_free()
 	launcher.queue_free()

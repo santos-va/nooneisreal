@@ -15,7 +15,8 @@
 # він каже «ніхто не дивився», а це різні речі. Тому без Godot повна батарея червона (GDS → rc=2),
 # а перевірка лише документів — окремий режим із власним написом, не прапорець «пропусти GDS».
 #
-# Батарея не потребує мережі і нічого поза python3 stdlib + bash (GDS — ще й Godot).
+# Батарея не потребує мережі і нічого поза python3 stdlib + bash (GDS — ще й Godot; СТЕ — git з локальною історією
+# до merge-base з origin/main, без неї — rc=2 «НЕ ВИМІРЯНО»).
 
 set -u
 MODE=full
@@ -86,6 +87,8 @@ run "ЯКІ якорі шапки state.md"       "$PY" tools/gates/state_anchor
 run "ПЛА розділ R8 у планах"         "$PY" tools/gates/plan_sections_check.py
 # Клас 16: лише канарка (навмисна розбіжність → rc=2). Звірка state.md з логами — make summary-check PLAYABLE_LOG_DIR=…
 run "ЧИС підсумкові числа (канарка)" "$PY" tools/gates/summary_numbers_check.py --canary
+# Клас 18: список негативів без родини і UNFAMILIED_CEILING не ростуть проти merge-base з origin/main (потрібна історія git).
+run "СТЕ стеля негативів без родини" "$PY" tools/gates/unfamilied_ceiling_check.py
 if [ "$MODE" = full ]; then
   run "GDS godot --check-only на .gd"   bash  tools/gates/gd_check_all.sh
 else

@@ -31,10 +31,13 @@ var vault_exit: Vector3 = Vector3.ZERO
 ## P4 side wall run: the direction along the wall and this hero's run length.
 var side_tangent: Vector3 = Vector3.ZERO
 var side_seconds: float = 0.0
+## The wall_kick phase is a leap off a rope anchor's arm (begin_leap), not a kick off a wall.
+var leap: bool = false
 
 func reset(actor: Fighter, recharge: bool = true) -> void:
 	phase = ""
 	elapsed = 0.0
+	leap = false
 	support = null
 	hands.clear()
 	vault_path.clear()
@@ -382,6 +385,19 @@ func _try_kick(actor: Fighter, delta: float, intent: Dictionary, wall: Dictionar
 	actor._set_forward(outward)
 	return true
 
+## ADR-028 п. 3 (T5 З3, T6 § 4): the leap off a rope anchor's arm is drawn as the wall kick (WallRun_Jump_L / _R) in the
+## leap's direction for wall_kick_seconds; the ordinary air controller flies it, as it flies the kick. Nothing is spent:
+## the grip, the kick and the wall steps stay as they were.
+func begin_leap(actor: Fighter, direction: Vector3) -> void:
+	reset(actor, false)
+	phase = "wall_kick"
+	leap = true
+	elapsed = 0.0
+	normal = direction
+	wall_point = actor.global_position
+	kick_release_frame = -1
+	_publish(actor)
+
 func after_air(actor: Fighter, delta: float, intent: Dictionary, previous_velocity: Vector3) -> void:
 	if phase == "wall_kick":
 		elapsed += delta
@@ -570,6 +586,6 @@ func _publish(actor: Fighter) -> void:
 		"hold_remaining": maxf(0.0, (hang_limit(actor) if phase == "hang" else (side_seconds if phase == "wall_side" else profile.wall_seconds)) - elapsed),
 		"left_hand": hands[0] if hands.size() == 2 else Vector3.ZERO,
 		"right_hand": hands[1] if hands.size() == 2 else Vector3.ZERO,
-		"wall_normal": normal, "wall_point": wall_point,
+		"wall_normal": normal, "wall_point": wall_point, "leap": leap,
 		"floor_point": floor_point, "floor_normal":floor_normal,
 		"direction": actual.normalized(), "speed": actual.length()})

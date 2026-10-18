@@ -83,7 +83,8 @@ extends SceneTree
 ## CITY_TIDY_COMPLETE checks=N failures=M mutation=<m> red=<families|none>; failures print "CITY_TIDY: [family] ...".
 ## A family is the guard's tag, the label's first word lower-cased (C1 → c1, K4/Н1 → k4, V-M → vm, MC10 → mc10), and two
 ## guards are split by sub-guard: V+ into vstep (unlisted or lost steps), vwedge (a new wedge), vopen (a pinned OPEN gone
-## or moved), vgrow (a pinned OPEN wider or deeper); MC7 into mc7hull, mc7arm, mc7cross, mc7s3, mc7seen. Each negative
+## or moved), vgrow (a pinned OPEN wider or deeper); MC7 into mc7hull, mc7arm, mc7cross, mc7s3, mc7seen; M0's product
+## refusal, checked in a child Godot, is m0log (see REFUSAL_BREAKS). Each negative
 ## of tools/gates/playable_check.sh names the family it must turn red, so a negative that goes red on a neighbouring
 ## guard no longer passes (T4 audit 2026-10-15, class 18).
 const DT: float = 1.0 / 60.0
@@ -122,18 +123,33 @@ const STEP_BREAKS := ["step_new", "step_low", "step_moved", "wedge_wall", "wedge
 const MACHINE_BREAKS := ["machine_layer", "machine_material", "machine_brass", "machine_float", "machine_sink",
 	"machine_nocollider", "machine_shift", "machine_column", "machine_anchor", "machine_pocket", "machine_lane",
 	"machine_street_hull", "machine_cross", "machine_occlude", "machine_gap", "machine_slot", "machine_budget",
-	"machine_step", "machine_seen_hook", "machine_seen_street", "machine_seen_float", "machine_seen_low"]
+	"machine_step", "machine_seen_hook", "machine_seen_street", "machine_seen_float", "machine_seen_low",
+	"machine_s3_wall", "machine_s3_edge"]
 ## MC7 seen_y negatives (A5), one form each of «a street lens sees a machine point under the terrace's level»: decor of
 ## the crane, standing where it stands, hangs under the level over the street (no hull; MC3 sees its box's bottom too);
 ## the crane stands on the street floor in the S2–S4 view (every other guard holds: only seen_y goes red); the winch
 ## hangs in front of the terrace's wall with no floor. At the threshold (T4 audit 2026-10-15 proposal 2): the same decor
 ## with its bottom at 3.9 m, 0.1 m under the level — a floor weakened by more than that lets it through.
+## MC7 S3 negatives (A5 «the arm at S3 6.00 m»; T4 audit 2026-10-15 part 2, proposal 1: mc7s3 had none), one form each
+## of «the S3 hero's camera arm does not keep its 6 m», whatever takes it: a wall across the street 3 m behind the hero
+## (the arm 2.80 m with the machines and without them: only mc7s3 goes red), and at the threshold a 1 m beam across the
+## street at the lens (z 0, y 2.4–3.4: the arm 5.89 m, 0.11 m short) — an arm floor weakened by more than that lets it
+## through. Measured on the tree of docs/Fix/2026-10-15-Negative-Families-Runner-Fix.md (S3 base arm 6.000).
 const MACHINE_RUN_BREAKS := ["machine_vault"]
 ## M0 negatives, one form each of «a kind places its own GLB, or is refused and places nothing» (CityProps._place_glb
 ## broken in the probe only): an unknown kind placed as the steam truck with no refusal (the audited stand-in, another
 ## GLB); an unknown kind placing nothing and reporting nothing; an unknown kind refused but placed as the truck anyway;
 ## a known kind placed as another's GLB (the crane as the winch).
 const KIND_BREAKS := ["glb_standin", "glb_silent", "glb_both", "glb_swap"]
+## M0 log (T4 audit 2026-10-15 part 2, proposal 4): KindProbe records a refusal instead of printing it, so the product's
+## own CityProps._refuse_kind is never called in this process. A child Godot (this script with --refusal-child=<form>)
+## runs the product's _place_glb on an unknown kind; its output must hold the refusal as one ERROR line naming the spec
+## and the kind, and nothing placed. The child's output stays out of this log (only a count is printed here). Negatives,
+## one form each of «the refusal does not reach the log as one error» (the child's CityProps broken by RefusalBreak):
+## silent (KindProbe's own override: recorded, nothing printed), the same words as a plain line, as a warning, twice.
+const REFUSAL_BREAKS := ["refuse_silent", "refuse_print", "refuse_warning", "refuse_twice"]
+const REFUSAL_SPEC := {"id": "probe", "kind": "steam_bus", "center": Vector3.ZERO, "yaw": 0.0}
+const REFUSAL_PREFIX: String = "Refusal_"
 ## M0: the GLB of a kind, by the registry's naming (docs/Art/Textures-Registry.md prop-steam-*-v1), and kinds no GLB has.
 const KIND_GLB: String = "res://assets/props/city/prop_%s_v1.glb"
 const KIND_UNKNOWN := ["steam_bus", "", "Steam_Truck", "steam_truck_v2"]
@@ -351,6 +367,23 @@ class KindProbe extends CityProps:
 		return super(spec, prefix)
 
 
+## M0 log's broken CityProps in the child (see REFUSAL_BREAKS); the child's positive run uses CityProps itself.
+class RefusalBreak extends CityProps:
+	var form: String = "none"
+	func _refuse_kind(spec: Dictionary, prefix: String) -> void:
+		var words: String = "CITY_PROPS: %s%s asks for kind «%s», which has no GLB: nothing placed" % [prefix, spec.get("id", "?"), spec.get("kind", "")]
+		match form:
+			"refuse_silent":
+				pass
+			"refuse_print":
+				print(words)
+			"refuse_warning":
+				push_warning(words)
+			"refuse_twice":
+				super(spec, prefix)
+				super(spec, prefix)
+
+
 class Rec extends RefCounted:
 	var parts: Array[Dictionary] = []
 	var stack: PackedStringArray = PackedStringArray()
@@ -490,7 +523,23 @@ func _initialize() -> void:
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--break="):
 			mutation = argument.trim_prefix("--break=")
+		if argument.begins_with("--refusal-child="):
+			_refusal_child(argument.trim_prefix("--refusal-child="))
+			return
 	_run.call_deferred()
+
+
+## M0 log's child: the product's _place_glb on an unknown kind (CityProps itself, or RefusalBreak under a negative).
+func _refusal_child(form: String) -> void:
+	var props: CityProps = CityProps.new()
+	if form in REFUSAL_BREAKS:
+		props.free()
+		props = RefusalBreak.new()
+		(props as RefusalBreak).form = form
+	var placed: Node3D = props._place_glb(REFUSAL_SPEC, REFUSAL_PREFIX)
+	print("CITY_TIDY_REFUSAL_CHILD form=%s placed=%s nodes=%d solids=%d" % [form, "null" if placed == null else placed.scene_file_path, props.get_child_count(), props.solid_count])
+	props.free()
+	quit(0)
 
 
 ## One guard's verdict. A red check adds its family to `red` (the sentinel's red=): the guard's tag, or a finer
@@ -527,7 +576,7 @@ func _phase(name: String) -> bool:
 		"steam":
 			return mutation == "none" or mutation in STEAM_BREAKS
 		"kind":
-			return mutation == "none" or mutation in KIND_BREAKS
+			return mutation == "none" or mutation in KIND_BREAKS or mutation in REFUSAL_BREAKS
 	return false
 
 
@@ -1880,6 +1929,33 @@ func _m0_kinds() -> void:
 				probe.solid_count - solids, probe.refused.size() - refusals])
 	print("CITY_TIDY_INFO M0 listed=%d unknown=%d probe_nodes=%d refusals=%d" % [listed.size(), KIND_UNKNOWN.size(), probe.get_child_count(), probe.refused.size()])
 	probe.free()
+	_m0_refusal_log()
+
+
+## M0 log (see REFUSAL_BREAKS): the product's refusal, run in a child Godot, reaches the error log once and places nothing.
+func _m0_refusal_log() -> void:
+	var form: String = mutation if mutation in REFUSAL_BREAKS else "none"
+	var output: Array = []
+	var rc: int = OS.execute(OS.get_executable_path(), ["--headless", "--audio-driver", "Dummy", "--path",
+		ProjectSettings.globalize_path("res://"), "--quit-after", "600", "--script", (get_script() as Script).resource_path,
+		"--", "--refusal-child=" + form], output, true)
+	var name: String = REFUSAL_PREFIX + String(REFUSAL_SPEC.id)
+	var kind: String = "«%s»" % REFUSAL_SPEC.kind
+	var errors: int = 0
+	var other: int = 0
+	var done := false
+	for line: String in "\n".join(output).split("\n"):
+		var named: bool = line.contains(name) and line.contains(kind) and line.contains("nothing placed")
+		if line.begins_with("ERROR: CITY_PROPS: ") and named:
+			errors += 1
+		elif named:
+			other += 1
+		if line == "CITY_TIDY_REFUSAL_CHILD form=%s placed=null nodes=0 solids=0" % form:
+			done = true
+	print("CITY_TIDY_INFO M0 refusal child form=%s rc=%d errors=%d other=%d done=%s" % [form, rc, errors, other, done])
+	_check(rc == 0 and done and errors == 1 and other == 0,
+		"M0 the product's CityProps._refuse_kind (a child Godot) logs the unknown kind %s of %s as one CITY_PROPS error and places nothing (rc %d, %d errors, %d other lines, done %s)" % [
+			kind, name, rc, errors, other, done], "m0log")
 
 
 ## Each vehicle of CityProps.VEHICLES as built in the live world: its node, visible meshes, hulls and footprint.
@@ -2955,6 +3031,20 @@ func _break_scene() -> void:
 		"machine_seen_float":
 			# The winch hangs in front of the terrace's wall, its bottom 2.2 m over the street, nothing under it.
 			(props_node.get_node("Machine_steam_winch") as Node3D).position = Vector3(29.0, 2.2, -9.0)
+		"machine_s3_wall", "machine_s3_edge":
+			# Not a machine: a 4 m wide body across the street behind the S3 hero (28, 0, −6) — a wall 4 m high at z −3,
+			# or at the threshold a 1 m beam (y 2.4–3.4) at z 0, at the lens of the 6 m arm (28, 2.83, −0.17).
+			var s3 := StaticBody3D.new()
+			s3.name = "NegativeS3Wall" if mutation == "machine_s3_wall" else "NegativeS3Beam"
+			s3.collision_layer = 1 | 8
+			s3.collision_mask = 0
+			var s3_shape := CollisionShape3D.new()
+			var s3_box := BoxShape3D.new()
+			s3_box.size = Vector3(4.0, 4.0, 0.2) if mutation == "machine_s3_wall" else Vector3(4.0, 1.0, 0.2)
+			s3_shape.shape = s3_box
+			s3.add_child(s3_shape)
+			props_node.add_child(s3)
+			s3.global_position = Vector3(28.0, 2.0, -3.0) if mutation == "machine_s3_wall" else Vector3(28.0, 2.9, 0.0)
 		"machine_vault":
 			# A winch the motor would vault: its body hull a flat box of the same bounds and the profile allowing 1.2 m
 			# deep vaults (the shipped one is 1.07 m deep across the rope's side and 1.58 m along its drum).
@@ -3041,7 +3131,7 @@ func _break_parts() -> void:
 
 func _run() -> void:
 	await process_frame
-	if mutation != "none" and not (mutation in GEOMETRY_BREAKS or mutation in PLACE_BREAKS or mutation in VAULT_BREAKS or mutation in STEAM_BREAKS or mutation in VEHICLE_BREAKS or mutation in VEHICLE_RUN_BREAKS or mutation in STEP_BREAKS or mutation in MACHINE_BREAKS or mutation in MACHINE_RUN_BREAKS or mutation in KIND_BREAKS):
+	if mutation != "none" and not (mutation in GEOMETRY_BREAKS or mutation in PLACE_BREAKS or mutation in VAULT_BREAKS or mutation in STEAM_BREAKS or mutation in VEHICLE_BREAKS or mutation in VEHICLE_RUN_BREAKS or mutation in STEP_BREAKS or mutation in MACHINE_BREAKS or mutation in MACHINE_RUN_BREAKS or mutation in KIND_BREAKS or mutation in REFUSAL_BREAKS):
 		push_error("CITY_TIDY: unknown --break=" + mutation)
 		quit(2)
 		return

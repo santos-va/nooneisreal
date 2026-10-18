@@ -14,7 +14,9 @@ const DENIED_GAP_TICKS := 18
 
 enum Target { NONE, ANCHOR, ENEMY }
 
-enum Phase { IDLE, WINDUP, FLIGHT, HANG, MISS_REWIND, ENEMY_EXTRACT, ROPE_REACH }
+## CLIMB_TOP and PERCH exist only with climb_enabled (the city, ADR-028): the 0.5 s pull-up from the rope's top onto the
+## anchor's arm, then the grip on the arm itself with the rope already back in the owner's stock.
+enum Phase { IDLE, WINDUP, FLIGHT, HANG, MISS_REWIND, ENEMY_EXTRACT, ROPE_REACH, CLIMB_TOP, PERCH }
 var _pending_rope: int = 0
 var chain_throw: bool = false
 const WINDUP_FRAMES := 30
@@ -91,6 +93,105 @@ var pulling: bool = false
 ## Anchors without the meta (the duel's) skip nothing.
 var _own_support: Array[RID] = []
 var cone_deg: float = 30.0      # free movement only (docs/GDD/04-Grapple-System.md § Конус вибору в 3D)
+# The city rope (ADR-028 п. 1–5; plan 2026-10-15-Rope-Climb-Perch-Release step 5, 15а; numbers T5
+# docs/GDD/2026-10-15-Rope-Climb-Numbers.md, all PLACEHOLDER until Santos plays it on M3). Set only by CityFighter, never
+# by responsive_parkour (T8 § 7): with it off the duel keeps the 1.2 m reel, the dodge off the rope and the deny on E.
+var climb_enabled: bool = false
+## CityFighter writes it before every drive: +1 climb (jump held), −1 slide (dodge held), 0 neither or both.
+var climb_input: int = 0
+@export var climb_speed: float = 3.6        # T5 Л1 = parkour_reel_speed (what Santos felt on M3, without the 1.2 m stop)
+@export var slide_speed: float = 2.0        # T5 С1 = reel_speed of the duel («плавно»)
+@export var climb_top_seconds: float = 0.5  # T5 Л3 = CityParkourProfile.mantle_seconds: rope top → grip on the arm
+@export var perch_hand_rise: float = 0.30   # T5 Л4: the grip on the arm, point + 0.30 (CityDistrict arm_y)
+## T6 § 3 (docs/Art/2026-10-15-Rope-Climb-Animation.md): the shoulders at point + 0.02, 1.34 / 1.38 m above the feet,
+## so the feet 1.32 m under the point; T5 Л5 said 1.75 from reach_height (the journal of this step, § 0, item 1).
+@export var perch_feet_below: float = 1.32
+## T1 on T6's acceptance 2026-10-15 § 9 п. 8: the pose stays T6's (1.32; T5's 1.75 withdrawn), per hero where that is
+## simple — Choko's wrists stop 6–7 cm short of the arm at 1.32, so he hangs PERCH_FEET_RAISE higher (1.28); Skea 1.32.
+## PLACEHOLDER (T6 pose).
+const PERCH_FEET_RAISE: Dictionary = {"choko": 0.04}
+@export var perch_grip_near: float = 0.26   # T6 § 3: the hands 0.26 and 0.66 m from the point toward the mount
+@export var perch_grip_far: float = 0.66
+## T6 § 3: on the brackets whose tie rod comes down onto the arm's middle from above (22–24) the far hand 0.66 m out is
+## 0.07 m from the rod; 0.62 keeps the 0.10 m the struts from below have. PLACEHOLDER: T2's pick, T6 checks the frame.
+@export var perch_tie_rod_far: float = 0.62
+## T6's re-acceptance 2026-10-15 (the skinned surface, docs/Fix/2026-10-15-Rope-Perch-Mesh-Clearance-Fix.md § 4): on the
+## brackets with a strut from below the far sleeve at 0.66 touched the strut's top (Skea, up to 11 vertices 0.018 m deep
+## on 6, 7, 9, 16, 17); at 0.62 (T6's variant) 6 and 7 kept 5 vertices 0.007 m deep through the grip's first ticks, at
+## 0.58 the steep strut of 19 (BRACE_DROP 0.75) still 1–2 vertices 0.004 m deep, at 0.56 none on any strut. PLACEHOLDER:
+## T2's pick, T6 checks the frame.
+@export var perch_strut_far: float = 0.56
+@export var perch_body_back: float = 0.14   # T6 § 3: the shoulders 0.14 m behind the middle of the grip
+## T6's re-acceptance 2026-10-15 (docs/Fix/2026-10-15-Rope-Perch-Mesh-Clearance-Fix.md § 2): Skea's drawn body stands
+## on her capsule, Choko's 0.10 m behind his (the rig), so at 0.14 her hair went 0.06 m into the arm and his 0.02; she
+## hangs this much further back. Per hero where that is simple, as PERCH_FEET_RAISE. PLACEHOLDER (T6 pose).
+const PERCH_BODY_BACK_MORE: Dictionary = {"skea": 0.05}
+## The same (§ 3): the pull-up's sideways leg runs this far under the grip's height, so the head passes under the ceramic
+## cap and the arm's end and comes up beside the arm, not through them (15а went up to the grip's height first). The cap's
+## underside is 0.175 m over the point, the hair's top 0.29–0.31 m on the grip; 0.20 cleared the cap but on bracket 19,
+## where the rope's top hangs 0.6 m in under the arm, the head still came up against the steep strut's top. PLACEHOLDER (T2).
+const PULL_UP_DUCK: float = 0.30
+## The pull-up's share of time for the climb under the rope and for the sideways leg; the rest is the last rise beside the
+## arm. 30 ticks in all (T5 Л3), as before. PLACEHOLDER (T2).
+const PULL_UP_RISE_SHARE: float = 0.5
+const PULL_UP_ACROSS_SHARE: float = 0.3
+## --break control of tools/grapple/rope_climb_check.gd (`pull_first`): 0 draws 15а's path (up to the grip's height, then
+## across).
+var pull_up_duck: float = PULL_UP_DUCK
+## The shot from the perch fires at an anchor not lower than the hand (T5 З2); on the rope and on the ground it stays
+## 1.5 m above it (HarpoonAim).
+const PERCH_MIN_RISE := 0.0
+const TRAVERSAL_MIN_RISE := 1.5
+## Presentation and HUD read these (never write): this tick the rope shortened by the climb / let out by the slide.
+var climbing: bool = false
+var sliding: bool = false
+## The slide has let the rope out to its whole deployed length in the air (T5 С2: Shift does nothing more).
+var rope_end: bool = false
+## The last climb found the pull-up onto the arm blocked (T5 Л3): the hero stays at the rope top.
+var climb_blocked: bool = false
+## The slide put the feet on a floor on this drive: the hook let go, the rope stays deployed (T5 С3).
+var slid_to_floor: bool = false
+var perch_elapsed: float = 0.0
+var perch_anchor: Vector3 = Vector3.ZERO
+var perch_pose: Dictionary = {}
+var _climb_from: Vector3 = Vector3.ZERO
+## The pull-up's corners from the rope's top to the grip (_climb_path) and the progress at which each is reached.
+var _climb_way: Array[Vector3] = []
+var _climb_marks: Array[float] = []
+var _climb_elapsed: float = 0.0
+## A shot from the perch: the body keeps gripping the arm through the windup and the flight, until contact (T5 § 3.2).
+var _perch_hold: bool = false
+## Transfer (ADR-028 п. 5, T3 s7b): the support of the anchor the hero has just left (its lamp post). Only the city's
+## new rope passes it, and only while that rope is still pulling the hero in toward the new anchor (rope V4); once the
+## pull has settled the usual cover rule applies to it like to any other solid.
+var _transfer_skip: Array[RID] = []
+## The rewind in progress is the reel of a hanging rope (presentation: Fish_Reel, T6 § 5), not a miss.
+var reeling_in: bool = false
+## T6 § «Що з цього мусить зробити T2» п. 2: the rope's free end below the hands, down to its deployed length or the floor.
+var _tail_visual: Node3D
+## T6 acceptance 2026-10-15 § 9 п. 6: the rope coming back on the grip, drawn: the tail shortens to the hand over the pull-up;
+## on the grip's tick the hook leaves the ceramic and flies a short arc of RETURN_SECONDS to the waist, the line behind it
+## from the hands. The slot is back in the stock on the grip's tick (T5 П1, the game's number); the HUD shows it when the
+## hook touches the hero (pending_return(), T1: the HUD and the picture lag, the stock does not). Presentation only.
+const RETURN_SECONDS: float = 0.25
+const RETURN_ARC: float = 0.35   # the arc's rise over the straight line, m (PLACEHOLDER)
+const WAIST := Vector3(0.0, 0.95, 0.0)
+## T6's re-acceptance 2026-10-15, N2: the hook lands on the front of the drawn waist, this far ahead of the hips bone (the
+## drawn body, not the capsule: Choko's stands 0.10 m behind his), not on the body's axis inside the torso. PLACEHOLDER.
+const RETURN_FRONT: float = 0.12
+var _return_elapsed: float = -1.0
+## T6's re-acceptance 2026-10-15, N3: after a shot from the grip latches, the drawn line's start moves from the throwing
+## hand to the right one over LINE_HANDOVER_SECONDS (the city catch, AuthoredHookMotion.PARKOUR_CATCH_SECONDS), not in one
+## tick (0.43–0.50 m). Presentation only; the duel never perches.
+const LINE_HANDOVER_SECONDS: float = 0.12
+var _line_hand: String = ""
+var _line_handover: float = -1.0
+## T6 acceptance 2026-10-15 § 9 п. 7: a shot from the grip is thrown by the hand on the target's side ("Right"/"Left"), the
+## other keeps the arm; "" — no shot from the grip. Presentation reads it; the rope is drawn from that hand until contact.
+var throw_hand: String = ""
+var _climb_tail: float = 0.0
+var _climb_tail_low: float = -INF
+var _return_from: Vector3 = Vector3.ZERO
 
 var attached: bool = false
 var anchor_point: Vector3 = Vector3.ZERO
@@ -167,6 +268,7 @@ func inventory_changed(available: int, capacity: int) -> void:
 
 
 func reset() -> void:
+	_return_elapsed = -1.0
 	# A round returns an unfinished recoverable shot, never a deployed rope.
 	if token != 0:
 		registry.refund(token, fighter.player_index)
@@ -176,6 +278,7 @@ func reset() -> void:
 
 
 func on_match_cleared() -> void:
+	_return_elapsed = -1.0
 	token = 0
 	_finish_idle()
 
@@ -315,6 +418,10 @@ func retarget(recorded_aim: Dictionary = {}) -> bool:
 	if hand.distance_to(selected.global_position) > range_m or not line_clear(hand, selected.global_position):
 		return false
 	# The target is validated before releasing support. Launch spends exactly once.
+	# The city's new rope passes the post just left while it pulls the hero away from it (ADR-028 п. 5, T3 s7b).
+	_transfer_skip.clear()
+	if climb_enabled:
+		_transfer_skip.append_array(_own_support)
 	registry.detach_user(_deployed_token, self)
 	_deployed_token = 0
 	attached = false
@@ -542,6 +649,10 @@ func _flight(delta: float, held: bool) -> void:
 			_begin_rewind()
 			return
 		_frames = 0
+		if _perch_hold and not throw_hand.is_empty():
+			_line_hand = throw_hand
+			_line_handover = 0.0
+		_perch_hold = false
 		# Two projectiles may select the same free point before either arrives.
 		# The registry owns this atomic check; a rejected shot remains recoverable.
 		if not registry.deploy(token, fighter.player_index, anchor_point, fighter.global_position + HAND, rope_length):
@@ -686,30 +797,49 @@ func _best_anchor() -> Node3D:
 func drive(delta: float, held: bool, reel_held: bool = false) -> void:
 	if delta <= 0.0:
 		return
+	slid_to_floor = false
 	if phase == Phase.ROPE_REACH:
 		_drive_rope_reach(delta, held or reel_held)
 		return
+	if phase == Phase.PERCH:
+		_drive_perch(delta)
+		return
+	if phase == Phase.CLIMB_TOP:
+		_drive_climb_top(delta)
+		return
+	if _perch_hold:
+		# A shot from the perch: the hands stay on the arm until contact, while the grip lasts (T5 § 3.2).
+		perch_elapsed += delta
+		if perch_elapsed > perch_limit():
+			_perch_hold = false
 	if phase == Phase.WINDUP:
 		if not _prefer_enemy:
 			var existing := reusable_rope()
 			if existing != 0:
+				_perch_hold = false
 				_attach_existing(existing)
 				_draw_rope(fighter.global_position + HAND, anchor_point)
 				return
 		_frames += 1
 		var windup_frames := maxi(1, parkour_windup_frames) if _responsive_traversal() else WINDUP_FRAMES
 		windup_progress = float(_frames) / float(windup_frames)
-		if not _responsive_traversal():
-			fighter.velocity.x = move_toward(fighter.velocity.x, 0.0, 30.0 * delta)
-			fighter.velocity.z = move_toward(fighter.velocity.z, 0.0, 30.0 * delta)
-		fighter.velocity.y -= Fighter.GRAVITY * delta
-		fighter.move_and_slide()
+		if _perch_hold:
+			fighter.velocity = Vector3.ZERO
+		else:
+			if not _responsive_traversal():
+				fighter.velocity.x = move_toward(fighter.velocity.x, 0.0, 30.0 * delta)
+				fighter.velocity.z = move_toward(fighter.velocity.z, 0.0, 30.0 * delta)
+			fighter.velocity.y -= Fighter.GRAVITY * delta
+			fighter.move_and_slide()
 		if _frames >= windup_frames:
 			_launch()
 		return
 	if phase == Phase.FLIGHT:
-		fighter.velocity.y -= Fighter.GRAVITY * delta
-		fighter.move_and_slide()
+		if _perch_hold:
+			fighter.velocity = Vector3.ZERO
+		else:
+			fighter.velocity.y -= Fighter.GRAVITY * delta
+			fighter.move_and_slide()
 		_flight(delta, held or reel_held)
 		return
 	if not attached:
@@ -731,12 +861,29 @@ func drive(delta: float, held: bool, reel_held: bool = false) -> void:
 	if _responsive_traversal() and rope_length > _hang_start_length:
 		pull_step = minf(maxf(0.0, parkour_pull_speed * delta), rope_length - _hang_start_length)
 	var reel_step := 0.0
-	if reel_held:
+	var slide_step := 0.0
+	if climb_enabled and _responsive_traversal():
+		# ADR-028 п. 1–2 (T5 Л1, С1, С2): the held jump climbs to the 2.0 m pendulum limit, the held dodge lets the rope
+		# out to its deployed length, never during the pull and never with the climb (CityFighter gives 0 for both).
+		if f.control_locked:
+			climb_input = 0
+		if climb_input > 0:
+			reel_step = minf(maxf(0.0, climb_speed * delta), maxf(0.0, rope_length - minimum_rope))
+		elif climb_input < 0 and pull_step <= 0.0:
+			slide_step = minf(maxf(0.0, slide_speed * delta), maxf(0.0, slide_limit() - rope_length))
+		rope_end = climb_input < 0 and pull_step <= 0.0 and slide_step <= 0.0
+	elif reel_held:
 		var motor_speed := parkour_reel_speed if _responsive_traversal() else reel_speed
 		reel_step = minf(maxf(0.0, motor_speed * delta), reel_remaining())
 	pulling = pull_step > 0.0 and pull_step >= reel_step
+	climbing = reel_step > 0.0 and reel_step > pull_step
+	sliding = slide_step > 0.0
 	if pull_step > 0.0 or reel_step > 0.0:
 		rope_length -= maxf(pull_step, reel_step)
+	elif slide_step > 0.0:
+		rope_length += slide_step
+		# The slide is the hero's own choice of length: the pull never takes it back (T5 § 2, «ніколи під час тяги»).
+		_hang_start_length = maxf(_hang_start_length, rope_length)
 	f.velocity.y -= Fighter.GRAVITY * delta
 	# Pump below the anchor only; full gravity and drag oppose perpetual powered loops.
 	if radial.y > 0.35:
@@ -760,11 +907,28 @@ func drive(delta: float, held: bool, reel_held: bool = false) -> void:
 		# momentum after collision response instead of overwriting the constraint result.
 		var normal := (f.global_position + HAND - anchor_point).normalized()
 		f.velocity = f.velocity.slide(normal).limit_length(speed_limit)
+	# T5 С3: the slide puts the feet on a floor — the hook lets go on this tick, the rope stays deployed as it is.
+	if sliding and f.is_on_floor():
+		slid_to_floor = true
+		_release(false)
+		return
 	# The anchor's own post / bracket never cuts its rope; every other solid on hand → anchor does (04 § Трос V4).
-	if not line_clear(f.global_position + HAND, anchor_point, _own_support):
+	var skip: Array[RID] = _own_support
+	if not _transfer_skip.is_empty():
+		if rope_length > _hang_start_length + 0.000001:
+			skip = []
+			skip.append_array(_own_support)
+			skip.append_array(_transfer_skip)
+		else:
+			_transfer_skip.clear()
+	if not line_clear(f.global_position + HAND, anchor_point, skip):
 		_release(false)
 		return
 	_draw_rope(f.global_position + HAND, anchor_point)
+	_draw_tail(delta)
+	# T5 Л3: the held climb at the 2.0 m limit becomes the 0.5 s pull-up onto the anchor's arm, if its path is clear.
+	if climb_enabled and climb_input > 0 and not pulling and rope_length <= minimum_rope + 0.000001:
+		_begin_climb_top()
 
 
 ## Т3/Т4: the length whose lowest point keeps the hand parkour_swing_clearance above a standing hand on the higher of
@@ -786,6 +950,394 @@ func _support_below(from: Vector3) -> float:
 	q.exclude = [fighter.get_rid(), fighter.hurtbox.get_rid()]
 	var hit := fighter.get_world_3d().direct_space_state.intersect_ray(q)
 	return -INF if hit.is_empty() else float(hit.position.y)
+
+
+## ADR-028 (the city only, climb_enabled): the rope's top, the anchor's arm and the rope coming back. ------------------
+
+## How long the perch grips: CityFighter's hand budget (the ledge's hang_seconds + «Сила», T5 З1); 0 without one.
+func perch_limit() -> float:
+	return float(fighter.call("perch_limit")) if fighter.has_method("perch_limit") else 0.0
+
+
+## How far the slide may let the rope out: the length it was deployed with (T5 С2, MatchRopes record.length).
+func slide_limit() -> float:
+	var record: Dictionary = registry.records.get(_deployed_token, {}) if registry != null else {}
+	return float(record.get("length", rope_length))
+
+
+## The height filter of the traversal selection: an anchor not lower than the hand from the perch (T5 З2), else 1.5 m
+## above it.
+func target_min_rise() -> float:
+	return PERCH_MIN_RISE if phase == Phase.PERCH or _perch_hold else TRAVERSAL_MIN_RISE
+
+
+## Presentation reads it (never writes): the hands are on an anchor's arm, not on a rope — the pull-up onto it, the grip,
+## or a shot from the grip until contact (T6 acceptance 2026-10-15 § 9 п. 2).
+func perch_presentation() -> bool:
+	return climb_enabled and (phase in [Phase.CLIMB_TOP, Phase.PERCH] or _perch_hold)
+
+
+## The anchor whose arm the hero grips now (or grips through a shot from it): never a target of its own grip.
+func is_own_perch(point: Vector3) -> bool:
+	return (phase == Phase.PERCH or _perch_hold) and point.distance_to(perch_anchor) <= 0.01
+
+
+## Let go of the rope or the arm where the hero is: the velocity stays as it is (T5 Е1, З4).
+func let_go() -> void:
+	_release(false)
+
+
+## The grip on the anchor at `point` (T6 § 3, T5 Л4): the hands on its arm 0.26 and 0.66 m from the point toward the
+## support, perch_hand_rise above the point; the body across the arm on the side it comes from, its shoulders
+## perch_body_back behind the middle of the grip, the feet perch_feet_below under the point. {} for an anchor without
+## an arm (the "perch" meta CityDistrict gives its street anchors).
+func perch_pose_for(point: Vector3, from: Vector3) -> Dictionary:
+	var marker := _marker_at(point)
+	if marker == null or not marker.has_meta("perch"):
+		return {}
+	var spec: Dictionary = marker.get_meta("perch")
+	var mount: Vector3 = spec.get("mount", point)
+	var toward := Vector3(mount.x - point.x, 0.0, mount.z - point.z)
+	if toward.length() < 0.001:
+		return {}
+	toward = toward.normalized()
+	var across := toward.cross(Vector3.UP).normalized()
+	var side := 1.0 if Vector3(from.x - point.x, 0.0, from.z - point.z).dot(across) >= 0.0 else -1.0
+	var grip_y := point.y + perch_hand_rise
+	var near := Vector3(point.x, grip_y, point.z) + toward * perch_grip_near
+	var far_out: float = perch_grip_far
+	if bool(spec.get("tie_rod", false)):
+		far_out = perch_tie_rod_far
+	elif String(spec.get("kind", "")) == "bracket":
+		far_out = perch_strut_far
+	var far := Vector3(point.x, grip_y, point.z) + toward * far_out
+	var middle := (near + far) * 0.5
+	var body := middle + across * side * perch_back()
+	var facing := -across * side
+	# The hero's right hand is the one on his right while he faces the arm.
+	var right_side := facing.cross(Vector3.UP).normalized()
+	var right := near if (near - middle).dot(right_side) > 0.0 else far
+	var left := far if right == near else near
+	return {"origin": Vector3(body.x, point.y - perch_feet(), body.z), "grip": middle, "left": left, "right": right,
+		"facing": facing, "away": -toward, "point": point, "mount": mount}
+
+
+## How far under the anchor's point the feet hang on its arm: perch_feet_below less this hero's PERCH_FEET_RAISE.
+func perch_feet() -> float:
+	return perch_feet_below - float(PERCH_FEET_RAISE.get(_hero_id(), 0.0))
+
+
+## How far behind the middle of the grip the body hangs: perch_body_back and this hero's PERCH_BODY_BACK_MORE.
+func perch_back() -> float:
+	return perch_body_back + float(PERCH_BODY_BACK_MORE.get(_hero_id(), 0.0))
+
+
+func _hero_id() -> String:
+	return String(fighter.data.id) if fighter != null and fighter.data != null else ""
+
+
+func _marker_at(point: Vector3) -> Node3D:
+	if not is_inside_tree():
+		return null
+	for n in get_tree().get_nodes_in_group("grapple_anchor"):
+		var marker := n as Node3D
+		if marker != null and marker.global_position.distance_to(point) <= 0.01:
+			return marker
+	return null
+
+
+## The body's capsule swept from `from` to `to` and resting at `to` touches nothing (CityParkourMotor._clear's rule).
+func _body_path_clear(from: Vector3, to: Vector3) -> bool:
+	var pose: Transform3D = fighter.global_transform
+	pose.origin = from
+	if fighter.test_move(pose, to - from, null, 0.035):
+		return false
+	var shape := fighter.get_node_or_null("BodyShape") as CollisionShape3D
+	if shape == null:
+		return true
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = shape.shape
+	pose.origin = to
+	query.transform = pose * shape.transform
+	query.collision_mask = fighter.collision_mask
+	query.exclude = [fighter.get_rid()]
+	query.margin = 0.005
+	return fighter.get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty()
+
+
+## The pull-up's two legs, as the ledge's mantle (hang → apex → landing): straight up under the rope to the grip's height,
+## then across onto the arm — a balcony or a cornice under the arm is passed above it, not through it.
+func _climb_apex(from: Vector3, to: Vector3) -> Vector3:
+	return Vector3(from.x, to.y, from.z)
+
+
+## The pull-up's corners (T6's re-acceptance 2026-10-15, N1): up under the rope to pull_up_duck under the grip's height,
+## across to the grip's place at that height, the last rise beside the arm — the head no longer comes up into the ceramic
+## cap and through the arm's end. With pull_up_duck 0 (or when that path is blocked and 15а's is clear) 15а's two legs
+## (_climb_apex). Returns [corners, progress marks]; [] when neither path is clear.
+func _climb_path(from: Vector3, to: Vector3) -> Array:
+	if pull_up_duck > 0.0:
+		var low: float = maxf(from.y, to.y - pull_up_duck)
+		var way: Array[Vector3] = [from, Vector3(from.x, low, from.z), Vector3(to.x, low, to.z), to]
+		var marks: Array[float] = [0.0, PULL_UP_RISE_SHARE, PULL_UP_RISE_SHARE + PULL_UP_ACROSS_SHARE, 1.0]
+		if _way_clear(way):
+			return [way, marks]
+	var apex := _climb_apex(from, to)
+	var old: Array[Vector3] = [from, apex, to]
+	var old_marks: Array[float] = [0.0, 0.5, 1.0]
+	return [old, old_marks] if _way_clear(old) else []
+
+
+func _way_clear(way: Array[Vector3]) -> bool:
+	for k: int in range(1, way.size()):
+		if not _body_path_clear(way[k - 1], way[k]):
+			return false
+	return true
+
+
+## The point of the pull-up's path at `progress` (0…1): linear along each leg between its marks.
+func _climb_point(progress: float) -> Vector3:
+	for k: int in range(1, _climb_way.size()):
+		if progress <= _climb_marks[k] or k == _climb_way.size() - 1:
+			var span: float = maxf(_climb_marks[k] - _climb_marks[k - 1], 0.000001)
+			return _climb_way[k - 1].lerp(_climb_way[k], clampf((progress - _climb_marks[k - 1]) / span, 0.0, 1.0))
+	return _climb_from
+
+
+func _begin_climb_top() -> void:
+	var pose := perch_pose_for(anchor_point, fighter.global_position)
+	var from := fighter.global_position
+	var path: Array = [] if pose.is_empty() else _climb_path(from, pose.origin)
+	if path.is_empty():
+		climb_blocked = true
+		return
+	climb_blocked = false
+	_climb_way = path[0]
+	_climb_marks = path[1]
+	perch_pose = pose
+	perch_anchor = anchor_point
+	_climb_tail = maxf(0.0, slide_limit() - rope_length)
+	_climb_tail_low = -INF
+	_climb_from = fighter.global_position
+	_climb_elapsed = 0.0
+	_frames = 0
+	phase = Phase.CLIMB_TOP
+
+
+## T5 Л3: a finished 0.5 s move from the rope top to the grip, swept every tick like the ledge's mantle; blocked on the way
+## — back to the rope top. On its last tick the rope comes back to its owner (T5 П1).
+func _drive_climb_top(delta: float) -> void:
+	_frames += 1
+	var total := maxi(1, roundi(climb_top_seconds / maxf(delta, 0.0001)))
+	var progress := minf(float(_frames) / float(total), 1.0)
+	_climb_elapsed = progress * climb_top_seconds
+	var before := fighter.global_position
+	var target: Vector3 = _climb_point(progress)
+	if not _body_path_clear(before, target):
+		climb_blocked = true
+		phase = Phase.HANG
+		fighter.velocity = Vector3.ZERO
+		return
+	fighter.move_and_collide(target - before)
+	if fighter.global_position.distance_to(target) > 0.01:
+		climb_blocked = true
+		phase = Phase.HANG
+		fighter.velocity = Vector3.ZERO
+		return
+	fighter.velocity = (fighter.global_position - before) / maxf(delta, 0.0001)
+	rope_length = minf(rope_length, (anchor_point - (fighter.global_position + HAND)).length())
+	_draw_rope(fighter.global_position + HAND, anchor_point)
+	_draw_tail(delta, _climb_tail * (1.0 - progress)) # the free end comes up to the hand over the pull-up (T6 § 9 п. 6)
+	if progress >= 1.0:
+		_grip_anchor()
+
+
+func _grip_anchor() -> void:
+	var rope := _deployed_token
+	# The hook's flight back starts before the stock changes, so the HUD's refresh on retrieve already sees it pending.
+	_return_from = anchor_point
+	_return_elapsed = 0.0 if climb_enabled else -1.0
+	registry.detach_user(rope, self)
+	registry.retrieve(rope)
+	_deployed_token = 0
+	attached = false
+	pulling = false
+	climbing = false
+	_own_support.clear()
+	_transfer_skip.clear()
+	phase = Phase.PERCH
+	perch_elapsed = 0.0
+	fighter.velocity = Vector3.ZERO
+	if _rope:
+		_rope.visible = false
+	if _rope_visual:
+		_rope_visual.visible = false
+	if _tail_visual:
+		_tail_visual.visible = false
+	_draw_return(0.0)
+
+
+## The hand that throws the shot from the grip ("" — none now; T6 § 9 п. 7). Presentation reads it.
+func perch_throw_side() -> String:
+	return throw_hand if _perch_hold and phase in [Phase.WINDUP, Phase.FLIGHT] else ""
+
+
+## The slots the HUD does not show yet: 1 while the hook of the rope taken back on the grip is still flying to the waist.
+func pending_return() -> int:
+	return 1 if _return_elapsed >= 0.0 else 0
+
+
+## The hook's flight back to the waist (see RETURN_SECONDS), one step of `delta`. A new shot, a reel or a miss (the hook's
+## own visuals) ends it at once; so does its end, and then the HUD learns the slot (changed).
+func _draw_return(delta: float) -> void:
+	if _return_elapsed < 0.0:
+		return
+	_return_elapsed += maxf(delta, 0.0)
+	var t: float = clampf(_return_elapsed / RETURN_SECONDS, 0.0, 1.0)
+	var busy_now: bool = phase not in [Phase.PERCH, Phase.IDLE]
+	if t >= 1.0 or busy_now or not is_inside_tree():
+		_return_elapsed = -1.0
+		if not busy_now:
+			if _tip:
+				_tip.visible = false
+			if _rope_visual:
+				_rope_visual.visible = false
+		changed.emit(charges, cooldown_left, max_charges)
+		return
+	var waist: Vector3 = _return_point()
+	var eased: float = t * t * (3.0 - 2.0 * t)
+	var tip: Vector3 = _return_from.lerp(waist, eased) + Vector3.UP * RETURN_ARC * 4.0 * eased * (1.0 - eased)
+	if _tip:
+		_tip.visible = true
+		_tip.global_position = tip
+		var heading: Vector3 = (waist - tip)
+		if heading.length() > 0.01:
+			_tip.global_basis = Basis(Quaternion(Vector3.UP, heading.normalized()))
+	if _rope_visual != null and is_instance_valid(fighter.skeletal):
+		var hands: Vector3 = (fighter.skeletal.hand_world("Right") + fighter.skeletal.hand_world("Left")) * 0.5
+		_rope_visual.update_rope(hands, tip, hands.distance_to(tip), delta, GameState.water, true)
+
+
+## Where the returning hook lands (N2): RETURN_FRONT ahead of the drawn hips along the flat facing; without a rig, the waist.
+func _return_point() -> Vector3:
+	if not is_instance_valid(fighter.skeletal):
+		return fighter.global_position + WAIST
+	var hips: Vector3 = fighter.skeletal.bone_world("Hips", fighter.global_position + WAIST)
+	var ahead := Vector3(fighter.forward.x, 0.0, fighter.forward.z)
+	return hips + (ahead.normalized() * RETURN_FRONT if ahead.length() > 0.001 else Vector3.ZERO)
+
+
+## Presentation only: the city rope's tail hangs straight down from the lower hand (the skinned hand; the physical HAND
+## without a rig) for what is left of its deployed length, never through the floor.
+## `length` ≥ 0 draws that much of it (the pull-up's shortening tail) instead of what the rope has left below the hand.
+func _draw_tail(delta: float, length: float = -1.0) -> void:
+	if not climb_enabled or not is_inside_tree() or not ResourceLoader.exists("res://scripts/grapple/RopeVisual.gd"):
+		return
+	if _tail_visual == null:
+		_tail_visual = load("res://scripts/grapple/RopeVisual.gd").new()
+		add_child(_tail_visual)
+	var start: Vector3 = fighter.global_position + HAND
+	if is_instance_valid(fighter.skeletal):
+		var right: Vector3 = fighter.skeletal.hand_world("Right")
+		var left: Vector3 = fighter.skeletal.hand_world("Left")
+		start = right if right.y < left.y else left
+	var tail := length if length >= 0.0 else slide_limit() - rope_length
+	var floor_y := _support_below(start)
+	var room := start.y - floor_y - 0.02 if not is_inf(floor_y) else tail
+	var drop := minf(tail, room)
+	if length >= 0.0:
+		# The pull-up's tail: its free end only comes up (the lower hand changing sides must not lower it).
+		drop = minf(drop, start.y - _climb_tail_low) if not is_inf(_climb_tail_low) else drop
+		_climb_tail_low = maxf(_climb_tail_low, start.y - drop)
+	if drop < 0.05:
+		_tail_visual.visible = false
+		return
+	_tail_visual.update_rope(start, start + Vector3.DOWN * drop, drop, delta, GameState.water, false)
+
+
+func _drive_perch(delta: float) -> void:
+	perch_elapsed += delta
+	fighter.velocity = Vector3.ZERO
+	if perch_elapsed > perch_limit():
+		_finish_idle() # The arms give out: a drop like off a ledge (T5 З1).
+
+
+## E on the perch (T5 § 3.2): a new shot from the grip, 10 ticks of windup with the hands still on the arm; nothing to fire
+## at — still gripping (CityFighter lets go only when no target was shown, T8 § 2.2).
+func perch_shot() -> int:
+	if phase != Phase.PERCH:
+		return Target.NONE
+	var held_for := perch_elapsed
+	phase = Phase.IDLE
+	var target := fire(false, "grapple_parkour")
+	if target == Target.NONE or phase == Phase.IDLE:
+		phase = Phase.PERCH
+		perch_elapsed = held_for
+		return Target.NONE
+	_perch_hold = phase in [Phase.WINDUP, Phase.ROPE_REACH]
+	perch_elapsed = held_for
+	throw_hand = ""
+	if _perch_hold and not perch_pose.is_empty():
+		var facing: Vector3 = perch_pose.facing
+		var aim_point: Vector3 = aim_intent.get("point", fighter.global_position + facing)
+		throw_hand = "Right" if (aim_point - fighter.global_position).dot(facing.cross(Vector3.UP)) >= 0.0 else "Left"
+	return target
+
+
+## The leap off the perch (T5 З3): the grip ends, the body flies with `launch`.
+func leap_from_perch(launch: Vector3) -> void:
+	if phase != Phase.PERCH:
+		return
+	_finish_idle()
+	fighter.velocity = launch
+	Sfx.play("whoosh", -9)
+
+
+## ADR-028 п. 4 (T5 П3, П4; T8 § 2.4): this hero's own rope hanging free — nobody on it — with its anchor within range_m of
+## the hand on a clear line; the nearest to the hand. {} when none or while the hook is busy.
+func reel_candidate() -> Dictionary:
+	if registry == null or busy() or not is_inside_tree():
+		return {}
+	var hand := fighter.global_position + HAND
+	var best: Dictionary = {}
+	for key: int in registry.records:
+		var record: Dictionary = registry.records[key]
+		if not record.deployed or int(record.owner) != fighter.player_index or registry.in_use(key):
+			continue
+		var anchor: Vector3 = record.anchor
+		if hand.distance_to(anchor) > range_m + 0.000001 or not line_clear(hand, anchor):
+			continue
+		var grip := registry.closest_grip(key, hand)
+		if grip.is_empty():
+			continue
+		if best.is_empty() or float(grip.distance) < float(best.distance) or (is_equal_approx(float(grip.distance), float(best.distance)) and key < int(best.token)):
+			best = {"token": key, "distance": float(grip.distance), "anchor": anchor}
+	return best
+
+
+## The reel (T5 П4): the rope leaves its anchor and comes back to the hand at rewind_speed like a miss — movement × 0.35,
+## paused by a hit or a dodge, refunded at the hand. Refused (nothing changes) unless `key` is a candidate now.
+func begin_reel(key: int) -> bool:
+	if key == 0 or busy() or not registry.records.has(key):
+		return false
+	var record: Dictionary = registry.records[key]
+	if not record.deployed or int(record.owner) != fighter.player_index or registry.in_use(key):
+		return false
+	var hand := fighter.global_position + HAND
+	var anchor: Vector3 = record.anchor
+	if hand.distance_to(anchor) > range_m + 0.000001 or not line_clear(hand, anchor):
+		return false
+	if not registry.begin_reel(key, fighter.player_index):
+		return false
+	token = key
+	action = "grapple_parkour"
+	_prefer_enemy = false
+	projectile_position = anchor
+	_flight_direction = (anchor - hand).normalized()
+	_begin_rewind()
+	_miss_velocity = Vector3.ZERO
+	reeling_in = true
+	return true
 
 
 func _release(reached: bool) -> void:
@@ -817,6 +1369,15 @@ func _finish_idle() -> void:
 	phase = Phase.IDLE
 	_pending_rope = 0
 	chain_throw = false
+	_perch_hold = false
+	_line_handover = -1.0
+	climbing = false
+	sliding = false
+	rope_end = false
+	climb_blocked = false
+	perch_pose = {}
+	reeling_in = false
+	_transfer_skip.clear()
 	windup_progress = 0.0
 	_selected_anchor = null
 	_victim = null
@@ -833,11 +1394,14 @@ func _finish_idle() -> void:
 		_rope.visible = false
 	if _rope_visual:
 		_rope_visual.visible = false
+	if _tail_visual:
+		_tail_visual.visible = false
 
 
 func _begin_rewind() -> void:
 	phase = Phase.MISS_REWIND
 	attached = false
+	_perch_hold = false
 	recovery_remaining = maxf(0.5, (projectile_position - (fighter.global_position + HAND)).length())
 	_recovery_total = recovery_remaining
 	recovery_progress = 0.0
@@ -903,13 +1467,35 @@ func _confirm_pull(opp: Fighter) -> void:
 	Sfx.play("grapple_hit")
 
 
+## The reel's rope leaves between the hands where they are at the end of this tick: the fighter's tick drew it (tick_regen)
+## before the body moved (T6 acceptance 2026-10-15 § 9 п. 4). Runs after the fighter's own tick (a child). Presentation
+## only; the city reel only.
+func _physics_process(delta: float) -> void:
+	_draw_return(delta)
+	if not reeling_in or phase != Phase.MISS_REWIND or _rope_visual == null or not _rope_visual.visible:
+		return
+	if fighter == null or not is_instance_valid(fighter.skeletal):
+		return
+	_rope_visual.move_start((fighter.skeletal.hand_world("Right") + fighter.skeletal.hand_world("Left")) * 0.5)
+
+
 func _draw_rope(a: Vector3, b: Vector3) -> void:
 	# Compute slack at the physical attachment BEFORE substituting the skinned hand.
 	# An overhead animated hand is closer to the anchor, but that is not spare cable.
 	var physical_slack := maxf(0.0, rope_length - a.distance_to(b)) if phase == Phase.HANG else 0.0
 	# The skinned hand only anchors the rendered line, never the sweep or constraint.
 	if is_instance_valid(fighter.skeletal):
-		a = fighter.skeletal.hand_world("Right")
+		a = fighter.skeletal.hand_world(throw_hand if _perch_hold and not throw_hand.is_empty() else "Right")
+		if _line_handover >= 0.0:
+			if phase in [Phase.ROPE_REACH, Phase.HANG] and _line_handover < LINE_HANDOVER_SECONDS:
+				a = fighter.skeletal.hand_world(_line_hand).lerp(a, smoothstep(0.0, LINE_HANDOVER_SECONDS, _line_handover))
+				_line_handover += get_physics_process_delta_time()
+			else:
+				_line_handover = -1.0
+		# T6 acceptance 2026-10-15 § 9 п. 4: the reel of a left rope (Fish_Reel, both hands together at the waist) takes the
+		# rope between the two hands, not into the right one. Presentation only: HAND stays the logic's point.
+		if reeling_in and phase == Phase.MISS_REWIND:
+			a = (a + fighter.skeletal.hand_world("Left")) * 0.5
 	if _rope_visual != null:
 		_rope.visible = false
 		_rope_visual.visible = true

@@ -49,14 +49,31 @@ extends SceneTree
 ##     red in `air`); the stall's own counter grown 0.3 m toward the street (a stall body, so only the air floor can
 ##     catch it: red in `air`); T4's box under the vertical (1.6 × 1.1 × 1.6 m: the swing no longer leans, the OPEN
 ##     is gone: red in `open`).
+## The city rope (ADR-028, plan 2026-10-15-Rope-Climb-Perch-Release step 5; T5 docs/GDD/2026-10-15-Rope-Climb-Numbers.md
+## § 8): Space now climbs to the 2.0 m limit (T5 Л-а) and the hang ends on the anchor's arm (CLIMB_TOP → PERCH), not by a
+## cut; in the duel the 1.2 m stroke stays (weighted_swing_check). The rope lets out only while the dodge is held (the
+## slide): at most 2.0 / 60 + 1e-6 a tick, never in the pull, never with Space, never past the deployed length
+## (`record.length`); the feet on a floor end the hang on that same tick — the state IDLE, the rope's record and the stock
+## as they were. Without the dodge nothing ever lets the rope out (`lengthen`, as before).
+##   --break=overlong|stuck — the slide past the rope's deployed length, the slide on a floor that does not let go (the
+##     hero on tools/grapple/rope_climb_fighter.gd → rope_climb_mutants.gd); red in `slidelength`, `slidefloor` (one word each: the older rope-pull negatives match `red=[a-z,]*`).
+## The slide's lower bound (T4 re-audit 15а Y-C, T2-С docs/Fix/2026-10-15-Rope-Recheck-Yellow-Fix.md): every sliding tick that
+## does not end at the deployed length lets out at least (SLIDE_SPEED − RATE_TOLERANCE) / 60 — T5 § 8 gives the upper bound
+## only, the tolerance «2.0 ± 0.1» is T1's brief — `sliderate`. --break=slide_slow (GrappleHook.slide_speed 1.6, T4's
+## mutant `slide_16`) → `sliderate`.
 ## Sentinel: ROPE_PULL_COMPLETE checks=N failures=M mutation=<m> red=<failed families|none>, after a line
 ## «ROPE_PULL open=<open items|none>»; failures print "ROPE_PULL: ...".
 const PULL_SPEED: float = 8.0      # Т1
 const CLEARANCE: float = 0.5       # Т2
 const HAND_Y: float = 1.25         # Т3, GrappleHook.HAND
 const MIN_ROPE: float = 2.0        # Т6
-const REEL: float = 1.2            # Т5
-const REEL_SPEED: float = 3.6      # parkour_reel_speed, 04-Grapple-System
+const REEL: float = 1.2            # Т5 (the duel's stroke; the COMFORT text still names it)
+const REEL_SPEED: float = 3.6      # parkour_reel_speed, 04-Grapple-System; the city climb, T5 Л1
+const SLIDE_SPEED: float = 2.0     # T5 С1
+const RATE_TOLERANCE: float = 0.1  # the slide's lower bound, «2.0 ± 0.1» (T1's brief; T5 § 8 has the upper bound only)
+const CLIMB_TOP := 7               # GrappleHook.Phase.CLIMB_TOP
+const PERCH := 8                   # GrappleHook.Phase.PERCH
+const PULL_UP_TICKS: int = 30      # T5 Л3
 const STEP_LIMIT: float = (11.0 + 8.0) / 60.0  # Т8
 const GRAVITY: float = 24.0        # Fighter.GRAVITY (T5 § 1.2)
 const TICK: float = 1.0 / 60.0
@@ -178,6 +195,9 @@ func _district(hero: String) -> void:
 	world.story_save_enabled = false
 	world.journey_save_enabled = false
 	world.lower_story_save_enabled = false
+	if mutation in ["overlong", "stuck"]:
+		Engine.set_meta("rope_climb_mutation", mutation)
+		world.fighter_script = load((get_script() as Script).resource_path.get_base_dir().path_join("rope_climb_fighter.gd"))
 	root.add_child(world)
 	current_scene = world
 	world.progress.save_enabled = false
@@ -192,6 +212,8 @@ func _district(hero: String) -> void:
 		await _ticks(3)
 		return
 	var hook: Node = world.player.grapple
+	if mutation == "slide_slow":
+		hook.set("slide_speed", 1.6)
 	if mutation == "nopull":
 		hook.set("parkour_pull_speed", 0.0)
 	elif mutation == "snap":
@@ -208,6 +230,7 @@ func _district(hero: String) -> void:
 	standing.append(await _standing(world, hero, SOUTH_ANCHORS[0], false, true))
 	for result: Dictionary in standing:
 		_check(not result.is_empty(), "count", "[%s] a standing press under a south lamp hung" % hero)
+	await _slide(world, hero)
 	# P11 route: run in with W, tap E, let go of W once the hook holds.
 	var hangs := 0
 	var evaluated := 0
@@ -278,7 +301,10 @@ func _help(world: Node, hero: String) -> void:
 	elif mutation == "help_lift":
 		full.text += "\nGet closer beneath an anchor for lift; distant ropes pull toward it."
 	var reel := "%.1f m" % REEL
-	_check("pulls you up" in pause.text and reel in pause.text, "help", "[%s] the pause help says the hook pulls you up and Space reels %s: %s" % [hero, reel, pause.text.get_slice("\n", 1) + " / " + pause.text.get_slice("\n", 2)])
+	# T8 docs/GDD/2026-10-15-Rope-Climb-Input.md § 4: the pause says the hook pulls you up (its row :616) and that the held
+	# jump climbs («hold Space / A up»); COMFORT keeps «In the city the parkour hook pulls you up» and the duel's 1.2 m.
+	var climb := "hold %s / A up" % router.binding_label(1, "jump", false)
+	_check("pulls you up" in pause.text and climb in pause.text, "help", "[%s] the pause help says the hook pulls you up and «%s»: %s" % [hero, climb, pause.text.get_slice("\n", 1) + " / " + pause.text.get_slice("\n", 2)])
 	_check("In the city the parkour hook pulls you up" in full.text and ("up to " + reel) in full.text, "help", "[%s] COMFORT says the city hook pulls you up and Space reels up to %s" % [hero, reel])
 	for old: String in ["Get closer beneath an anchor", "distant ropes pull toward it"]:
 		_check(old not in pause.text and old not in full.text, "help", "[%s] no help keeps the old «%s»" % [hero, old])
@@ -339,7 +365,8 @@ func _press_and_observe(world: Node, hero: String, label: String, space: bool, r
 	_check(contact <= hand.distance_to(anchor) + 0.001, "lengthen", tag + "the contact length %.3f is not longer than hand→anchor %.3f" % [contact, hand.distance_to(anchor)])
 	var support := maxf(_support(hero_node, anchor + Vector3.DOWN * 0.05), _support(hero_node, hero_node.global_position + Vector3.UP * 0.05))
 	var target := contact if is_inf(support) else minf(contact, maxf(MIN_ROPE, anchor.y - support - HAND_Y - CLEARANCE))
-	var final := minf(target, maxf(MIN_ROPE, target - REEL)) if space else target
+	# The city climb (T5 Л-а): Space shortens to the 2.0 m limit, then the pull-up onto the arm ends the hang.
+	var final := MIN_ROPE if space else target
 	var pull_ticks := ceili((contact - target) / (PULL_SPEED * TICK) - 0.0001)
 	var reel_ticks := ceili((target - final) / (REEL_SPEED * TICK) - 0.0001)
 	var half := ceili(60.0 * PI * sqrt(target / GRAVITY))
@@ -374,10 +401,24 @@ func _press_and_observe(world: Node, hero: String, label: String, space: bool, r
 		stall = _stall_bodies(world, supports[int(pin.anchor)].point)
 	var off_stall: Dictionary = {}
 	var leaned_at: Dictionary = {}   # a pinned press only: every side body with its origin and shape, for the OPEN line
+	var perched_at := -1
 	for tick: int in window:
 		await _ticks(1)
 		ticks = tick + 1
 		var line := _line(hero_node, hero_node.global_position + Vector3(0, HAND_Y, 0), anchor, spec)
+		if space and hook.phase in [CLIMB_TOP, PERCH]:
+			# Л-б: at the 2.0 m limit the held climb becomes the pull-up onto the arm; the hang ends there, not by a cut.
+			_check(absf(hook.rope_length - MIN_ROPE) <= 0.000001, "target", tag + "the pull-up began on tick %d with the rope at %.6f, not at %.1f m" % [ticks, hook.rope_length, MIN_ROPE])
+			if final_at < 0:
+				final_at = ticks
+			shortest = minf(shortest, hook.rope_length)
+			var waited := 0
+			while hook.phase == CLIMB_TOP and waited < PULL_UP_TICKS + 5:
+				await _ticks(1)
+				waited += 1
+			perched_at = ticks + waited
+			_check(hook.phase == PERCH and waited == PULL_UP_TICKS, "target", tag + "the pull-up lasted %d ticks, expected %d, then the grip (phase %d)" % [waited, PULL_UP_TICKS, hook.phase])
+			break
 		if hook.phase != HANG or not hook.attached:
 			# The product released the rope: legitimate only when solid geometry other than the anchor's own post cuts
 			# hand→anchor now.
@@ -433,6 +474,8 @@ func _press_and_observe(world: Node, hero: String, label: String, space: bool, r
 			break
 	_key(KEY_SPACE, false)
 	_key(KEY_W, false)
+	if space and not cut:
+		_check(perched_at > 0, "target", tag + "the held climb ended on the anchor's arm (perched on tick %d)" % perched_at)
 	if not cut:
 		_check(reached_at >= 0 and reached_at <= pull_ticks + 1, "target", tag + "the rope reached the swing length %.3f (from %.3f) on tick %d, expected by %d" % [target, contact, reached_at, pull_ticks + 1])
 		_check(final_at >= 0 and absf(shortest - final) < 0.002, "target", tag + "the rope settled at %.3f, expected %.3f" % [shortest, final])
@@ -443,10 +486,127 @@ func _press_and_observe(world: Node, hero: String, label: String, space: bool, r
 			_check(air >= floor_air, "air", tag + "the OPEN air item «%s» got worse: in the air %d ticks, pinned %d − %d = %d at least; side collisions on %d ticks %s" % [open_key, air, pin.air, OPEN_AIR_SLACK, floor_air, side_ticks, str(leaned)])
 			_check(off_stall.is_empty(), "air", tag + "the OPEN air item «%s» leans on bodies outside its stall (%d stall bodies): %s" % [open_key, stall.size(), str(off_stall)])
 			print("ROPE_PULL OPEN air %s in the air %d ticks (pinned ≥ %d − %d), half a period %d; side collisions on %d ticks %s, %d of them off the stall's %d bodies %s (%s)" % [tag, air, pin.air, OPEN_AIR_SLACK, half, side_ticks, str(leaned_at), off_stall.values().reduce(func(s: int, v: int) -> int: return s + v, 0), stall.size(), str(off_stall), pin.why])
-		else:
+		elif perched_at < 0:
 			_check(air >= half, "air", tag + "in the air (off the floor, no side collision) %d ticks on the rope, at least half a period %d; side collisions on %d ticks %s" % [air, half, side_ticks, str(leaned)])
+		# The climb leaves the rope for the arm before half a period: its air is not this check's (rope_climb_check).
 	print("ROPE_PULL %s %s anchor=%s contact=%.3f target=%.3f final=%.3f reached=%d/%d air=%d/%d side=%d %s max_step=%.3f max_shorten=%.4f ticks=%d own_ticks=%d cut=%s %s" % [hero, label, anchor, contact, target, final, reached_at, pull_ticks, air, half, side_ticks, str(leaned) if not leaned.is_empty() else "{}", max_step, max_shorten, ticks, own_ticks, cut, cut_by])
 	return {"anchor": anchor, "cut": cut or own_cut, "air": air, "half": half, "target": target, "contact": contact, "own_ticks": own_ticks, "own_cut": own_cut}
+
+
+## The slide (T5 § 8, ADR-028 п. 2) under the first south lamp, real keys: the dodge pressed after the attach and held.
+##   a — from the settled swing to the floor: every tick lets out ≤ 2.0 / 60 + 1e-6 and never past the deployed length;
+##       the tick the feet are on a floor the hook has let go (IDLE), the rope's record and the stock as they were;
+##   b — the dodge held from the attach: nothing lets out while the pull runs;
+##   c — the dodge and Space together: the length stays;
+##   d — a rope deployed 0.5 m longer than the settled swing (its record shortened here, as a rope thrown from above): the
+##       slide stops at that length in the air (`rope_end`).
+func _slide(world: Node, hero: String) -> void:
+	var hero_node: CharacterBody3D = world.player
+	var hook: Node = hero_node.grapple
+	var anchor: Vector3 = SOUTH_ANCHORS[0]
+	for part: String in ["a", "b", "c", "d"]:
+		await _reset(world, SAFE_POINT, anchor - SAFE_POINT)
+		_key(KEY_E, true)
+		await _ticks(1)
+		_key(KEY_E, false)
+		var hung := false
+		for tick: int in 50:
+			await _ticks(1)
+			if hook.phase == HANG and hook.attached:
+				hung = true
+				break
+		var tag := "[%s] slide %s: " % [hero, part]
+		_check(hung, "count", tag + "the press under %s hung" % anchor)
+		if not hung:
+			_shift(false)
+			continue
+		var token: int = hook._deployed_token
+		if part == "b":
+			_shift(true) # pressed after the attach, while the pull still runs
+		# Let the pull settle (b: with the dodge held all along).
+		var previous: float = hook.rope_length
+		var pull_ok := true
+		for tick: int in 60:
+			await _ticks(1)
+			if hook.get("pulling"):
+				pull_ok = pull_ok and hook.rope_length <= previous + 0.000001
+			previous = hook.rope_length
+			if not hook.get("pulling") and tick > 2:
+				break
+		if part == "b":
+			_check(pull_ok, "sliderate", tag + "the held dodge let the rope out during the pull")
+			_shift(false)
+			await _ticks(2)
+		if part == "d":
+			world.ropes.records[token].length = hook.rope_length + 0.5
+		var record: Dictionary = world.ropes.records[token].duplicate()
+		var stock: int = hook.charges
+		var stamina: float = hero_node.dodge_stamina
+		if part == "c":
+			_key(KEY_SPACE, true)
+			await _ticks(1)
+			_shift(true)
+			var held_length: float = hook.rope_length
+			var still := true
+			for tick: int in 30:
+				await _ticks(1)
+				still = still and hook.phase == HANG and absf(hook.rope_length - held_length) <= 0.000001
+			_check(still, "sliderate", tag + "the dodge and Space together kept the length %.4f (now %.4f)" % [held_length, hook.rope_length])
+			_key(KEY_SPACE, false)
+			_shift(false)
+			continue
+		_shift(true)
+		previous = hook.rope_length
+		var landed := false
+		var at_end := false
+		var max_step := 0.0
+		# T4 re-audit 15а Y-C: the sliding ticks that do not end at the deployed length, and the smallest step among them.
+		var full_ticks := 0
+		var min_step := INF
+		var min_at := -1
+		for tick: int in 240:
+			await _ticks(1)
+			if hook.phase != HANG or not hook.attached:
+				landed = true
+				var on_floor: bool = hero_node.is_on_floor()
+				var still: Dictionary = world.ropes.records.get(token, {})
+				_check(on_floor and hero_node.state == 1, "slidefloor", tag + "the slide let go on tick %d on a floor (on floor %s, state %d)" % [tick + 1, on_floor, hero_node.state])
+				_check(not still.is_empty() and bool(still.deployed) and Vector3(still.anchor).is_equal_approx(Vector3(record.anchor)) and is_equal_approx(float(still.length), float(record.length)), "slidefloor", tag + "the rope stays deployed as it was (%s)" % str(still.get("length", "-")))
+				_check(hook.charges == stock, "slidefloor", tag + "the stock stays %d (now %d)" % [stock, hook.charges])
+				break
+			var step: float = hook.rope_length - previous
+			max_step = maxf(max_step, step)
+			if hook.get("sliding") and hook.rope_length < float(record.length) - 0.000001:
+				full_ticks += 1
+				if step < min_step:
+					min_step = step
+					min_at = tick + 1
+			_check(step >= -0.000001 and step <= SLIDE_SPEED * TICK + 0.000001, "sliderate", tag + "tick %d the slide let out %.5f m (at most %.5f)" % [tick + 1, step, SLIDE_SPEED * TICK])
+			_check(hook.rope_length <= float(record.length) + 0.000001, "slidelength", tag + "tick %d the rope %.4f is past its deployed length %.4f" % [tick + 1, hook.rope_length, float(record.length)])
+			_check(not hero_node.is_on_floor(), "slidefloor", tag + "tick %d the feet are on a floor and the rope still holds" % (tick + 1))
+			if part == "d" and hook.get("rope_end"):
+				at_end = true
+				break
+			previous = hook.rope_length
+		_shift(false)
+		_check(full_ticks > 0, "count", tag + "Y-C: the slide was judged on at least one tick short of the deployed length (%d)" % full_ticks)
+		_check(full_ticks == 0 or min_step >= (SLIDE_SPEED - RATE_TOLERANCE) * TICK - 0.000001, "sliderate", tag + "Y-C: every sliding tick short of the deployed length let out at least %.5f m (%.1f m/s); the smallest %.5f on tick %d of %d" % [(SLIDE_SPEED - RATE_TOLERANCE) * TICK, SLIDE_SPEED - RATE_TOLERANCE, min_step, min_at, full_ticks])
+		_check(hero_node.state != 5 and absf(hero_node.dodge_stamina - stamina) <= 0.0001, "sliderate", tag + "the held dodge never dodged (state %d, stamina %.3f → %.3f)" % [hero_node.state, stamina, hero_node.dodge_stamina])
+		if part in ["a", "b"]:
+			_check(landed, "slidefloor", tag + "the slide reached the floor and let go (L %.3f)" % hook.rope_length)
+		else:
+			_check(at_end and absf(hook.rope_length - float(record.length)) <= 0.000001 and not hero_node.is_on_floor(), "slidelength", tag + "the slide stopped at the deployed length %.4f in the air (L %.4f, end %s)" % [float(record.length), hook.rope_length, at_end])
+		print("ROPE_PULL slide %s %s landed=%s end=%s L=%.4f record=%.4f max_step=%.5f full=%d min_step=%s" % [hero, part, landed, at_end, hook.rope_length, float(record.length), max_step, full_ticks, "-" if full_ticks == 0 else "%.5f" % min_step])
+
+
+func _shift(down: bool) -> void:
+	var event := InputEventKey.new()
+	event.keycode = KEY_SHIFT
+	event.physical_keycode = KEY_SHIFT
+	event.location = KEY_LOCATION_LEFT
+	event.pressed = down
+	Input.parse_input_event(event)
+	Input.flush_buffered_events()
 
 
 ## The first collider of this tick's slides whose normal is steeper than the body's floor (the engine's own

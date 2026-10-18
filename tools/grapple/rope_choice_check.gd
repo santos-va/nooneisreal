@@ -36,6 +36,17 @@ extends SceneTree
 ##     four times as far between the choice and the contact.
 ##   --break=blocker_name — the pin's own negative, red in `cut`: every engine-named solid of the market renamed
 ##     (MarketSolid<N>), so the same body at the same point is another blocker by name.
+## Transfers (ADR-028 п. 5, plan 2026-10-15-Rope-Climb-Perch-Release step 5; T5 docs/GDD/2026-10-15-Rope-Climb-Numbers.md
+## § 8 «Вибрав — не обірвав» для переходів): --transfer runs the same rule on the city rope's E from a hang. For every
+## anchor A of the part the hero hangs on A (the replay's recorded packet from the first standing start that hangs), the
+## pull settles, the camera turns through BEARINGS; every other anchor B the camera's packet marks is pressed once (real
+## E, from a fresh hang on A): the new rope on B is not ended on its first hanging tick by solid geometry on hand → B (the
+## anchor's own post excepted, as above). T3's case (anchor 2 → 17, the old post AnchorPost2) is one of them. A first-tick
+## cut on a transfer is pinned in KNOWN_TRANSFER_CUTS like KNOWN_CUTS (4: 22 → 19 and 14 → 22 for each hero); denied
+## transfers and rewinds are printed and counted, and pinned at the 0 measured on 2026-10-15 (T4 audit 15а Y4): one on the
+## product fails (`transfer_denied`, `transfer_rewind`) — look at it, then pin it with its reason or fix it.
+##   Sentinel (transfer): ROPE_CHOICE_COMPLETE checks=N failures=M mutation=<m> part=K/N mode=transfer anchors=a/A
+##   presses=p hangs=h cut_first=c open=o rewinds=r denied=d red=<families|none>.
 ## Sentinel: ROPE_CHOICE_COMPLETE checks=N failures=M mutation=<m> part=K/N anchors=a/A presses=p hangs=h cut_first=c
 ## open=o rewinds=r red=<families|none>; failures print "ROPE_CHOICE: ...".
 const RINGS: Array[float] = [2.5, 5.0, 8.0, 11.0]
@@ -98,6 +109,24 @@ const KNOWN_DENIED: Dictionary = {
 	"skea|anchor 14 ring 2.5/7 y0.0 run": "part 5: marked StreetAnchor22, a windup the launch never followed (1×9 0×1)",
 	"skea|anchor 24 ring 2.5/2 y4.0 run": "part 5: marked StreetAnchor12, a windup the launch never followed (1×9 0×1)",
 }
+## OPEN first-tick cuts on a transfer: "<hero>|transfer <A>→<B>|<blocker>" → the first-tick hit (`at`) and why. Measured
+## on 2026-10-15 (docs/Fix/2026-10-15-Rope-Climb-City-Fix.md § 3.6), the same points for both heroes: in both the line at
+## contact was already blocked — the selection does not foresee the hand at contact (the class of KNOWN_CUTS, variant Т2
+## deferred), not the post just left.
+const KNOWN_TRANSFER_CUTS: Dictionary = {
+	"choko|transfer 22→19|ArchitectureSolid1569": {"at": Vector3(-15.24, 7.70, -25.15), "why": "from the plaster house's bracket to the tower's: the tower's own cornice on the line at contact"},
+	"skea|transfer 22→19|ArchitectureSolid1569": {"at": Vector3(-15.24, 7.70, -25.15), "why": "from the plaster house's bracket to the tower's: the tower's own cornice on the line at contact"},
+	"choko|transfer 14→22|NorthWestRoof": {"at": Vector3(-10.00, 2.97, -24.13), "why": "from the alley lamp to the plaster house's bracket: the terrace's edge on the line at contact"},
+	"skea|transfer 14→22|NorthWestRoof": {"at": Vector3(-10.00, 2.97, -24.13), "why": "from the alley lamp to the plaster house's bracket: the terrace's edge on the line at contact"},
+}
+const TRANSFER_AFTER: int = 34      # + the 6 ticks of marking: E 40 ticks after the hang, as T3's probe pressed it
+## T3's case itself (scratchpad t3-rope-probe/s7b.log): E on anchor 2 from (0, 0, 9.5), the camera on it; 40 ticks later E
+## at the marked anchor 17, still and with W held; the old lamp's post AnchorPost2 cut the new rope on its 1st–2nd tick.
+## Here the new rope must hold through its whole pull (the fix's window) and the first tick after it.
+const S7B_FROM: int = 2
+const S7B_TO: int = 17
+const S7B_START := Vector3(0, 0, 9.5)
+var transfer_mode: bool = false
 var checks: int = 0
 var failures: int = 0
 var mutation: String = "none"
@@ -121,6 +150,8 @@ func _initialize() -> void:
 			mutation = argument.trim_prefix("--break=")
 		elif argument.begins_with("--hero="):
 			only_hero = argument.trim_prefix("--hero=")
+		elif argument == "--transfer":
+			transfer_mode = true
 		elif argument.begins_with("--part="):
 			var split := argument.trim_prefix("--part=").split("/")
 			part = int(split[0])
@@ -187,11 +218,19 @@ func _run() -> void:
 	print("ROPE_CHOICE totals %s" % str(totals))
 	# Non-vacuous: every anchor of this part was picked from some sampled position and evaluated (on the product; a
 	# negative stops at its first failure).
-	if mutation == "none":
+	if mutation == "none" and transfer_mode:
+		_check(missing.is_empty(), "count", "transfers: anchors of part %d/%d never hung on as a source: %s" % [part, parts, missing])
+		_check(int(totals.hangs) > 0, "count", "transfers: %d transfer hangs in part %d/%d" % [totals.hangs, part, parts])
+		for key: String in KNOWN_TRANSFER_CUTS:
+			if heroes.has(key.get_slice("|", 0)) and int(key.get_slice("|", 1).get_slice(" ", 1).get_slice("→", 0)) % parts == part - 1:
+				_check(seen_open.has(key), "open", "the OPEN transfer cut «%s» (%s) no longer happens: look at it and unpin it" % [key, KNOWN_TRANSFER_CUTS[key]])
+		_check(int(totals.rewinds) == 0, "transfer_rewind", "transfers: %d presses rewound in part %d/%d, pinned 0" % [totals.rewinds, part, parts])
+		_check(int(totals.denied) == 0, "transfer_denied", "transfers: %d presses denied in part %d/%d, pinned 0" % [totals.denied, part, parts])
+	if mutation == "none" and not transfer_mode:
 		_check(missing.is_empty(), "count", "anchors of part %d/%d never picked from a sampled position: %s" % [part, parts, missing])
 		_check(int(totals.hangs) >= sampled.size(), "count", "%d hangs for %d anchors" % [totals.hangs, sampled.size()])
 	# Every OPEN cut of the heroes and the part that ran still happens (only on the product: a negative changes the world).
-	if mutation == "none":
+	if mutation == "none" and not transfer_mode:
 		for key: String in KNOWN_CUTS:
 			if _expected(key, heroes):
 				_check(seen_open.has(key), "open", "the OPEN first-tick cut «%s» (%s) no longer happens: look at it and unpin it" % [key, KNOWN_CUTS[key].why])
@@ -206,6 +245,12 @@ func _run() -> void:
 	var families: Array = red.keys()
 	families.sort()
 	print("ROPE_CHOICE frames=%d (the playable harness quits after 12000)" % Engine.get_process_frames())
+	if transfer_mode:
+		print("ROPE_CHOICE_COMPLETE checks=%d failures=%d mutation=%s part=%d/%d mode=transfer anchors=%d/%d presses=%d hangs=%d cut_first=%d open=%d rewinds=%d denied=%d red=%s" % [
+			checks, failures, mutation, part, parts, sampled.size() - missing.size(), sampled.size(), totals.presses, totals.hangs,
+			totals.cut_first, totals.open, totals.rewinds, totals.denied, ",".join(families) if not families.is_empty() else "none"])
+		quit(1 if failures else 0)
+		return
 	print("ROPE_CHOICE_COMPLETE checks=%d failures=%d mutation=%s part=%d/%d anchors=%d/%d presses=%d hangs=%d cut_first=%d open=%d rewinds=%d red=%s" % [
 		checks, failures, mutation, part, parts, sampled.size() - missing.size(), sampled.size(), totals.presses, totals.hangs,
 		totals.cut_first, totals.open, totals.rewinds, ",".join(families) if not families.is_empty() else "none"])
@@ -231,6 +276,10 @@ func _district(hero: String) -> void:
 	world.story_save_enabled = false
 	world.journey_save_enabled = false
 	world.lower_story_save_enabled = false
+	if mutation == "transfer_skip":
+		# The transfer's grace removed (tools/grapple/rope_climb_mutants.gd): the old post cuts the new rope again.
+		Engine.set_meta("rope_climb_mutation", mutation)
+		world.fighter_script = load((get_script() as Script).resource_path.get_base_dir().path_join("rope_climb_fighter.gd"))
 	root.add_child(world)
 	current_scene = world
 	world.progress.save_enabled = false
@@ -242,6 +291,20 @@ func _district(hero: String) -> void:
 	var space: PhysicsDirectSpaceState3D = world.get_world_3d().direct_space_state
 	var range_m: float = world.player.grapple.range_m
 	var before := totals.duplicate()
+	if transfer_mode:
+		if S7B_FROM % parts == part - 1:
+			for variant: String in ["still", "swing_W"]:
+				await _s7b(world, hero, variant)
+		for index: int in anchors.size():
+			if index % parts == part - 1:
+				await _transfers(world, hero, index)
+		print("ROPE_CHOICE transfer %s presses=%d hangs=%d cut_first=%d open=%d rewinds=%d denied=%d" % [hero,
+			totals.presses - before.presses, totals.hangs - before.hangs, totals.cut_first - before.cut_first,
+			totals.open - before.open, totals.rewinds - before.rewinds, totals.denied - before.denied])
+		world.queue_free()
+		current_scene = null
+		await _ticks(3)
+		return
 	# P11 route: run along each leg, tap E.
 	if part == 1:
 		var route: Array[Vector3] = load("res://scripts/world/CityLayout.gd").route_points()
@@ -546,3 +609,205 @@ func _plate(world: Node, hand: Vector3, anchor: Vector3) -> void:
 	var mid := hand.lerp(anchor, 0.5)
 	var direction := (anchor - hand).normalized()
 	late_plate.global_transform = Transform3D(Basis.looking_at(direction, Vector3.UP if absf(direction.y) < 0.99 else Vector3.FORWARD), mid)
+
+
+
+# --- transfers (--transfer) -----------------------------------------------------------------------------------------
+
+## Standing starts for anchor `index` in ring order (rope_climb_check's rule): a floor with headroom whose hand sees the
+## anchor within range, 1.5 m under it.
+func _transfer_starts(world: Node, index: int) -> Array[Vector3]:
+	var found: Array[Vector3] = []
+	var space: PhysicsDirectSpaceState3D = world.get_world_3d().direct_space_state
+	var point: Vector3 = anchors[index]
+	var range_m: float = world.player.grapple.range_m
+	for radius: float in [2.5, 4.0, 6.0, 8.0]:
+		for bearing: int in BEARINGS:
+			var angle := TAU * float(bearing) / float(BEARINGS)
+			var x := point.x + cos(angle) * radius
+			var z := point.z + sin(angle) * radius
+			for floor_y: float in _floors(space, x, z, point.y - ABOVE - HAND_Y):
+				var hand := Vector3(x, floor_y + HAND_Y, z)
+				if hand.distance_to(point) <= range_m - 0.5 and _ray(space, hand, point, COVER_LAYER | 1).is_empty():
+					found.append(Vector3(x, floor_y, z))
+					if found.size() >= 6:
+						return found
+	return found
+
+
+## A settled hang on `index` through the replay's recorded packet; false when none of the starts hangs.
+func _hang_source(world: Node, index: int) -> bool:
+	var hero_node: CharacterBody3D = world.player
+	var hook: Node = hero_node.grapple
+	var marker: Node3D = world.district.get_node("StreetAnchor%d" % index)
+	for start: Vector3 in _transfer_starts(world, index):
+		_key(KEY_W, false)
+		_key(KEY_E, false)
+		hook.detach()
+		world.ropes.clear_match()
+		await _ticks(1)
+		hero_node.restart_at(start)
+		var view := Vector3(marker.global_position.x - start.x, 0, marker.global_position.z - start.z)
+		hero_node._set_forward(view.normalized())
+		world.camera_rig.reset_view()
+		await _ticks(SETTLE_TICKS)
+		if hook.fire(false, "grapple_parkour", {"point": marker.global_position, "target_id": String(marker.get_path())}) == 0:
+			continue
+		hero_node._set_state(13)
+		for tick: int in 60:
+			await _ticks(1)
+			if int(hook.phase) == HANG and hook.attached or int(hook.phase) == 0 or int(hook.phase) == REWIND:
+				break
+		if int(hook.phase) == HANG and Vector3(hook.anchor_point).is_equal_approx(marker.global_position):
+			# T3's timing (s7b): the transfer 40 ticks after the hang, the body still carried by the pull.
+			await _ticks(TRANSFER_AFTER)
+			return int(hook.phase) == HANG
+	return false
+
+
+func _transfers(world: Node, hero: String, index: int) -> void:
+	var hero_node: CharacterBody3D = world.player
+	var hook: Node = hero_node.grapple
+	var rig: Node3D = world.camera_rig
+	if not await _hang_source(world, index):
+		print("ROPE_CHOICE transfer %s source %d: no start hangs" % [hero, index])
+		return
+	picked[index] = int(picked.get(index, 0)) + 1
+	# The targets the camera marks from this hang, one bearing each.
+	var marked: Dictionary = {}
+	for bearing: int in BEARINGS:
+		rig.aim.yaw_offset = TAU * float(bearing) / float(BEARINGS)
+		await _ticks(3)
+		var id := String(rig.aim.published.get("target_id", ""))
+		var other := anchors.find(Vector3(rig.aim.published.get("point", Vector3.INF)))
+		if not id.is_empty() and other >= 0 and other != index and not marked.has(other):
+			marked[other] = rig.aim.yaw_offset
+	for other: int in marked:
+		if mutation != "none" and failures > 0:
+			return
+		if not await _hang_source(world, index):
+			continue
+		rig.aim.yaw_offset = float(marked[other])
+		await _ticks(3)
+		var label := "transfer %d→%d" % [index, other]
+		var tag := "[%s] %s: " % [hero, label]
+		if anchors.find(Vector3(rig.aim.published.get("point", Vector3.INF))) != other:
+			print("ROPE_CHOICE NONE %s|%s: the mark moved (%s)" % [hero, label, rig.aim.published.get("target_id", "")])
+			continue
+		totals.presses += 1
+		_key(KEY_E, true)
+		await _ticks(1)
+		_key(KEY_E, false)
+		var phases: Array[int] = []
+		var hung := false
+		for tick: int in 60:
+			await _ticks(1)
+			phases.append(int(hook.phase))
+			if int(hook.phase) == HANG and hook.attached and anchors.find(Vector3(hook.anchor_point)) == other:
+				hung = true
+				break
+			if int(hook.phase) in [0, REWIND] and tick > 0:
+				break
+		if REWIND in phases:
+			totals.rewinds += 1
+			print("ROPE_CHOICE REWIND %s|%s phases %s" % [hero, label, _phases(phases)])
+			continue
+		if not hung:
+			totals.denied += 1
+			print("ROPE_CHOICE DENIED %s|%s phases %s (a transfer press that did not hang)" % [hero, label, _phases(phases)])
+			continue
+		totals.hangs += 1
+		var anchor: Vector3 = hook.anchor_point
+		var spec: Dictionary = supports[other]
+		if mutation == "late_wall":
+			_plate(world, hero_node.global_position + Vector3(0, HAND_Y, 0), anchor)
+		var contact_line := _line(hero_node, hero_node.global_position + Vector3(0, HAND_Y, 0), anchor, spec)
+		await _ticks(1)
+		var line := _line(hero_node, hero_node.global_position + Vector3(0, HAND_Y, 0), anchor, spec)
+		var released: bool = int(hook.phase) != HANG or not hook.attached
+		if late_plate != null:
+			late_plate.free()
+			late_plate = null
+		if not released:
+			_check(true, "cut", tag + "held")
+			print("ROPE_CHOICE HELD %s|%s contact line %s" % [hero, label, contact_line.other if not String(contact_line.other).is_empty() else "clear"])
+			continue
+		totals.cut_first += 1
+		var key := "%s|%s|%s" % [hero, label, line.other_id]
+		var pin: Dictionary = KNOWN_TRANSFER_CUTS.get(key, {})
+		var off := INF if pin.is_empty() else Vector3(line.other_at).distance_to(Vector3(pin.get("at", Vector3.INF)))
+		if not pin.is_empty() and off <= BLOCKER_TOLERANCE:
+			totals.open += 1
+			seen_open[key] = true
+			print("ROPE_CHOICE OPEN %s cut by %s (%.3f m from the pinned point; %s)" % [key, line.other, off, pin.why])
+			continue
+		print("ROPE_CHOICE CUT %s cut by %s, contact line %s" % [key, line.other, contact_line.other])
+		_check(false, "cut", tag + "the transfer to anchor %d was cut on its first hanging tick by %s" % [other, line.other if not String(line.other).is_empty() else "a clear line"])
+
+
+
+func _s7b(world: Node, hero: String, variant: String) -> void:
+	var hero_node: CharacterBody3D = world.player
+	var hook: Node = hero_node.grapple
+	var rig: Node3D = world.camera_rig
+	var from: Vector3 = anchors[S7B_FROM]
+	var tag := "[%s] s7b %s: " % [hero, variant]
+	_key(KEY_W, false)
+	hook.detach()
+	world.ropes.clear_match()
+	await _ticks(1)
+	hero_node.restart_at(S7B_START)
+	var view := Vector3(from.x - S7B_START.x, 0, from.z - S7B_START.z)
+	hero_node._set_forward(view.normalized())
+	rig.reset_view()
+	rig.aim.yaw_offset = atan2(-view.x, -view.z)
+	await _ticks(14)
+	_key(KEY_E, true)
+	await _ticks(1)
+	_key(KEY_E, false)
+	var hung := false
+	for tick: int in 60:
+		await _ticks(1)
+		if int(hook.phase) == HANG and hook.attached:
+			hung = true
+			break
+	_check(hung and Vector3(hook.anchor_point).is_equal_approx(from), "count", tag + "E from %s hangs on anchor %d (%s)" % [S7B_START, S7B_FROM, hook.anchor_point])
+	if not hung:
+		return
+	if variant == "swing_W":
+		_key(KEY_W, true)
+	await _ticks(40)
+	var marked := anchors.find(Vector3(rig.aim.published.get("point", Vector3.INF)))
+	_check(marked == S7B_TO, "count", tag + "the camera marks anchor %d as in T3's probe (marked %d)" % [S7B_TO, marked])
+	totals.presses += 1
+	_key(KEY_E, true)
+	await _ticks(1)
+	_key(KEY_E, false)
+	var on_new := false
+	for tick: int in 40:
+		await _ticks(1)
+		if int(hook.phase) == HANG and hook.attached and anchors.find(Vector3(hook.anchor_point)) == S7B_TO:
+			on_new = true
+			break
+	_check(on_new, "count", tag + "the transfer hangs on anchor %d" % S7B_TO)
+	if not on_new:
+		_key(KEY_W, false)
+		return
+	totals.hangs += 1
+	var ticks := 0
+	var held := true
+	var by := ""
+	while ticks < 90:
+		await _ticks(1)
+		ticks += 1
+		if int(hook.phase) != HANG or not hook.attached:
+			held = false
+			by = _line(hero_node, hero_node.global_position + Vector3(0, HAND_Y, 0), anchors[S7B_TO], supports[S7B_TO]).other
+			break
+		if not hook.get("pulling") and ticks > 1:
+			break
+	_key(KEY_W, false)
+	if not held:
+		totals.cut_first += 1
+	print("ROPE_CHOICE S7B %s %s held=%s ticks=%d by=%s" % [hero, variant, held, ticks, by if not by.is_empty() else "-"])
+	_check(held, "cut", tag + "the transfer to anchor %d held through its pull (cut on tick %d by %s)" % [S7B_TO, ticks, by])

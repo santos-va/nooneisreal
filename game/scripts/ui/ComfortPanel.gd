@@ -45,6 +45,13 @@ var drugs_choice: OptionButton
 const DRUGS_TITLE := "DRUGS, ALCOHOL & TOBACCO · CITY ONLY"
 const DRUGS_LABELS: Array[String] = ["Full — may be offered or sold in the city", "Off — never offered or sold, no states"]
 const DRUGS_HELP := "Off works at once, even mid-offer or mid-state, with no after-effect. Water and food stay. CAMERA SHAKE at 0 stops the haze zoom; the dark edges stay."
+## ADR-028 п. 8, T8 docs/GDD/2026-10-15-Rope-Climb-Input.md § 5: the city rope's climb and slide held or toggled, saved by
+## InputRouter next to the keyboard profile; HOLD by default. Right before RESTORE, so MASTER (the focus at open) keeps its
+## place on 16:9 canvases; RESTORE never resets it. Words PLACEHOLDER T7. «· CITY ONLY» as DRUGS: the duel's rope never
+## climbs (ADR-028 п. 7), the panel opens from the duel too (T8 acceptance 2026-10-15 § 3, С2).
+var rope_climb_choice: OptionButton
+const ROPE_CLIMB_TITLE := "ROPE CLIMB · CITY ONLY"
+const ROPE_CLIMB_LABELS: Array[String] = ["Hold — climb and slide while held", "Toggle — press to start, press again to stop"]
 var _syncing := true
 
 func _ready() -> void:
@@ -166,6 +173,13 @@ func _ready() -> void:
 	var drugs_help := _label(DRUGS_HELP, 24)
 	drugs_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	content.add_child(drugs_help)
+	content.add_child(_label(ROPE_CLIMB_TITLE, 32))
+	rope_climb_choice = _choice("RopeClimb", ROPE_CLIMB_LABELS)
+	content.add_child(rope_climb_choice)
+	_focus_order.append(rope_climb_choice)
+	rope_climb_choice.item_selected.connect(func(index: int):
+		if not _syncing and InputRouter.set_rope_climb(InputRouter.ROPE_CLIMB_MODES[index]):
+			_save())
 	restore_button = _button("RESTORE SOUND & SHAKE DEFAULTS", func():
 		_settings.call("reset_defaults")
 		_sync_values()
@@ -206,7 +220,7 @@ func show_panel(invoker: Control, controls: String) -> void:
 	InputRouter.acquire_ui(self)
 	_invoker = invoker
 	controls_label.text = "CONTROLS — %s / %s\n\n" % ["3D" if GameState.free_move else "2.5D", InputRouter.profile.to_upper()] + controls.replace(" · ", "\n").replace("      P2", "\n\nP2").replace("   |   ", "\n\n")
-	controls_label.text += "\n\nHARPOON\nEnemy hook pulls on contact; parkour hook attaches to anchors.\nParkour is latched: tap to attach, follow the highlighted anchor and tap again to transfer.\nIn the city the parkour hook pulls you up to swing height by itself; in a duel it does not, so hook from beneath an anchor for lift.\nHold jump to reel in up to 1.2 m further; move to steer the swing.\nDetach: Z / B, or dodge. Enemy grapple still uses hold / release.\nA rope cue means grab the deployed rope within 0.70 m of your hand; no new hook is spent.\n\nChoko carries 7 hooks; Skea carries 2. Returning a hook restores its slot; there is no timer refill.\nDeployed parkour ropes remain in the match and either fighter can reuse them.\nMisses rewind automatically. During recovery, hands are busy; use light movement and kicks.\nAfter hooking an enemy, extraction returns the hook. A kick helps extract it during the strike.\n".replace("Detach: Z", "Detach: " + InputRouter.binding_label(1, "grapple_detach", false))
+	controls_label.text += "\n\nHARPOON\nEnemy hook pulls on contact; parkour hook attaches to anchors.\nParkour is latched: tap to attach, follow the highlighted anchor and tap again to transfer.\nIn the city the parkour hook pulls you up to swing height by itself.\nCity rope: hold jump to climb to the anchor and grip it; your rope comes back to you. Hold dodge to slide down. Tap hook with no target to let go.\nAt the anchor: release jump, then jump + move to leap off; hook fires at the next anchor; detach drops you.\nA rope you left hanging: press interact near it to reel it in.\nIn a duel the hook does not pull you up, so hook from beneath an anchor for lift.\nHold jump to reel in up to 1.2 m further (duel); dodge leaves the rope there.\nLet go: Z / B, or block. Move to steer the swing. Enemy grapple still uses hold / release.\nA rope cue means grab the deployed rope within 0.70 m of your hand; no new hook is spent.\n\nChoko carries 7 hooks; Skea carries 2. Returning a hook restores its slot; there is no timer refill.\nDeployed parkour ropes stay until reeled in (city) or the match ends; either fighter can reuse them.\nMisses rewind automatically. During recovery, hands are busy; use light movement and kicks.\nAfter hooking an enemy, extraction returns the hook. A kick helps extract it during the strike.\n".replace("Let go: Z", "Let go: " + InputRouter.binding_label(1, "grapple_detach", false))
 	controls_label.text += "\nAIM (solo)\nVisible parkour anchors are suggested along your movement; precise center aiming is optional.\nHold the right mouse button and drag, or use the right stick, to choose with the camera.\nCity orbit stays in place; the duel view returns smoothly. The cue suggests a target; the hook must still reach it.\n"
 	controls_label.text += "\nCHOKO SWORD\nWeapon swap first draws the sword from the back; later swaps reform it in the other hand.\nUse it while standing or walking.\nThe armed hand cuts; the free hand punches. A kick or dash interrupts the transfer.\n"
 	controls_label.text += _gamepad_help()
@@ -245,6 +259,7 @@ func _sync_values() -> void:
 	blood_choice.select(_content.BLOOD_MODES.find(_content.call("blood_mode")))
 	hit_flash_choice.select(_content.HIT_FLASH_MODES.find(_content.call("hit_flash")))
 	drugs_choice.select(_content.DRUGS_MODES.find(_content.call("drugs_mode")))
+	rope_climb_choice.select(InputRouter.ROPE_CLIMB_MODES.find(InputRouter.rope_climb))
 	for key: String in sliders:
 		(sliders[key] as HSlider).value = float(_settings.call("get_value", key)) * 100
 	_syncing = false
@@ -264,7 +279,7 @@ func _status_text() -> String:
 
 func _choices() -> Array[OptionButton]:
 	var result: Array[OptionButton] = []
-	for choice: OptionButton in [display_choice, quality_choice, colour_choice, hit_flash_choice, blood_choice, drugs_choice]:
+	for choice: OptionButton in [display_choice, quality_choice, colour_choice, hit_flash_choice, blood_choice, drugs_choice, rope_climb_choice]:
 		if choice != null:
 			result.append(choice)
 	return result

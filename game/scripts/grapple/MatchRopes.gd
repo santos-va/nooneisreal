@@ -46,6 +46,49 @@ func refund(token: int, player: int) -> bool:
 	_notify(player)
 	return true
 
+## ADR-028 п. 4 (the city): a rope comes back. Neither call touches a rope somebody hangs on, so the invariant
+## available + shot_or_recovery + deployed = capacity (02-Combat-System) holds on the same tick: available() is
+## capacity − owned().
+## The hero gripped the anchor at the rope's top: the record goes and its owner's slot is free again.
+func retrieve(token: int) -> bool:
+	if not records.has(token) or not records[token].deployed or in_use(token):
+		return false
+	var owner: int = records[token].owner
+	_drop_marker(records[token])
+	records.erase(token)
+	_notify(owner)
+	return true
+
+
+## The reel button: the rope leaves its anchor and is an issued token again (shot or recovery) until the hook's rewind
+## refunds it at the hand. Only the owner reels it.
+func begin_reel(token: int, player: int) -> bool:
+	if not records.has(token) or not records[token].deployed or records[token].owner != player or in_use(token):
+		return false
+	_drop_marker(records[token])
+	records[token] = {"owner": player, "deployed": false}
+	_notify(player)
+	return true
+
+
+## Somebody hangs on this rope now.
+func in_use(token: int) -> bool:
+	var record: Dictionary = records.get(token, {})
+	if record.is_empty() or not record.deployed:
+		return false
+	for id: int in record.users.keys():
+		var user: Node = record.users[id].get_ref()
+		if is_instance_valid(user) and user.attached and user._deployed_token == token:
+			return true
+	return false
+
+
+func _drop_marker(record: Dictionary) -> void:
+	if record.has("marker") and is_instance_valid(record.marker):
+		record.marker.remove_from_group("deployed_rope")
+		record.marker.queue_free()
+
+
 ## World positions also reject duplicate markers describing the same physical attachment.
 func occupied(anchor: Vector3) -> bool:
 	for record: Dictionary in records.values():
