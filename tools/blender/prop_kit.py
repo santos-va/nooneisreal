@@ -290,8 +290,9 @@ def summary(name: str, visual, colliders, path: Path, digest: str, palette: dict
               f"min=({clo.x:.3f},{clo.y:.3f},{clo.z:.3f}) max=({chi.x:.3f},{chi.y:.3f},{chi.z:.3f})")
 
 
-def render_previews(visual, out_dir: Path, stem: str, distance: float) -> None:
-    """Cycles CPU (Workbench/Eevee need libEGL): 3/4, side, front and a black-on-white silhouette (K1)."""
+def render_previews(visual, out_dir: Path, stem: str, distance: float, silhouettes=("34",)) -> None:
+    """Cycles CPU (Workbench/Eevee need libEGL): 3/4, side, front and a black-on-white silhouette (K1) from each view
+    of `silhouettes` (the 3/4 one is `<stem>_cycles_silhouette.png`, another `<stem>_cycles_silhouette_<view>.png`)."""
     out_dir.mkdir(parents=True, exist_ok=True)
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
@@ -333,11 +334,13 @@ def render_previews(visual, out_dir: Path, stem: str, distance: float) -> None:
     bpy.context.view_layer.material_override = black
     background.inputs["Color"].default_value = (1.0, 1.0, 1.0, 1.0)
     sun.data.energy = 0.0
-    d = Vector(views["34"]).normalized()
-    camera.location = target + d * distance
-    camera.rotation_euler = (target - camera.location).to_track_quat("-Z", "Y").to_euler()
-    scene.render.filepath = str(out_dir / f"{stem}_cycles_silhouette.png")
-    bpy.ops.render.render(write_still=True)
+    for view in silhouettes:
+        d = Vector(views[view]).normalized()
+        camera.location = target + d * distance
+        camera.rotation_euler = (target - camera.location).to_track_quat("-Z", "Y").to_euler()
+        suffix = "" if view == "34" else "_" + view
+        scene.render.filepath = str(out_dir / f"{stem}_cycles_silhouette{suffix}.png")
+        bpy.ops.render.render(write_still=True)
     bpy.context.view_layer.material_override = None
 
 

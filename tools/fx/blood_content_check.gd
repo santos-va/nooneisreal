@@ -105,7 +105,8 @@ func _ring(panel: Control, desktop: bool) -> Array[Control]:
 	var ring: Array[Control] = []
 	if desktop:
 		ring.append(panel.display_choice)
-	ring.append_array([panel.quality_choice, panel.sliders["master"], panel.sliders["sfx"], panel.sliders["music"], panel.sliders["shake"],
+	# COLOURS (TEST) right under GRAPHICS QUALITY: plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB step 8 (T8 accepts it, step 9).
+	ring.append_array([panel.quality_choice, panel.get("colour_choice"), panel.sliders["master"], panel.sliders["sfx"], panel.sliders["music"], panel.sliders["shake"],
 		panel.hit_flash_choice, panel.blood_choice, panel.drugs_choice, panel.restore_button, panel.controls_label, panel.back_button])
 	return ring
 
@@ -252,7 +253,7 @@ func _content_settings() -> void:
 		_check(FileAccess.get_file_as_bytes(path) == before, "%s file keeps its bytes for recovery" % case[0])
 	# ComfortPanel: HIT FLASH, BLOOD and DRUGS by keyboard and gamepad, between CAMERA SHAKE and RESTORE. T8 Д3
 	# (06-UI-UX § «Випадки міста: COMFORT і HUD» п. 1) — the ring, as literals:
-	#   DISPLAY → GRAPHICS QUALITY → MASTER → SOUND EFFECTS → MUSIC → CAMERA SHAKE → HIT FLASH → BLOOD → DRUGS
+	#   DISPLAY → GRAPHICS QUALITY → COLOURS (TEST) → MASTER → SOUND EFFECTS → MUSIC → CAMERA SHAKE → HIT FLASH → BLOOD → DRUGS
 	#   → RESTORE SOUND & SHAKE DEFAULTS → CONTROLS (help) → BACK → DISPLAY; a phone has no DISPLAY (BACK → GRAPHICS).
 	var ui_path := _temp("ui")
 	content.load_settings(ui_path)

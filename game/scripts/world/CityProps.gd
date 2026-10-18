@@ -12,7 +12,9 @@ extends CityMarket
 ##   № 22 — urns by the benches;
 ##   № 9, № 29 — the steam truck and the tarped steam car, built by Blender scripts (tools/blender/, ADR-027 «Blender
 ##            замість Meshy»): the imported GLB with every surface swapped for the city material of its name and its
-##            convex colliders on the city's solid layer (docs/Fix/2026-10-09-City-Vehicles-And-Iron-Paint-Fix.md).
+##            convex colliders on the city's solid layer (docs/Fix/2026-10-09-City-Vehicles-And-Iron-Paint-Fix.md);
+##   № 10, № 11 — the steam slewing crane and the steam winch on the NE terrace, the same GLB path
+##            (docs/Fix/2026-10-14-Steam-Crane-Winch-Fix.md). They stand: no rope anchor (ADR-027 п. 4, plan К1).
 ## Nothing stands under a rope anchor, within 8 m of the court centre, in a fight pocket or within 1 m of a resident
 ## lane (К6; tools/world/city_tidy_check.gd measures it). PLACEHOLDER metres; T6 accepts the look on frames.
 
@@ -48,6 +50,20 @@ const VEHICLES: Array[Dictionary] = [
 	{"id": "steam_truck", "kind": "steam_truck", "center": Vector3(21.5, 0, -2.5), "yaw": 0.0},
 	{"id": "steam_car_tarp", "kind": "steam_car_tarp", "center": Vector3(15.0, 0, 1.5), "yaw": PI},
 ]
+## The terrace machines (№ 10, № 11; docs/Art/2026-10-14-Steam-Crane-Winch-Form.md): a landmark over the east street, cover
+## and a step. `center` is the floor point under the crane's column axis / under the winch's footprint centre, `yaw`
+## turns the GLB's +Y (Godot −Z) about Y. yaw π: the boom points south, over the east street (its head 13 m up, 2.26 m
+## past the terrace's edge); the winch's rope faces the crane, its flywheel the bridge. Only the plinth, the column, the
+## cab and the winch are solid, all over the terrace: nothing solid stands over the street. PLACEHOLDER metres (T6 §
+## Місце). The winch stands 0.4 m west of the form's (27.6, 4, −18.6): there a hero between it and the crane, facing it,
+## had the column behind him and the camera arm at 2.41 m (city_tidy_check MC8, ≥ 3 m); at x 27.2 the arm passes the
+## column 0.8 m off its axis. T6 accepts the look on frames.
+const STEAM_CRANE: PackedScene = preload("res://assets/props/city/prop_steam_crane_v1.glb")
+const STEAM_WINCH: PackedScene = preload("res://assets/props/city/prop_steam_winch_v1.glb")
+const MACHINES: Array[Dictionary] = [
+	{"id": "steam_crane", "kind": "steam_crane", "center": Vector3(28.0, 4.0, -14.0), "yaw": PI},
+	{"id": "steam_winch", "kind": "steam_winch", "center": Vector3(27.2, 4.0, -18.6), "yaw": PI},
+]
 var props: Array[Dictionary] = []
 
 
@@ -66,9 +82,12 @@ func _ready() -> void:
 	_flush_batches()
 	for spec: Dictionary in VEHICLES:
 		_vehicle(spec)
+	for spec: Dictionary in MACHINES:
+		_machine(spec)
 	set_meta("props", props.duplicate(true))
 	set_meta("obstacles", OBSTACLES.duplicate(true))
 	set_meta("vehicles", VEHICLES.duplicate(true))
+	set_meta("machines", MACHINES.duplicate(true))
 
 
 func _note(kind: String, at: Vector3, radius: float) -> void:
@@ -110,9 +129,14 @@ func _downpipe(points: Array[Vector3], clamps: Array[Vector4]) -> void:
 	_cylinder(Transform3D.IDENTITY, points[-1] + Vector3(0, 0.03, 0), 0.07, 0.07, 0.06, "copper")
 
 
-## Three steel tar drums beside the low roof approach (east, the industrial edge), clear of its climbing face.
+## Three steel tar drums beside the low roof approach (east, the industrial edge), clear of its climbing face. The third
+## stands against the east ramp's wall (x 16), 1 cm off it: at (15.18, −4.3) it left 0.52 m to that wall, where Choko
+## wedged on its rim (T6 acceptance docs/Audit/2026-10-14-T6-Acceptance.md § 2.2, «впритул до стіни рампи (≤ 0,05 м)
+## або ≥ 0,75 м»; ≥ 0.75 m does not fit beside the other two). Along the wall it stands where it keeps ≥ 0.75 m to both
+## of them (0.78 and 1.11 m): at z −4.3 it would have opened 0.57–0.68 m slots between rims of one height. North of the
+## pair, the ramp's edge there (2.53 m) and the first drum keep Skea's way up the ramp that T6 accepted (§ 2.2).
 func _tar_drums() -> void:
-	for at: Vector3 in [Vector3(14.45, 0, -4.0), Vector3(14.6, 0, -4.72), Vector3(15.18, 0, -4.3)]:
+	for at: Vector3 in [Vector3(14.45, 0, -4.0), Vector3(14.6, 0, -4.72), Vector3(15.69, 0, -3.4)]:
 		_tar_barrel(Transform3D(Basis(Vector3.UP, at.x * 1.3), at))
 		_note("tar_barrel", at, 0.3)
 
@@ -241,38 +265,100 @@ func _steam_vent(spec: Dictionary) -> void:
 	_note("steam_vent", at, 0.42)
 
 
-## № 9 / № 29: one imported Blender GLB. Every surface becomes the city material named by the GLB's material (one
-## manner with the rest of the district: the city shader, its outline and its shadow tint); a name the palette does not
-## know is an error, not a silent stand-in. The importer turns each `-convcolonly` hull into its own StaticBody3D; each
-## goes on the layer of the city's solids (1 walking and the camera, 8 cover), like `_solid`.
+## № 9 / № 29: a steam vehicle, one imported Blender GLB (`_place_glb`); its place on the floor (К8 groups) is the box
+## of its whole mesh.
 func _vehicle(spec: Dictionary) -> void:
-	var scene: PackedScene = STEAM_TRUCK if String(spec.kind) == "steam_truck" else STEAM_CAR_TARP
-	var vehicle: Node3D = scene.instantiate()
-	vehicle.name = "Vehicle_" + String(spec.id)
-	vehicle.transform = Transform3D(Basis(Vector3.UP, float(spec.yaw)), spec.center)
-	add_child(vehicle)
-	var box := AABB()
+	var vehicle: Node3D = _place_glb(spec, "Vehicle_")
+	if vehicle == null:
+		return
+	var box: AABB = _mesh_box(vehicle)
+	_note(String(spec.kind), spec.center, Vector2(box.size.x, box.size.z).length() * 0.5)
+
+
+## № 10 / № 11: the same imported GLB as a vehicle. Its place on the floor (К8 groups) is its hulls that stand on the
+## floor (bottom within 0.25 m of it): the crane's plinth, not its boom over the street.
+func _machine(spec: Dictionary) -> void:
+	var machine: Node3D = _place_glb(spec, "Machine_")
+	if machine == null:
+		return
+	var foot := AABB()
 	var first: bool = true
-	for node: Node in vehicle.find_children("*", "MeshInstance3D", true, false):
+	for node: Node in machine.find_children("*", "CollisionShape3D", true, false):
+		var shape := node as CollisionShape3D
+		if shape.shape == null:
+			continue
+		var local: AABB = _to_parent(shape, machine) * shape.shape.get_debug_mesh().get_aabb()
+		if local.position.y > 0.25:
+			continue
+		foot = local if first else foot.merge(local)
+		first = false
+	var centre: Vector3 = machine.transform * foot.get_center()
+	_note(String(spec.kind), Vector3(centre.x, float(spec.center.y), centre.z), Vector2(foot.size.x, foot.size.z).length() * 0.5)
+
+
+## One Blender GLB in the city: every surface becomes the city material named by the GLB's material (one manner with
+## the rest of the district: the city shader, its outline and its shadow tint); a name the palette does not know is an
+## error, not a silent stand-in. So is a `kind` with no GLB of its own: nothing is placed and null comes back (the tarped
+## car used to stand in for any unknown kind, T4 audit docs/Audit/2026-10-15-Wave-14-Review.md YELLOW 5). The importer
+## turns each `-convcolonly` hull into its own StaticBody3D; each goes on the layer of the city's solids (1 walking and
+## the camera, 8 cover), like `_solid`.
+func _place_glb(spec: Dictionary, prefix: String) -> Node3D:
+	var scene: PackedScene = null
+	match String(spec.kind):
+		"steam_truck":
+			scene = STEAM_TRUCK
+		"steam_car_tarp":
+			scene = STEAM_CAR_TARP
+		"steam_crane":
+			scene = STEAM_CRANE
+		"steam_winch":
+			scene = STEAM_WINCH
+		_:
+			_refuse_kind(spec, prefix)
+			return null
+	var placed: Node3D = scene.instantiate()
+	placed.name = prefix + String(spec.id)
+	placed.transform = Transform3D(Basis(Vector3.UP, float(spec.yaw)), spec.center)
+	add_child(placed)
+	for node: Node in placed.find_children("*", "MeshInstance3D", true, false):
 		var mesh := node as MeshInstance3D
 		for surface: int in mesh.mesh.get_surface_count():
 			var source: Material = mesh.mesh.surface_get_material(surface)
 			var key: String = source.resource_name if source != null else ""
 			if not _materials.has(key):
-				push_error("CITY_PROPS: %s surface %d asks for «%s», which is not a city material" % [vehicle.name, surface, key])
+				push_error("CITY_PROPS: %s surface %d asks for «%s», which is not a city material" % [placed.name, surface, key])
 				continue
 			mesh.set_surface_override_material(surface, _materials[key])
-		var to_vehicle := Transform3D.IDENTITY
-		var walk: Node = mesh
-		while walk != vehicle:
-			to_vehicle = (walk as Node3D).transform * to_vehicle
-			walk = walk.get_parent()
-		var local: AABB = to_vehicle * mesh.get_aabb()
-		box = local if first else box.merge(local)
-		first = false
-	for node: Node in vehicle.find_children("*", "StaticBody3D", true, false):
+	for node: Node in placed.find_children("*", "StaticBody3D", true, false):
 		var body := node as StaticBody3D
 		body.collision_layer = 1 | 8
 		body.collision_mask = 0
 		solid_count += 1
-	_note(String(spec.kind), spec.center, Vector2(box.size.x, box.size.z).length() * 0.5)
+	return placed
+
+
+## A spec `_place_glb` cannot place: its `kind` names no GLB. The error is the whole report; nothing stands in.
+func _refuse_kind(spec: Dictionary, prefix: String) -> void:
+	push_error("CITY_PROPS: %s%s asks for kind «%s», which has no GLB: nothing placed" % [prefix, spec.get("id", "?"), spec.get("kind", "")])
+
+
+## A descendant's transform in `top`'s frame.
+static func _to_parent(node: Node3D, top: Node3D) -> Transform3D:
+	var xf := Transform3D.IDENTITY
+	var walk: Node = node
+	while walk != top:
+		xf = (walk as Node3D).transform * xf
+		walk = walk.get_parent()
+	return xf
+
+
+## The box of every visible mesh of a placed GLB, in its own frame.
+func _mesh_box(vehicle: Node3D) -> AABB:
+	var box := AABB()
+	var first: bool = true
+	for node: Node in vehicle.find_children("*", "MeshInstance3D", true, false):
+		var mesh := node as MeshInstance3D
+		var local: AABB = _to_parent(mesh, vehicle) * mesh.get_aabb()
+		box = local if first else box.merge(local)
+		first = false
+	return box

@@ -27,6 +27,14 @@ extends SceneTree
 ##                per material and no light in the props;
 ##   V          — Choko and Skea vault every obstacle from each side with a free run-up, by real key events (W, Space):
 ##                vault_seconds of the shipped profile ± 1 tick, no hang, landing beyond at the take-off level;
+##   V+         — every solid body that stands on the floor with a flat top 0.6–1.3 m over it (a stack counts by its
+##                top) is either a vault obstacle (vaulted in V) or a step listed in STEP_PROPS, which T6 accepts (T4 audit
+##                2026-10-09 proposal 8, plan 2026-10-14-Quality-Debt-Posts-Awning-Guards step 4); a listed step that is
+##                no longer there fails too; and no listed step wedges a hero on its rim (T6 К7-а п. 2): a hero capsule
+##                standing on the top that walks to a solid rising over it within 0.05–0.75 m of the edge and steps off
+##                rests on the top (≤ 0.05 m under it) or off the step — never on its rim with the feet in the air
+##                (wedges a T1 decision left open are pinned in STEP_WEDGE_OPEN — gap, wedged points, depth — and
+##                must stay as measured: never gone, never wider or deeper);
 ##   S          — each steam vent puffs (≤ 0.8 opacity), changes frame under 3 times a second, never jumps in opacity
 ##                by more than 0.1 a frame, stays ≤ 1.0 × 1.5 m and is gone while a hero stands at the vent;
 ##   M          — the steam vehicles (CityProps.VEHICLES, Blender GLBs; docs/Fix/2026-10-09-City-Vehicles-And-Iron-Paint
@@ -40,12 +48,44 @@ extends SceneTree
 ##                M8 the camera arm keeps ≥ 3 m for a hero 1.2 m off each open side facing the vehicle and on its roof
 ##                facing each way; V-M both heroes run at each open side with W and Space: no vault (deeper than any
 ##                obstacle: no false promise, К7), never left inside its footprint below its top.
+##   MC         — the terrace machines (CityProps.MACHINES: the steam crane № 10 and the steam winch № 11, Blender GLBs;
+##                docs/Fix/2026-10-14-Steam-Crane-Winch-Fix.md). A machine's foot is its hulls that stand on the floor
+##                (the crane's plinth, never its boom over the street). For every machine: MC1 one visible mesh, exactly
+##                the hulls of the T6 form, each a city solid (layer 9, mask 0) with a live shape; MC2 every surface is the
+##                city material its GLB names, and no key the form bans (the crane: brass, ink; the winch: ink); MC3 the
+##                foot rests on a level floor within 2 cm; MC4 the M4 rule for every visible face in the hero band; MC5 out
+##                of every anchor's column, every free rope swing passes ≥ 0.3 m under or over every visible point it
+##                reaches (the swing hangs under the anchor: a point above the anchor never meets it), and every visible
+##                part keeps ≥ 2 m from every anchor's point and mount; MC6 ≥ 8 m from the court centre, out of every pocket, and
+##                nothing of it within a resident's walking band (lane floor + 1.8 m) comes within 1 m of the lane; MC7
+##                nothing solid over the street (every hull within the block its foot stands on), and at the street
+##                stations S2, S3, S4 of the T6 form (a hero facing north) the machines change nothing for the camera:
+##                the same arm with and without them, no machine face between the lens and the hero, and at S3 (under
+##                the boom) the arm keeps 6.00 m; of the machine points in the frame, those the lens sees (a ray from it)
+##                all stand at or above the terrace's level, 4.0 m (T6's A5, docs/Audit/2026-10-14-T6-Crane-Winch-
+##                Acceptance.md § 3 п. 1: «з вулиці видно лише частини вище рівня тераси (seen_y ≥ 4,0 м)»; the form's
+##                «на S3 його в кадрі немає» was dropped there — the column over the terrace's edge is in the frame); MC8 the
+##                camera arm keeps ≥ 3 m for a hero 1.2 m off
+##                each open side of the foot facing it (M8); MC9 every foot hull leaves 0 or ≥ 1.2 m on each side to
+##                whatever stops the hero beside it — a solid or the floor's edge (a slot between them wedges a hero);
+##                MC10 the visible triangles stay within the ceiling (the crane ≤ 5646, the winch ≤ 2000); V-MC both
+##                heroes run at each open side of the winch with W and Space: no vault, never left inside it.
+##   M0         — every kind of CityProps.VEHICLES and MACHINES places the GLB of its own name
+##                (res://assets/props/city/prop_<kind>_v1.glb, the registry's id) and stands in the district under its
+##                prefix; a kind with no GLB is refused once by CityProps._place_glb and places nothing — no node, no
+##                solid, no stand-in (T4 audit docs/Audit/2026-10-15-Wave-14-Review.md YELLOW 5: the tarped car stood in
+##                for any unknown kind). Probed on a CityProps outside the tree whose one override records the refusal.
 ## Literals: docs/Audit/2026-10-08-City-Tidy-Technical-Audit.md § 2 (2 cm, 0.3 m, 20 %, 6 mm, 2 cm², 0.1 m, 1 mm, r 0.32,
 ## 0.12–1.8 m, 13/27, 0.08 m, 0.4 l); docs/Art/2026-10-08-City-Modern-Realism-Props.md (П4 0.1 m, К4 0.2 m, К6 8 m / 1 m,
 ## Н7 0.25 m / 3.2 m, К8 5 / 3); the plan (obstacles 0.9–1.1 m, ≤ 0.8 m); 2026-10-07-Tight-Station-Readability-Criteria
 ## (≥ 3 m of camera); WCAG 2.3.1 (< 3 flashes a second). The anchor floors were measured on 97675c7 (see ANCHOR_FLOOR).
 ## --break=<m> is a negative control: one returned defect or another form of the same class (see MUTATIONS); sentinel
-## CITY_TIDY_COMPLETE checks=N failures=M mutation=<m>; failures print "CITY_TIDY: ...".
+## CITY_TIDY_COMPLETE checks=N failures=M mutation=<m> red=<families|none>; failures print "CITY_TIDY: [family] ...".
+## A family is the guard's tag, the label's first word lower-cased (C1 → c1, K4/Н1 → k4, V-M → vm, MC10 → mc10), and two
+## guards are split by sub-guard: V+ into vstep (unlisted or lost steps), vwedge (a new wedge), vopen (a pinned OPEN gone
+## or moved), vgrow (a pinned OPEN wider or deeper); MC7 into mc7hull, mc7arm, mc7cross, mc7s3, mc7seen. Each negative
+## of tools/gates/playable_check.sh names the family it must turn red, so a negative that goes red on a neighbouring
+## guard no longer passes (T4 audit 2026-10-15, class 18).
 const DT: float = 1.0 / 60.0
 const GEOMETRY_BREAKS := ["pane_strut", "pane_wire", "float_barrel", "float_loaf", "sink_crate", "float_plate",
 	"zfight_fascia", "zfight_jamb", "dup_wall", "dup_barrel", "solid_planter", "solid_dressform", "solid_sign", "service",
@@ -60,6 +100,153 @@ const STEAM_BREAKS := ["steam_hero", "steam_flash"]
 const VEHICLE_BREAKS := ["vehicle_float", "vehicle_sink", "vehicle_nocollider", "vehicle_shift", "vehicle_layer",
 	"vehicle_material", "vehicle_anchor", "vehicle_lane", "vehicle_runup", "vehicle_gap"]
 const VEHICLE_RUN_BREAKS := ["vehicle_vault"]
+## V+ negatives: a new unlisted 1.0 m crate on the street, one at the bottom literal 0.6 m, a listed step moved 0.3 m.
+## V+ wedge negatives, one form each of «no rim between a step and a solid within the band»: a wall put 0.55 m off a free
+## side of a street urn (a wall comes to a step); the grocer's display crate given a round top of its own depth, the
+## same 0.32 m off the shop wall that its flat edge stands on (a round rim); a wall 0.66 m off a free side of the tailor's
+## cutting table, just under the capsule's width (the band's deep end); a pinned OPEN wedge whose wall's collider is
+## off (an OPEN that is gone must go red too).
+## T4 audit 2026-10-15, class 17, the pinned OPEN's other two forms: a wall 0.55 m off the grocer counter's west end,
+## along its whole side (its gap stays, its wedged points grow: wider), and the grocer's side shelf 0.018 m further west
+## (its gap stays within the slack, its points too, the capsule rests deeper: 0.171 m under, pinned 0.147 + 0.02).
+const STEP_BREAKS := ["step_new", "step_low", "step_moved", "wedge_wall", "wedge_round", "wedge_deep", "wedge_open",
+	"wedge_more", "wedge_deeper"]
+## Machine negatives (MC): the hulls on the cover layer only; a winch surface off its city material; a crane surface
+## named and painted brass; the winch 5 cm up, the crane 5 cm down; the winch's body hull gone; the crane's mesh 0.3 m off
+## its hulls; the winch under anchor 24; the crane 1.1 m from anchor 12's vertical; the winch in the east terrace pocket
+## and in resident 10's lane; a hull under the boom over the street; the crane on the street between the S3 hero and
+## the lens, and sunk so that its hook (no hull) hangs across that line; the winch 1.7 m from the house (a camera
+## station with the facade behind it)
+## and 0.5 m from the terrace's edge; the winch's mesh with every surface twice; its listed step moved 0.3 m. V-MC: the
+## winch's body a flat box and the profile allowing 1.2 m deep vaults.
+const MACHINE_BREAKS := ["machine_layer", "machine_material", "machine_brass", "machine_float", "machine_sink",
+	"machine_nocollider", "machine_shift", "machine_column", "machine_anchor", "machine_pocket", "machine_lane",
+	"machine_street_hull", "machine_cross", "machine_occlude", "machine_gap", "machine_slot", "machine_budget",
+	"machine_step", "machine_seen_hook", "machine_seen_street", "machine_seen_float", "machine_seen_low"]
+## MC7 seen_y negatives (A5), one form each of «a street lens sees a machine point under the terrace's level»: decor of
+## the crane, standing where it stands, hangs under the level over the street (no hull; MC3 sees its box's bottom too);
+## the crane stands on the street floor in the S2–S4 view (every other guard holds: only seen_y goes red); the winch
+## hangs in front of the terrace's wall with no floor. At the threshold (T4 audit 2026-10-15 proposal 2): the same decor
+## with its bottom at 3.9 m, 0.1 m under the level — a floor weakened by more than that lets it through.
+const MACHINE_RUN_BREAKS := ["machine_vault"]
+## M0 negatives, one form each of «a kind places its own GLB, or is refused and places nothing» (CityProps._place_glb
+## broken in the probe only): an unknown kind placed as the steam truck with no refusal (the audited stand-in, another
+## GLB); an unknown kind placing nothing and reporting nothing; an unknown kind refused but placed as the truck anyway;
+## a known kind placed as another's GLB (the crane as the winch).
+const KIND_BREAKS := ["glb_standin", "glb_silent", "glb_both", "glb_swap"]
+## M0: the GLB of a kind, by the registry's naming (docs/Art/Textures-Registry.md prop-steam-*-v1), and kinds no GLB has.
+const KIND_GLB: String = "res://assets/props/city/prop_%s_v1.glb"
+const KIND_UNKNOWN := ["steam_bus", "", "Steam_Truck", "steam_truck_v2"]
+## MC literals. The hulls (docs/Art/2026-10-14-Steam-Crane-Winch-Form.md § Колізії, both tables) and the keys the form
+## bans (§ Матеріали, A2); the triangle ceilings «≤ 5646 / 2000» of plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB,
+## step 4 (5 646 is the truck's, docs/Art/Textures-Registry.md prop-steam-truck-v1; the form's A1 the same); a slot «0 or ≥ 1.2 m»
+## (form § Простір, PLACEHOLDER: a hero wedged in the 0.5 m slot by the truck, CityProps.gd:41–42), 0 meaning ≤ 2 cm
+## (SUPPORT_GAP); ≥ 2 m from an anchor ([К] № 10 «≥ 2 м від якоря 12 (26; 4; −11)», the support's mount,
+## docs/Art/2026-10-08-City-Modern-Realism-Props.md:286; the form's A7 «від точки якоря 12», its point: both, for every
+## anchor); the street stations S2–S4 of the form's camera table (§ Камера); the
+## crane's arm at S3 6.00 m (A5). A foot hull stands within 0.25 m of the floor (the winch's flywheel hangs 0.18 over it).
+const MACHINE_HULLS := {"steam_crane": ["CraneCab", "CraneColumn", "CranePlinth"], "steam_winch": ["WinchBody", "WinchFlywheel"]}
+const MACHINE_BANNED := {"steam_crane": ["brass", "ink"], "steam_winch": ["ink"]}
+const MACHINE_TRIANGLES := {"steam_crane": 5646, "steam_winch": 2000}
+const MACHINE_RUNS := ["steam_winch"]
+const MACHINE_FOOT: float = 0.25
+const SLOT_MIN: float = 1.2
+const SLOT_STEP: float = 0.04       # MC9 measures with 4 cm slabs, 4 cm apart: a grain, not a threshold
+const ANCHOR_REACH: float = 2.0
+const STREET_STATIONS := {"S2": Vector3(27, 0, 9), "S3": Vector3(28, 0, -6), "S4": Vector3(24, 0, 0)}
+const STREET_ARM: float = 6.0
+## A5: from S2–S4 only the parts above the terrace's level are seen, «seen_y ≥ 4,0 м» (docs/Audit/2026-10-14-T6-Crane-
+## Winch-Acceptance.md § 3 п. 1, its literal; the terrace NorthEastRoof tops out at 4.0, the machines' level). 1 mm of
+## float slack, no more: measured lows are 4.30 / 4.45 / 4.30 (docs/Fix/2026-10-14-Steam-Crane-Winch-Fix.md).
+const STREET_SEEN_FLOOR: float = 4.0
+## V+: the height band of the T4 audit's proposal 8 («пропи 0,6–1,3 м із пласким верхом»), inclusive to 5 mm.
+const STEP_HEIGHT := Vector2(0.6, 1.3)
+const STEP_TOLERANCE: float = 0.005
+## Bodies that are the district's structure, never props: the architecture's colliders, the anchors' posts, parapets,
+## the clock tower's drum on its roof (y 16).
+const STEP_SKIP_PREFIX := ["ArchitectureSolid", "Anchor", "BridgeParapet", "NorthParapet", "TowerDrum"]
+## V+ steps: «<module>@(x, top, z)» of a floor-standing flat-topped body (its stack's top) → what it is. A step is climbed
+## or stepped round, never vaulted; the list is for T6 to accept (docs/Fix/2026-10-14-Lamp-Posts-Awning-Anchor-5-Fix.md
+## § 4). PLACEHOLDER until T6 accepts it.
+const STEP_PROPS: Dictionary = {
+	"CityMarket@(-8.93, 1.27, 19.09)": "west z 18 stall, goods behind the counter: a stack of two crates",
+	"CityMarket@(-8.98, 0.90, 16.98)": "west z 18 stall, goods behind the counter: a beer barrel",
+	"CityMarket@(-8.93, 0.86, 24.34)": "west z 25 stall: the barrel on its trestles, 0.13 m toward the counter (T6 RED 2026-10-15)",
+	"CityMarket@(-8.92, 0.72, 26.16)": "west z 25 stall, goods behind the counter: a crate",
+	"CityMarket@(8.98, 0.72, 16.86)": "east z 18 stall, goods behind the counter: a crate",
+	"CityMarket@(8.92, 1.27, 23.90)": "east z 25 stall, goods behind the counter: a stack of two crates",
+	"CityMarket@(8.97, 0.90, 26.04)": "east z 25 stall, goods behind the counter: a beer barrel",
+	"CityInteriors@(-26.80, 0.96, 17.60)": "the grocer's counter, indoors",
+	"CityInteriors@(-28.85, 0.80, 12.62)": "the grocer's west display crate inside the shop front",
+	"CityInteriors@(-24.35, 0.80, 12.62)": "the grocer's east display crate inside the shop front",
+	"CityInteriors@(-23.95, 0.90, 13.45)": "the grocer's beer barrel, indoors, by the east display crate (T6 2026-10-15 § 4)",
+	"CityInteriors@(-20.20, 0.96, 17.60)": "the tailor's counter, indoors",
+	"CityInteriors@(-17.85, 1.00, 14.95)": "the tailor's cutting table, indoors",
+	"CityInteriors@(-13.60, 0.96, 17.60)": "the workshop's counter, indoors",
+	"CityInteriors@(-11.10, 1.00, 14.95)": "the workshop's bench, indoors",
+	"CityInteriors@(-15.60, 0.62, 13.15)": "the tailor's waiting stool, indoors",
+	"CityInteriors@(-26.45, 0.60, 8.00)": "a street bench's planter in front of the grocer (west)",
+	"CityInteriors@(-22.95, 0.60, 8.00)": "a street bench's planter in front of the grocer (east)",
+	"CityInteriors@(-15.75, 0.60, 8.00)": "a street bench's planter in front of the workshop (west)",
+	"CityInteriors@(-12.25, 0.60, 8.00)": "a street bench's planter in front of the workshop (east)",
+	"CityProps@(-9.55, 0.84, 22.20)": "market street, west: a water butt",
+	"CityProps@(-9.35, 0.90, 21.35)": "market street, west: a beer barrel",
+	"CityProps@(9.35, 0.84, 22.20)": "market street, east: a water butt",
+	"CityProps@(9.30, 0.90, 21.35)": "market street, east: a beer barrel",
+	"CityProps@(14.45, 0.90, -4.00)": "east street by the ramp: a tar barrel",
+	"CityProps@(14.60, 0.90, -4.72)": "east street by the ramp: a tar barrel",
+	"CityProps@(15.69, 0.90, -3.40)": "east street by the ramp: a tar barrel against the ramp's wall",
+	"CityProps@(-27.20, 0.92, 8.25)": "west street: a street urn",
+	"CityProps@(-11.45, 0.92, 8.25)": "west street: a street urn",
+	"CityMaintenance@(-21.96, 5.18, -12.26)": "the maintenance yard: the tool chest on the work bench",
+	"CityMaintenance@(-21.96, 4.82, -11.86)": "the maintenance yard: the work bench in the south-east corner",
+	# Accepted by T6 in advance (docs/Art/2026-10-14-Steam-Crane-Winch-Form.md § Лебідка № 11, «V+»): climbed or walked
+	# round, never vaulted (V-MC). The key as this check printed it (docs/Fix/2026-10-14-Steam-Crane-Winch-Fix.md).
+	"CityProps@(27.24, 5.12, -18.63)": "the NE terrace: the steam winch, the top of its drum's flanges",
+}
+## V+ wedge. T6 acceptance docs/Audit/2026-10-14-T6-Acceptance.md § 2.1, К7-а п. 2: a step is honest when the hero ends
+## on it — «не нижче за верх більш ніж на 0,05 м» (STEP_RIM) — or on the floor; the typical failure, «зазор 0,05–0,75 м
+## між пропом і стіною, у якому заклинює капсула r 0,35» (STEP_GAP_BAND). T6's what_under.gd log
+## (scratchpad t6-accept/logs/what_under.log) of the wedged runs: the hero touched EastRamp and the tar barrel 0.52 m off
+## it (end_y 0.764 of a 0.90 top), SouthWall and the yard bench 0.55 m off it (0.760 of 0.825); the tailor's cutting
+## table, 0.45 m off the shop wall, kept him 0.025 m under its top (GREEN). The band read as «no gap 0.05–0.75 m to a
+## solid» would fail most of the 25 steps T6 accepted (0.07–0.45 m off walls, the hero on top), so the guard measures the
+## rule itself: the capsule (Fighter.tscn r 0.35, h 1.8) stands on the top STEP_LIFT over it at STEP_SAMPLES points across
+## each side, walks out until it meets a solid that rises over the top with its axis at most 0.75 − 0.35 m past the edge,
+## and is lowered there. Resting more than STEP_RIM under the top while touching the step is a wedge. A start the
+## capsule does not fit (a canopy over the goods, the chest on the bench) is not a place to stand: it is counted, not judged.
+const STEP_GAP_BAND := Vector2(0.05, 0.75)
+const STEP_RIM: float = 0.05
+const STEP_SAMPLES: int = 9
+const STEP_LIFT: float = 0.03
+const FIGHTER_H: float = 1.8       # Fighter.tscn BodyShape height
+## The start and its nudges (6 and 12 cm, eight ways; a grain, not a threshold): a free stance over the top.
+const STEP_NUDGES: Array[Vector3] = [Vector3.ZERO,
+	Vector3(0.06, 0, 0), Vector3(-0.06, 0, 0), Vector3(0, 0, 0.06), Vector3(0, 0, -0.06),
+	Vector3(0.042, 0, 0.042), Vector3(-0.042, 0, 0.042), Vector3(0.042, 0, -0.042), Vector3(-0.042, 0, -0.042),
+	Vector3(0.12, 0, 0), Vector3(-0.12, 0, 0), Vector3(0, 0, 0.12), Vector3(0, 0, -0.12),
+	Vector3(0.085, 0, 0.085), Vector3(-0.085, 0, 0.085), Vector3(0.085, 0, -0.085), Vector3(-0.085, 0, -0.085)]
+## Wedges the walk finds beyond the three T6 named (docs/Fix/2026-10-14-T6-Acceptance-Geometry-Fix.md § 5): «<step key>
+## <side>» → what the walk measured on that side and why it stays: `gap` the narrowest gap it met (± STEP_OPEN_SLACK),
+## `points` how many of the STEP_SAMPLES points wedge (no more may), `depth` how far under the top the worst of them
+## rests (no deeper than + STEP_OPEN_SLACK). T6 accepted these steps from their run-ups (K7: no run-up, or the hero on
+## top); the walk reaches the sides no run-up does. Moving them is outside T1's task for this fix (rows 1–5 of the T6
+## acceptance), so T1 decides; each must still wedge as measured, and no wider or deeper (T4 audit 2026-10-15, class 17:
+## the gap alone let a wall 0.55 m along the grocer's counter take its side from 5 to 9 wedged points unseen). The barrel
+## on trestles' −x side (SouthWestRear 0.62 m behind it, 9 of 9 points 0.18 m under) was T6's RED soft-lock: the barrel
+## moved 0.13 m toward the counter and the side wedges no more (docs/Fix/2026-10-15-Stall-Wedge-Boundary-Fix.md § 1), so
+## it left this list; its rim exit is the city-rim-exit case. Values measured on the tree of that journal (§ 5).
+const STEP_OPEN_SLACK: float = 0.02
+const STEP_WEDGE_OPEN: Dictionary = {
+	"CityMarket@(-8.93, 0.86, 24.34) (0.00, 0.00, -1.00)": {"gap": 0.520, "points": 1, "depth": 0.061, "why": "west z 25 stall, the barrel on trestles behind the counter: the stall's back post off its north end (0.410 m, 0.070 m under before the barrel moved 0.13 m toward the counter, docs/Fix/2026-10-15-Stall-Wedge-Boundary-Fix.md § 1; T6 found the hero on the floor from all three points, as is)"},
+	"CityMarket@(-8.92, 0.72, 26.16) (-1.00, 0.00, 0.00)": {"gap": 0.190, "points": 2, "depth": 0.339, "why": "west z 25 stall, the crate behind the counter: SouthWestRear 0.69 m behind it past the stall's post"},
+	"CityMarket@(8.97, 0.90, 26.04) (1.00, 0.00, 0.00)": {"gap": 0.466, "points": 3, "depth": 0.181, "why": "east z 25 stall, the beer barrel behind the counter: the east facade 0.65 m behind it"},
+	"CityInteriors@(-26.80, 0.96, 17.60) (-1.00, 0.00, 0.00)": {"gap": 0.544, "points": 5, "depth": 0.147, "why": "the grocer's counter: the end of the side stock shelf 0.54–0.62 m off its west end"},
+	"CityInteriors@(-20.20, 0.96, 17.60) (-1.00, 0.00, 0.00)": {"gap": 0.544, "points": 5, "depth": 0.147, "why": "the tailor's counter: the same side shelf"},
+	"CityInteriors@(-13.60, 0.96, 17.60) (-1.00, 0.00, 0.00)": {"gap": 0.544, "points": 5, "depth": 0.147, "why": "the workshop's counter: the same side shelf"},
+	"CityInteriors@(-17.85, 1.00, 14.95) (0.00, 0.00, -1.00)": {"gap": 0.682, "points": 2, "depth": 0.289, "why": "the tailor's cutting table: the dress form's torso 0.68 m off its north end (0.680 m, 0.281 m under with the old round torso; its collider now falls west to the wall, docs/Fix/2026-10-15-Stall-Wedge-Boundary-Fix.md § 3)"},
+	"CityInteriors@(-15.60, 0.62, 13.15) (-1.00, 0.00, 0.00)": {"gap": 0.648, "points": 7, "depth": 0.301, "why": "the tailor's waiting stool: the shop wall 0.65–0.75 m west of it; the stool's rim is T1's «капсула на ободі», hero movement after M3 with T5's numbers"},
+}
 const VEHICLE_LAYER: int = 1 | 8   # CityMarket._solid: walking and the camera, cover
 const SWING_CLEAR: float = 0.3
 const SWING_HAND: float = 1.25     # T5 Т3 (rope_pull_check HAND_Y): the hand over the feet
@@ -102,6 +289,11 @@ const PUFF_SIZE := Vector2(1.0, 1.5)
 ## canopies and their 97675c7 floors; every other anchor is unchanged.
 const ANCHOR_FLOOR: Array[float] = [0.0, 0.0, 0.0, 0.0, 2.8109, 0.0, 2.8109, 2.8023, 0.0, 0.0, 0.0, 3.83, 3.83, 3.83,
 	0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]
+## PLACEHOLDER (T5). The column around an anchor's vertical that a new prop or vehicle must stay out of (K anchors, M5).
+## No plan or audit literal behind it: T2 set it in cd8f5dd and the T4 audit
+## docs/Audit/2026-10-09-Rope-Jump-Momentum-Tidy-Steamcars-Review.md (§ П. 5, proposal 8) found it sourceless. The same
+## 0.75 m is the radius of the support cylinder under an anchor in that audit's proposal 2a («циліндром r ≈ 0,75 м») and
+## in plan 2026-10-14-Quality-Debt-Posts-Awning-Guards step 3 («r 0,75 м (PLACEHOLDER, T5)»); T5 owns the number.
 const ANCHOR_COLUMN: float = 0.75
 const HEX := {"8a8581": "paving", "9d9385": "stone", "9f7b73": "brick", "a9847b": "terracotta", "b6aa92": "plaster",
 	"607078": "slate", "61717b": "roof_slate", "748075": "copper", "998162": "brass", "3b353c": "iron", "577368": "iron_paint", "2b2230": "ink",
@@ -121,6 +313,7 @@ const GALLERY_STRUCTURE := ["NorthWall", "SouthWall", "EastWall", "EntryNorth", 
 
 var checks: int = 0
 var failures: int = 0
+var red: Dictionary = {}   # family → true for every family with a red check (the sentinel's red=)
 var mutation: String = "none"
 var world: Node3D
 var district: Node3D
@@ -130,6 +323,32 @@ var parts: Array[Dictionary] = []
 var grid: Dictionary = {}
 var fighter_script: Script
 var arch_solids: Array[Dictionary] = []
+
+
+## M0's probe: the product's CityProps._place_glb on a node outside the tree. Its one override records a refusal instead
+## of printing it (a positive run prints no error). Under a glb_* negative, `form` breaks _place_glb in one form of the
+## subject; with form "none" every call is the product's own.
+class KindProbe extends CityProps:
+	var refused: Array[String] = []
+	var form: String = "none"
+	func _refuse_kind(spec: Dictionary, _prefix: String) -> void:
+		refused.append(String(spec.get("kind", "")))
+	func _place_glb(spec: Dictionary, prefix: String) -> Node3D:
+		var unknown: bool = not (String(spec.kind) in ["steam_truck", "steam_car_tarp", "steam_crane", "steam_winch"])
+		var as_truck: Dictionary = spec.duplicate()
+		as_truck.kind = "steam_truck"
+		var as_winch: Dictionary = spec.duplicate()
+		as_winch.kind = "steam_winch"
+		if form == "glb_standin" and unknown:
+			return super(as_truck, prefix)
+		if form == "glb_silent" and unknown:
+			return null
+		if form == "glb_both" and unknown:
+			_refuse_kind(spec, prefix)
+			return super(as_truck, prefix)
+		if form == "glb_swap" and String(spec.kind) == "steam_crane":
+			return super(as_winch, prefix)
+		return super(spec, prefix)
 
 
 class Rec extends RefCounted:
@@ -192,8 +411,8 @@ class MarketRec extends CityMarket:
 		rec.push(Rec.at("beer_barrel", pose.origin)); super(pose); rec.pop()
 	func _trestle_barrel(pose: Transform3D) -> void:
 		rec.push(Rec.at("trestle_barrel", pose.origin)); super(pose); rec.pop()
-	func _jar(pose: Transform3D, color: String, scale_factor: float) -> void:
-		rec.push(Rec.at("jar", pose.origin)); super(pose, color, scale_factor); rec.pop()
+	func _jar(pose: Transform3D, color: String, scale_factor: float, solid: bool = true) -> void:
+		rec.push(Rec.at("jar", pose.origin)); super(pose, color, scale_factor, solid); rec.pop()
 	func _wire(a: Vector3, b: Vector3, sag: float) -> void:
 		rec.push(Rec.at("wire", a)); super(a, b, sag); rec.pop()
 	func _lantern(center: Vector3, scale_factor: float) -> void:
@@ -236,8 +455,8 @@ class InteriorsRec extends CityInteriors:
 		rec.push(Rec.at("crate", pose.origin)); super(pose, size); rec.pop()
 	func _beer_barrel(pose: Transform3D) -> void:
 		rec.push(Rec.at("beer_barrel", pose.origin)); super(pose); rec.pop()
-	func _jar(pose: Transform3D, color: String, scale_factor: float) -> void:
-		rec.push(Rec.at("jar", pose.origin)); super(pose, color, scale_factor); rec.pop()
+	func _jar(pose: Transform3D, color: String, scale_factor: float, solid: bool = true) -> void:
+		rec.push(Rec.at("jar", pose.origin)); super(pose, color, scale_factor, solid); rec.pop()
 	func _lantern(center: Vector3, scale_factor: float) -> void:
 		rec.push(Rec.at("lantern", center)); super(center, scale_factor); rec.pop()
 
@@ -274,11 +493,21 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 
-func _check(ok: bool, label: String) -> void:
+## One guard's verdict. A red check adds its family to `red` (the sentinel's red=): the guard's tag, or a finer
+## sub-guard the call names (V+, MC7).
+func _check(ok: bool, label: String, family: String = "") -> void:
 	checks += 1
 	if not ok:
 		failures += 1
-		push_error("CITY_TIDY: " + label)
+		var tag: String = family if not family.is_empty() else _family(label)
+		red[tag] = true
+		push_error("CITY_TIDY: [%s] %s" % [tag, label])
+
+
+## The guard's tag of a label: its first word up to a slash, lower-cased, hyphens dropped («K4/Н1 …» → k4,
+## «V-MC …» → vmc).
+static func _family(label: String) -> String:
+	return label.get_slice(" ", 0).get_slice("/", 0).to_lower().replace("-", "").replace("+", "plus")
 
 
 func _ticks(count: int) -> void:
@@ -292,11 +521,13 @@ func _phase(name: String) -> bool:
 		"geometry":
 			return mutation == "none" or mutation in GEOMETRY_BREAKS
 		"places":
-			return mutation == "none" or mutation in PLACE_BREAKS or mutation in VEHICLE_BREAKS
+			return mutation == "none" or mutation in PLACE_BREAKS or mutation in VEHICLE_BREAKS or mutation in STEP_BREAKS or mutation in MACHINE_BREAKS
 		"vault":
-			return mutation == "none" or mutation in VAULT_BREAKS or mutation in VEHICLE_RUN_BREAKS
+			return mutation == "none" or mutation in VAULT_BREAKS or mutation in VEHICLE_RUN_BREAKS or mutation in MACHINE_RUN_BREAKS
 		"steam":
 			return mutation == "none" or mutation in STEAM_BREAKS
+		"kind":
+			return mutation == "none" or mutation in KIND_BREAKS
 	return false
 
 
@@ -1241,6 +1472,286 @@ func _vaults(hero: String) -> void:
 	world.npc_director.process_mode = Node.PROCESS_MODE_INHERIT
 
 
+## V+ (see the header). Every solid body of the district but its structure: its world box from its shapes; the floor
+## under its centre (the body itself excluded); a body standing on that floor (its foot within 5 cm) starts a stack —
+## itself and whatever rests on it, touching within 3 cm. The stack's top body is a candidate when it is 0.6–1.3 m over
+## the floor, at least as wide as the hero's body radius both ways (FIGHTER_R: narrower is a leg or a post, nothing to
+## vault or stand on) and flat (the top shape a box or a cylinder standing upright, or a convex hull with three corners
+## level within 1 cm). One candidate per top body, keyed by it.
+func _step_candidates() -> Array[Dictionary]:
+	var boxes: Array[Dictionary] = []
+	for node: Node in district.find_children("*", "StaticBody3D", true, false):
+		var body := node as StaticBody3D
+		var path: PackedStringArray = String(district.get_path_to(body)).split("/")
+		var module: String = path[0] if path.size() > 1 else "CityDistrict"
+		var name: String = String(body.name)
+		var skip: bool = (module == "CityDistrict" and name in DISTRICT_STRUCTURE) or (module == "CityMaintenance" and name in MAINTENANCE_STRUCTURE) or (module == "CityLowerGallery" and name in GALLERY_STRUCTURE)
+		for prefix: String in STEP_SKIP_PREFIX:
+			skip = skip or name.begins_with(prefix)
+		var box := AABB()
+		var top_shape: CollisionShape3D = null
+		for child: Node in body.get_children():
+			var shape := child as CollisionShape3D
+			if shape == null or shape.shape == null or shape.disabled:
+				continue
+			var world_box: AABB = shape.global_transform * shape.shape.get_debug_mesh().get_aabb()
+			if top_shape == null or world_box.end.y > box.end.y:
+				top_shape = shape
+			box = world_box if box.size == Vector3.ZERO else box.merge(world_box)
+		if top_shape == null:
+			continue
+		boxes.append({"body": body, "module": module, "name": name, "skip": skip, "box": box, "flat": _flat_top(top_shape),
+			"vault": name.begins_with("VaultObstacle_")})
+	var out: Array[Dictionary] = []
+	var keys: Dictionary = {}
+	for entry: Dictionary in boxes:
+		if entry.skip:
+			continue
+		var box: AABB = entry.box
+		var centre := box.get_center()
+		var query := PhysicsRayQueryParameters3D.create(Vector3(centre.x, box.position.y + 0.05, centre.z), Vector3(centre.x, box.position.y - 0.5, centre.z), 1)
+		query.exclude = [(entry.body as StaticBody3D).get_rid()]
+		var hit: Dictionary = space.intersect_ray(query)
+		if hit.is_empty() or absf(float(hit.position.y) - box.position.y) > 0.05:
+			continue
+		var floor_y: float = hit.position.y
+		# The stack: bodies resting on the top (their foot within 3 cm of it, overlapping it on the ground plane).
+		var top: float = box.end.y
+		var flat: bool = entry.flat
+		var top_entry: Dictionary = entry
+		var grown := true
+		var stacked: Array[String] = []
+		while grown:
+			grown = false
+			for other: Dictionary in boxes:
+				var ob: AABB = other.box
+				if other.body == entry.body or ob.end.y <= top + 0.001 or absf(ob.position.y - top) > 0.03:
+					continue
+				if ob.position.x < box.end.x and ob.end.x > box.position.x and ob.position.z < box.end.z and ob.end.z > box.position.z:
+					top = ob.end.y
+					flat = other.flat
+					top_entry = other
+					stacked.append(String(other.name))
+					grown = true
+		var height: float = top - floor_y
+		var top_box: AABB = top_entry.box
+		if height < STEP_HEIGHT.x - STEP_TOLERANCE or height > STEP_HEIGHT.y + STEP_TOLERANCE or not flat:
+			continue
+		if minf(top_box.size.x, top_box.size.z) < FIGHTER_R:
+			continue
+		var key := "%s@(%.2f, %.2f, %.2f)" % [top_entry.module, top_box.get_center().x, top, top_box.get_center().z]
+		if keys.has(key):
+			continue
+		keys[key] = true
+		out.append({"key": key, "body": top_entry.body, "name": top_entry.name, "module": top_entry.module, "height": height,
+			"vault": entry.vault, "stacked": stacked, "size": top_box.size, "base": entry.name})
+	return out
+
+
+## A collision shape with a level top: an upright box or cylinder, or a convex hull with ≥ 3 points level with its top.
+func _flat_top(shape: CollisionShape3D) -> bool:
+	var up: Vector3 = shape.global_transform.basis.y.normalized()
+	if shape.shape is BoxShape3D or shape.shape is CylinderShape3D:
+		return up.dot(Vector3.UP) > 0.999
+	if shape.shape is ConvexPolygonShape3D:
+		var points: PackedVector3Array = (shape.shape as ConvexPolygonShape3D).points
+		var high: float = -INF
+		for point: Vector3 in points:
+			high = maxf(high, (shape.global_transform * point).y)
+		var level: int = 0
+		for point: Vector3 in points:
+			level += int(absf((shape.global_transform * point).y - high) <= 0.01)
+		return level >= 3
+	return false
+
+
+func _v_steps() -> void:
+	var candidates: Array[Dictionary] = _step_candidates()
+	var seen: Dictionary = {}
+	var steps: int = 0
+	var vaults: int = 0
+	for c: Dictionary in candidates:
+		var label := "%s «%s» %.2f m high, top %.2f × %.2f m%s" % [c.key, c.name, c.height, c.size.x, c.size.z, (" on " + c.base) if not (c.stacked as Array).is_empty() else ""]
+		if c.vault:
+			vaults += 1
+			print("CITY_TIDY_INFO V+ vault %s" % label)
+			continue
+		if STEP_PROPS.has(c.key):
+			steps += 1
+			seen[c.key] = true
+			print("CITY_TIDY_INFO V+ step %s — %s" % [label, STEP_PROPS[c.key]])
+			continue
+		_check(false, "V+ %s has a flat top 0.6–1.3 m over the floor: neither a vault obstacle nor a listed step" % label, "vstep")
+	for key: String in STEP_PROPS:
+		_check(seen.has(key), "V+ the listed step %s (%s) is no longer a floor body with a flat top 0.6–1.3 m" % [key, STEP_PROPS[key]], "vstep")
+	print("CITY_TIDY_INFO V+ candidates=%d vaults=%d steps=%d listed=%d" % [candidates.size(), vaults, steps, STEP_PROPS.size()])
+
+
+## V+ wedge (see STEP_GAP_BAND): every listed step, each side (±x, ±z), STEP_SAMPLES points across it.
+func _v_wedges() -> void:
+	var wedges: int = 0
+	var sides: int = 0
+	var blocked: int = 0
+	var seen_open: Dictionary = {}
+	for c: Dictionary in _step_candidates():
+		if c.vault or not STEP_PROPS.has(c.key):
+			continue
+		var body: StaticBody3D = c.body
+		var shape: CollisionShape3D = _top_shape(body)
+		var top: float = _body_box(body).end.y
+		var floor_y: float = top - float(c.height)
+		var centre: Vector3 = _step_centre(shape)
+		for out: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD]:
+			var across := Vector3(absf(out.z), 0, absf(out.x))
+			var half: float = _step_extent(shape, across)
+			var counts := {"top": 0, "off": 0, "wedge": 0, "blocked": 0, "open": 0}
+			var narrowest: float = INF
+			var worst: Dictionary = {}
+			for i: int in STEP_SAMPLES:
+				var s: float = lerpf(-half + 0.03, half - 0.03, float(i) / float(STEP_SAMPLES - 1))
+				var at: Vector3 = centre + across * s
+				var w: Dictionary = _step_walk(at, out, _step_edge(shape, out, s), top, floor_y, body)
+				counts[w.result] = int(counts[w.result]) + 1
+				if w.has("gap"):
+					narrowest = minf(narrowest, float(w.gap))
+				if w.result == "wedge" and (worst.is_empty() or float(w.depth) > float(worst.depth)):
+					worst = w
+			sides += 1
+			blocked += int(int(counts.blocked) == STEP_SAMPLES)
+			var tag := "%s %s" % [c.key, _v(out)]
+			var label := "%s «%s» side %s" % [c.key, c.name, _v(out)]
+			var wedged: bool = int(counts.wedge) > 0
+			if STEP_WEDGE_OPEN.has(tag):
+				seen_open[tag] = true
+				var pin: Dictionary = STEP_WEDGE_OPEN[tag]
+				var pinned: float = float(pin.gap)
+				_check(wedged and absf(narrowest - pinned) <= STEP_OPEN_SLACK, "V+ wedge OPEN %s no longer wedges as pinned (%d of %d points, gap %.3f, pinned %.3f): fix STEP_WEDGE_OPEN" % [label, counts.wedge, STEP_SAMPLES, narrowest, pinned], "vopen")
+				var deepest: float = float(worst.get("depth", 0.0))
+				_check(int(counts.wedge) <= int(pin.points) and deepest <= float(pin.depth) + STEP_OPEN_SLACK, "V+ wedge OPEN %s wedges wider or deeper than pinned (%d of %d points, pinned %d; %.3f m under, pinned %.3f + %.2f)" % [label, counts.wedge, STEP_SAMPLES, int(pin.points), deepest, float(pin.depth), STEP_OPEN_SLACK], "vgrow")
+			else:
+				wedges += int(wedged)
+				_check(not wedged, "V+ wedge %s: a hero pressed to %s %.3f m off the edge rests %.3f m under the top on its rim (%d of %d points; T6 К7-а п. 2: ≤ %.2f m or off the step)" % [label, worst.get("wall", "?"), worst.get("gap", 0.0), worst.get("depth", 0.0), counts.wedge, STEP_SAMPLES, STEP_RIM], "vwedge")
+			print("CITY_TIDY_INFO V+ wedge %s %s narrowest=%s%s" % [label, JSON.stringify(counts), "none" if is_inf(narrowest) else "%.3f" % narrowest,
+				(" worst=%.3f under, by %s" % [worst.depth, worst.wall]) if wedged else ""])
+	for tag: String in STEP_WEDGE_OPEN:
+		_check(seen_open.has(tag), "V+ wedge OPEN %s is no longer a listed step side: fix STEP_WEDGE_OPEN" % tag, "vopen")
+	_check(wedges == 0, "V+ no listed step wedges a hero on its rim (%d sides)" % wedges, "vwedge")
+	print("CITY_TIDY_INFO V+ wedge sides=%d wedges=%d open=%d blocked_sides=%d" % [sides, wedges, seen_open.size(), blocked])
+
+
+## The highest collision shape of a body (its top for V+).
+func _top_shape(body: StaticBody3D) -> CollisionShape3D:
+	var best: CollisionShape3D = null
+	var high: float = -INF
+	for child: Node in body.get_children():
+		var shape := child as CollisionShape3D
+		if shape == null or shape.shape == null or shape.disabled:
+			continue
+		var end: float = (shape.global_transform * shape.shape.get_debug_mesh().get_aabb()).end.y
+		if end > high:
+			high = end
+			best = shape
+	return best
+
+
+func _step_centre(shape: CollisionShape3D) -> Vector3:
+	if shape.shape is BoxShape3D or shape.shape is CylinderShape3D:
+		var o: Vector3 = shape.global_transform.origin
+		return Vector3(o.x, 0, o.z)
+	var c: Vector3 = (shape.global_transform * shape.shape.get_debug_mesh().get_aabb()).get_center()
+	return Vector3(c.x, 0, c.z)
+
+
+## Half the top's width along the floor direction `dir`.
+func _step_extent(shape: CollisionShape3D, dir: Vector3) -> float:
+	if shape.shape is CylinderShape3D:
+		return (shape.shape as CylinderShape3D).radius
+	if shape.shape is BoxShape3D:
+		var half: Vector3 = (shape.shape as BoxShape3D).size * 0.5
+		var b: Basis = shape.global_transform.basis.orthonormalized()
+		return absf(b.x.dot(dir)) * half.x + absf(b.z.dot(dir)) * half.z
+	var box: AABB = shape.global_transform * shape.shape.get_debug_mesh().get_aabb()
+	return absf(dir.x) * box.size.x * 0.5 + absf(dir.z) * box.size.z * 0.5
+
+
+## How far the top reaches along `out` at `s` across it: a round top's chord, a flat top's half width.
+func _step_edge(shape: CollisionShape3D, out: Vector3, s: float) -> float:
+	if shape.shape is CylinderShape3D:
+		var r: float = (shape.shape as CylinderShape3D).radius
+		return sqrt(maxf(r * r - s * s, 0.0))
+	return _step_extent(shape, out)
+
+
+## One point of V+ wedge: the capsule stands on the top at `at` (its body inside the edge, STEP_LIFT over the top), walks
+## along `out` until it meets a solid with its axis at most STEP_GAP_BAND.y − FIGHTER_R past the edge, and is lowered.
+## result: blocked (no room to stand), open (nothing met), top, off (rests off the step: floor, another body), wedge.
+func _step_walk(at: Vector3, out: Vector3, edge: float, top: float, floor_y: float, body: StaticBody3D) -> Dictionary:
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = FIGHTER_R
+	capsule.height = FIGHTER_H
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = capsule
+	query.collision_mask = 1
+	query.exclude = [(world.player as CollisionObject3D).get_rid()]
+	var feet: float = top + STEP_LIFT
+	var inset: float = maxf(0.0, edge - FIGHTER_R - 0.01)
+	var start: Vector3 = at + out * inset + Vector3(0, feet + FIGHTER_H * 0.5, 0)
+	# A step flush with a wall leaves no room for the capsule over its middle: the hero stands a little off it. Try the
+	# start, then the STEP_NUDGES round it, keeping the axis over the top (`body` under it).
+	var free: bool = false
+	for nudge: Vector3 in STEP_NUDGES:
+		query.transform = Transform3D(Basis.IDENTITY, start + nudge)
+		if space.intersect_shape(query, 1).is_empty() and _over_body(start + nudge, feet, body):
+			start += nudge
+			inset += nudge.dot(out)
+			free = true
+			break
+	if not free:
+		return {"result": "blocked"}
+	var reach: float = maxf(edge - inset, 0.0) + STEP_GAP_BAND.y - FIGHTER_R
+	query.motion = out * reach
+	var walk: PackedFloat32Array = space.cast_motion(query)
+	if walk[0] >= 1.0:
+		return {"result": "open"}
+	var gap: float = inset + float(walk[0]) * reach - edge + FIGHTER_R
+	var walls: PackedStringArray = PackedStringArray()
+	query.motion = Vector3.ZERO
+	query.transform = Transform3D(Basis.IDENTITY, start + out * (float(walk[1]) * reach))
+	for hit: Dictionary in space.intersect_shape(query, 4):
+		walls.append(_body_label(hit.collider as Node))
+	var axis: Vector3 = start + out * (float(walk[0]) * reach)
+	var drop: float = feet - floor_y + 0.1
+	query.transform = Transform3D(Basis.IDENTITY, axis)
+	query.motion = Vector3(0, -drop, 0)
+	var down: PackedFloat32Array = space.cast_motion(query)
+	var rest: float = feet - float(down[0]) * drop
+	var touches: bool = false
+	query.motion = Vector3.ZERO
+	query.transform = Transform3D(Basis.IDENTITY, axis - Vector3(0, float(down[1]) * drop, 0))
+	for hit: Dictionary in space.intersect_shape(query, 8):
+		touches = touches or hit.collider == body
+	var result: String = "top" if rest >= top - STEP_RIM else ("wedge" if touches else "off")
+	return {"result": result, "gap": gap, "depth": top - rest, "wall": ",".join(walls)}
+
+
+## Whether the point under `axis` (the capsule's axis) on the top is `body`'s.
+func _over_body(axis: Vector3, feet: float, body: StaticBody3D) -> bool:
+	var ray := PhysicsRayQueryParameters3D.create(Vector3(axis.x, feet, axis.z), Vector3(axis.x, feet - 0.1, axis.z), 1)
+	ray.exclude = [(world.player as CollisionObject3D).get_rid()]
+	var hit: Dictionary = space.intersect_ray(ray)
+	return not hit.is_empty() and hit.collider == body
+
+
+## «<parent>/<name>» of a body, or «<parent>/<engine name>@(x, z)» for the engine's own @-names, which change with the
+## node count.
+static func _body_label(node: Node) -> String:
+	var name: String = String(node.name)
+	if name.begins_with("@"):
+		var at: Vector3 = (node as Node3D).global_position
+		name = "%s@(%.2f, %.2f)" % [node.get_class(), at.x, at.z]
+	return "%s/%s" % [String(node.get_parent().name), name]
+
+
 func _vault_run(start: Vector3, run: Vector3, center: Vector3, depth: float) -> Dictionary:
 	var player: Node3D = world.player
 	_key(KEY_W, false)
@@ -1336,6 +1847,41 @@ func _steam() -> void:
 
 
 # --- M: the steam vehicles ---------------------------------------------------------------------------------------
+## M0 (see the header): CityProps._place_glb on a KindProbe outside the tree for every listed kind and for KIND_UNKNOWN,
+## and the live district's node of every listed spec.
+func _m0_kinds() -> void:
+	var probe := KindProbe.new()
+	probe.form = mutation if mutation in KIND_BREAKS else "none"
+	probe._materials = CityMaterials.palette()
+	var listed: Array[Array] = []
+	for spec: Dictionary in CityProps.VEHICLES:
+		listed.append([spec, "Vehicle_"])
+	for spec: Dictionary in CityProps.MACHINES:
+		listed.append([spec, "Machine_"])
+	for pair: Array in listed:
+		var spec: Dictionary = pair[0]
+		var want: String = KIND_GLB % String(spec.kind)
+		var placed: Node3D = probe._place_glb(spec, "Probe_")
+		var got: String = placed.scene_file_path if placed != null else "nothing"
+		_check(placed != null and got == want and placed.get_parent() == probe and probe.refused.is_empty(),
+			"M0 kind %s places its own GLB (%s; want %s; %d refusals)" % [spec.kind, got, want, probe.refused.size()])
+		var live: Node = props_node.get_node_or_null(String(pair[1]) + String(spec.id))
+		var live_path: String = live.scene_file_path if live != null else "nothing"
+		_check(live_path == want, "M0 %s%s stands in the district as its own GLB (%s)" % [pair[1], spec.id, live_path])
+	for kind: String in KIND_UNKNOWN:
+		var children: int = probe.get_child_count()
+		var solids: int = probe.solid_count
+		var refusals: int = probe.refused.size()
+		var placed: Node3D = probe._place_glb({"id": "probe", "kind": kind, "center": Vector3.ZERO, "yaw": 0.0}, "Probe_")
+		var once: bool = probe.refused.size() == refusals + 1 and probe.refused[probe.refused.size() - 1] == kind
+		_check(placed == null and probe.get_child_count() == children and probe.solid_count == solids and once,
+			"M0 the unknown kind «%s» is refused once and places nothing (%s, %d new nodes, %d new solids, %d refusals)" % [
+				kind, placed.scene_file_path if placed != null else "null", probe.get_child_count() - children,
+				probe.solid_count - solids, probe.refused.size() - refusals])
+	print("CITY_TIDY_INFO M0 listed=%d unknown=%d probe_nodes=%d refusals=%d" % [listed.size(), KIND_UNKNOWN.size(), probe.get_child_count(), probe.refused.size()])
+	probe.free()
+
+
 ## Each vehicle of CityProps.VEHICLES as built in the live world: its node, visible meshes, hulls and footprint.
 func _vehicles() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
@@ -1636,10 +2182,565 @@ func _vehicle_run(start: Vector3, run: Vector3, centre: Vector3, depth: float) -
 	return out
 
 
+# --- MC: the terrace machines --------------------------------------------------------------------------------------
+## Each machine of CityProps.MACHINES as built in the live world: its node, visible meshes, hulls (world boxes), its foot
+## (the hulls standing on the floor) and the floor under the foot's centre, its own hulls excluded.
+func _machines() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for spec: Dictionary in props_node.get_meta("machines", []):
+		var node: Node3D = props_node.get_node_or_null("Machine_" + String(spec.id))
+		var meshes: Array[MeshInstance3D] = []
+		var bodies: Array[StaticBody3D] = []
+		var hulls: Array[Dictionary] = []
+		var box := AABB()
+		if node != null:
+			for n: Node in node.find_children("*", "MeshInstance3D", true, false):
+				var mesh := n as MeshInstance3D
+				if mesh.mesh == null or not mesh.is_visible_in_tree():
+					continue
+				var world_box: AABB = mesh.global_transform * mesh.get_aabb()
+				box = world_box if meshes.is_empty() else box.merge(world_box)
+				meshes.append(mesh)
+			for n: Node in node.find_children("*", "StaticBody3D", true, false):
+				var body := n as StaticBody3D
+				bodies.append(body)
+				var hull := AABB()
+				var shapes: int = 0
+				for child: Node in body.get_children():
+					var shape := child as CollisionShape3D
+					if shape == null or shape.shape == null or shape.disabled:
+						continue
+					var shape_box: AABB = shape.global_transform * shape.shape.get_debug_mesh().get_aabb()
+					hull = shape_box if shapes == 0 else hull.merge(shape_box)
+					shapes += 1
+				if shapes > 0:
+					hulls.append({"name": String(body.name), "body": body, "box": hull})
+		var rids: Array[RID] = []
+		for body: StaticBody3D in bodies:
+			rids.append(body.get_rid())
+		var origin_y: float = node.global_position.y if node != null else 0.0
+		var foot_box := AABB()
+		var feet: int = 0
+		for hull: Dictionary in hulls:
+			var hb: AABB = hull.box
+			if hb.position.y <= origin_y + MACHINE_FOOT:
+				foot_box = hb if feet == 0 else foot_box.merge(hb)
+				feet += 1
+		if feet == 0:
+			foot_box = box   # no hull on the floor (a negative took it away): the mesh's box stands in
+		var foot := Rect2(Vector2(foot_box.position.x, foot_box.position.z), Vector2(foot_box.size.x, foot_box.size.z))
+		var level: float = origin_y
+		var floor_body: Object = null
+		if node != null:
+			var at := Vector3(foot.get_center().x, origin_y + 1.0, foot.get_center().y)
+			var query := PhysicsRayQueryParameters3D.create(at, at - Vector3.UP * 3.0, 1)
+			query.exclude = rids
+			var hit: Dictionary = space.intersect_ray(query)
+			if not hit.is_empty():
+				level = float(hit.position.y)
+				floor_body = hit.collider
+		out.append({"id": String(spec.id), "node": node, "meshes": meshes, "bodies": bodies, "hulls": hulls, "rids": rids,
+			"box": box, "foot": foot, "level": level, "floor": floor_body})
+	return out
+
+
+## The world-space triangles of a machine's visible meshes (three points each).
+func _machine_faces(m: Dictionary) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	for mesh: MeshInstance3D in m.meshes:
+		var xf: Transform3D = mesh.global_transform
+		for p: Vector3 in mesh.mesh.get_faces():
+			out.append(xf * p)
+	return out
+
+
+## The closest point of triangle abc to p (C. Ericson, Real-Time Collision Detection § 5.1.5).
+static func _closest_on_triangle(p: Vector3, a: Vector3, b: Vector3, c: Vector3) -> Vector3:
+	var ab: Vector3 = b - a
+	var ac: Vector3 = c - a
+	var ap: Vector3 = p - a
+	var d1: float = ab.dot(ap)
+	var d2: float = ac.dot(ap)
+	if d1 <= 0.0 and d2 <= 0.0:
+		return a
+	var bp: Vector3 = p - b
+	var d3: float = ab.dot(bp)
+	var d4: float = ac.dot(bp)
+	if d3 >= 0.0 and d4 <= d3:
+		return b
+	var vc: float = d1 * d4 - d3 * d2
+	if vc <= 0.0 and d1 >= 0.0 and d3 <= 0.0:
+		return a + ab * (d1 / (d1 - d3))
+	var cp: Vector3 = p - c
+	var d5: float = ab.dot(cp)
+	var d6: float = ac.dot(cp)
+	if d6 >= 0.0 and d5 <= d6:
+		return c
+	var vb: float = d5 * d2 - d1 * d6
+	if vb <= 0.0 and d2 >= 0.0 and d6 <= 0.0:
+		return a + ac * (d2 / (d2 - d6))
+	var va: float = d3 * d6 - d5 * d4
+	if va <= 0.0 and d4 - d3 >= 0.0 and d5 - d6 >= 0.0:
+		return b + (c - b) * ((d4 - d3) / ((d4 - d3) + (d5 - d6)))
+	var denom: float = 1.0 / (va + vb + vc)
+	return a + ab * (vb * denom) + ac * (vc * denom)
+
+
+## The plan box of a collision object's live shapes (the block a machine stands on).
+static func _body_box(body: Object) -> AABB:
+	var box := AABB()
+	var first: bool = true
+	if body is Node:
+		for child: Node in (body as Node).get_children():
+			var shape := child as CollisionShape3D
+			if shape == null or shape.shape == null or shape.disabled:
+				continue
+			var world_box: AABB = shape.global_transform * shape.shape.get_debug_mesh().get_aabb()
+			box = world_box if first else box.merge(world_box)
+			first = false
+	return box
+
+
+## MC1–MC7 (the hulls, materials, floor, faces, anchors, places, street) and MC10 (the triangles) of every machine.
+func _mc_machines() -> void:
+	var machines: Array[Dictionary] = _machines()
+	_check(machines.size() == 2, "MC the two terrace machines are listed (%d)" % machines.size())
+	var supports: Array[Dictionary] = CityLayout.anchor_supports()
+	var director: Script = load("res://scripts/npc/CityNpcDirector.gd")
+	for m: Dictionary in machines:
+		var id: String = m.id
+		var meshes: Array[MeshInstance3D] = m.meshes
+		var bodies: Array[StaticBody3D] = m.bodies
+		# MC1: one mesh; exactly the hulls of the form, each a live city solid.
+		_check(m.node != null and meshes.size() == 1, "MC1 %s has one visible mesh (%d)" % [id, meshes.size()])
+		var names := PackedStringArray()
+		for body: StaticBody3D in bodies:
+			names.append(String(body.name))
+		names.sort()
+		var want := PackedStringArray(MACHINE_HULLS.get(id, []))
+		_check(",".join(names) == ",".join(want), "MC1 %s carries exactly the hulls of the T6 form (%s; want %s)" % [id, ",".join(names), ",".join(want)])
+		for body: StaticBody3D in bodies:
+			var shapes: int = 0
+			for child: Node in body.get_children():
+				if child is CollisionShape3D and not (child as CollisionShape3D).disabled and (child as CollisionShape3D).shape != null:
+					shapes += 1
+			_check(body.collision_layer == VEHICLE_LAYER and body.collision_mask == 0 and shapes >= 1,
+				"MC1 %s/%s is a city solid: layer %d (%d), mask %d (0), %d live shapes" % [id, body.name, body.collision_layer, VEHICLE_LAYER, body.collision_mask, shapes])
+		if meshes.is_empty():
+			continue
+		# MC2: the city material of the very name the GLB gave each surface, and no key the form bans.
+		var surfaces: int = 0
+		var wrong: Array[String] = []
+		var banned: Array[String] = []
+		var ban: Array = MACHINE_BANNED.get(id, [])
+		for mesh: MeshInstance3D in meshes:
+			for surface: int in mesh.mesh.get_surface_count():
+				surfaces += 1
+				var source: Material = mesh.mesh.surface_get_material(surface)
+				var named: String = source.resource_name if source != null else "?"
+				var override: Material = mesh.get_surface_override_material(surface)
+				var got: String = _material_key(override) if override != null else "none"
+				if not override is ShaderMaterial or got != named:
+					wrong.append("%d:%s→%s" % [surface, named, got])
+				if named in ban or got in ban:
+					banned.append("%d:%s" % [surface, got])
+		_check(surfaces > 0 and wrong.is_empty(), "MC2 %s: every one of %d surfaces is the city material it names (%s)" % [id, surfaces, ", ".join(wrong)])
+		_check(banned.is_empty(), "MC2 %s carries no %s surface (%s)" % [id, "/".join(PackedStringArray(ban)), ", ".join(banned)])
+		# MC3: the foot on a level floor, the lowest point on it within 2 cm.
+		var box: AABB = m.box
+		var foot: Rect2 = m.foot
+		var floors: Array[float] = []
+		for f: Vector2 in [Vector2(0.1, 0.1), Vector2(0.9, 0.1), Vector2(0.1, 0.9), Vector2(0.9, 0.9), Vector2(0.5, 0.5)]:
+			var at := Vector3(foot.position.x + foot.size.x * f.x, float(m.level) + 1.0, foot.position.y + foot.size.y * f.y)
+			var query := PhysicsRayQueryParameters3D.create(at, at - Vector3.UP * 3.0, 1)
+			query.exclude = m.rids
+			var hit: Dictionary = space.intersect_ray(query)
+			floors.append(float(hit.position.y) if not hit.is_empty() else -INF)
+		var floor_high: float = floors.max()
+		var floor_low: float = floors.min()
+		var gap: float = box.position.y - floor_high
+		_check(floor_low > -INF and floor_high - floor_low <= SUPPORT_GAP, "MC3 %s stands on a level floor (%.3f…%.3f)" % [id, floor_low, floor_high])
+		_check(absf(gap) <= SUPPORT_GAP, "MC3 %s %s %.3f m (bottom %.3f, floor %.3f)" % [id, "rests within" if absf(gap) <= SUPPORT_GAP else ("floats" if gap > 0.0 else "sinks"), absf(gap), box.position.y, floor_high])
+		# MC4: the M4 rule — a visible face in the hero band 0.1 m out of every collider lets a free hero into the mesh.
+		var examined: int = 0
+		var bare: Array[String] = []
+		var reach: float = HERO_R - PASS_THROUGH
+		var faces: PackedVector3Array = _machine_faces(m)
+		for i: int in range(0, faces.size(), 3):
+			var a: Vector3 = faces[i]
+			var b: Vector3 = faces[i + 1]
+			var c: Vector3 = faces[i + 2]
+			var centre: Vector3 = (a + b + c) / 3.0
+			if centre.y < floor_high + BAND.x or centre.y > floor_high + BAND.y:
+				continue
+			var normal: Vector3 = (b - a).cross(c - a)
+			if normal.length() < 0.000001:
+				continue
+			normal = normal.normalized()
+			if absf(normal.y) > 0.7:
+				continue
+			examined += 1
+			var flat := Vector3(normal.x, 0, normal.z).normalized()
+			for side: float in [1.0, -1.0]:
+				var axis: Vector3 = centre + flat * side * reach
+				var hit: Dictionary = _floor_under(Vector3(axis.x, floor_high + 0.5, axis.z), 1.0)
+				if hit.is_empty() or absf(float(hit.position.y) - floor_high) > SUPPORT_WINDOW:
+					continue
+				if _capsule_free(Vector3(axis.x, float(hit.position.y), axis.z)):
+					bare.append(_v(centre))
+					break
+		_check(examined > 50, "MC4 %s: the hero-band faces were found (%d)" % [id, examined])
+		_check(bare.is_empty(), "MC4 %s: no visible face in the hero band stands %.2f m out of every collider (%d: %s)" % [id, PASS_THROUGH, bare.size(), " ".join(bare.slice(0, 6))])
+		# MC5: the anchors — out of every column; every free swing clears every point it reaches; ≥ 2 m from each anchor.
+		var column_bad: int = 0
+		var worst: float = INF
+		var worst_index: int = -1
+		var nearest: float = INF
+		var nearest_what: String = ""
+		for index: int in mini(supports.size(), ANCHOR_FLOOR.size()):
+			var point: Vector3 = supports[index].point
+			var mount: Vector3 = supports[index].mount
+			for hull: Dictionary in m.hulls:
+				var hb: AABB = hull.box
+				var d: float = _rect_point(Rect2(Vector2(hb.position.x, hb.position.z), Vector2(hb.size.x, hb.size.z)), Vector2(point.x, point.z))
+				if d < ANCHOR_COLUMN and hb.position.y < point.y:
+					column_bad += 1
+					_check(false, "MC5 %s/%s stands in anchor %d's column (%.2f m < %.2f)" % [id, hull.name, index, d, ANCHOR_COLUMN])
+			var rope: float = maxf(SWING_MIN_ROPE, point.y - ANCHOR_FLOOR[index] - SWING_HAND - SWING_FLOOR_GAP)
+			for i: int in range(0, faces.size(), 3):
+				for p: Vector3 in [faces[i], faces[i + 1], faces[i + 2], (faces[i] + faces[i + 1] + faces[i + 2]) / 3.0]:
+					if p.y >= point.y:
+						continue
+					var d: float = Vector2(p.x - point.x, p.z - point.z).length()
+					if d >= rope + FIGHTER_R:
+						continue
+					var s: float = maxf(0.0, d - FIGHTER_R)
+					var feet: float = point.y - sqrt(maxf(0.0, rope * rope - s * s)) - SWING_HAND
+					if feet - p.y < worst:
+						worst = feet - p.y
+						worst_index = index
+				for target: Vector3 in [point, mount]:
+					var q: Vector3 = _closest_on_triangle(target, faces[i], faces[i + 1], faces[i + 2])
+					var dist: float = q.distance_to(target)
+					if dist < nearest:
+						nearest = dist
+						nearest_what = "anchor %d %s" % [index, "point" if target == point else "mount"]
+		_check(column_bad == 0, "MC5 %s stands out of every anchor column (%d)" % [id, column_bad])
+		_check(worst >= SWING_CLEAR, "MC5 %s: every free rope swing passes ≥ %.1f m clear of it (worst %s, anchor %d)" % [id, SWING_CLEAR, "none in reach" if worst == INF else "%.2f m" % worst, worst_index])
+		_check(nearest >= ANCHOR_REACH, "MC5 %s keeps ≥ %.0f m from every anchor (%.2f m from %s)" % [id, ANCHOR_REACH, nearest, nearest_what])
+		# MC6: the court, the pockets (the whole plan of the machine, boom included), the residents' walking band.
+		var plan := Rect2(Vector2(box.position.x, box.position.z), Vector2(box.size.x, box.size.z))
+		var court: float = _rect_point(plan, Vector2.ZERO)
+		_check(court >= COURT_CLEAR, "MC6 %s stands %.2f m from the court centre (≥ %.0f)" % [id, court, COURT_CLEAR])
+		for pocket: Dictionary in CityLayout.combat_pockets():
+			var edge: float = _rect_point(plan, Vector2(pocket.center.x, pocket.center.z)) - float(pocket.radius)
+			_check(edge >= 0.0, "MC6 %s stays out of the %s pocket (%.2f m from its edge)" % [id, pocket.id, edge])
+		var lane_min: float = INF
+		var lane_who: int = -1
+		for resident: int in range(3, 12):
+			var lane: Array = director.lane(resident)
+			for k: int in lane.size():
+				var la: Vector3 = lane[k]
+				var lb: Vector3 = lane[(k + 1) % lane.size()]
+				for p: Vector3 in faces:
+					if p.y > la.y + BAND.y or p.y < la.y - SUPPORT_WINDOW:
+						continue
+					var closest: Vector2 = Geometry2D.get_closest_point_to_segment(Vector2(p.x, p.z), Vector2(la.x, la.z), Vector2(lb.x, lb.z))
+					var d: float = closest.distance_to(Vector2(p.x, p.z))
+					if d < lane_min:
+						lane_min = d
+						lane_who = resident
+		_check(lane_min >= LANE_CLEAR, "MC6 %s keeps %.0f m from every resident lane in its walking band (%s from lane %d)" % [id, LANE_CLEAR, "none in the band" if lane_min == INF else "%.2f m" % lane_min, lane_who])
+		# MC7: nothing solid over the street — every hull within the plan of the block its foot stands on.
+		var block: AABB = _body_box(m.floor)
+		var block_rect := Rect2(Vector2(block.position.x, block.position.z), Vector2(block.size.x, block.size.z)).grow(0.01)
+		var outside: Array[String] = []
+		for hull: Dictionary in m.hulls:
+			var hb: AABB = hull.box
+			if not block_rect.encloses(Rect2(Vector2(hb.position.x, hb.position.z), Vector2(hb.size.x, hb.size.z))):
+				outside.append(String(hull.name))
+		_check(m.floor != null and outside.is_empty(), "MC7 %s: every hull stands within %s, nothing solid over the street (%s)" % [id, (m.floor as Node).name if m.floor is Node else "no floor", ", ".join(outside)], "mc7hull")
+		# MC10: the triangle ceiling.
+		var triangles: int = int(faces.size() / 3)
+		var ceiling: int = int(MACHINE_TRIANGLES.get(id, 0))
+		_check(triangles <= ceiling, "MC10 %s has %d visible triangles (≤ %d)" % [id, triangles, ceiling])
+		print("CITY_TIDY_INFO MC %s triangles=%d ceiling=%d surfaces=%d hulls=%s box=%s foot=%s level=%.3f faces=%d bare=%d" % [id, triangles, ceiling, surfaces, ",".join(names), box, foot, floor_high, examined, bare.size()])
+		print("CITY_TIDY_INFO MC %s court=%.2f lane=%s(%d) swing_margin=%s anchor=%d nearest_anchor=%.2f (%s) floor=%s" % [id, court, "inf" if lane_min == INF else "%.2f" % lane_min, lane_who, "inf" if worst == INF else "%.2f" % worst, worst_index, nearest, nearest_what, (m.floor as Node).name if m.floor is Node else "-"])
+
+
+## MC8: the camera on the floor round each machine — a hero 1.2 m off each open side of its foot, facing it.
+func _mc_camera() -> void:
+	var player: Node3D = world.player
+	var rig: Node3D = world.camera_rig
+	world.npc_director.process_mode = Node.PROCESS_MODE_DISABLED
+	for m: Dictionary in _machines():
+		if (m.meshes as Array).is_empty():
+			continue
+		var foot: Rect2 = m.foot
+		var centre := Vector3(foot.get_center().x, float(m.level), foot.get_center().y)
+		var stations: Array[Array] = []
+		for out: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD]:
+			var reach: float = absf(out.x) * foot.size.x * 0.5 + absf(out.z) * foot.size.y * 0.5 + STATION_GAP
+			var at: Vector3 = centre + out * reach
+			var hit: Dictionary = _floor_under(at + Vector3(0, 0.5, 0), 1.0)
+			if hit.is_empty() or absf(float(hit.position.y) - float(m.level)) > 0.05 or not _capsule_free(Vector3(at.x, float(hit.position.y), at.z)):
+				print("CITY_TIDY_INFO MC8 %s side %s: no hero stands there" % [m.id, _v(out)])
+				continue
+			stations.append([Vector3(at.x, float(hit.position.y), at.z), -out, "side " + _v(out)])
+		_check(not stations.is_empty(), "MC8 %s has an open side to stand at" % m.id)
+		for station: Array in stations:
+			var face: Vector3 = station[1]
+			player.restart_at(station[0])
+			player._set_forward(face)
+			rig.reset_view()
+			rig.aim.yaw_offset = atan2(-face.x, -face.z)
+			await _ticks(20)
+			var arm: float = rig.arm.get_hit_length()
+			_check(arm >= CAMERA_SPACE, "MC8 %s: the camera arm at %s (%s) keeps ≥ %.0f m (%.2f m)" % [m.id, _v(station[0]), station[2], CAMERA_SPACE, arm])
+			print("CITY_TIDY_INFO MC8 %s %s at %s arm=%.2f" % [m.id, station[2], _v(player.global_position), arm])
+	world.npc_director.process_mode = Node.PROCESS_MODE_INHERIT
+
+
+## Every machine's bodies on (their own layers back) or off (layer 0) and its meshes shown or hidden.
+func _set_machines(machines: Array[Dictionary], on: bool, layers: Dictionary) -> void:
+	for m: Dictionary in machines:
+		if m.node != null:
+			(m.node as Node3D).visible = on
+		for body: StaticBody3D in m.bodies:
+			if not is_instance_valid(body):
+				continue
+			if not on:
+				layers[body.get_instance_id()] = body.collision_layer
+				body.collision_layer = 0
+			else:
+				body.collision_layer = int(layers.get(body.get_instance_id(), body.collision_layer))
+
+
+## A hero at `at` facing `face` with the camera behind him: the arm, the lens and the hero's feet+0.3 / 1.0 / 1.7 m.
+func _street_view(at: Vector3, face: Vector3) -> Dictionary:
+	var player: Node3D = world.player
+	var rig: Node3D = world.camera_rig
+	player.restart_at(at)
+	player._set_forward(face)
+	rig.reset_view()
+	rig.aim.yaw_offset = atan2(-face.x, -face.z)
+	await _ticks(20)
+	var feet: Vector3 = player.global_position
+	return {"arm": rig.arm.get_hit_length(), "lens": (rig.camera as Camera3D).global_position, "camera": rig.camera,
+		"hero": [feet + Vector3(0, 0.3, 0), feet + Vector3(0, 1.0, 0), feet + Vector3(0, 1.7, 0)], "feet": feet}
+
+
+## MC7 (street): at S2, S3, S4 of the T6 form a hero facing north. The machines change nothing for the camera (the same
+## arm without them), no machine face crosses lens → hero, and at S3 the arm keeps 6.00 m. The machine points in the
+## frame, and of them those the lens sees (a ray from it, the machines' own hulls excluded), are printed for T6.
+func _mc_street_camera() -> void:
+	var machines: Array[Dictionary] = _machines()
+	var faces := PackedVector3Array()
+	for m: Dictionary in machines:
+		faces.append_array(_machine_faces(m))
+	world.npc_director.process_mode = Node.PROCESS_MODE_DISABLED
+	var layers: Dictionary = {}
+	for key: String in STREET_STATIONS:
+		var at: Vector3 = STREET_STATIONS[key]
+		var with: Dictionary = await _street_view(at, Vector3.FORWARD)
+		var camera: Camera3D = with.camera
+		var in_frame: int = 0
+		var seen: int = 0
+		var seen_low: float = INF
+		var seen_high: float = -INF
+		var own: Array[RID] = []
+		for m: Dictionary in machines:
+			own.append_array(m.rids)
+		for p: Vector3 in faces:
+			if not camera.is_position_in_frustum(p):
+				continue
+			in_frame += 1
+			var sight := PhysicsRayQueryParameters3D.create(with.lens, p.lerp(with.lens, 0.02 / maxf(0.02, p.distance_to(with.lens))), 1)
+			sight.exclude = own
+			if space.intersect_ray(sight).is_empty():
+				seen += 1
+				seen_low = minf(seen_low, p.y)
+				seen_high = maxf(seen_high, p.y)
+		var crossing: int = 0
+		for hero_point: Vector3 in with.hero:
+			for i: int in range(0, faces.size(), 3):
+				if Geometry3D.segment_intersects_triangle(with.lens, hero_point, faces[i], faces[i + 1], faces[i + 2]) != null:
+					crossing += 1
+		_set_machines(machines, false, layers)
+		var without: Dictionary = await _street_view(at, Vector3.FORWARD)
+		_set_machines(machines, true, layers)
+		await _ticks(2)
+		_check(absf(float(with.arm) - float(without.arm)) <= 0.001, "MC7 %s %s: the machines change nothing for the street camera (arm %.3f with them, %.3f without)" % [key, _v(at), with.arm, without.arm], "mc7arm")
+		_check(crossing == 0, "MC7 %s %s: no machine face stands between the lens and the hero (%d crossings)" % [key, _v(at), crossing], "mc7cross")
+		if key == "S3":
+			_check(float(with.arm) >= STREET_ARM - 0.005, "MC7 S3 %s: the arm keeps %.2f m (%.3f)" % [_v(at), STREET_ARM, with.arm], "mc7s3")
+		_check(seen == 0 or seen_low >= STREET_SEEN_FLOOR - 0.001, "MC7 %s %s: the lens sees no machine point under the terrace's level %.1f m (%s)" % [key, _v(at), STREET_SEEN_FLOOR, "none seen" if seen == 0 else "lowest seen %.2f m" % seen_low], "mc7seen")
+		print("CITY_TIDY_INFO MC7 %s hero=%s lens=%s arm=%.3f without=%.3f crossing=%d in_frame=%d seen=%d seen_y=%s" % [key, _v(with.feet), _v(with.lens), with.arm, without.arm, crossing, in_frame, seen, "-" if seen == 0 else "%.2f…%.2f" % [seen_low, seen_high]])
+	world.npc_director.process_mode = Node.PROCESS_MODE_INHERIT
+
+
+## How far from one side of `box` (its face toward `out`) nothing stops a hero: a solid (a 4 cm slab of the side's
+## length over the hero band) or the floor's edge (three rays down along the side); the machine's own hulls excluded.
+## SLOT_MIN when nothing does within it; 0 when the first slab already meets something.
+func _side_free(box: AABB, out: Vector3, level: float, rids: Array[RID]) -> float:
+	var along: Vector3 = Vector3(absf(out.z), 0, absf(out.x))
+	var length: float = (box.size * along).length()
+	var half_depth: float = (box.size * out.abs()).length() * 0.5
+	var centre := Vector3(box.get_center().x, level, box.get_center().z) + out * half_depth
+	var slab := BoxShape3D.new()
+	slab.size = along * length + out.abs() * SLOT_STEP + Vector3(0, BAND.y - BAND.x, 0)
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = slab
+	query.collision_mask = 1
+	query.exclude = rids
+	var d: float = SLOT_STEP * 0.5
+	while d < SLOT_MIN:
+		query.transform = Transform3D(Basis.IDENTITY, centre + out * d + Vector3(0, (BAND.x + BAND.y) * 0.5, 0))
+		if not space.intersect_shape(query, 1).is_empty():
+			return maxf(0.0, d - SLOT_STEP * 0.5)
+		for f: float in [-0.45, 0.0, 0.45]:
+			var probe: Vector3 = centre + out * d + along * (length * f)
+			var ray := PhysicsRayQueryParameters3D.create(probe + Vector3(0, 0.5, 0), probe - Vector3(0, 0.5, 0), 1)
+			ray.exclude = rids
+			var hit: Dictionary = space.intersect_ray(ray)
+			if hit.is_empty() or absf(float(hit.position.y) - level) > 0.05:
+				return d
+		d += SLOT_STEP
+	return SLOT_MIN
+
+
+## MC9: every foot hull of a machine leaves 0 or ≥ 1.2 m on each side to a solid or to the floor's edge (the crane's
+## column on its plinth has the plinth round it: a step, not a slot).
+func _mc_slots() -> void:
+	for m: Dictionary in _machines():
+		var level: float = m.level
+		var slots: int = 0
+		for hull: Dictionary in m.hulls:
+			var hb: AABB = hull.box
+			if hb.position.y > level + MACHINE_FOOT:
+				continue
+			for out: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD]:
+				var free: float = _side_free(hb, out, level, m.rids)
+				var ok: bool = free <= SUPPORT_GAP or free >= SLOT_MIN
+				if not ok:
+					slots += 1
+				_check(ok, "MC9 %s/%s side %s leaves a %.2f m slot (0 or ≥ %.1f m)" % [m.id, hull.name, _v(out), free, SLOT_MIN])
+				print("CITY_TIDY_INFO MC9 %s/%s side %s free=%s" % [m.id, hull.name, _v(out), ("≥ %.2f" % SLOT_MIN) if free >= SLOT_MIN else "%.2f" % free])
+		_check(slots == 0, "MC9 %s leaves no slot a hero wedges in (%d)" % [m.id, slots])
+
+
+## V-MC (К7): both heroes run at each open side of the winch with W and Space: no vault, never left inside it.
+func _machine_runs(hero: String) -> void:
+	world.npc_director.process_mode = Node.PROCESS_MODE_DISABLED
+	for m: Dictionary in _machines():
+		if not (String(m.id) in MACHINE_RUNS) or (m.meshes as Array).is_empty():
+			continue
+		var foot: Rect2 = m.foot
+		var box: AABB = m.box
+		var level: float = m.level
+		var centre := Vector3(foot.get_center().x, level, foot.get_center().y)
+		var runs: int = 0
+		for out: Vector3 in [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD]:
+			world.player.restart_at(CityLayout.spawn_position())
+			await _ticks(2)
+			var depth: float = absf(out.x) * foot.size.x + absf(out.z) * foot.size.y
+			var start: Vector3 = centre + out * (depth * 0.5 + 5.0)
+			var clear: bool = true
+			var s: float = 0.0
+			while s <= 4.3:
+				var at: Vector3 = start - out * s
+				var hit: Dictionary = _floor_under(at + Vector3(0, 0.5, 0), 1.0)
+				clear = clear and not hit.is_empty() and absf(float(hit.position.y) - level) < 0.05 and _capsule_free(Vector3(at.x, float(hit.position.y), at.z))
+				s += 0.5
+			if not clear:
+				continue
+			runs += 1
+			var result: Dictionary = await _vehicle_run(start, -out, centre, depth)
+			var end: Vector3 = result.end
+			var inside: bool = absf(end.x - centre.x) < foot.size.x * 0.5 - 0.05 and absf(end.z - centre.z) < foot.size.y * 0.5 - 0.05 and end.y < box.end.y - 0.3
+			_check(int(result.vault) == 0, "V-MC %s: no vault over %s from %s (%d vault ticks)" % [hero, m.id, _v(start), result.vault])
+			_check(not inside, "V-MC %s is not left inside %s after the run from %s (end %s)" % [hero, m.id, _v(start), _v(end)])
+			var under: Dictionary = _floor_under(end + Vector3(0, 0.3, 0), 1.0)
+			var stood: String = "nothing" if under.is_empty() else String((under.collider as Node).name)
+			print("CITY_TIDY_INFO V-MC %s %s from %s: phases=%s end=%s on=%s" % [hero, m.id, _v(start), ",".join(result.phases), _v(end), stood])
+		_check(runs >= 1, "V-MC %s: %s has a free run-up from at least one side (%d)" % [hero, m.id, runs])
+	world.npc_director.process_mode = Node.PROCESS_MODE_INHERIT
+
+
 # --- mutations ---------------------------------------------------------------------------------------------------
 ## Breaks applied to the live scene, before anything is measured.
 func _break_scene() -> void:
 	match mutation:
+		"step_new", "step_low":
+			# V+: a crate nobody listed — 1.0 m, or the band's bottom 0.6 m — on the open street east of the spawn.
+			var crate := StaticBody3D.new()
+			crate.name = "Crate"   # no skipped prefix: the check must judge it as any prop
+			crate.collision_layer = 1 | 8
+			crate.collision_mask = 0
+			var shape := CollisionShape3D.new()
+			var box := BoxShape3D.new()
+			var height: float = 1.0 if mutation == "step_new" else STEP_HEIGHT.x
+			box.size = Vector3(0.8, height, 0.6)
+			shape.shape = box
+			crate.add_child(shape)
+			props_node.add_child(crate)
+			crate.global_position = Vector3(3.0, height * 0.5, 13.5)
+		"wedge_wall", "wedge_deep":
+			# V+ wedge: a wall 2.2 m high — 0.55 m off the street urn (−11.45, 8.25)'s north side (its face z 8.475), or
+			# 0.66 m off the tailor's cutting table's free west side (its face x −18.45), just under the capsule's width.
+			var wall := StaticBody3D.new()
+			wall.name = "NegativeWall"
+			wall.collision_layer = 1 | 8
+			wall.collision_mask = 0
+			var wall_shape := CollisionShape3D.new()
+			var wall_box := BoxShape3D.new()
+			wall_box.size = Vector3(1.2, 2.2, 0.2) if mutation == "wedge_wall" else Vector3(0.2, 2.2, 1.8)
+			wall_shape.shape = wall_box
+			wall.add_child(wall_shape)
+			props_node.add_child(wall)
+			wall.global_position = Vector3(-11.45, 1.1, 8.475 + 0.55 + 0.1) if mutation == "wedge_wall" else Vector3(-18.45 - 0.66 - 0.1, 1.1, 14.95)
+		"wedge_deeper":
+			# V+ wedge OPEN: the grocer's side stock shelf 0.018 m further from its counter (gap 0.544 → 0.562, in the slack).
+			(district.get_node("CityInteriors/StockShelf") as Node3D).global_position.x -= 0.018
+		"wedge_more":
+			# V+ wedge OPEN (T4 audit 2026-10-15, class 17, its mutant): a wall 0.55 m off the grocer counter's west end,
+			# along the whole side and 0.2 m past it — the shelf's narrowest gap 0.544 stays within its slack.
+			for c: Dictionary in _step_candidates():
+				if c.key == "CityInteriors@(-26.80, 0.96, 17.60)":
+					var top_shape: CollisionShape3D = _top_shape(c.body)
+					var tb: AABB = top_shape.global_transform * top_shape.shape.get_debug_mesh().get_aabb()
+					var more := StaticBody3D.new()
+					more.name = "NegativeWall"
+					more.collision_layer = 1 | 8
+					more.collision_mask = 0
+					var more_shape := CollisionShape3D.new()
+					var more_box := BoxShape3D.new()
+					more_box.size = Vector3(0.2, 2.2, tb.size.z + 0.4)
+					more_shape.shape = more_box
+					more.add_child(more_shape)
+					props_node.add_child(more)
+					more.global_position = Vector3(tb.position.x - 0.55 - 0.1, tb.end.y - float(c.height) + 1.1, tb.get_center().z)
+		"wedge_round":
+			# V+ wedge: the grocer's west display crate keeps its place, depth and top but has a round top (r 0.425): the
+			# shop wall, 0.32 m off its flat edge, is now 0.52 m off the rim.
+			for c: Dictionary in _step_candidates():
+				if c.key == "CityInteriors@(-28.85, 0.80, 12.62)":
+					var crate_shape := _top_shape(c.body)
+					var round := CylinderShape3D.new()
+					round.radius = 0.425
+					round.height = (crate_shape.shape as BoxShape3D).size.y
+					crate_shape.shape = round
+		"wedge_open":
+			# V+ wedge: the grocer's side shelf without its collider, so the pinned OPEN at its counter is gone.
+			for node: Node in district.get_node("CityInteriors/StockShelf").get_children():
+				if node is CollisionShape3D:
+					(node as CollisionShape3D).disabled = true
+		"step_moved":
+			# V+: a listed step moved 0.3 m, so the list names a place where it no longer stands.
+			for c: Dictionary in _step_candidates():
+				if STEP_PROPS.has(c.key):
+					(c.body as Node3D).global_position.x += 0.3
+					break
 		"pane_strut":
 			# D1 returned: anchor 22's strut from 0.75 m under its arm, as before the fix.
 			var spec: Dictionary = CityLayout.anchor_supports()[22]
@@ -1742,6 +2843,129 @@ func _break_scene() -> void:
 			var cargo: CollisionShape3D = truck.get_node("TruckBody").get_child(0)
 			cargo.shape = flat
 			cargo.position = Vector3(0, 1.375, 0.785)
+		"machine_layer":
+			for body: Node in props_node.find_children("*", "StaticBody3D", true, false):
+				if String(body.get_parent().name).begins_with("Machine_"):
+					(body as StaticBody3D).collision_layer = 8
+		"machine_material":
+			(props_node.get_node("Machine_steam_winch/SteamWinch") as MeshInstance3D).set_surface_override_material(0, null)
+		"machine_brass":
+			# A crane surface that names brass and shows it: the GLB's own `iron` renamed and painted city brass.
+			var crane_mesh: MeshInstance3D = props_node.get_node("Machine_steam_crane/SteamCrane")
+			for surface: int in crane_mesh.mesh.get_surface_count():
+				var source: Material = crane_mesh.mesh.surface_get_material(surface)
+				if source != null and source.resource_name == "iron":
+					source.resource_name = "brass"
+					crane_mesh.set_surface_override_material(surface, CityMaterials.palette()["brass"])
+		"machine_float":
+			(props_node.get_node("Machine_steam_winch") as Node3D).position.y += 0.05
+		"machine_sink":
+			(props_node.get_node("Machine_steam_crane") as Node3D).position.y -= 0.05
+		"machine_nocollider":
+			props_node.get_node("Machine_steam_winch/WinchBody").free()
+		"machine_shift":
+			(props_node.get_node("Machine_steam_crane/SteamCrane") as Node3D).position.x += 0.3
+		"machine_column":
+			# Under anchor 24 (24, 9.3, −24.6): its rope falls on the winch.
+			(props_node.get_node("Machine_steam_winch") as Node3D).position = Vector3(24.0, 4.0, -23.6)
+		"machine_anchor":
+			# Every hull ≥ 1.1 m from anchor 12's vertical (out of its 0.75 m column), but the free swing on anchor 12
+			# meets the column and the plinth comes within 2 m of the anchor's mount.
+			(props_node.get_node("Machine_steam_crane") as Node3D).position = Vector3(27.0, 4.0, -11.5)
+		"machine_pocket":
+			(props_node.get_node("Machine_steam_winch") as Node3D).position = Vector3(21.0, 4.0, -19.0)
+		"machine_lane":
+			(props_node.get_node("Machine_steam_winch") as Node3D).position = Vector3(25.6, 0, 4.0)
+		"machine_street_hull":
+			# A hull under the boom, 1 m past the terrace's edge: a solid over the street.
+			var hull := StaticBody3D.new()
+			hull.name = "BoomHull"
+			hull.collision_layer = 1 | 8
+			hull.collision_mask = 0
+			var hull_shape := CollisionShape3D.new()
+			var hull_box := BoxShape3D.new()
+			hull_box.size = Vector3(0.6, 0.6, 2.0)
+			hull_shape.shape = hull_box
+			hull.add_child(hull_shape)
+			props_node.get_node("Machine_steam_crane").add_child(hull)
+			hull.global_position = Vector3(28.0, 11.0, -9.0)
+		"machine_cross":
+			# On the street between the S3 hero (28, 0, −6) and the lens behind him: its column takes the arm.
+			(props_node.get_node("Machine_steam_crane") as Node3D).position = Vector3(28.0, 0.0, -2.5)
+		"machine_occlude":
+			# Sunk under the street so that its hook block (decor, no hull: the arm never sees it) hangs at (28, 2.2–2.55,
+			# −3.0), across the line from the S3 lens to the hero's head.
+			(props_node.get_node("Machine_steam_crane") as Node3D).position = Vector3(28.0, -4.9, -9.26)
+		"machine_gap":
+			# 1.7 m from the house's facade (z −25.78): a station north of the winch has the facade behind the hero.
+			(props_node.get_node("Machine_steam_winch") as Node3D).position = Vector3(27.6, 4.0, -22.64)
+		"machine_slot":
+			# 0.5 m from the terrace's east edge (x 30).
+			(props_node.get_node("Machine_steam_winch") as Node3D).position = Vector3(28.67, 4.0, -18.6)
+		"machine_budget":
+			# Every surface of the winch's mesh twice, each with its own city material: the mesh over its ceiling.
+			var winch_mesh: MeshInstance3D = props_node.get_node("Machine_steam_winch/SteamWinch")
+			var doubled := ArrayMesh.new()
+			var overrides: Array[Material] = []
+			for repeat: int in 2:
+				for surface: int in winch_mesh.mesh.get_surface_count():
+					doubled.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, winch_mesh.mesh.surface_get_arrays(surface))
+					doubled.surface_set_material(doubled.get_surface_count() - 1, winch_mesh.mesh.surface_get_material(surface))
+					overrides.append(winch_mesh.get_surface_override_material(surface))
+			winch_mesh.mesh = doubled
+			for surface: int in overrides.size():
+				winch_mesh.set_surface_override_material(surface, overrides[surface])
+		"machine_step":
+			(props_node.get_node("Machine_steam_winch") as Node3D).position.x += 0.3
+		"machine_seen_hook", "machine_seen_low":
+			# Decor of the crane where it stands: a 0.3 × 0.8 × 0.3 m block (one more surface of its own mesh, its own
+			# city material) hangs at (29.3, 2.6–3.4, −8.8), past the terrace's edge (z −10) over the street; at the
+			# threshold (machine_seen_low) the same block hangs at 3.9–4.7, its bottom 0.1 m under the terrace's level.
+			var hook_y: float = 3.0 if mutation == "machine_seen_hook" else 3.9 + 0.4
+			var hook_mesh: MeshInstance3D = props_node.get_node("Machine_steam_crane/SteamCrane")
+			var hung := ArrayMesh.new()
+			var keep: Array[Material] = []
+			for surface: int in hook_mesh.mesh.get_surface_count():
+				hung.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, hook_mesh.mesh.surface_get_arrays(surface))
+				hung.surface_set_material(surface, hook_mesh.mesh.surface_get_material(surface))
+				keep.append(hook_mesh.get_surface_override_material(surface))
+			var block := BoxMesh.new()
+			block.size = Vector3(0.3, 0.8, 0.3)
+			var arrays: Array = block.get_mesh_arrays()
+			var to_local: Transform3D = hook_mesh.global_transform.affine_inverse() * Transform3D(Basis.IDENTITY, Vector3(29.3, hook_y, -8.8))
+			var points: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+			for i: int in points.size():
+				points[i] = to_local * points[i]
+				normals[i] = (to_local.basis * normals[i]).normalized()
+			arrays[Mesh.ARRAY_VERTEX] = points
+			arrays[Mesh.ARRAY_NORMAL] = normals
+			arrays[Mesh.ARRAY_TANGENT] = null
+			hung.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+			hung.surface_set_material(hung.get_surface_count() - 1, hook_mesh.mesh.surface_get_material(0))
+			keep.append(hook_mesh.get_surface_override_material(0))
+			hook_mesh.mesh = hung
+			for surface: int in keep.size():
+				hook_mesh.set_surface_override_material(surface, keep[surface])
+		"machine_seen_street":
+			# The crane stands on the street at (24.5, 0, −4), north of the S4 hero and west of the S3 line: on a level
+			# floor, out of every anchor's column and swing, lane and pocket, its sides and slots free, nothing between a
+			# lens and a hero — every other guard holds; only the street lens sees it under the terrace's level.
+			(props_node.get_node("Machine_steam_crane") as Node3D).position = Vector3(24.5, 0.0, -4.0)
+		"machine_seen_float":
+			# The winch hangs in front of the terrace's wall, its bottom 2.2 m over the street, nothing under it.
+			(props_node.get_node("Machine_steam_winch") as Node3D).position = Vector3(29.0, 2.2, -9.0)
+		"machine_vault":
+			# A winch the motor would vault: its body hull a flat box of the same bounds and the profile allowing 1.2 m
+			# deep vaults (the shipped one is 1.07 m deep across the rope's side and 1.58 m along its drum).
+			world.player.parkour.profile = (world.player.parkour.profile as Resource).duplicate()
+			world.player.parkour.profile.set("vault_max_depth", 1.2)
+			var winch_body: CollisionShape3D = props_node.get_node("Machine_steam_winch/WinchBody").get_child(0)
+			var bounds: AABB = winch_body.shape.get_debug_mesh().get_aabb()
+			var flat_body := BoxShape3D.new()
+			flat_body.size = bounds.size
+			winch_body.shape = flat_body
+			winch_body.position += bounds.get_center()
 		"vault_high", "vault_deep":
 			var body: StaticBody3D = props_node.get_node("VaultObstacle_crates_east")
 			var shape := ((body.get_child(0) as CollisionShape3D).shape as BoxShape3D).duplicate() as BoxShape3D
@@ -1771,9 +2995,10 @@ func _break_parts() -> void:
 		"sink_crate":
 			_move(_select("CityMarket", "crate@"), Vector3(0, -0.03, 0))
 		"zfight_fascia":
-			# D12 returned: the fascia 0.30 m high again, its front over the awning's.
+			# D12 returned: the fascia 0.30 m high again, its front over the awning's. The tailor's: the grocer's awning is
+			# rolled since plan 2026-10-14 step 2 and its valance hangs from the roll, not over an awning front.
 			for p: Dictionary in parts:
-				if p.module == "CityInteriors" and p.ctx == "shop:grocer" and p.mat == "cloth_cream" and absf(float(p.half.y) - 0.13) < 0.001:
+				if p.module == "CityInteriors" and p.ctx == "shop:tailor" and p.mat == "cloth_cream" and absf(float(p.half.y) - 0.13) < 0.001:
 					p.local = AABB(Vector3(-3.25, -0.15, -0.055), Vector3(6.5, 0.3, 0.11))
 					var xf: Transform3D = p.xf
 					xf.origin.y = 3.65
@@ -1816,7 +3041,7 @@ func _break_parts() -> void:
 
 func _run() -> void:
 	await process_frame
-	if mutation != "none" and not (mutation in GEOMETRY_BREAKS or mutation in PLACE_BREAKS or mutation in VAULT_BREAKS or mutation in STEAM_BREAKS or mutation in VEHICLE_BREAKS or mutation in VEHICLE_RUN_BREAKS):
+	if mutation != "none" and not (mutation in GEOMETRY_BREAKS or mutation in PLACE_BREAKS or mutation in VAULT_BREAKS or mutation in STEAM_BREAKS or mutation in VEHICLE_BREAKS or mutation in VEHICLE_RUN_BREAKS or mutation in STEP_BREAKS or mutation in MACHINE_BREAKS or mutation in MACHINE_RUN_BREAKS or mutation in KIND_BREAKS):
 		push_error("CITY_TIDY: unknown --break=" + mutation)
 		quit(2)
 		return
@@ -1827,6 +3052,8 @@ func _run() -> void:
 	await _open_world("choko")
 	_break_scene()
 	await _ticks(2)
+	if _phase("kind"):
+		_m0_kinds()
 	if _phase("geometry") or _phase("places"):
 		_record_builders()
 		_live_parts()
@@ -1846,17 +3073,25 @@ func _run() -> void:
 		await _k_places()
 		_m_vehicles()
 		await _m_camera()
+		_mc_machines()
+		await _mc_camera()
+		await _mc_street_camera()
+		_mc_slots()
+		_v_steps()
+		_v_wedges()
 	if _phase("steam"):
 		await _steam()
 	if _phase("vault"):
 		await _vaults("choko")
 		await _vehicle_runs("choko")
+		await _machine_runs("choko")
 		await _close_world()
 		await _open_world("skea")
 		_break_scene()
 		await _ticks(2)
 		await _vaults("skea")
 		await _vehicle_runs("skea")
+		await _machine_runs("skea")
 	await _close_world()
 	for singleton: String in ["Sfx", "UltMusic", "Music"]:
 		if root.has_node(singleton):
@@ -1865,5 +3100,8 @@ func _run() -> void:
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
 		OS.delay_msec(1)
-	print("CITY_TIDY_COMPLETE checks=%d failures=%d mutation=%s" % [checks, failures, mutation])
+	var families: Array = red.keys()
+	families.sort()
+	print("CITY_TIDY_COMPLETE checks=%d failures=%d mutation=%s red=%s" % [checks, failures, mutation,
+		",".join(PackedStringArray(families)) if not families.is_empty() else "none"])
 	quit(1 if failures else 0)

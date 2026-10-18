@@ -20,7 +20,7 @@
 | P1 / P2 | послідовний вибір Choko або Skea |
 | STAGE / TIME | арена та DAY/NIGHT для бою |
 | KEYBOARD / MODE | SOLO/SHARED та 3D/2.5D |
-| COMFORT & CONTROLS | якість графіки, гучність, тряска камери, повна довідка вводу |
+| COMFORT & CONTROLS | якість графіки, тимчасовий тест кольорів COLOURS (TEST), гучність, тряска камери, повна довідка вводу |
 | QUIT | вихід |
 
 Коротка нижня підказка показує поточний контекст і веде до довідки; при фокусі
@@ -90,8 +90,8 @@ MAIN MENU. Повернення з налаштувань лишає паузу 
 stay sharp.` (`ComfortPanel.gd:73`). Панель відкривається з головного меню
 (`MainMenu.gd:144–146`), з паузи FIGHT/VERSUS/TRAINING (`Hud.gd:183`) і з паузи
 міста (`CityHud.gd:185–210`). Фокус при
-відкритті стоїть на MASTER (`ComfortPanel.gd:166`); список якості — попередній
-елемент кільця фокуса, тобто ↑ від MASTER (`ComfortPanel.gd:68,136–141`).
+відкритті стоїть на MASTER (`ComfortPanel.gd:166`). Список якості — ↑↑ від MASTER: з 2026-10-15
+між ними стоїть COLOURS (TEST) (§ нижче; до того був ↑ від MASTER).
 
 | Профіль | 3D render scale | MSAA 3D | Джерело |
 |---|---|---|---|
@@ -114,6 +114,45 @@ GraphicsSettings — autoload (`project.godot:29`). Масштабується �
 GPU-прискоренням і не обіцяють певного FPS на якомусь пристрої. Фільтрацію дрібних
 візерунків у shader описано окремо: [[2026-10-05-Graphics-Quality-And-Surface-Filtering]].
 Приймання на M3 — [[2026-10-07-M3-Acceptance-Checklist]].
+
+### COLOURS (TEST) — тимчасовий тест кольорів, звірено з кодом 2026-10-15
+
+Рядок додано на кроці 8 плану [[2026-10-14-T6-Acceptance-Crane-Albedo-AB]]. Рішення Santos: «б — перемикач у
+налаштуваннях, порівняю на M3». Журнал — [[2026-10-15-Colour-Switch-Fix]], приймання T8 —
+[[2026-10-15-T8-Colour-Switch-Row-Acceptance]]. Рядок тимчасовий: після вибору Santos рядок, uniform і гілки шейдерів
+прибираються (журнал, «Що лишилось відкритим» п. 8). Описано те, що є в коді на `b9d2480`, після правки T2-З
+[[2026-10-15-Comfort-Colour-Row-Fold-Fix]].
+
+- **Місце:** одразу під списком GRAPHICS QUALITY і його підписом (`ComfortPanel.gd:106–113`). Одразу за рядком іде
+  рядок MASTER (`:114–117`). Рядок є і на десктопі, і на телефоні: він стоїть поза умовою DISPLAY (`:82`).
+- **Заголовок** (32 px): `COLOURS (TEST)` (`:30`, мітка `:106`).
+- **Список:** OptionButton, вузол `ColourTest`, змінна `colour_choice` (`:29`, `:107`), 32 px (`_choice`, `:323–331`).
+  Порядок — як у `GraphicsSettings.COLOURS` (`GraphicsSettings.gd:21`): `A — the game as it is` (типовий) і
+  `B3 — palette-true light` (`ComfortPanel.gd:31`).
+- **Підпису під рядком немає** (з `b9d2480`). Він зсував MASTER нижче видимої частини скролу (приймання T8 п. 3). Те, що
+  казав підпис, тепер каже пункт A. Причина записана в коментарі `ComfortPanel.gd:25–28`.
+- **Застосування й збереження.** Вибір одразу ставить глобальний uniform `colour_b3` (`ComfortPanel.gd:110–113` →
+  `GraphicsSettings.gd:176–186`, `[shader_globals]` у `project.godot`). Значення пишеться в `user://graphics.cfg`,
+  секція `graphics`, ключ `colours` = `"a"` | `"b3"` (`GraphicsSettings.gd:389–391`).
+  - Немає ключа → A.
+  - Невідоме значення → A і `ERR_INVALID_DATA`, файл не перезаписується (`:366–371`).
+  - Невдалий запис показує наявний статус панелі `Could not save preferences…` (`ComfortPanel.gd:260–262`).
+  - RESTORE SOUND & SHAKE DEFAULTS рядок не скидає.
+- **Видимість зміни.** Панель затемнює світ на α 0,94 (`ComfortPanel.gd:58`), тож різницю A / B3 видно після закриття
+  панелі.
+- **Фокус.** Рядок — зупинка кільця між GRAPHICS QUALITY і MASTER (`ComfortPanel.gd:109`). Повне кільце — § «Випадки
+  міста: COMFORT і HUD» п. 1.
+  - При відкритті скрол стоїть на 0, фокус на MASTER (`ComfortPanel.gd:221–222`, `:226`). Від MASTER ↑ — COLOURS (TEST),
+    ↑↑ — GRAPHICS QUALITY, ↑↑↑ — DISPLAY.
+  - Геймпад іде тим самим кільцем через D-pad. A відкриває список, B закриває лише список.
+- **Розміри** (виміряно T8, Godot 4.7, полотно 1600×900): рядок 884 × 53 логічних px, найдовший пункт — 349 px тексту
+  (мінімум кнопки 381), заголовок — 250.
+- **MASTER видно при відкритті.** Гард — `tools/ui/comfort_ui_check.gd:37–80`. Панель відкривається заново на трьох
+  полотнах: 1600×900, 1600×1200 і 1948×900. Гард вимагає, щоб фокус був на MASTER, повзунок і заголовок MASTER лежали
+  у видимій частині скролу, а скрол стояв на 0. П'ять негативів — `tools/gates/playable_check.sh:160–168`. На 1600×900
+  запас під повзунком — 24 логічних px. Коли запис налаштувань не вдався, статус займає 2 рядки (93 px). Видима частина
+  меншає на 48 px, і повзунок MASTER знову не видно. Відкрите — [[2026-10-15-T8-Colour-Switch-Row-Acceptance]]
+  § «Після правки T2-З».
 
 ### DISPLAY, AUTO-якість і клавіша повного екрана — GAP-специфікація 2026-10-07
 
@@ -143,7 +182,8 @@ GPU-прискоренням і не обіцяють певного FPS на я
   `Ctrl+Cmd+F in menus and pause · or the green window button`.
 - **Фокус:** кільце стає `DISPLAY → GRAPHICS QUALITY → MASTER → … → BACK → DISPLAY`.
   Крок MASTER ↔ GRAPHICS не змінюється (`ComfortPanel.gd:98`). Фокус при відкритті
-  лишається на MASTER, а скрол 0 показує DISPLAY угорі.
+  лишається на MASTER, а скрол 0 показує DISPLAY угорі. (З 2026-10-15 між GRAPHICS QUALITY і MASTER стоїть
+  COLOURS (TEST) — § COLOURS (TEST); чинне кільце — § «Випадки міста: COMFORT і HUD» п. 1.)
 - **Застосування:** одразу після вибору, без перезапуску. Таймера «Keep changes?» немає,
   бо жоден із режимів не міняє відеорежим монітора (`DisplayServer.xml:3271,3278`).
   Панель лишається відкритою з фокусом на DISPLAY, `_layout` перецентровує її після
@@ -334,9 +374,9 @@ PLACEHOLDER-числа для T2/T3. Гравцеві це не обіцянка
   COMFORT & CONTROLS у першому ряду поруч із RESUME (`CityHud.gd:185–210`, `LethalHud.gd:5`).
   Нових кнопок у паузах немає. Закриття повертає ту саму паузу з фокусом на кнопці
   відкриття (`ComfortPanel.gd:178–179`).
-- **Клавіатура:** Esc → COMFORT → Enter → ↑↑ від MASTER → DISPLAY → Enter відкриває список
-  → ↑/↓ → Enter застосовує → Esc / BACK.
-- **Геймпад:** Start → D-pad → A → ↑↑ → A → ↑/↓ → A. B спершу закриває список, потім
+- **Клавіатура:** Esc → COMFORT → Enter → ↑↑↑ від MASTER (з 2026-10-15, через COLOURS (TEST); до того ↑↑) → DISPLAY →
+  Enter відкриває список → ↑/↓ → Enter застосовує → Esc / BACK.
+- **Геймпад:** Start → D-pad → A → ↑↑↑ → A → ↑/↓ → A. B спершу закриває список, потім
   панель: поки список відкритий, Esc/B панель не закриває (`ComfortPanel.gd:201–207`).
 - **Миша / трекпад:** клік по рядку.
 - **Гаряча клавіша в паузі:** Alt+Enter і Ctrl+Cmd+F діють, бо пауза є UI-власником.
@@ -1244,10 +1284,14 @@ PLACEHOLDER до T7. Чисел T5 у GDD ще немає: `grep -rln -i "гол
 - **Стор.** У скриншотах стору панель не показуємо на цьому рядку, так само як листки ([[ADR-025-Street-Scuffle-And-City-Events]]
   п. 5). Чи це справді потрібно — питання T3.
 
-**Новий порядок фокусу** (десктоп; ці літерали переносяться у фікстури):
+**Новий порядок фокусу** (десктоп; ці літерали переносяться у фікстури). **Оновлено 2026-10-15 (T8):** між GRAPHICS
+QUALITY і MASTER додано COLOURS (TEST) — крок 8 [[2026-10-14-T6-Acceptance-Crane-Albedo-AB]], приймання
+[[2026-10-15-T8-Colour-Switch-Row-Acceptance]] п. 7. Так кільце стоїть у коді на `407595d` (`_focus_order`,
+`ComfortPanel.gd:86–189`) і у фікстурах: `blood_content_check.gd` `_ring()`, `graphics_ui_check.gd`, `display_auto_check.gd`,
+`colour_switch_check.gd`.
 
 ```
-DISPLAY → GRAPHICS QUALITY → MASTER → SOUND EFFECTS → MUSIC → CAMERA SHAKE → HIT FLASH → BLOOD → DRUGS
+DISPLAY → GRAPHICS QUALITY → COLOURS (TEST) → MASTER → SOUND EFFECTS → MUSIC → CAMERA SHAKE → HIT FLASH → BLOOD → DRUGS
 → RESTORE SOUND & SHAKE DEFAULTS → CONTROLS (довідка) → BACK → DISPLAY
 ```
 
@@ -1789,4 +1833,5 @@ WATER і обома слотами станів; прилавок з іконк�
 - [[04-Grapple-System]] · [[2026-10-05-Rope-Assistance]] · [[2026-10-05-Rope-Contact-Range]] · [[2026-10-05-Responsive-Rope]] · [[ADR-004-Physics-Is-Presentation]] · [[Textures-Registry]]
 - [[2026-10-08-Survival-Hunger]] · [[ADR-025-Street-Scuffle-And-City-Events]] · [[2026-10-08-City-Events-Stage-1]] · [[2026-10-07-Tricks-Moves-And-Street-Encounters]] · [[PROPOSAL-Quests-And-City-Events]] · [[2026-10-02-Grapple-Input-UI]] · [[2026-10-07-Blood-Visual-Language]]
 - [[2026-10-08-City-Events-Stage-1-Fix]] · [[2026-10-07-Drug-And-Street-Crime-Rating]]
+- [[2026-10-14-T6-Acceptance-Crane-Albedo-AB]] · [[2026-10-15-Colour-Switch-Fix]] · [[2026-10-15-T8-Colour-Switch-Row-Acceptance]]
 - [[2026-10-08-Thirst-Substances-Icons]] · [[ADR-026-Substances-Nutrition-And-Thirst]] · [[2026-10-08-Thirst-Numbers]] · [[2026-10-08-Substances-And-Nutrition]] · [[2026-10-08-Substances-And-Food-Items]] · [[2026-10-08-Alcohol-Tobacco-Rating]] · [[2026-10-08-Survival-Hunger-Fix]]

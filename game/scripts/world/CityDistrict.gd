@@ -48,6 +48,8 @@ func _ready() -> void:
 	add_child(water_pump)
 	water_pump.build(materials)
 	_markers()
+	# The invisible edge over the boundary walls, after everything the district draws.
+	_boundary_veils()
 
 func _parkour_steps() -> void:
 	# PLACEHOLDER solid service terraces: broad landings with visible stone/brass lips.
@@ -88,6 +90,22 @@ func _box(id: String, center: Vector3, size: Vector3, material_key: String, laye
 		collision.shape = shape
 		body.add_child(collision)
 	return holder
+
+## The invisible edge over the four boundary walls (CityLayout.boundary_veils): a collider without a mesh on the hero's
+## own layer, mask 0. It is not counted in geometry_count, which counts what is drawn.
+func _boundary_veils() -> void:
+	for spec: Dictionary in Layout.boundary_veils():
+		var body := StaticBody3D.new()
+		body.name = spec.id
+		body.position = spec.center
+		body.collision_layer = Layout.BOUNDARY_VEIL_LAYER
+		body.collision_mask = 0
+		var shape := BoxShape3D.new()
+		shape.size = spec.size
+		var collision := CollisionShape3D.new()
+		collision.shape = shape
+		body.add_child(collision)
+		add_child(body)
 
 func _ramp(spec: Dictionary) -> void:
 	var x: float = spec.x

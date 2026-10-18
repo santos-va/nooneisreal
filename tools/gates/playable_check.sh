@@ -58,6 +58,10 @@ cases = [
     ('graphics-ui', 'tools/ui/graphics_ui_check.gd', r'GRAPHICS_UI_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('graphics-independent', 'tools/settings/graphics_independent_check.gd', r'T4_GRAPHICS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
     ('display-auto', 'tools/settings/display_auto_check.gd', r'DISPLAY_AUTO_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
+    # Colour test switch A / B3 (plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB step 8): A by default, saved next to the
+    # profile, unknown or damaged → A with the bytes kept, the COLOURS (TEST) row. Headless renders nothing: the run must
+    # say the frame check of the five shaders was not measured (docs/Fix/2026-10-15-Colour-Switch-Fix.md).
+    ('colour-switch', 'tools/settings/colour_switch_check.gd', r'COLOUR_SWITCH_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none red=none rs=not-measured-headless', [], 0),
     ('comfort-input', 'tools/input/comfort_input_check.gd', r'COMFORT_INPUT_CHECK checks=[1-9][0-9]* failures=0', [], 0),
     ('free-movement', 'tools/input/free_movement_check.gd', r'FREE_MOVEMENT_COMPLETE checks=[1-9][0-9]* failures=0 mutation=', [], 0),
     ('limb-input', 'tools/input/limb_input_check.gd', r'LIMB_INPUT_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
@@ -124,7 +128,7 @@ cases = [
     ('city-geometry', 'tools/world/city_geometry_check.gd', r'CITY_GEOMETRY_COMPLETE checks=[1-9][0-9]* failures=0 meshes=[1-9][0-9]*', [], 0),
     # City tidy-up and the first props (plan 2026-10-09-City-Tidy-And-Modern-Props, phase 0): panes, support, z-fight,
     # duplicates, solidity, the T6 places, real-key vaults of both heroes and the steam puffs.
-    ('city-tidy', 'tools/world/city_tidy_check.gd', r'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-tidy', 'tools/world/city_tidy_check.gd', r'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none red=none', [], 0),
     ('city-runtime', 'tools/world/city_runtime_check.gd', r'CITY_RUNTIME_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-onboarding', 'tools/world/city_onboarding_check.gd', r'CITY_ONBOARDING_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     # City events, stage 1 (plan 2026-10-08-City-Events-Stage-1, steps 1–5): the director, the alley, the leaves and
@@ -141,6 +145,7 @@ cases = [
     # Thirst, substance states, the strength buff and item icons (plan 2026-10-08-Thirst-Substances-Icons steps 1–3).
     ('city-thirst', 'tools/world/city_thirst_check.gd', r'CITY_THIRST_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('city-substances', 'tools/world/city_substances_check.gd', r'CITY_SUBSTANCES_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
+    ('city-substances-route', 'tools/world/city_substances_check.gd', r'CITY_SUBSTANCES_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', ['--', '--part=route'], 0),
     ('glyph-coverage', 'tools/ui/glyph_coverage_check.gd', r'GLYPH_COVERAGE_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
     ('item-icons', 'tools/ui/item_icons_check.gd', r'ITEM_ICONS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0),
 ]
@@ -151,6 +156,15 @@ for mutation in ('portrait', 'icon', 'input'):
 for mutation in ('footer', 'focus', 'bounds'):
     cases.append(('comfort-ui-negative-' + mutation, 'tools/ui/comfort_ui_check.gd',
                   rf'COMFORT_UI FAIL \([1-9][0-9]* failures; mutation={mutation}\)',
+                  ['--', '--break=' + mutation], 1))
+# T8 2026-10-15 § 3 (docs/Fix/2026-10-15-Comfort-Colour-Row-Fold-Fix.md): the panel opens on MASTER, so MASTER and its
+# title must be seen at open on every canvas. Content above it growing (a 2-line label at 24 px), the visible part
+# shrinking, the open landing on another row, the title scrolled away and the scroll off 0 must each go red in their family.
+for mutation, family in (('master_label', 'master_slider'), ('master_window', 'master_slider'),
+                         ('master_focus', 'master_focus'), ('master_title', 'master_title'),
+                         ('open_scrolled', 'open_top')):
+    cases.append(('comfort-ui-negative-' + mutation, 'tools/ui/comfort_ui_check.gd',
+                  rf'COMFORT_UI_FAMILIES failures=[1-9][0-9]* mutation={mutation} red=[a-z_,]*\b{family}\b[a-z_,]*',
                   ['--', '--break=' + mutation], 1))
 for mutation in ('opponent_frame', 'orbit', 'facing'):
     cases.append(('free-movement-negative-' + mutation, 'tools/input/free_movement_check.gd',
@@ -214,6 +228,30 @@ for mutation, family in (('nopull', 'target'), ('snap', 'step'), ('lengthen', 'l
     cases.append(('rope-pull-negative-' + mutation, 'tools/grapple/rope_pull_check.gd',
                   rf'ROPE_PULL_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z,]*\b{family}\b[a-z,]*',
                   ['--', '--hero=choko', '--break=' + mutation], 1))
+# Plan 2026-10-14-Quality-Debt-Posts-Awning-Guards step 2 (T2-A): «chosen — not cut» — for every anchor and the positions
+# it is picked from, a real E press hangs and the first hanging tick keeps the rope. Both heroes; the 12000-frame budget
+# split in five parts (the route in part 1); the OPEN first-tick cuts are pinned in the fixture. Negatives: the grocer's
+# spread awning back, a plate across the line on the contact tick, the projectile at a quarter of its speed.
+for hero in ('choko', 'skea'):
+    for part in range(1, 6):
+        cases.append((f'rope-choice-{hero}-{part}', 'tools/grapple/rope_choice_check.gd',
+                      rf'ROPE_CHOICE_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none part={part}/5 anchors=([0-9]+)/\1 presses=[1-9][0-9]* hangs=[1-9][0-9]* cut_first=[0-9]+ open=[0-9]+ rewinds=[0-9]+ red=none',
+                      ['--', f'--hero={hero}', f'--part={part}/5'], 0))
+for mutation, family in (('awning', 'cut'), ('late_wall', 'cut'), ('flight', 'cut')):
+    cases.append(('rope-choice-negative-' + mutation, 'tools/grapple/rope_choice_check.gd',
+                  rf'ROPE_CHOICE_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} part=1/5 anchors=[0-9]+/[0-9]+ presses=[0-9]+ hangs=[0-9]+ cut_first=[0-9]+ open=[0-9]+ rewinds=[0-9]+ red=[a-z,]*\b{family}\b[a-z,]*',
+                  ['--', '--hero=choko', '--part=1/5', '--break=' + mutation], 1))
+# Step 3: R3 — every anchor skips every lamp post, so the foreign post on the line holds the rope; «in the air» — a
+# counter and a wall the swing on anchor 0 comes to rest against.
+for mutation, family in (('all_posts', 'foreign'), ('counter', 'air'), ('wall', 'air')):
+    cases.append(('rope-pull-negative-' + mutation, 'tools/grapple/rope_pull_check.gd',
+                  rf'ROPE_PULL_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z,]*\b{family}\b[a-z,]*',
+                  ['--', '--hero=choko', '--break=' + mutation], 1))
+# Step 4: V+ — an unlisted 1.0 m crate, one at the band's bottom 0.6 m, and a listed step moved 0.3 m must each go red.
+for mutation, family in (('step_new', 'vstep'), ('step_low', 'vstep'), ('step_moved', 'vstep')):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
+                  ['--', '--break=' + mutation], 1))
 # Animation feel, branch B: the product of main 595490d, and each change switched back alone — no transition blend, the
 # duel's 0.28 rope lean, the camera arm stopped by the anchor's own post, the old wall-run clock, a still hang and a
 # lifted mantle, the authored roll — must each go red in its own family.
@@ -230,6 +268,12 @@ for mutation, family in (('blend', 'ledge_turn'), ('lean', 'rope_lean'), ('camer
 for mutation, family in (('blend', 'G2'), ('tuck', 'G1'), ('land', 'G4depth')):
     cases.append(('jump-arc-negative-' + mutation, 'tools/animation/jump_arc_check.gd',
                   rf'JUMP_ARC_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[A-Za-z0-9,]*\b{family}\b[A-Za-z0-9,]*',
+                  ['--', '--break=' + mutation], 1))
+# Jump arc G1time (T4 audit 2026-10-09 proposal 3, plan 2026-10-14 step 5): T4's J10 (a 3–4 tick tuck), the tuck two
+# ticks late (С1) and held until 0.06 s before the ground (С2) must each go red in G1time.
+for mutation in ('j10', 'tuck_late', 'tuck_long'):
+    cases.append(('jump-arc-negative-' + mutation, 'tools/animation/jump_arc_check.gd',
+                  rf'JUMP_ARC_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[A-Za-z0-9,]*\bG1time\b[A-Za-z0-9,]*',
                   ['--', '--break=' + mutation], 1))
 # Animation feel, branch A: the product of 595490d put back one part at a time must go red in its own family — the
 # landing played to its straight end with the hold (hips), the heavy landing's sliding kneel (foot), the guard at full
@@ -296,6 +340,21 @@ for script, sentinel, prefix, mutations in (
         cases.append((prefix + '-negative-' + mutation, script,
                       rf'{sentinel}_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                       ['--', '--break=' + mutation], 1))
+# Glyphs built at run time (T4 audit 2026-10-09 п. 4, plan 2026-10-14 step 7): G4 `char (0x2713)`, G6 bytes decoded with
+# get_string_from_utf8, `String . chr (…)`, `"%E2%9C%93".uri_decode()` and a padded `%-2c` must each go red.
+for mutation in ('inject_char_space', 'inject_utf8', 'inject_chr_space', 'inject_uri', 'inject_format_width'):
+    cases.append(('glyph-coverage-negative-' + mutation, 'tools/ui/glyph_coverage_check.gd',
+                  rf'GLYPH_COVERAGE_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# Substance states, the state-blind route B13 (T4 audit 2026-10-09 п. 3 U5/U6, plan 2026-10-14 step 6): in a state the
+# take-off × 1.08 (U5), the jump's gravity 15 % lighter, the rope pull × 1.25 (U6), the rope's target 1 m shorter, the
+# vault 20 % shorter, the wall run 25 % faster must each go red.
+for mutation in ('jump', 'float', 'pull', 'target', 'vault', 'wallrun'):
+    cases.append(('city-substances-negative-' + mutation, 'tools/world/city_substances_check.gd',
+                  rf'CITY_SUBSTANCES_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--part=route', '--break=' + mutation], 1))
+# Every city-tidy negative names the family it must turn red (red=…, city_tidy_check.gd header; T4 audit 2026-10-15,
+# class 18: a negative red on a neighbouring guard no longer passes).
 # City tidy (phase 0): each class with the returned audit defect and another form of it — a bracket strut and the
 # market wire in a pane; a barrel and a loaf floating, a crate sunk, the archive plate off its wall; the fascia and the
 # door jamb in one plane; a wall and a drum built twice; a planter, the dress form and the bypass plaque without their
@@ -306,14 +365,116 @@ for script, sentinel, prefix, mutations in (
 # steam vehicles (docs/Fix/2026-10-09-City-Vehicles-And-Iron-Paint-Fix.md): one floating or sunk, a hull gone, the mesh
 # off its hulls, hulls on the cover layer only, a surface off the city material, a vehicle under an anchor, in a lane,
 # on a run-up, a camera station behind one, and a flat-roofed one vaulted with a relaxed profile — each red.
-for mutation in ('pane_strut', 'pane_wire', 'float_barrel', 'float_loaf', 'sink_crate', 'float_plate', 'zfight_fascia',
-                 'zfight_jamb', 'dup_wall', 'dup_barrel', 'solid_planter', 'solid_dressform', 'solid_sign', 'service',
-                 'court', 'anchor', 'passage', 'lane', 'ink_strip', 'vault_high', 'vault_deep', 'steam_hero', 'steam_flash',
-                 'pump_spout', 'pump_lever', 'pump_layer', 'vehicle_float', 'vehicle_sink', 'vehicle_nocollider',
-                 'vehicle_shift', 'vehicle_layer', 'vehicle_material', 'vehicle_anchor', 'vehicle_lane', 'vehicle_runup',
-                 'vehicle_gap', 'vehicle_vault'):
+for mutation, family in (('pane_strut', 'c1'), ('pane_wire', 'c1'), ('float_barrel', 'c2'), ('float_loaf', 'c2'),
+                         ('sink_crate', 'c2'), ('float_plate', 'c2'), ('zfight_fascia', 'c3'), ('zfight_jamb', 'c3'),
+                         ('dup_wall', 'c4'), ('dup_barrel', 'c4'), ('solid_planter', 'c5'), ('solid_dressform', 'c5'),
+                         ('solid_sign', 'c5'), ('service', 'd17'), ('court', 'k6'), ('anchor', 'k'), ('passage', 'k7'),
+                         ('lane', 'k6'), ('ink_strip', 'k4'), ('vault_high', 'v'), ('vault_deep', 'v'),
+                         ('steam_hero', 's'), ('steam_flash', 's'), ('pump_spout', 'c5'), ('pump_lever', 'c5'),
+                         ('pump_layer', 'c5'), ('vehicle_float', 'm3'), ('vehicle_sink', 'm3'),
+                         ('vehicle_nocollider', 'm4'), ('vehicle_shift', 'm4'), ('vehicle_layer', 'm1'),
+                         ('vehicle_material', 'm2'), ('vehicle_anchor', 'm5'), ('vehicle_lane', 'm6'),
+                         ('vehicle_runup', 'm7'), ('vehicle_gap', 'm8'), ('vehicle_vault', 'vm')):
     cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
-                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
+                  ['--', '--break=' + mutation], 1))
+# Guard pins after the T4 audit 2026-10-14 (docs/Fix/2026-10-14-Guard-Pins-After-Audit-Fix.md). B13: T5 Substances
+# § 12.3 (б) rolled back — the state's braking in a landing's settle ticks with the stick held — must go red. The OPEN
+# `air` item at anchor 5, pinned to its measured air and its stall's bodies: T4's wall 0.2 m beyond the vertical (air
+# stays in the slack, a foreign body), T4's wall 0.3 m on the approach side, the stall's own counter grown toward the
+# vertical (only the air floor sees it) must go red in `air`; T4's box under the vertical (the OPEN gone) in `open`.
+cases.append(('city-substances-negative-settle', 'tools/world/city_substances_check.gd',
+              r'CITY_SUBSTANCES_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation=settle',
+              ['--', '--part=route', '--break=settle'], 1))
+for mutation, family in (('air5_behind', 'air'), ('air5_front', 'air'), ('air5_counter', 'air'), ('air5_box', 'open')):
+    cases.append(('rope-pull-negative-' + mutation, 'tools/grapple/rope_pull_check.gd',
+                  rf'ROPE_PULL_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z,]*\b{family}\b[a-z,]*',
+                  ['--', '--hero=choko', '--break=' + mutation], 1))
+# «Chosen — not cut», the OPEN pinned to its blocker (T4 audit 2026-10-14 proposal 7): the market's engine-named solids
+# renamed — the same body at the same point under another name — must go red in `cut`.
+cases.append(('rope-choice-negative-blocker_name', 'tools/grapple/rope_choice_check.gd',
+              r'ROPE_CHOICE_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation=blocker_name part=1/5 anchors=[0-9]+/[0-9]+ presses=[0-9]+ hangs=[0-9]+ cut_first=[0-9]+ open=[0-9]+ rewinds=[0-9]+ red=[a-z,]*\bcut\b[a-z,]*',
+              ['--', '--hero=choko', '--part=1/5', '--break=blocker_name'], 1))
+# Plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB step 4 (T2-A): the steam crane № 10 and the steam winch № 11 on the NE
+# terrace (docs/Fix/2026-10-14-Steam-Crane-Winch-Fix.md). Each machine guard of city_tidy_check must go red on its own
+# negative: hulls on the cover layer only, a surface off its city material, a brass crane surface, a machine up or down
+# 5 cm, the winch's body hull gone, the crane's mesh off its hulls, the winch under anchor 24, the crane by anchor 12, the
+# winch in the terrace pocket and in a resident's lane, a hull over the street, the crane between the S3 hero and the
+# lens and its hook (no hull) across that line, a camera station with the facade behind, a 0.5 m slot to the terrace's
+# edge, the winch's triangles doubled, its
+# listed step moved, and a flat-topped winch vaulted with a relaxed profile.
+for mutation, family in (('machine_layer', 'mc1'), ('machine_material', 'mc2'), ('machine_brass', 'mc2'),
+                         ('machine_float', 'mc3'), ('machine_sink', 'mc3'), ('machine_nocollider', 'mc1'),
+                         ('machine_shift', 'mc4'), ('machine_column', 'mc5'), ('machine_anchor', 'mc5'),
+                         ('machine_pocket', 'mc6'), ('machine_lane', 'mc6'), ('machine_street_hull', 'mc7hull'),
+                         ('machine_cross', 'mc7arm'), ('machine_occlude', 'mc7cross'), ('machine_gap', 'mc8'),
+                         ('machine_slot', 'mc9'), ('machine_budget', 'mc10'),
+                         ('machine_step', 'vstep'), ('machine_vault', 'vmc')):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
+                  ['--', '--break=' + mutation], 1))
+# T6 acceptance 2026-10-14, rows 1–5 (docs/Fix/2026-10-14-T6-Acceptance-Geometry-Fix.md): V+ wedge, one form each — a
+# wall put 0.55 m off a street urn, the grocer's display crate with a round top 0.52 m off the shop wall, a wall 0.66 m
+# off the tailor's cutting table (the band's deep end), a pinned OPEN whose wall is gone — must each go red.
+for mutation, family in (('wedge_wall', 'vwedge'), ('wedge_round', 'vwedge'), ('wedge_deep', 'vwedge'), ('wedge_open', 'vopen')):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
+                  ['--', '--break=' + mutation], 1))
+# T6's A5 (docs/Audit/2026-10-14-T6-Crane-Winch-Acceptance.md § 3 п. 1; docs/Fix/2026-10-15-Albedo-B3-Fix.md § MC7): from
+# the street stations S2–S4 the lens sees no machine point under the terrace's level, «seen_y ≥ 4,0 м». One form each:
+# the crane's decor hanging under the level over the street (no hull), the crane standing on the street floor in view
+# (every other guard holds: only this one goes red), the winch hanging in front of the terrace's wall with no floor.
+# At the threshold (T4 audit 2026-10-15 proposal 2): the crane's decor with its bottom at 3.9 m, 0.1 m under the level.
+for mutation, family in (('machine_seen_hook', 'mc7seen'), ('machine_seen_street', 'mc7seen'), ('machine_seen_float', 'mc7seen'),
+                         ('machine_seen_low', 'mc7seen')):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
+                  ['--', '--break=' + mutation], 1))
+# Colour test switch A / B3 (docs/Fix/2026-10-15-Colour-Switch-Fix.md): a fresh profile on B3, a saved key forgotten at
+# load, any unknown value played as B3, a damaged file saved over, a row that never switches, a row that never saves,
+# project.godot shipping B3, a shader without its branch and a row that never reaches RenderingServer must each go red
+# in their own family.
+for mutation in ('default', 'persist', 'unknown', 'cfg', 'row', 'row_save', 'global', 'shader', 'apply'):
+    cases.append(('colour-switch-negative-' + mutation, 'tools/settings/colour_switch_check.gd',
+                  rf'COLOUR_SWITCH_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z_,]*\b{mutation}\b[a-z_,]* rs=not-measured-headless',
+                  ['--', '--break=' + mutation], 1))
+# T4 audit 2026-10-15, class 17 (docs/Fix/2026-10-15-Stall-Wedge-Boundary-Fix.md § 5): a pinned OPEN wedge that grows —
+# a wall 0.55 m along the grocer counter's west end (wider: 9 of 9 points, pinned 5) or its side shelf 0.018 m further off
+# (deeper: 0.171 m under, pinned 0.147 + 0.02) — must go red.
+for mutation, family in (('wedge_more', 'vgrow'), ('wedge_deeper', 'vgrow')):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
+                  ['--', '--break=' + mutation], 1))
+# T4 audit 2026-10-15 YELLOW 5 (docs/Fix/2026-10-15-Tidy-Sentinel-Families-Fix.md): M0 — every kind of CityProps places
+# its own GLB, an unknown kind is refused and places nothing. CityProps._place_glb broken in the fixture's probe, one form
+# each: an unknown kind placed as the truck with no refusal, an unknown kind placing nothing and reporting nothing, refused
+# but placed anyway, the crane placed as the winch — each must go red in m0.
+for mutation, family in (('glb_standin', 'm0'), ('glb_silent', 'm0'), ('glb_both', 'm0'), ('glb_swap', 'm0')):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
+                  ['--', '--break=' + mutation], 1))
+# Plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB, T1's decision after T6 (2026-10-15; docs/Fix/2026-10-15-Stall-Wedge-
+# Boundary-Fix.md). The district's invisible edge: no running jump crosses any of the four boundaries at any height, the
+# edge only meets the hero's body. Negatives: the north veil gone, every veil at 8 m, the veils on the world layer too
+# (camera, rope, parkour), a veil drawn, the hero's mask without the veil.
+cases.append(('city-bounds', 'tools/world/city_bounds_check.gd', r'CITY_BOUNDS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0))
+for mutation in ('gap', 'low', 'world', 'mesh', 'hero'):
+    cases.append(('city-bounds-negative-' + mutation, 'tools/world/city_bounds_check.gd',
+                  rf'CITY_BOUNDS_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# The barrel on trestles (T6 RED): off its back the hero ends on the floor or its top, or S/A/D take him there. Negatives:
+# the barrel back at its old place (0.62 m off SouthWestRear), a wall brought to 0.62 m off it, the barrel 0.68 m off it.
+cases.append(('city-rim-exit', 'tools/world/city_rim_exit_check.gd', r'CITY_RIM_EXIT_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0))
+for mutation in ('old', 'wall', 'near'):
+    cases.append(('city-rim-exit-negative-' + mutation, 'tools/world/city_rim_exit_check.gd',
+                  rf'CITY_RIM_EXIT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  ['--', '--break=' + mutation], 1))
+# The tailor's dress form (T6 YELLOW) holds no hero; the cutting table's rim keeps A and D. Negatives: the old flat
+# cylinder, a top narrowed to the neck, a top falling from the form's own east edge.
+cases.append(('city-perch', 'tools/world/city_perch_check.gd', r'CITY_PERCH_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0))
+for mutation in ('flat', 'cone', 'edge'):
+    cases.append(('city-perch-negative-' + mutation, 'tools/world/city_perch_check.gd',
+                  rf'CITY_PERCH_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
 @contextmanager
 def isolated_profile():
@@ -384,6 +545,7 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('parkour-moves-negative-', 'ERROR: PARKOUR_MOVES: '),
                           ('auto-hook-negative-', 'ERROR: AUTO_HOOK: '),
                           ('rope-pull-negative-', 'ERROR: ROPE_PULL: '),
+                          ('rope-choice-negative-', 'ERROR: ROPE_CHOICE: '),
                           ('jump-arc-negative-', 'ERROR: JUMP_ARC: '),
                           ('anim-traversal-negative-', 'ERROR: ANIM_TRAVERSAL: '),
                           ('anim-ground-negative-', 'ERROR: ANIM_GROUND: '),
@@ -402,6 +564,10 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('city-substances-negative-', 'ERROR: CITY_SUBSTANCES: '),
                           ('glyph-coverage-negative-', 'ERROR: GLYPH_COVERAGE: '),
                           ('item-icons-negative-', 'ERROR: ITEM_ICONS: '),
+                          ('colour-switch-negative-', 'ERROR: COLOUR_SWITCH: '),
+                          ('city-bounds-negative-', 'ERROR: CITY_BOUNDS: '),
+                          ('city-rim-exit-negative-', 'ERROR: CITY_RIM_EXIT: '),
+                          ('city-perch-negative-', 'ERROR: CITY_PERCH: '),
                           ('city-tidy-negative-', 'ERROR: CITY_TIDY: ')):
         if name.startswith(scope):
             assertion_prefix = prefix

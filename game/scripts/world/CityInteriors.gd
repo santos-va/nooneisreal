@@ -2,6 +2,17 @@ class_name CityInteriors
 extends CityMarket
 ## Walk-in shops: collidable shell, broad clear aisles and reused batched market kit.
 const Places = preload("res://scripts/world/CityPlaces.gd")
+## Shops whose awning is rolled up (the Н6 «rolled» state of the market stalls, docs/Art/2026-10-08-City-Modern-Realism-
+## Props.md). The grocer's spread awning (x −29.85…−23.35, y 3.76–3.94, out to z 10.905) lay under anchor 16
+## (−24, 6.8, 10.6): a line chosen as clear cut on the first hanging tick (ShopAwning@(−26.74, 3.76, 11.09), docs/Fix/
+## 2026-10-09-Rope-Pull-And-Jump-Arc-Fix.md). T1's choice Т1, plan 2026-10-14-Quality-Debt-Posts-Awning-Guards step 2;
+## the tailor's and the workshop's stay spread. PLACEHOLDER; T6 accepts the frame.
+const ROLLED_AWNINGS: Array[String] = ["grocer"]
+## The rolled awning's cloth (_rolled_awning): cross stripes of cream and accent, ~0.46 m each like the rolled stall's
+## 0.445 m (T6 acceptance docs/Audit/2026-10-14-T6-Acceptance.md § 1, ТЗ 2: «~14 смуг по ~0,46 м»), and its ties' width,
+## П4 «≥ 0,1 м» (ТЗ 3). PLACEHOLDER; T6 accepts the frame.
+const ROLLED_STRIPES: int = 14
+const ROLLED_TIE: float = 0.10
 
 func _ready() -> void:
 	name = "CityInteriors"
@@ -48,10 +59,13 @@ func _shop(shop: Dictionary) -> void:
 		_box(pose, Vector3(side * 2.2, 2.15, 0), Vector3(0.06, 2.4, 0.08), "brass")
 		_box(pose, Vector3(side * 2.2, 2.5, 0), Vector3(1.8, 0.06, 0.08), "brass")
 	_box(pose, Vector3(0, 0.003, 4), Vector3(6.3, 0.006, 7.7), floor_material)
-	_box(pose, Vector3(0, 3.85, -0.52), Vector3(6.5, 0.18, 1.15), accent, "ShopAwning")
-	# D12: the cream fascia stops at the awning's underside (y 3.76): their front faces no longer overlap in one plane.
-	_box(pose, Vector3(0, 3.63, -1.04), Vector3(6.5, 0.26, 0.11), "cloth_cream")
-	_sign(pose * Vector3(0, 3.56, -1.11), shop.title, 0.0067)
+	if String(shop.id) in ROLLED_AWNINGS:
+		_rolled_awning(pose, accent, shop.title)
+	else:
+		_box(pose, Vector3(0, 3.85, -0.52), Vector3(6.5, 0.18, 1.15), accent, "ShopAwning")
+		# D12: the cream fascia stops at the awning's underside (y 3.76): their front faces no longer overlap in one plane.
+		_box(pose, Vector3(0, 3.63, -1.04), Vector3(6.5, 0.26, 0.11), "cloth_cream")
+		_sign(pose * Vector3(0, 3.56, -1.11), shop.title, 0.0067)
 	# Trim, beams and a welcome mat provide scale without obstructing body clearance.
 	_box(pose, Vector3(0, 0.012, 1.15), Vector3(2.1, 0.02, 1.25), accent)
 	for z: float in [1.8, 5.3, 7.6]:
@@ -80,6 +94,36 @@ func _shop(shop: Dictionary) -> void:
 	marker.set_meta("shop_id", shop.id)
 	marker.set_meta("walk_in", true)
 	add_child(marker)
+
+## A shop awning rolled up (ROLLED_AWNINGS): one roll Ø 0.24 m (the Н6 stall roll's size) along the lintel, 1 cm off its
+## face (local z −0.15) at the spread awning's height (y 3.85), in cross stripes of cream and the shop's accent like the
+## rolled stall canopy (CityMarket._rolled_canopy: 8 × 0.445 m there, ROLLED_STRIPES × 6.5 / 14 m here), tied in three
+## places with bands ROLLED_TIE wide (П4 ≥ 0.1 m); the cream valance with the shop's name hangs under the roll, as the front
+## bar of a retracted awning. T6 acceptance docs/Audit/2026-10-14-T6-Acceptance.md § 1: one accent roll behind the valance
+## merged with the lintel of its own colour and its 4 cm ties were ~6 px from 6 m. One collider for the roll (unchanged),
+## none for the valance (as the spread fascia). PLACEHOLDER sizes; look and colour are T6's.
+func _rolled_awning(pose: Transform3D, accent: String, title: String) -> void:
+	var radius: float = 0.12
+	var length: float = 6.5
+	var axis: Transform3D = pose.translated_local(Vector3(0, 3.85, -0.15 - radius - 0.01)).rotated_local(Vector3.BACK, PI * 0.5)
+	# The roll's axis is its local y; rotated_local(BACK, π/2) points it along the shop's −x, so the offset −(x0 + ½) puts
+	# a stripe at shop x x0 + ½: stripe 0 (cream) is the west end, as in the stall.
+	var stripe: float = length / float(ROLLED_STRIPES)
+	for index: int in ROLLED_STRIPES:
+		var x0: float = -length * 0.5 + float(index) * stripe
+		_cylinder(axis, Vector3(0, -(x0 + stripe * 0.5), 0), radius, radius, stripe, "cloth_cream" if index % 2 == 0 else accent, 16)
+	for x: float in [-2.2, 0.0, 2.2]:
+		_cylinder(axis, Vector3(0, -x, 0), radius + 0.008, radius + 0.008, ROLLED_TIE, "wood", 16)
+	var shape := CylinderShape3D.new()
+	shape.radius = radius
+	shape.height = length
+	_solid("RolledAwning", axis, shape)
+	# The valance hangs under the roll (T6 § 1, ТЗ 1): its top (y 3.73) is the roll's underside, so the whole roll shows
+	# over it from the street. Its back face (z −0.28) is under the roll's lowest line (the roll's axis): at z −0.345, where
+	# it stood, the 16-sided roll is 2.2 cm higher and the valance would float. It ends 3 cm inside each end of the roll,
+	# so its ends never share the roll's end planes; the name stays 1.5 cm in front of it.
+	_box(pose, Vector3(0, 3.60, -0.335), Vector3(6.44, 0.26, 0.11), "cloth_cream")
+	_sign(pose * Vector3(0, 3.53, -0.405), title, 0.0067)
 
 func _counter(pose: Transform3D, accent: String) -> void:
 	_box(pose, Vector3(0, 0.48, 0), Vector3(3.6, 0.96, 0.86), accent, "ShopCounter")
@@ -127,17 +171,22 @@ func _grocer(pose: Transform3D) -> void:
 			fruit.rings = 4
 			# The fruit lies on the closed crate's lid (y 0.8), not 3.5 cm inside it.
 			_primitive(fruit, display.translated_local(Vector3(-0.4 + float(i % 3) * 0.4, 0.915, -0.2 + float(i / 3) * 0.36)), "cloth_red" if side < 0 else "marker")
-	_beer_barrel(pose.translated_local(Vector3(2.65, 0, 3)))
+	# The beer barrel stands by the east display crate, out from under the herb rack (T6 docs/Audit/2026-10-15-T6-Geometry
+	# -Fix-Acceptance.md § 4, choice «Б», T6's spot): 0.10 m off the crate, 0.25 m off the east wall, 0.43 m short of the
+	# rack's south end. Under the rack (local z 3) a hero on the barrel had the rack board through his chest.
+	_beer_barrel(pose.translated_local(Vector3(2.65, 0, 1.45)))
 	_box(pose, Vector3(-0.6, 1.085, 5.55), Vector3(1.8, 0.035, 0.82), "cloth_cream")
 	for index: int in 3:
 		_loaf(pose.translated_local(Vector3(-1.2 + float(index) * 0.55, 1.21, 5.55)), 0.85)
 	_jar(pose.translated_local(Vector3(0.5, 1.07, 5.6)), "cloth_teal", 0.7)
 	# A wall herb rack gives the otherwise clear aisle a readable shop-specific silhouette. It hangs over head height
-	# (its underside at 1.86 m; at 1.74 m a hero's head went through it).
+	# (its underside at 1.86 m; at 1.74 m a hero's head went through it). It is decor, so its jars have no collider:
+	# solid, they were a 2.13 m perch a hero reached from the beer barrel under the rack (T6 acceptance
+	# docs/Audit/2026-10-14-T6-Acceptance.md § 2.2, «бочка Шавлії»; the rack board never had one).
 	_box(pose, Vector3(3.04, 1.9, 3.35), Vector3(0.3, 0.08, 2.35), "wood")
 	for index: int in 4:
 		var z: float = 2.5 + float(index) * 0.55
-		_jar(pose.translated_local(Vector3(2.97, 1.95, z)), "terracotta", 0.55)
+		_jar(pose.translated_local(Vector3(2.97, 1.95, z)), "terracotta", 0.55, false)
 		# The sprigs stand in the jar's mouth (their foot 2 cm under its lip), not 4.5 cm over its shoulder.
 		for sprig: int in 3:
 			_cylinder(pose, Vector3(2.97, 2.43 + float(sprig % 2) * 0.12, z + float(sprig - 1) * 0.08), 0, 0.14, 0.46, "marker", 5)
@@ -164,10 +213,7 @@ func _tailor(pose: Transform3D) -> void:
 	foot.radius = 0.48
 	foot.height = 0.16
 	_solid("DressFormFoot", pose.translated_local(Vector3(2.2, 0.08, 1)), foot)
-	var torso := CylinderShape3D.new()
-	torso.radius = 0.37
-	torso.height = 1.05
-	_solid("DressFormTorso", pose.translated_local(Vector3(2.2, 1.435, 1)), torso)
+	_solid("DressFormTorso", pose.translated_local(Vector3(2.2, 1.435, 1)), _dress_form_torso())
 	# D17: the cutting table stands 0.25 m further from the counter aisle, so the service point (z 4.4) keeps a
 	# hero capsule of r 0.35 clear of it (its edge was 0.30 m away).
 	var cutting: Transform3D = pose.translated_local(Vector3(2.15, 0, 2.95))
@@ -185,6 +231,44 @@ func _tailor(pose: Transform3D) -> void:
 	for index: int in 2:
 		_hanging_coat(pose.translated_local(Vector3(2.99, 0, 2.35 + float(index) * 1.2)), "cloth_red" if index == 0 else "cloth_teal")
 	_sign(pose * Vector3(0, 2.7, 7.73), "КРІЙ · РЕМОНТ · ТКАНИНИ", 0.006)
+
+## The dress form's torso collider, relative to the body at shop-local (2.2, 1.435, 1.0); the visible mesh is unchanged.
+## T6 (docs/Audit/2026-10-15-T6-Geometry-Fix-Acceptance.md § 5, «манекен»): its flat top (a cylinder r 0.37 up to 1.96)
+## held a hero who jumped onto it from the cutting table. Any top a capsule can stand over holds it: a contact within 45°
+## of up is floor (floor_max_angle, unchanged by Fighter) — a cone up to the neck held the hero placed on its axis, a top
+## slanted down from its own east edge held drops 0.27 m off that edge (probe, docs/Fix/2026-10-15-Stall-Wedge-Boundary
+## -Fix.md § 3). So the top is one plane falling west at DRESS_FORM_SLOPE, and its high edge stands DRESS_FORM_WALL_GAP off
+## the shop's east wall: a capsule's axis keeps 0.35 m off that wall, too far for the edge to carry it. Over the visible
+## form the plane runs 1.38–2.32 m (DRESS_FORM_AXIS_TOP over the axis, 0.11 m under the neck): a walking hero (capsule
+## body 0.35–1.45 m) still meets it from 0.91 m. The south side runs flat to the wall (the window base 0.49 m off it: a
+## slanting side opened a 0.64–0.71 m slot there that wedged the hero), the north side narrows to 0.10 m at the wall, so
+## the cutting table keeps the gap the round torso gave it (0.68 m over the axis, wider to the east). PLACEHOLDER.
+const DRESS_FORM_SLOPE: float = 52.0      # degrees; 7° steeper than the floor angle
+const DRESS_FORM_AXIS_TOP: float = 1.85
+const DRESS_FORM_WALL_GAP: float = 0.02
+## The round part's sides: with 16 the hero who stepped off the cutting table slid off a corner of the polygon to the
+## form's foot (0.07 m) and lost the D exit T6 accepted; with 32 he rests where the cylinder held him (0.71 m) and both
+## A and D lead to the floor, as on e7b3603 (probe, docs/Fix/2026-10-15-Stall-Wedge-Boundary-Fix.md § 3).
+const DRESS_FORM_SIDES: int = 32
+
+func _dress_form_torso() -> ConvexPolygonShape3D:
+	var origin := Vector3(2.2, 1.435, 1.0)
+	var wall_x: float = 3.2 - DRESS_FORM_WALL_GAP   # the shop's east wall, inner face (ShopWall at local x 3.3, 0.2 thick)
+	var rise: float = tan(deg_to_rad(DRESS_FORM_SLOPE))
+	var foot: Array[Vector2] = []
+	for i: int in DRESS_FORM_SIDES:
+		var angle: float = TAU * float(i) / float(DRESS_FORM_SIDES)
+		foot.append(Vector2(origin.x + cos(angle) * 0.37, origin.z + sin(angle) * 0.37))
+	foot.append(Vector2(wall_x, origin.z - 0.37))
+	foot.append(Vector2(wall_x, origin.z + 0.10))
+	var points := PackedVector3Array()
+	for p: Vector2 in foot:
+		var top: float = DRESS_FORM_AXIS_TOP + (p.x - origin.x) * rise
+		points.append(Vector3(p.x, 0.91, p.y) - origin)
+		points.append(Vector3(p.x, top, p.y) - origin)
+	var shape := ConvexPolygonShape3D.new()
+	shape.points = points
+	return shape
 
 func _workshop(pose: Transform3D) -> void:
 	# D17: as in the atelier, the workbench keeps the service point (z 4.4) clear of a hero capsule of r 0.35.

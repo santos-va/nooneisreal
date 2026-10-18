@@ -452,7 +452,8 @@ func _roll_support(actor: Fighter, point: Vector3) -> bool:
 	return true
 
 func _ray(actor: Fighter, from: Vector3, to: Vector3) -> Dictionary:
-	var query := PhysicsRayQueryParameters3D.create(from, to, actor.collision_mask)
+	# The district's invisible edge stops the body but is no surface: no wall run, kick, grip or vault on thin air.
+	var query := PhysicsRayQueryParameters3D.create(from, to, actor.collision_mask & ~CityLayout.BOUNDARY_VEIL_LAYER)
 	query.exclude = [actor.get_rid()]
 	return actor.get_world_3d().direct_space_state.intersect_ray(query)
 

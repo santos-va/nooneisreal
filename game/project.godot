@@ -270,6 +270,7 @@ debug_toggle_hitboxes={
 3d_physics/layer_4="hitbox"
 3d_physics/layer_5="ragdoll"
 3d_physics/layer_6="grapple_anchor"
+3d_physics/layer_7="district_bound"
 
 [physics]
 
@@ -286,3 +287,10 @@ textures/default_filters/anisotropic_filtering_level=4
 textures/vram_compression/import_etc2_astc=true
 anti_aliasing/quality/msaa_3d=2
 environment/defaults/default_clear_color=Color(0.09, 0.08, 0.11, 1)
+
+[shader_globals]
+
+colour_b3={
+"type": "bool",
+"value": false
+}

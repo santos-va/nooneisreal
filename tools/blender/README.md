@@ -32,7 +32,10 @@ python3.13 -m venv ~/.venvs/bpy
 ```bash
 ~/.venvs/bpy/bin/python tools/blender/steam_truck.py          # → game/assets/props/city/prop_steam_truck_v1.glb
 ~/.venvs/bpy/bin/python tools/blender/steam_car_tarp.py       # → game/assets/props/city/prop_steam_car_tarp_v1.glb
-# опції: --out ІНШИЙ.glb (наприклад у scratchpad), --preview ТЕКА (PNG Cycles: 3/4, бік, фронт, силует)
+~/.venvs/bpy/bin/python tools/blender/steam_crane.py          # → game/assets/props/city/prop_steam_crane_v1.glb
+~/.venvs/bpy/bin/python tools/blender/steam_winch.py          # → game/assets/props/city/prop_steam_winch_v1.glb
+# опції: --out ІНШИЙ.glb (наприклад у scratchpad), --preview ТЕКА (PNG Cycles: 3/4, бік, фронт, силует;
+# кран — ще силует збоку, `*_cycles_silhouette_side.png`)
 ```
 
 Скрипт друкує рядки `PROP_OK`, `PROP_SIZE`, `PROP_MESH`, `PROP_MATERIAL` і `PROP_COLLIDER`: sha256 файлу, розміри,
@@ -68,3 +71,5 @@ python3.13 -m venv ~/.venvs/bpy
 | `prop_kit.py` | спільне: палітра з `CityMaterials.gd`, `Builder` (коробки, циліндри, кільця, лофт, спицеве колесо), колайдери, експорт, превʼю |
 | `steam_truck.py` | № 9 «Паромобіль-вантажівка», канон `sprite-steamcars-v1` (права машина) і текст картки V1 (`docs/Art/Prompts/City-Props-Prompts.md`) |
 | `steam_car_tarp.py` | № 29 «Легковик-паровик під брезентом», канон `sprite-steamcars-v1` (ліва машина), бриф T7 О9 |
+| `steam_crane.py` | № 10 «Паровий поворотний кран», форма T6 `docs/Art/2026-10-14-Steam-Crane-Winch-Form.md` (колона, кабіна, ґратчаста стріла 7 м під 40°, гак) |
+| `steam_winch.py` | № 11 «Парова лебідка», та сама форма T6 (барабан із канатом, один циліндр, маховик Ø 1,2 м) |
