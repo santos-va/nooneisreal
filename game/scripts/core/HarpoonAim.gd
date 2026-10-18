@@ -34,6 +34,9 @@ var _changed_at: Dictionary = {}
 ## all read it. `_published_before` is the packet of the tick before.
 var published: Dictionary = {}
 var _published_before: Dictionary = {}
+## The tick of the last published packet that had a target (ADR-028 п. 5, T8 § 2.2): E with no target lets go only once
+## no target has been shown for the 15-tick stickiness window.
+var last_target_tick: int = -1000000
 
 func setup(view: Camera3D, allow_orbit: bool) -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -215,6 +218,8 @@ func capture(f: Fighter, enemy_mode: bool, remember: bool = true, anchors_only: 
 func _capture_traversal(f: Fighter, origin: Vector3, manual: bool, remember: bool, anchors_only: bool) -> Dictionary:
 	var hook: GrappleHook = f.grapple
 	var distance: float = hook.range_m
+	# 1.5 m above the hand; from the city's perch an anchor not lower than the hand (ADR-028 п. 3, T5 З2).
+	var rise: float = hook.target_min_rise()
 	var swinging := hook.attached and hook.phase == GrappleHook.Phase.HANG
 	var flat_velocity := Vector3(f.velocity.x, 0.0, f.velocity.z)
 	var wish := f.wish()
@@ -246,6 +251,8 @@ func _capture_traversal(f: Fighter, origin: Vector3, manual: bool, remember: boo
 		var is_rope := target.is_in_group("deployed_rope")
 		if not is_rope and hook.registry.occupied(target.global_position):
 			continue # Reuse the deployed rope candidate; never suggest a second shot at this point.
+		if not is_rope and hook.is_own_perch(target.global_position):
+			continue # The arm the hero grips (ADR-028): its own anchor is no next anchor.
 		if hook.charges <= 0 and not is_rope:
 			continue
 		var rope_token := int(target.get_meta("rope_token", 0))
@@ -269,13 +276,13 @@ func _capture_traversal(f: Fighter, origin: Vector3, manual: bool, remember: boo
 			# shot travels through it; both coast during the flight (GrappleHook.contact_hand).
 			var launch_length := maxf(length, position.distance_to(hook.contact_hand(position, not swinging)))
 			if launch_length > distance:
-				if launch_length <= distance * traversal_too_far and offset.y >= 1.5 and _clear(f, origin, position):
+				if launch_length <= distance * traversal_too_far and offset.y >= rise and _clear(f, origin, position):
 					far_any = true
 					if launch_length < far_distance and _in_frame(position, view):
 						far_distance = launch_length
 						far_point = position
 				continue
-			if offset.y < 1.5:
+			if offset.y < rise:
 				low_in_reach = true
 				continue
 		elif length > distance:
@@ -360,7 +367,14 @@ func publish(f: Fighter) -> Dictionary:
 	if int(published.get("tick", -1)) != int(packet.tick):
 		_published_before = published
 	published = packet
+	if not String(packet.get("target_id", "")).is_empty():
+		last_target_tick = int(packet.tick)
 	return packet
+
+
+## Physics ticks since the last published packet with a target (T8 § 2.2).
+func ticks_since_target() -> int:
+	return InputRouter.frame() - last_target_tick
 
 
 ## What a press on this tick fires at: the traversal packet the player saw, published on an earlier tick, so a stick

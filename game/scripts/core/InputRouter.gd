@@ -66,6 +66,11 @@ var _neutral_pending: Dictionary = {}  # physical actions held across a UI bound
 var _ui_consumed: Dictionary = {}  # stale just_pressed flags need a fresh device press
 var _press_revisions: Dictionary = {1: 0, 2: 0}
 var profile: String = PROFILE_SOLO
+## ADR-028 п. 8, T8 docs/GDD/2026-10-15-Rope-Climb-Input.md § 5: the city rope's climb and slide are held (default) or
+## toggled by a press. Saved in settings.cfg [input] rope_climb next to keyboard_profile; an unknown value is `hold` for
+## the session, and a file that does not load is never written over (its bytes stay).
+const ROPE_CLIMB_MODES := ["hold", "toggle"]
+var rope_climb: String = "hold"
 
 
 func _ready() -> void:
@@ -91,7 +96,24 @@ func _ready() -> void:
 	var saved: String = PROFILE_SOLO
 	if cfg.load(SETTINGS_PATH) == OK:
 		saved = str(cfg.get_value("input", "keyboard_profile", PROFILE_SOLO))
+		var climb := str(cfg.get_value("input", "rope_climb", "hold"))
+		rope_climb = climb if climb in ROPE_CLIMB_MODES else "hold"
 	apply_profile(saved, false)
+
+
+## The COMFORT row ROPE CLIMB (T8 § 5). False for an unknown mode; `save` writes only into a file that loads (or none).
+func set_rope_climb(mode: String, save: bool = true) -> bool:
+	if not mode in ROPE_CLIMB_MODES:
+		return false
+	rope_climb = mode
+	if save:
+		var cfg := ConfigFile.new()
+		var loaded := cfg.load(SETTINGS_PATH)
+		if loaded != OK and loaded != ERR_FILE_NOT_FOUND:
+			return true
+		cfg.set_value("input", "rope_climb", mode)
+		cfg.save(SETTINGS_PATH)
+	return true
 
 
 ## Menus accept either controller. Keep built-in keyboard events and all combat maps.

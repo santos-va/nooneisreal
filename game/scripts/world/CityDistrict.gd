@@ -169,6 +169,12 @@ func _street_details() -> void:
 		# The anchor's own solid support (a lamp post; brackets have no collider): the hanging rope never breaks on it
 		# (GrappleHook._support_of, plan 2026-10-09 «Рішення T1 після кроків 1–4»).
 		anchor.set_meta("support", own)
+		# The arm the hands grip at the rope's top (ADR-028 п. 3, GrappleHook.perch_pose_for): where it is fixed; no
+		# collider is added (T6 § 3: the perch is a state placed from these points, not a contact). `tie_rod`: the
+		# bracket's brace comes down onto the arm from above (BRACE_DROP < 0), so the far hand keeps off it.
+		if String(supports[index].kind) != "hanger":
+			anchor.set_meta("perch", {"mount": supports[index].mount, "kind": supports[index].kind,
+				"tie_rod": String(supports[index].kind) == "bracket" and float(BRACE_DROP.get(index, 0.75)) < 0.0})
 		anchor.add_to_group("grapple_anchor")
 		add_child(anchor)
 

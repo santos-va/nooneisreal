@@ -221,8 +221,20 @@ func out_of_view(point: Vector3) -> bool:
 	return not camera.is_position_in_frustum(point + Vector3.UP * 1.0)
 
 
-## Talk reach to a passer-by: the residents' hand reach (CityNpcDirector TALK_GAP / TALK_VERTICAL) and a free line.
+## A passer-by's talk (the alley's, the leaves', the pedlar's prompt and its interact): never while the hero's hook is
+## busy, then the reach.
 func can_talk_to(passerby: Node3D) -> bool:
+	return not talk_blocked() and in_talk_reach(passerby)
+
+
+## No talk while the hook is busy — on the rope, on an anchor's arm, while a rope reels in (T8 docs/Audit/
+## 2026-10-15-T8-Rope-Climb-Input-Acceptance.md § 4; the residents' CityNpcDirector.can_talk asks the same).
+func talk_blocked() -> bool:
+	return player.grapple.busy()
+
+
+## Talk reach to a passer-by: the residents' hand reach (CityNpcDirector TALK_GAP / TALK_VERTICAL) and a free line.
+func in_talk_reach(passerby: Node3D) -> bool:
 	if not is_instance_valid(passerby):
 		return false
 	var offset: Vector3 = passerby.global_position - player.global_position

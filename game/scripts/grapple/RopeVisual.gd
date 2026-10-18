@@ -120,6 +120,15 @@ func update_rope(start: Vector3, end: Vector3, rest_length: float, delta: float,
 	_last_end = end
 	_draw()
 
+## Moves only the drawn start onto `start` (the rest of the line as the last update left it) and redraws: a hand that moved
+## after the physics tick drew the rope (GrappleHook's reel, T6 acceptance 2026-10-15 § 9 п. 4). Presentation only.
+func move_start(start: Vector3) -> void:
+	if points.size() != SEGMENTS + 1 or not start.is_finite():
+		return
+	points[0] = start
+	_last_start = start
+	_draw()
+
 func _draw() -> void:
 	if _mesh == null:
 		return

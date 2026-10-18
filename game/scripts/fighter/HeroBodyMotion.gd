@@ -93,6 +93,9 @@ func reset() -> void:
 	_kick_from.clear()
 	_kick_elapsed = KICK_BLEND
 	_last_serial = -1
+	_perch_up = Vector3.ZERO
+	_rope_up = Vector3.ZERO
+	_perch_hips = 1.0
 
 ## The heading the body is drawn at this tick (forward of `_heading`, Fighter.yaw()'s convention) while a pivot turns
 ## it; ZERO otherwise — an ordinary turn keeps the legs on the gameplay course, whose footfalls the frozen contact
@@ -150,6 +153,8 @@ func update(f: Fighter, delta: float, velocity: Vector3, acceleration: Vector3) 
 	balance_weight = move_toward(balance_weight, 1.0 if hanging else 0.0, _dt / 0.16)
 	if f.state not in [Fighter.State.GRAPPLE, Fighter.State.JUMP, Fighter.State.IDLE, Fighter.State.WALK]:
 		balance_weight = 0.0
+	if balance_weight <= 0.00001 and not f.grapple.perch_presentation():
+		_perch_hips = 1.0 # nothing hangs any more: the next rope starts from its rest-height hips
 
 func prepare_source(source: Skeleton3D, f: Fighter) -> void:
 	if f.state != _source_state:
@@ -227,6 +232,8 @@ func apply_balance(hero: Skeleton3D, f: Fighter) -> void:
 	# the rope stood at 33–54° (the 0.28 lean of the duel rope tops out at 15.6°) — and the legs trail the swing.
 	var follow: bool = rope_follow and f.grapple._responsive_traversal()
 	var desired_up: Vector3 = _rope_body_up(radial) if follow else (Vector3.UP + Vector3(radial.x, 0.0, radial.z) * 0.28).normalized()
+	if follow:
+		desired_up = _perch_body_up(desired_up, f)
 	var turn: Quaternion = Quaternion(Vector3.UP, desired_up)
 	var axis_world: Vector3 = turn.get_axis()
 	# The rope takes the body in half the hang ramp; the catch blend (TraversalBlend) spreads it over the catch.
@@ -236,7 +243,9 @@ func apply_balance(hero: Skeleton3D, f: Fighter) -> void:
 		if not follow:
 			_rotate_world(hero, hero.find_bone("Spine"), axis_world, -turn.get_angle() * balance_weight * 0.30)
 	var rest: Vector3 = hero.get_bone_rest(hips).origin
-	hero.set_bone_pose_position(hips, hero.get_bone_pose_position(hips).lerp(rest, balance_weight))
+	# The rope draws the hips at their rest height; the grip on the arm draws the authored hang, 5 cm lower — eased over
+	# the pull-up (_perch_hips), so the grip's first ticks no longer lower the whole body and the crown stays off the arm.
+	hero.set_bone_pose_position(hips, hero.get_bone_pose_position(hips).lerp(rest, balance_weight * (_perch_hips if follow else 1.0)))
 	var trail: Vector3 = Vector3(tangent.x, 0.0, tangent.z).limit_length(7.0) * 0.025
 	var hang: Vector3 = _rope_legs(desired_up, f) if follow else Vector3.DOWN
 	for side: String in ["Left", "Right"]:
@@ -265,8 +274,12 @@ func apply_gaze(hero: Skeleton3D, source: Skeleton3D, f: Fighter, ragdoll: BoneR
 		# every jab/lowhand frame to the identical -20 degree world-space plateau.
 		gaze_pitch = deg_to_rad(-7.0) + deg_to_rad(12.0) * tanh(pitch / deg_to_rad(45.0))
 		var flat: Vector3 = Vector3(authored.x, 0.0, authored.z).normalized()
-		var desired: Vector3 = flat * cos(gaze_pitch) + Vector3.UP * sin(gaze_pitch)
-		if f.state == Fighter.State.GRAPPLE and f.grapple.attached:
+		var pitch_drawn: float = gaze_pitch
+		var head_back: bool = perch_head_back > 0.0 and f.grapple.perch_presentation()
+		if head_back:
+			pitch_drawn = perch_head_back # the pull-up and the grip: the head back from upright, toward the hands (T6 § 9 п. 3)
+		var desired: Vector3 = flat * cos(pitch_drawn) + Vector3.UP * sin(pitch_drawn)
+		if f.state == Fighter.State.GRAPPLE and f.grapple.attached and not head_back:
 			var head: Vector3 = hero.global_transform * hero.get_bone_global_pose(_head).origin
 			desired = desired.slerp((f.grapple.anchor_point - head).normalized(), 0.30)
 		var fast: bool = f.state == Fighter.State.ATTACK or f.dodging
@@ -333,7 +346,10 @@ func remember_pose(hero: Skeleton3D, f: Fighter) -> void:
 	_remember(hero, f, Quaternion(Vector3.UP, _heading), parent_rotation)
 
 func _remember(hero: Skeleton3D, f: Fighter, heading: Quaternion, parent_rotation: Quaternion) -> void:
-	if f.state == Fighter.State.JUMP:
+	# The grip on an anchor's arm too: its leap is drawn as the wall kick (CityFighter._tick_perch), and the kick's
+	# crossfade carries the hips in the drawn heading's frame — without the grip's pose remembered the facing's 180° flip
+	# mirrored the body round its feet and threw the head 0.2 m into the arm (T6 acceptance 2026-10-15 § 9 п. 5).
+	if f.state == Fighter.State.JUMP or (f.state == Fighter.State.GRAPPLE and f.grapple.phase == GrappleHook.Phase.PERCH):
 		_last_rotations.resize(hero.get_bone_count())
 		for bone: int in hero.get_bone_count():
 			_last_rotations[bone] = hero.get_bone_pose_rotation(bone)
@@ -358,6 +374,46 @@ const LEG_DAMPING: float = 0.55
 var _leg_dir: Vector3 = Vector3.ZERO
 var _leg_speed: Vector3 = Vector3.ZERO
 var _leg_serial: int = -1
+
+## T6 acceptance 2026-10-15 § 9 п. 2 (docs/Audit/2026-10-15-T6-Rope-Climb-Acceptance.md): on the pull-up onto an
+## anchor's arm (GrappleHook CLIMB_TOP) and on the grip the hands are on the arm, not on the rope, so the body hangs under
+## them upright. Taking the line hand → anchor there laid it flat along the arm (71.7° at the pull-up's middle, the HAND
+## goes under the arm's side). The lean the rope left eases to vertical at PERCH_UPRIGHT_RATE per tick. PLACEHOLDER (T6).
+const PERCH_UPRIGHT_RATE: float = 8.0 * PI / 180.0
+## --break control of tools/grapple/rope_climb_check.gd (`flag`): false keeps the rope's lean on the pull-up (15а as T6 saw it).
+var perch_upright: bool = true
+## T6 § 9 п. 3: on the grip the head is tilted back 10–15° from upright — the hero looks up at his hands — so the crown
+## keeps ≥ 0.03 m off the arm (Skea's was inside it: the authored gaze looks 15° down there). The gaze's pitch on the grip,
+## turned at GAZE_TURN_RATE. PLACEHOLDER (T6). A --break control of rope_climb_check (`head`): 0 draws 15а's head.
+## T6's re-acceptance 2026-10-15 measured the skinned surface: at 15° Choko's hair still went 0.014–0.019 m into the arm
+## (his drawn body is 0.10 m behind his capsule, so he cannot hang further back without losing the grip — his wrists
+## already stop 4–8 cm short); 25° clears it by 0.017 m and keeps his hands where they were. The grip is 58° (Choko) and
+## 63° (Skea) above the eyes' level, so 25° still looks up toward it, not past it (docs/Fix/2026-10-15-Rope-Perch-Mesh-
+## Clearance-Fix.md § 2). PLACEHOLDER (T6).
+var perch_head_back: float = 25.0 * PI / 180.0
+var _perch_up: Vector3 = Vector3.ZERO
+var _rope_up: Vector3 = Vector3.ZERO
+## How much of the rope's rest-height hips is still drawn (1 on the rope, eased to 0 over the pull-up). PLACEHOLDER.
+const PERCH_HIPS_SECONDS: float = 0.25
+var _perch_hips: float = 1.0
+var _perch_serial: int = -1
+
+## The body's up axis this tick: the rope's (`rope_up`) while on the rope, eased to vertical on the pull-up and the grip.
+## Advanced once per physics tick (a repeated render reuses it).
+func _perch_body_up(rope_up: Vector3, f: Fighter) -> Vector3:
+	var perching: bool = perch_upright and f.grapple.perch_presentation()
+	if _perch_serial != serial:
+		_perch_serial = serial
+		_perch_hips = move_toward(_perch_hips, 0.0 if perching else 1.0, _dt / PERCH_HIPS_SECONDS)
+		if not perching:
+			_perch_up = Vector3.ZERO
+			_rope_up = rope_up
+		else:
+			if _perch_up.is_zero_approx():
+				_perch_up = _rope_up if not _rope_up.is_zero_approx() else rope_up
+			var angle: float = _perch_up.angle_to(Vector3.UP)
+			_perch_up = Vector3.UP if angle <= PERCH_UPRIGHT_RATE else _perch_up.slerp(Vector3.UP, PERCH_UPRIGHT_RATE / angle).normalized()
+	return _perch_up if perching else rope_up
 
 ## The body's up axis on the rope: along the rope, never leaning past ROPE_MAX_LEAN.
 func _rope_body_up(radial: Vector3) -> Vector3:

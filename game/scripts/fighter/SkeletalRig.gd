@@ -293,6 +293,16 @@ func retarget() -> void:
 	living_body.keep_hero(hero_skeleton)   # only while the living pose is laid on the mannequin
 
 
+## A drawn hero bone in world space (presentation reads it: GrappleHook's returning hook lands on the drawn waist);
+## `fallback` without a rig or without that bone.
+func bone_world(bone_name: String, fallback: Vector3) -> Vector3:
+	if is_instance_valid(hero_skeleton):
+		var bone: int = hero_skeleton.find_bone(bone_name)
+		if bone >= 0:
+			return hero_skeleton.global_transform * hero_skeleton.get_bone_global_pose(bone).origin
+	return fallback
+
+
 ## Presentation endpoint only; physics keeps GrappleHook.HAND and its deterministic rope constraint.
 func hand_world(side: String = "Right") -> Vector3:
 	if is_instance_valid(hero_skeleton):

@@ -20,7 +20,8 @@ if binary is None:
     sys.exit(2)
 logs = Path(os.environ.get('PLAYABLE_LOG_DIR') or tempfile.mkdtemp(prefix='nir-playable-'))
 logs.mkdir(parents=True, exist_ok=True)
-cases = [
+# all_cases keeps the whole battery for the class-18 rule below, whatever a harness later binds `cases` to.
+cases = all_cases = [
     ('city-lower-story', 'tools/world/city_lower_story_check.gd', r'CITY_LOWER_STORY_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-lower-gallery', 'tools/world/city_lower_gallery_check.gd', r'CITY_LOWER_GALLERY_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
     ('city-story', 'tools/world/city_story_check.gd', r'CITY_STORY_COMPLETE checks=[1-9][0-9]* failures=0', [], 0),
@@ -453,14 +454,25 @@ for mutation, family in (('glb_standin', 'm0'), ('glb_silent', 'm0'), ('glb_both
     cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
                   rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
                   ['--', '--break=' + mutation], 1))
+# T4 audit 2026-10-15 part 2, proposals 1 and 4 (docs/Fix/2026-10-15-Negative-Families-Runner-Fix.md). MC7 S3 «the arm
+# keeps 6.00 m» had no negative of its own: a wall across the street 3 m behind the S3 hero (only mc7s3 goes red), and at
+# the threshold a beam at the lens (arm 5.89 m). The product's CityProps._refuse_kind, run in a child Godot, must log an
+# unknown kind as one CITY_PROPS error: silent, a plain line, a warning, twice — each must go red in m0log.
+for mutation, family in (('machine_s3_wall', 'mc7s3'), ('machine_s3_edge', 'mc7s3'), ('refuse_silent', 'm0log'),
+                         ('refuse_print', 'm0log'), ('refuse_warning', 'm0log'), ('refuse_twice', 'm0log')):
+    cases.append(('city-tidy-negative-' + mutation, 'tools/world/city_tidy_check.gd',
+                  rf'CITY_TIDY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9,]*\b{family}\b[a-z0-9,]*',
+                  ['--', '--break=' + mutation], 1))
 # Plan 2026-10-14-T6-Acceptance-Crane-Albedo-AB, T1's decision after T6 (2026-10-15; docs/Fix/2026-10-15-Stall-Wedge-
 # Boundary-Fix.md). The district's invisible edge: no running jump crosses any of the four boundaries at any height, the
 # edge only meets the hero's body. Negatives: the north veil gone, every veil at 8 m, the veils on the world layer too
-# (camera, rope, parkour), a veil drawn, the hero's mask without the veil.
-cases.append(('city-bounds', 'tools/world/city_bounds_check.gd', r'CITY_BOUNDS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0))
-for mutation in ('gap', 'low', 'world', 'mesh', 'hero'):
+# (camera, rope, parkour), a veil drawn, the hero's mask without the veil. Each must go red in every family it names
+# (T4 audit 2026-10-15 part 2, class 18: B2 swept to 6 m only, B5 on the west runs only stayed green before).
+cases.append(('city-bounds', 'tools/world/city_bounds_check.gd', r'CITY_BOUNDS_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none red=none', [], 0))
+for mutation, families in (('gap', 'b1 b2 b5'), ('low', 'b1 b2 b5'), ('world', 'b1 b3 b4'), ('mesh', 'b1'), ('hero', 'b2 b3 b5')):
     cases.append(('city-bounds-negative-' + mutation, 'tools/world/city_bounds_check.gd',
-                  rf'CITY_BOUNDS_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  rf'CITY_BOUNDS_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red='
+                  + ''.join(rf'(?=[a-z0-9,]*\b{family}\b)' for family in families.split()) + r'[a-z0-9,]*',
                   ['--', '--break=' + mutation], 1))
 # The barrel on trestles (T6 RED): off its back the hero ends on the floor or its top, or S/A/D take him there. Negatives:
 # the barrel back at its old place (0.62 m off SouthWestRear), a wall brought to 0.62 m off it, the barrel 0.68 m off it.
@@ -470,12 +482,137 @@ for mutation in ('old', 'wall', 'near'):
                   rf'CITY_RIM_EXIT_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
                   ['--', '--break=' + mutation], 1))
 # The tailor's dress form (T6 YELLOW) holds no hero; the cutting table's rim keeps A and D. Negatives: the old flat
-# cylinder, a top narrowed to the neck, a top falling from the form's own east edge.
-cases.append(('city-perch', 'tools/world/city_perch_check.gd', r'CITY_PERCH_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none', [], 0))
-for mutation in ('flat', 'cone', 'edge'):
+# cylinder, a top narrowed to the neck, a top falling from the form's own east edge; P4's own (T4 audit 2026-10-15 part
+# 2): a 0.3 m step under the rim's gap on both sides, on the A side, on the D side, and 0.08 m high on both. Each must go
+# red in every family it names (class 18: P2 off, P3 at 120 ticks stayed green before).
+cases.append(('city-perch', 'tools/world/city_perch_check.gd', r'CITY_PERCH_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none red=none', [], 0))
+for mutation, families in (('flat', 'p1 p2 p3'), ('cone', 'p1 p2 p3'), ('edge', 'p2 p3'), ('rim_step', 'p4'),
+                           ('rim_west', 'p4'), ('rim_east', 'p4'), ('rim_low', 'p4')):
     cases.append(('city-perch-negative-' + mutation, 'tools/world/city_perch_check.gd',
-                  rf'CITY_PERCH_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation}',
+                  rf'CITY_PERCH_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red='
+                  + ''.join(rf'(?=[a-z0-9,]*\b{family}\b)' for family in families.split()) + r'[a-z0-9,]*',
                   ['--', '--break=' + mutation], 1))
+# Plan 2026-10-15-Rope-Climb-Perch-Release step 5 (15а, T2-И; docs/Fix/2026-10-15-Rope-Climb-City-Fix.md): the city rope
+# climbs to its anchor and grips the arm, slides down, comes back (the grip, the G reel), E with no target lets go, a
+# transfer does not break on the post just left; the duel's rope stays as it is. Every negative names the family it must
+# turn red (class 18). The climb on every anchor, both heroes, in five parts; the rest of T8's list per hero; the duel.
+for part in range(1, 6):
+    cases.append((f'rope-climb-{part}', 'tools/grapple/rope_climb_check.gd',
+                  rf'ROPE_CLIMB_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none part={part}/5 anchors=([1-9][0-9]*)/\1 perched=\1 blocked=0 red=none',
+                  ['--', f'--part={part}/5'], 0))
+for hero in ('choko', 'skea'):
+    cases.append((f'rope-climb-rules-{hero}', 'tools/grapple/rope_climb_check.gd',
+                  r'ROPE_CLIMB_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none part=rules anchors=0/0 perched=0 blocked=0 red=none',
+                  ['--', '--part=rules', f'--hero={hero}'], 0))
+cases.append(('rope-climb-duel', 'tools/grapple/rope_climb_check.gd',
+              r'ROPE_CLIMB_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none part=duel anchors=0/0 perched=0 blocked=0 red=none',
+              ['--', '--part=duel'], 0))
+# The grip refunding two slots, the reel taking a rope 20 m off or behind a wall, or one somebody hangs on, the city's
+# climb leaked into the duel, the far hand back beside the tie rod of bracket 22 (T6 § 3).
+for mutation, family, args in (('double', 'inventory', ['--part=1/5', '--hero=choko']), ('far', 'reel_refuse', ['--part=rules', '--hero=choko']),
+                               ('hung', 'reel_refuse', ['--part=rules', '--hero=choko']), ('duel_flag', 'duel', ['--part=duel']),
+                               ('tie_rod', 'perch', ['--part=3/5', '--hero=choko'])):
+    cases.append(('rope-climb-negative-' + mutation, 'tools/grapple/rope_climb_check.gd',
+                  rf'ROPE_CLIMB_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} part=[a-z0-9/]+ anchors=[0-9]+/[0-9]+ perched=[0-9]+ blocked=[0-9]+ red=[a-z_,]*\b{family}\b[a-z_,]*',
+                  ['--', *args, '--break=' + mutation], 1))
+# T5 § 8 on weighted_swing_check (the positive sentinel unchanged; families on WEIGHTED_SWING_FAMILIES): the climb × 2, the
+# grip 0.5 m higher, a climb with nothing held, v × 1.01 a tick, a pump along the motion whatever the stick, +1 m/s on a
+# let-go.
+for mutation, family in (('fast', 'climb_rate'), ('lift', 'perch'), ('noreq', 'noreq'), ('perpetual', 'e1'), ('twosided', 'e2'), ('boost', 'e6')):
+    cases.append(('weighted-swing-negative-' + mutation, 'tools/grapple/weighted_swing_check.gd',
+                  rf'WEIGHTED_SWING_FAMILIES failures=[1-9][0-9]* mutation={mutation} red=[a-z0-9_,]*\b{family}\b[a-z0-9_,]*',
+                  ['--', '--break=' + mutation], 1))
+# The city's E on traversal_check (families on TRAVERSAL_FAMILIES): let go though a target was shown 3 ticks ago; never let
+# go with none shown.
+for mutation, family in (('drop_on_flicker', 'flicker'), ('stay_on_empty', 'empty')):
+    cases.append(('traversal-negative-' + mutation, 'tools/grapple/traversal_check.gd',
+                  rf'TRAVERSAL_FAMILIES failures=[1-9][0-9]* mutation={mutation} red=[a-z_,]*\b{family}\b[a-z_,]*',
+                  ['--', '--break=' + mutation], 1))
+# The slide on rope_pull_check: past the rope's deployed length; on a floor without letting go.
+for mutation, family in (('overlong', 'slidelength'), ('stuck', 'slidefloor')):
+    cases.append(('rope-pull-negative-' + mutation, 'tools/grapple/rope_pull_check.gd',
+                  rf'ROPE_PULL_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} red=[a-z_,]*\b{family}\b[a-z_,]*',
+                  ['--', '--hero=choko', '--break=' + mutation], 1))
+# «Chosen — not cut» for transfers (rope_choice_check --transfer), T3's s7b case included; the cuts whose line was already
+# shut at contact are pinned (KNOWN_TRANSFER_CUTS). Negatives: the transfer's grace removed (s7b back), a plate on the line
+# at contact.
+for hero in ('choko', 'skea'):
+    for part in range(1, 6):
+        cases.append((f'rope-transfer-{hero}-{part}', 'tools/grapple/rope_choice_check.gd',
+                      rf'ROPE_CHOICE_COMPLETE checks=[1-9][0-9]* failures=0 mutation=none part={part}/5 mode=transfer anchors=([0-9]+)/\1 presses=[1-9][0-9]* hangs=[1-9][0-9]* cut_first=([0-9]+) open=\2 rewinds=[0-9]+ denied=[0-9]+ red=none',
+                      ['--', f'--hero={hero}', f'--part={part}/5', '--transfer'], 0))
+for mutation, args in (('transfer_skip', ['--part=3/5']), ('late_wall', ['--part=1/5'])):
+    cases.append(('rope-transfer-negative-' + mutation, 'tools/grapple/rope_choice_check.gd',
+                  rf'ROPE_CHOICE_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} part=[0-9]/5 mode=transfer anchors=[0-9]+/[0-9]+ presses=[0-9]+ hangs=[0-9]+ cut_first=[0-9]+ open=[0-9]+ rewinds=[0-9]+ denied=[0-9]+ red=[a-z,]*\bcut\b[a-z,]*',
+                  ['--', '--hero=choko', *args, '--transfer', '--break=' + mutation], 1))
+# T6 acceptance 2026-10-15 § 9 (T2-М, docs/Fix/2026-10-15-Rope-Perch-Entry-Fix.md): the drawn hero on the pull-up and the
+# grip is judged inside rope-climb-1…5 (perch_tilt, perch_legs, perch_head, perch_turn). Negatives: the rope's lean kept on
+# the pull-up (15а's «flag»), the head not tilted back, no turn toward the arm (the grip flips the facing), the arm solved
+# from rest every tick (the elbow flips).
+for mutation, family, args in (('flag', 'perch_tilt', ['--part=1/5', '--hero=choko']), ('head', 'perch_head', ['--part=1/5', '--hero=skea']),
+                               ('snap', 'perch_turn', ['--part=1/5', '--hero=choko']), ('elbow', 'perch_turn', ['--part=3/5', '--hero=choko']),
+                               # The climb drawn (T6 § 9 п. 1): the cycle at 5.5 Hz again, the hands without their stroke, the feet half a
+                               # cycle apart.
+                               ('cadence', 'cadence', ['--part=1/5', '--hero=choko']), ('stroke', 'hand_stroke', ['--part=1/5', '--hero=choko']),
+                               ('antiphase', 'feet_phase', ['--part=1/5', '--hero=choko']),
+                               # The reel's rope from the right hand again, not between both (T6 § 9 п. 4).
+                               ('reel_right', 'reel_hands', ['--part=rules', '--hero=choko']),
+                               # The rope coming back on the grip (T6 § 9 п. 6): the tail kept at full length; the HUD +1 on the grip's tick.
+                               ('tail_stays', 'retrieve_tail', ['--part=1/5', '--hero=choko']), ('instant', 'retrieve_hud', ['--part=1/5', '--hero=choko']),
+                               # The shot from the grip with both hands kept on the arm (T6 § 9 п. 7).
+                               ('two_hands', 'perch_throw', ['--part=rules', '--hero=choko']),
+                               # The leap off the grip by 15а's rule: no stick along the arm, through it and its cap (T6 § 9 п. 5, T1).
+                               ('leap_along', 'leap_clear', ['--part=rules', '--hero=choko']),
+                               # T4 audit 15а RED-2 а: the reel from 16 m, the line clear (П-4 far now stands 14.5 m off on a clear line).
+                               ('reel_range', 'reel_refuse', ['--part=rules', '--hero=choko'])):
+    cases.append(('rope-climb-negative-' + mutation, 'tools/grapple/rope_climb_check.gd',
+                  rf'ROPE_CLIMB_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} part=[a-z0-9/]+ anchors=[0-9]+/[0-9]+ perched=[0-9]+ blocked=[0-9]+ red=[a-z_,]*\b{family}\b[a-z_,]*',
+                  ['--', *args, '--break=' + mutation], 1))
+# T4 audit 15а RED-2 б and Y1 on traversal_check (the rows start swinging at (3; 0; 1); the window rows 14 / 15 ticks): E's
+# let-go stops the swing; the stickiness 5 ticks instead of 15.
+for mutation, family in (('zero_v', 'letgo_v'), ('short_window', 'flicker')):
+    cases.append(('traversal-negative-' + mutation, 'tools/grapple/traversal_check.gd',
+                  rf'TRAVERSAL_FAMILIES failures=[1-9][0-9]* mutation={mutation} red=[a-z_,]*\b{family}\b[a-z_,]*',
+                  ['--', '--break=' + mutation], 1))
+# T8 acceptance 2026-10-15 ТЗ 1–7 (T2-П, docs/Fix/2026-10-15-Rope-Input-Acceptance-Fix.md), each negative red in its own
+# family (class 18): the rope's tick leaving the dodge's press (N2, P7); the grip leaving the dash's press (Skea's flash
+# after the drop); the slide reading the held dash (Y + X slides, P3); a passer-by talked to on the rope (P10b); the ROPE
+# CLIMB row's item_selected disconnected (real keys and pad); a kept hang that says nothing (P5, traversal_check).
+for mutation, family, args in (('rope_buffer', 'dodge', ['--part=rules', '--hero=choko']), ('perch_flash', 'perch_dash', ['--part=rules', '--hero=skea']),
+                               ('pad_dash', 'pad', ['--part=rules', '--hero=choko']), ('passerby', 'talk', ['--part=rules', '--hero=choko']),
+                               ('rope_row', 'comfort', ['--part=rules', '--hero=choko'])):
+    cases.append(('rope-climb-negative-' + mutation, 'tools/grapple/rope_climb_check.gd',
+                  rf'ROPE_CLIMB_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} part=[a-z0-9/]+ anchors=[0-9]+/[0-9]+ perched=[0-9]+ blocked=[0-9]+ red=[a-z_,]*\b{family}\b[a-z_,]*',
+                  ['--', *args, '--break=' + mutation], 1))
+# T6's re-acceptance after T2-М (T2-Р, docs/Fix/2026-10-15-Rope-Perch-Mesh-Clearance-Fix.md): the drawn surface, not the
+# bone centres (rope_mesh_clearance.gd). Each negative names the family it turns red: Skea back at T2-М's 0.14 (her hair in
+# the arm); 15а's pull-up path (up to the grip's height under the ceramic cap, then across); the far hand back at 0.66 on
+# the struts from below (Skea's sleeve on the strut's top); Skea's leap off the grip from T2-М's 0.14.
+for name, mutation, family, args in (('body_near', 'body_near', 'perch_head_mesh', ['--part=1/5', '--hero=skea']),
+                                     ('pull_first', 'pull_first', 'pull_ceramic', ['--part=2/5', '--hero=choko']),
+                                     ('strut_far', 'strut_far', 'sleeve_strut', ['--part=2/5', '--hero=skea']),
+                                     ('body_near_leap', 'body_near', 'leap_mesh', ['--part=rules', '--hero=skea'])):
+    cases.append(('rope-climb-negative-' + name, 'tools/grapple/rope_climb_check.gd',
+                  rf'ROPE_CLIMB_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} part=[a-z0-9/]+ anchors=[0-9]+/[0-9]+ perched=[0-9]+ blocked=[0-9]+ red=[a-z_,]*\b{family}\b[a-z_,]*',
+                  ['--', *args, '--break=' + mutation], 1))
+cases.append(('traversal-negative-mute_deny', 'tools/grapple/traversal_check.gd',
+              r'TRAVERSAL_FAMILIES failures=[1-9][0-9]* mutation=mute_deny red=[a-z_,]*\bdenied\b[a-z_,]*',
+              ['--', '--break=mute_deny'], 1))
+# T4's re-audit of 15а (docs/Audit/2026-10-15-Rope-Climb-15a-Recheck.md, T2-С docs/Fix/2026-10-15-Rope-Recheck-Yellow-Fix.md),
+# each negative red in its own family (class 18): the rope's tick no longer taking the dash's press (Skea's flash after the
+# let-go, Y-A); the alley's asker and the pedlar talked to on the rope by the reach alone (Y-B); the climb at 3.0 m/s, under
+# its lower bound 3.5 (Y-C).
+for mutation, family, args in (('hang_flash', 'rope_dash', ['--part=rules', '--hero=skea']),
+                               ('alley_reach', 'talk', ['--part=rules', '--hero=choko']),
+                               ('vendor_reach', 'talk', ['--part=rules', '--hero=choko']),
+                               ('climb_slow', 'climb_rate', ['--part=1/5', '--hero=choko'])):
+    cases.append(('rope-climb-negative-' + mutation, 'tools/grapple/rope_climb_check.gd',
+                  rf'ROPE_CLIMB_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation={mutation} part=[a-z0-9/]+ anchors=[0-9]+/[0-9]+ perched=[0-9]+ blocked=[0-9]+ red=[a-z_,]*\b{family}\b[a-z_,]*',
+                  ['--', *args, '--break=' + mutation], 1))
+# The same audit, Y-C on rope_pull_check: the slide at 1.6 m/s, under its lower bound 1.9.
+cases.append(('rope-pull-negative-slide_slow', 'tools/grapple/rope_pull_check.gd',
+              r'ROPE_PULL_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation=slide_slow red=[a-z_,]*\bsliderate\b[a-z_,]*',
+              ['--', '--hero=choko', '--break=slide_slow'], 1))
 @contextmanager
 def isolated_profile():
     # Linux has an OS-supported data root override. macOS does not: use Godot's
@@ -508,6 +645,200 @@ def isolated_profile():
             '[application]\nconfig/use_custom_user_dir=true\n'
             f'config/custom_user_dir_name="{user_dir.name}"\n')
         yield mirror, env
+
+# Class 18 (T4 audit 2026-10-15 part 2, proposal 1; docs/Fix/2026-10-15-Negative-Families-Runner-Fix.md; bypasses closed
+# by docs/Fix/2026-10-15-Runner-Rule-Bypass-Fix.md): a negative counts only for the reason it names. A negative (expected
+# rc 1) whose sentinel requires no concrete family is refused, unless UNFAMILIED lists it as one that had none when the
+# rule was frozen. «Requires a family» is read off the parsed sentinel, not its text: after its one top-level «red=» there
+# must be a word w other than «none», written \bw\b (or between «red=», «,» and the line's end), that every match has to
+# contain while still inside the family list ([A-Za-z0-9_,]) — at the top level, in a plain group or in a lookahead.
+# «red=[a-z_,]*», «red=(none|...)» or «red=.*\bw\b» require none. A listed line is «name|script|args»: the case of that
+# name must still run that script with those args (the same name given to a new negative is refused), and a listed name
+# that no case has any more is refused. The list only shrinks: a listed case that names its family now, or is no
+# negative, is refused until it leaves the list, and the list holds exactly UNFAMILIED_CEILING names — the ceiling drops
+# with every name that leaves. That it never rises is history, so tools/gates/unfamilied_ceiling_check.py (make gates)
+# holds the list and the ceiling against the merge-base with origin/main. The rule judges all_cases — the whole battery
+# — so a harness that runs a subset of `cases` still sees a ghost; a case in `cases` that all_cases lacks is refused.
+# Before any scenario runs a canary checks the rule itself on each bypass form.
+UNFAMILIED = Path('tools/gates/playable_unfamilied_negatives.txt')
+UNFAMILIED_CEILING = 156
+try:
+    from re import _parser as sre_parse, _constants as sre_c
+except ImportError:  # Python < 3.11
+    import sre_parse
+    import sre_constants as sre_c
+FAMILY_LIST_CHARS = frozenset(map(ord, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_,'))
+WORD_CHARS = FAMILY_LIST_CHARS - {ord(',')}
+REPEATS = tuple(op for op in (sre_c.MAX_REPEAT, sre_c.MIN_REPEAT, getattr(sre_c, 'POSSESSIVE_REPEAT', None)) if op)
+
+def leaves_family_list(items):
+    # Can this part of a parsed regex consume a character outside [A-Za-z0-9_,]? Anything unknown counts as yes.
+    for op, av in items:
+        if op is sre_c.LITERAL:
+            if av not in FAMILY_LIST_CHARS:
+                return True
+        elif op is sre_c.IN:
+            for item_op, item_av in av:
+                if item_op is sre_c.LITERAL:
+                    if item_av not in FAMILY_LIST_CHARS:
+                        return True
+                elif item_op is sre_c.RANGE:
+                    low, high = item_av
+                    if low < ord(',') or high > ord('z') or any(c not in FAMILY_LIST_CHARS for c in range(low, high + 1)):
+                        return True
+                else:  # NEGATE, or a category (\d, \w, \s are Unicode-wide)
+                    return True
+        elif op in REPEATS:
+            if av[1] > 0 and leaves_family_list(av[2]):
+                return True
+        elif op is sre_c.SUBPATTERN:
+            if leaves_family_list(av[-1]):
+                return True
+        elif op is sre_c.BRANCH:
+            if any(leaves_family_list(alternative) for alternative in av[1]):
+                return True
+        elif op not in (sre_c.AT, sre_c.ASSERT, sre_c.ASSERT_NOT):  # those are zero-width; ANY, NOT_LITERAL... are not
+            return True
+    return False
+
+def family_words(items, inside, boundary, top):
+    # Words every match of `items` must contain while still inside the family list; whether it still is after them.
+    words = set()
+    i = 0
+    while i < len(items):
+        op, av = items[i]
+        if op is sre_c.LITERAL and boundary and av in WORD_CHARS:
+            j = i
+            while j < len(items) and items[j][0] is sre_c.LITERAL and items[j][1] in WORD_CHARS:
+                j += 1
+            closed = (j == len(items) and top) or (j < len(items) and (
+                items[j] == (sre_c.AT, sre_c.AT_BOUNDARY) or (items[j][0] is sre_c.LITERAL and items[j][1] not in WORD_CHARS)))
+            if closed:
+                if inside:
+                    words.add(''.join(chr(c) for _op, c in items[i:j]))
+                i, boundary = j, False
+                continue
+        if op is sre_c.AT:
+            boundary = av is sre_c.AT_BOUNDARY
+            i += 1
+            continue
+        if op is sre_c.SUBPATTERN:
+            found, inside = family_words(av[-1], inside, boundary, False)
+            words |= found
+        elif op is sre_c.ASSERT and av[0] == 1:
+            words |= family_words(av[1], inside, boundary, False)[0]
+        elif op is sre_c.BRANCH:
+            words |= set.intersection(*(family_words(alternative, inside, boundary, False)[0] for alternative in av[1]))
+            inside = inside and not leaves_family_list([items[i]])
+        elif leaves_family_list([items[i]]):
+            inside = False
+        boundary = op is sre_c.LITERAL and av not in WORD_CHARS
+        i += 1
+    return words, inside
+
+def required_families(sentinel):
+    # The concrete families a sentinel requires after its one top-level «red=»; none for any other shape.
+    try:
+        items = list(sre_parse.parse(sentinel))
+    except Exception:
+        return set()
+    red = [k for k in range(len(items) - 3)
+           if [items[k + n] for n in range(4)] == [(sre_c.LITERAL, ord(c)) for c in 'red=']
+           and not (k and items[k - 1][0] is sre_c.LITERAL and items[k - 1][1] in WORD_CHARS)]
+    if len(red) != 1:
+        return set()
+    return family_words(items[red[0] + 4:], True, True, True)[0] - {'none'}
+
+def read_unfamilied(text):
+    entries, problems = [], []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        parts = line.split('|')
+        if len(parts) != 3 or not parts[0] or not parts[1]:
+            problems.append(f'{UNFAMILIED}: «{line}» is not «name|script|args»')
+            continue
+        entries.append((parts[0], (parts[1], tuple(parts[2].split()))))
+    return entries, problems
+
+def unfamilied_refusals(checked, listed):
+    refusals = []
+    for name, script, sentinel, args, expected_rc in checked:
+        named = bool(required_families(sentinel))
+        if expected_rc == 1 and not named and name not in listed:
+            how = 'names no family (red=)' if re.search(r'\bred=', sentinel) is None else \
+                'has red= but requires no concrete family (only none, an empty or open class, or a word outside the list)'
+            refusals.append(f'{name}: a negative whose sentinel {how}, not listed in {UNFAMILIED}')
+        elif name in listed and (named or expected_rc != 1):
+            refusals.append(f'{name}: listed in {UNFAMILIED} but ' + ('names its family now' if named else 'is no negative')
+                            + ': remove it and lower UNFAMILIED_CEILING')
+        elif name in listed and listed[name] != (script, tuple(args)):
+            refusals.append(f'{name}: listed in {UNFAMILIED} for {"|".join((listed[name][0], " ".join(listed[name][1])))}'
+                            f' but the case runs {script}|{" ".join(args)}: a new negative under an old name names its family')
+    present = {case[0] for case in checked}
+    for name in listed:
+        if name not in present:
+            refusals.append(f'{name}: listed in {UNFAMILIED} but no case has that name: remove it and lower UNFAMILIED_CEILING')
+    return refusals
+
+def unfamilied_canary():
+    # Each form: the cases the rule is shown, and the names it must refuse — no more, no fewer.
+    head = r'CANARY_COMPLETE checks=[1-9][0-9]* failures=[1-9][0-9]* mutation=x'
+    listed = {'canary-negative-listed': ('canary.gd', ('--', '--break=listed'))}
+    kept = ('canary-negative-listed', 'canary.gd', head, ['--', '--break=listed'], 1)
+    base = [kept] + [(f'canary-negative-{n}', 'canary.gd', head + tail, ['--', f'--break={n}'], 1) for n, tail in (
+        ('contains', r' red=[a-z_,]*\bx\b[a-z_,]*'), ('lookahead', r' red=(?=[a-z0-9,]*\bx\b)(?=[a-z0-9,]*\by\b)[a-z0-9,]*'),
+        ('trailing', r' red=[a-z_,]*\bx\b[a-z_,]* rs=n'), ('exact', r' red=x'))]
+    def extra(name, tail):
+        return base + [(name, 'canary.gd', head + tail, ['--', '--break=x'], 1)]
+    forms = {
+        'clean': (base, set()),
+        'bare': (extra('canary-negative-bare', ''), {'canary-negative-bare'}),
+        'weak': (extra('canary-negative-weak', r' red=[a-z_,]*'), {'canary-negative-weak'}),
+        'none': (extra('canary-negative-none', r' red=(none|[a-z,]+)'), {'canary-negative-none'}),
+        'none_word': (extra('canary-negative-noneword', r' red=[a-z,]*\bnone\b[a-z,]*'), {'canary-negative-noneword'}),
+        'outside': (extra('canary-negative-outside', r' red=.*\bx\b.*'), {'canary-negative-outside'}),
+        'later_field': (extra('canary-negative-later', r' red=[a-z,]* rs=\bx\b'), {'canary-negative-later'}),
+        'two_red': (extra('canary-negative-twored', r' red=[a-z,]*\bx\b red=none'), {'canary-negative-twored'}),
+        'ghost': (base[1:], {'canary-negative-listed'}),
+        'recycle': (base[1:] + [('canary-negative-listed', 'other.gd', head, ['--', '--break=listed'], 1)],
+                    {'canary-negative-listed'}),
+        'reargs': (base[1:] + [('canary-negative-listed', 'canary.gd', head, ['--', '--break=other'], 1)],
+                   {'canary-negative-listed'}),
+        'named_now': (base[1:] + [kept[:2] + (head + r' red=[a-z,]*\bx\b[a-z,]*',) + kept[3:]], {'canary-negative-listed'}),
+    }
+    broken = []
+    for form, (checked, expected) in forms.items():
+        refused = {refusal.split(':', 1)[0] for refusal in unfamilied_refusals(checked, listed)}
+        if refused != expected:
+            broken.append(f'{form} refused {sorted(refused)}, expected {sorted(expected)}')
+    return len(forms), broken
+
+try:
+    entries, refusals = read_unfamilied(UNFAMILIED.read_text())
+except OSError as exc:
+    print(f'PLAYABLE REFUSED: {UNFAMILIED} unreadable ({exc})', flush=True)
+    sys.exit(2)
+listed = dict(entries)
+refusals += unfamilied_refusals(all_cases, listed)
+if len(entries) != len(listed) or len(listed) != UNFAMILIED_CEILING:
+    refusals.append(f'{UNFAMILIED} holds {len(entries)} names ({len(listed)} distinct), UNFAMILIED_CEILING is '
+                    f'{UNFAMILIED_CEILING}: the list only shrinks, the ceiling with it')
+unseen = sorted({case[0] for case in cases} - {case[0] for case in all_cases})
+if unseen:
+    refusals.append(f'cases the rule never saw (not in all_cases): {unseen}')
+canary_forms, canary_broken = unfamilied_canary()
+for broken in canary_broken:
+    refusals.append(f'the rule is broken: its canary form {broken}')
+if refusals:
+    for refusal in refusals:
+        print(f'PLAYABLE REFUSED: {refusal}', flush=True)
+    sys.exit(2)
+negatives = [case[0] for case in all_cases if case[4] == 1]
+print(f'PLAYABLE FAMILIES: {len(negatives)} negatives in the battery, {sum(1 for n in negatives if n in listed)} of them '
+      f'without a family and listed (ceiling {UNFAMILIED_CEILING}); canary {canary_forms}/{canary_forms} forms as expected',
+      flush=True)
 
 failures = 0
 for name, script, sentinel, args, expected_rc in cases:
@@ -568,7 +899,11 @@ for name, script, sentinel, args, expected_rc in cases:
                           ('city-bounds-negative-', 'ERROR: CITY_BOUNDS: '),
                           ('city-rim-exit-negative-', 'ERROR: CITY_RIM_EXIT: '),
                           ('city-perch-negative-', 'ERROR: CITY_PERCH: '),
-                          ('city-tidy-negative-', 'ERROR: CITY_TIDY: ')):
+                          ('city-tidy-negative-', 'ERROR: CITY_TIDY: '),
+                          ('rope-climb-negative-', 'ERROR: ROPE_CLIMB: '),
+                          ('weighted-swing-negative-', 'ERROR: WEIGHTED_SWING: '),
+                          ('traversal-negative-', 'ERROR: TRAVERSAL: '),
+                          ('rope-transfer-negative-', 'ERROR: ROPE_CHOICE: ')):
         if name.startswith(scope):
             assertion_prefix = prefix
     # One negative replays an engine fault on purpose: the director's old teardown order, whose «!is_inside_tree()»

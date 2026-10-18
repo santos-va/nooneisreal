@@ -32,6 +32,9 @@ var lethal: CityLethalFight
 var haze: CityHaze
 var haze_vignette: CityHazeVignette
 var events: CityEventDirector
+## The script the street events' director runs: always CityEventDirector in the game. A fixture may hand a subclass (one
+## deliberate mutation, tools/grapple/rope_climb_events.gd) before the world enters the tree, as with fighter_script.
+var events_script: Script = CityEventDirector
 ## Plan 2026-10-08-Survival-Hunger step 4: the hunger scale (H, its bands, food, the collapse, the pocket transfer).
 var hunger: CityHunger
 ## Plan 2026-10-08-Thirst-Substances-Icons step 1: the thirst scale on the hunger clock, and the pump that switches it on.
@@ -154,7 +157,7 @@ func _ready() -> void:
 	add_child(substances)
 	substances.haze = haze
 	player.substances = substances
-	events = CityEventDirector.new()
+	events = events_script.new()
 	events.name = "CityEvents"
 	add_child(events)
 	events.setup(self)
@@ -335,7 +338,10 @@ func _update_story_interaction() -> void:
 				selected = id
 	if selected.is_empty():
 		if not _update_pump():
-			_update_lethal_entry()
+			if lethal.can_enter():
+				_update_lethal_entry()
+			else:
+				_update_reel()
 		return
 	var gamepad: bool = camera_rig.aim.last_gamepad
 	var action: String = story.text("prompt_" + selected)
@@ -365,6 +371,22 @@ func _update_pump() -> bool:
 		Sfx.play(PUMP_SFX, PUMP_SFX_DB)
 	return true
 
+## ADR-028 п. 4 (T5 П3, П4; T8 § 2.4): G reels in the hero's own rope that hangs free within 14 m of the hand on a clear
+## line — last on the key: a resident, an event's prompt, a story point, the pump and the pocket's entry all come first.
+## On the ground, the hook idle, no UI, not in the pocket (the callers above already return for the last two).
+func _update_reel() -> void:
+	if events != null and events.dialogue != null and events.dialogue.prompt.visible:
+		return
+	if not player.on_ground() or player.grapple.busy():
+		return
+	var candidate: Dictionary = player.grapple.reel_candidate()
+	if candidate.is_empty():
+		return
+	hud.set_story_prompt(InputRouter.binding_label(1, "interact", camera_rig.aim.last_gamepad) + " · " + REEL_PROMPT % float(candidate.distance))
+	if InputRouter.just_pressed(1, "interact"):
+		player.grapple.begin_reel(int(candidate.token))
+
+const REEL_PROMPT := "Reel in your rope · %.1fm"   # T8 § 2.4, PLACEHOLDER T7
 const PUMP_PROMPT := "Drink water · free"   # T8 п. 2, PLACEHOLDER T7
 const PUMP_SFX := "pump_drink"              # PLACEHOLDER name: silent until a registered file exists (Sfx.gd:6)
 const PUMP_SFX_DB := -8.0

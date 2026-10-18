@@ -33,7 +33,7 @@ var _marked_id: String = ""
 ## A refused traversal press is answered in the shared hint line (PLACEHOLDER words and seconds, T8 table).
 const HOOK_DENIED_SECONDS: float = 1.5
 const HOOK_REASONS := {
-	"no_harpoons": "NO HARPOONS · reuse a hanging rope",
+	"no_harpoons": "NO HARPOONS · reel in a left rope, or grab one",
 	"behind": "ANCHOR BEHIND · turn around",
 	"above": "NO ANCHOR ABOVE",
 	"too_far": "ANCHOR TOO FAR · get closer",
@@ -609,21 +609,22 @@ func _refresh_quest_guide() -> void:
 
 
 func exploration_help() -> String:
-	# Rope V4 (04-Grapple-System § «Трос V4»): the city hook pulls the hero up to swing height by itself; Space reels up
-	# to 1.2 m beyond it. The pause holds 11 rows at 1600×900 (exit button 6 px from the bottom), so these three rows
-	# stay three; «reuse a rope within 0.70 m» lives in COMFORT & CONTROLS (ComfortPanel's HARPOON).
+	# Rope V4 (04-Grapple-System § «Трос V4»): the city hook pulls the hero up to swing height by itself; ADR-028: jump
+	# held climbs to the anchor, dodge held slides down, the hook with no target lets go, G reels a left rope in (T8
+	# docs/GDD/2026-10-15-Rope-Climb-Input.md § 4). The pause holds 11 rows at 1600×900 (exit button 6 px from the bottom),
+	# so these rows stay as many; «reuse a rope within 0.70 m» lives in COMFORT & CONTROLS (ComfortPanel's HARPOON).
 	var text := "Move: WASD / left stick · Look: RMB + drag / right stick · Jump: %s / A\n" % InputRouter.binding_label(1, "jump", false)
 	text += "Hook (finite): tap %s / L3 (or Y + LT), marked anchor only · it pulls you up to swing height\n" % InputRouter.binding_label(1, "grapple_parkour", false)
-	text += "On the rope: move to swing · hold jump to reel 1.2 m higher · tap hook to transfer\n"
+	text += "Rope: hold %s / A up · hold %s / X down · hook: transfer or let go · move: swing\n" % [InputRouter.binding_label(1, "jump", false), InputRouter.binding_label(1, "dodge", false)]
 	text += "Ledge: hold jump + move into edge; release, then press jump to climb.\n"
 	text += "Skea wall steps: hold jump + move into wall; release to drop.\n"
 	text += "Wall kick: near a wall, release jump; move away + press jump. Once per landing.\n"
 	text += "Landing roll: hold %s / %s + move into a flat landing after a long drop.\n" % [InputRouter.binding_label(1, "crouch", false), InputRouter.binding_label(1, "crouch", true)]
-	text += "Detach: %s / B · Dodge: %s / X · Dash skill: %s / Y + X\n" % [InputRouter.binding_label(1, "grapple_detach", false), InputRouter.binding_label(1, "dodge", false), InputRouter.binding_label(1, "dash", false)]
+	text += "Let go: %s / B · Dodge: %s / X · Dash skill: %s / Y + X\n" % [InputRouter.binding_label(1, "grapple_detach", false), InputRouter.binding_label(1, "dodge", false), InputRouter.binding_label(1, "dash", false)]
 	text += "Strikes: %s; %s; %s; %s\n" % [InputRouter.binding_label(1, "left_hand", false), InputRouter.binding_label(1, "right_hand", false), InputRouter.binding_label(1, "left_leg", false), InputRouter.binding_label(1, "right_leg", false)]
 	# T8 § Шкала голоду → Пауза: the food line would push the pause past 900 px, so it joins the talk line (the FOOD
 	# row itself shows HUNGRY / FAMISHED / FAINT).
-	text += "Sword: %s / R3 · Talk for tasks: %s / Y + D-pad Down · Food: «Шавлія» · Water: the pump\n" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
+	text += "Sword: %s / R3 · Talk or reel rope: %s / Y + D-pad Down · Food: «Шавлія» · Water: the pump\n" % [InputRouter.binding_label(1, "weapon_swap", false), InputRouter.binding_label(1, "interact", false)]
 	text += "Sealed in the city, fights only: skills %s, %s · ultimate %s · enemy hook %s" % [InputRouter.binding_label(1, "skill1", false), InputRouter.binding_label(1, "skill2", false), InputRouter.binding_label(1, "ultimate", false), InputRouter.binding_label(1, "grapple_enemy", false)]
 	return text
 
@@ -712,6 +713,10 @@ func bind_player(player: Fighter) -> void:
 
 
 func _on_rope(charges: int, _cooldown: float, maximum: int) -> void:
+	# T6 acceptance 2026-10-15 § 9 п. 6 / T1: the rope taken back on an anchor's arm counts when its hook touches the hero
+	# (GrappleHook.pending_return); the stock itself is back on the grip's tick.
+	if _player != null and _player.grapple != null and _player.grapple.has_method("pending_return"):
+		charges -= int(_player.grapple.pending_return())
 	_rope_text = "HOOKS %d / %d" % [charges, maximum]
 	if charges == 0:
 		_rope_text += " · Reuse rope"
@@ -1047,7 +1052,7 @@ func _refresh_hook_cue(delta: float) -> void:
 		else:
 			_hook_marker.clear()
 		return
-	if hook.phase != GrappleHook.Phase.IDLE and hook.phase != GrappleHook.Phase.HANG:
+	if hook.phase != GrappleHook.Phase.IDLE and hook.phase != GrappleHook.Phase.HANG and hook.phase != GrappleHook.Phase.PERCH:
 		_hook_marker.clear()
 		return
 	var packet: Dictionary = helper.published
@@ -1071,7 +1076,8 @@ func _refresh_hook_cue(delta: float) -> void:
 		_marked_id = id
 	var point: Vector3 = packet.point
 	var kind: String = packet.get("candidate_kind", "")
-	var verb := "GRAB ROPE" if kind == "rope" else ("TRANSFER" if hook.busy() else "HOOK")
+	# On the rope a new anchor is a transfer; from the ground and from an anchor's arm (ADR-028) it is a new hook (−1).
+	var verb := "GRAB ROPE" if kind == "rope" else ("TRANSFER" if hook.attached else "HOOK")
 	if kind == "rope" and not packet.get("reachable", true):
 		verb = "APPROACH ROPE"
 		binding = ""
@@ -1184,17 +1190,57 @@ func _refresh_traversal_hint() -> void:
 		"wall_run":
 			hint_label.text = "WALL STEPS · Hold %s + move into wall · Release to drop" % jump
 		"wall_kick":
+			if bool(parkour.get("leap", false)):
+				return # the leap off a rope anchor's arm spends no kick (ADR-028 п. 3)
 			hint_label.text = "WALL KICK · Touch down before another kick"
 		"landing_roll":
 			var crouch := InputRouter.binding_label(_player.player_index, "crouch", gamepad)
 			hint_label.text = "LANDING ROLL · Release %s to stop rolling" % crouch
 		_:
-			if _player.grapple.phase != GrappleHook.Phase.HANG:
+			var hook: GrappleHook = _player.grapple
+			if hook.climb_enabled and (hook.phase == GrappleHook.Phase.PERCH or (hook.phase == GrappleHook.Phase.WINDUP and hook.target_min_rise() == GrappleHook.PERCH_MIN_RISE)):
+				hint_label.text = _perch_hint(hook, jump, detach, gamepad)
+			elif hook.climb_enabled and hook.phase == GrappleHook.Phase.CLIMB_TOP:
+				hint_label.text = "CLIMBING"
+			elif hook.phase != GrappleHook.Phase.HANG:
 				return
-			# Rope V4: the hook pulls the hero up to a swing by itself; Space reels a short way higher (plan 2026-10-09).
-			var lead := "ROPE · Pulling you up" if _player.grapple.pulling else "ROPE · Steer to swing"
-			hint_label.text = ("%s · Hold %s to reel higher · %s to detach" % [lead, jump, detach]) if _player.grapple.reel_remaining() > 0.001 else ("REEL LIMIT · Steer to swing · %s to detach" % detach)
+			elif hook.climb_enabled:
+				hint_label.text = _rope_hint(hook, jump, detach, gamepad)
+			else:
+				# Rope V4: the hook pulls the hero up to a swing by itself; Space reels a short way higher (plan 2026-10-09).
+				var lead := "ROPE · Pulling you up" if hook.pulling else "ROPE · Steer to swing"
+				hint_label.text = ("%s · Hold %s to reel higher · %s to detach" % [lead, jump, detach]) if hook.reel_remaining() > 0.001 else ("REEL LIMIT · Steer to swing · %s to detach" % detach)
 	hint_label.show()
+
+
+## ADR-028, T8 docs/GDD/2026-10-15-Rope-Climb-Input.md § 4–5 (words PLACEHOLDER T7): the city rope's row. «let go» names
+## the hook only when the hook would let go now (CityFighter.rope_e_lets_go: no target shown for 15 ticks), else the detach
+## key — the row and the press never disagree.
+func _rope_hint(hook: GrappleHook, jump: String, detach: String, gamepad: bool) -> String:
+	var slide := InputRouter.binding_label(_player.player_index, "dodge", gamepad)
+	var hook_key := InputRouter.binding_label(_player.player_index, "grapple_parkour", gamepad)
+	var lets_go: bool = _player.has_method("rope_e_lets_go") and bool(_player.call("rope_e_lets_go"))
+	var go := "%s: let go" % (hook_key if lets_go else detach)
+	var toggle := InputRouter.rope_climb == "toggle"
+	var climb := ("%s: climb / stop" % jump) if toggle else ("Hold %s: climb" % jump)
+	var down := ("%s: slide down / stop" % slide) if toggle else ("Hold %s: slide down" % slide)
+	if hook.rope_end:
+		return "ROPE END · %s · %s" % [climb, go]
+	if hook.pulling:
+		return "ROPE · Pulling you up · %s · %s · %s" % [climb, down, go]
+	return "ROPE · %s · %s · %s" % [climb, down, go]
+
+
+## The grip on an anchor's arm (T8 § 4; the grip's time left as on a ledge, T5 З1).
+func _perch_hint(hook: GrappleHook, jump: String, detach: String, gamepad: bool) -> String:
+	var grip := "Grip %.1fs · " % maxf(0.0, hook.perch_limit() - hook.perch_elapsed)
+	var hook_key := InputRouter.binding_label(_player.player_index, "grapple_parkour", gamepad)
+	if _player.has_method("perch_leap_armed") and not bool(_player.call("perch_leap_armed")):
+		return "ANCHOR · %sRelease %s, then press it to leap · %s: drop" % [grip, jump, detach]
+	var lets_go: bool = _player.has_method("rope_e_lets_go") and bool(_player.call("rope_e_lets_go"))
+	if lets_go:
+		return "ANCHOR · %s%s + move: leap · %s: drop" % [grip, jump, hook_key]
+	return "ANCHOR · %s%s + move: leap · %s: next anchor · %s: drop" % [grip, jump, hook_key, detach]
 
 
 func _label(text: String, font_size: int) -> Label:

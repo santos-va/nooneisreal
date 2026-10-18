@@ -146,6 +146,11 @@ func can_talk(index: int) -> bool:
 	if player == null or not actors.has(index):
 		return false
 	var actor: CityNpcActor = actors[index]
+	# T8 docs/GDD/2026-10-15-Rope-Climb-Input.md § 2.3 (ADR-028, defect G): never on a rope, on an anchor's arm or while a
+	# rope is coming back — like the story points and the pump (`not grapple.busy()`).
+	var hook: Variant = player.get("grapple")
+	if hook is GrappleHook and (hook as GrappleHook).busy():
+		return false
 	if absf(player.global_position.y - actor.global_position.y) > TALK_VERTICAL or surface_gap(index) > TALK_GAP + 0.00001:
 		return false
 	var query := PhysicsRayQueryParameters3D.create(player.global_position + Vector3.UP * 1.5, actor.global_position + Vector3.UP * 1.5, 1)

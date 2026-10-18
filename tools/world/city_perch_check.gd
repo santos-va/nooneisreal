@@ -14,9 +14,21 @@ extends SceneTree
 ##              floor (T6 accepted this wedge «A, D → на підлогу в обох»).
 ## --break=<m> is a negative control, one form each of «a top the hero can stand on»: flat (the old cylinder r 0.37 up to
 ## 1.96), cone (a top narrowed up to the neck — r 0.37 → 0.25 → 0.10, T6's «звужений догори»), edge (the top falling west
-## from the form's own east edge, 0.63 m off the wall). Sentinel CITY_PERCH_COMPLETE checks=N failures=M mutation=<m>;
-## failures print "CITY_PERCH: ...".
-const BREAKS := ["flat", "cone", "edge"]
+## from the form's own east edge, 0.63 m off the wall). P4's own negatives, one form each of «a way off the rim does not
+## lead to the floor» (T4 audit 2026-10-15 part 2, proposal 1): rim_step (a 0.3 m step under the gap between the table
+## and the form, along the shop: both ways end on it), rim_west and rim_east (that step on one side of the rim only: A,
+## or D, ends on it, the other way stays on the floor), rim_low (the step 0.08 m high, just over the floor's 0.05).
+## Sentinel CITY_PERCH_COMPLETE checks=N failures=M mutation=<m> red=<families|none>; failures print "CITY_PERCH:
+## [family] ...". A family is the guard's tag, the label's first word lower-cased (P1 → p1 … P4 → p4); the torso's
+## presence is p0. Each negative of tools/gates/playable_check.sh names the families it must turn red, so a negative that
+## goes red on a neighbouring guard no longer passes (T4 audit 2026-10-15 part 2, class 18).
+const BREAKS := ["flat", "cone", "edge", "rim_step", "rim_west", "rim_east", "rim_low"]
+## P4 negatives: [x from, x to, top] of the step on the floor under the gap between the cutting table's −z edge (z 14.05)
+## and the form's foot (r 0.48 round the axis: z 13.48), from the shop's west wall to its east wall (inner faces x −23.2
+## and −16.8, ShopWall at local x ∓3.3, 0.2 thick); the rim's hero stands at x −17.85 (P4), r 0.35.
+const RIM_STEPS := {"rim_step": [-23.2, -16.8, 0.3], "rim_west": [-23.2, -18.0, 0.3], "rim_east": [-17.7, -16.8, 0.3],
+	"rim_low": [-23.2, -16.8, 0.08]}
+const RIM_STEP_Z := Vector2(13.5, 14.05)
 const AXIS := Vector3(-17.8, 0, 13.0)        # the dress form: the tailor's door (−20, 0, 12) + local (2.2, 1.0)
 const PLACE := Vector3(-17.8, 1.98, 13.0)    # T6 § 5 ТЗ
 const HOLD_TICKS: int = 30                   # T6 § 5 ТЗ: «за ≤ 30 тиків опиняється на підлозі або на столі»
@@ -27,6 +39,7 @@ const TABLE_EDGE_Z: float = 14.05            # the cutting table's −z edge (lo
 var mutation := "none"
 var checks: int = 0
 var failures: int = 0
+var red: Dictionary = {}   # family → true for every family with a red check (the sentinel's red=)
 var world: Node3D
 var space: PhysicsDirectSpaceState3D
 var held: Dictionary = {}
@@ -40,11 +53,15 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 
-func _check(ok: bool, label: String) -> void:
+## One guard's verdict. A red check adds its family to `red`: the label's tag (its first word lower-cased) or the one
+## the call names.
+func _check(ok: bool, label: String, family: String = "") -> void:
 	checks += 1
 	if not ok:
 		failures += 1
-		push_error("CITY_PERCH: " + label)
+		var tag: String = family if not family.is_empty() else label.get_slice(" ", 0).to_lower()
+		red[tag] = true
+		push_error("CITY_PERCH: [%s] %s" % [tag, label])
 
 
 func _ticks(count: int) -> void:
@@ -113,6 +130,19 @@ func _ring(r: float, y: float, n: int) -> PackedVector3Array:
 func _break_scene() -> void:
 	var collision := torso.get_child(0) as CollisionShape3D
 	var origin: Vector3 = torso.global_position
+	if RIM_STEPS.has(mutation):
+		var spec: Array = RIM_STEPS[mutation]
+		var step := StaticBody3D.new()
+		step.name = "NegativeRimStep"
+		step.collision_layer = 1
+		step.collision_mask = 0
+		var step_shape := CollisionShape3D.new()
+		var step_box := BoxShape3D.new()
+		step_box.size = Vector3(float(spec[1]) - float(spec[0]), float(spec[2]), RIM_STEP_Z.y - RIM_STEP_Z.x)
+		step_shape.shape = step_box
+		step.add_child(step_shape)
+		world.district.add_child(step)
+		step.global_position = Vector3((float(spec[0]) + float(spec[1])) * 0.5, float(spec[2]) * 0.5, (RIM_STEP_Z.x + RIM_STEP_Z.y) * 0.5)
 	match mutation:
 		"flat":
 			var cylinder := CylinderShape3D.new()
@@ -252,7 +282,7 @@ func _p4_rim(hero: String) -> void:
 		_release_all()
 		await _ticks(40)
 		var after: Vector3 = p.global_position
-		outs.append("%s:%.2f>%.2f" % [way[0], before.y, after.y])
+		outs.append("%s:%.2f>%.2f@%.2f,%.2f" % [way[0], before.y, after.y, after.x, after.z])
 		_check(after.y <= 0.05, "P4 %s: off the cutting table's −z edge, %s leads to the floor (from y %.2f to %s)" % [hero, way[0], before.y, _v(after)])
 	print("CITY_PERCH_INFO P4 %s %s" % [hero, outs])
 
@@ -266,7 +296,7 @@ func _run() -> void:
 	root.get_node("GameState").set_free_move(true)
 	for hero: String in ["choko", "skea"]:
 		await _open_world(hero)
-		_check(torso != null, "%s the dress form's torso collider is there" % hero)
+		_check(torso != null, "%s the dress form's torso collider is there" % hero, "p0")
 		if torso == null:
 			await _close_world()
 			continue
@@ -285,5 +315,8 @@ func _run() -> void:
 	while Time.get_ticks_msec() < deadline:
 		await process_frame
 		OS.delay_msec(1)
-	print("CITY_PERCH_COMPLETE checks=%d failures=%d mutation=%s" % [checks, failures, mutation])
+	var families: Array = red.keys()
+	families.sort()
+	print("CITY_PERCH_COMPLETE checks=%d failures=%d mutation=%s red=%s" % [checks, failures, mutation,
+		",".join(PackedStringArray(families)) if not families.is_empty() else "none"])
 	quit(1 if failures else 0)
