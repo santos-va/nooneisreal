@@ -73,7 +73,7 @@
 - [x] T1 · фінальна батарея, `summary-check`, реєстр, п. 15 [[state]]
 - [x] Santos · мердж #194 (`9ed4f5a`, 2026-10-18)
 - [x] T1 · коміти хвилі 15а на свіжий `main` (`4081e70`, `278f120`); `make check` — smoke 165/19847, GDS 144/0, rc 0; `make gates` — зелено
-- [ ] T1 · PR хвилі 15а, CI; Santos · мердж
+- [x] T1 · PR #195, CI на `c9090df` — `PLAYABLE CHECK: 488 scenarios, 0 failures`; Santos · мердж `7335bb5` (2026-10-18)
 
 ## Related
 - [[state]] · [[constitution]] · [[2026-10-15-Rope-Climb-Perch-Release]] · [[ADR-028-Rope-Climb-Perch-And-Retrieval]]
